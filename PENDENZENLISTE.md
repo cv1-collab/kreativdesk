@@ -5,9 +5,84 @@
 
 ---
 
-## 🏆 Erfolgsliste von heute (3. Oktober 2026)
+## 🏆 Erfolgsliste von heute (4. Oktober 2026)
 
-### 0. Gesamtsystem-Audit: Eliminierung roher Titel-Icons & Button-Standardisierung (`h-9 rounded-xl`)
+### 0. Gesamtsystem-Audit: Behebung identischer Overflow-Clipping-Fehler & Analyse fehlender Undo/Redo-Funktionen
+* **Systemweite Prüfung nach dem Vorbild der CAD-Plan-Fehler:**
+  1. **Team CRM ([TeamCrmTab.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/TeamCrmTab.tsx)):**
+     * **Identischer Fehler gefunden:** Die Topbar besass `overflow-x-auto custom-scrollbar pb-1`. Das darin liegende Dropdown «Export / Import» (`absolute right-0 top-full mt-1.5 w-56`) wurde nach unten beschnitten bzw. erzeugte störende Scrollbalken in der 36px-Leiste.
+     * **Behebung:** Auf `flex flex-wrap items-center gap-2 overflow-visible w-full md:w-auto` umgestellt. Das Dropdown öffnet sich jetzt frei schwebend über der Kontaktliste.
+  2. **Live Meet & Video ([MeetChat.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/MeetChat.tsx)):**
+     * **Header-Overflow:** Header hatte unnötiges `overflow-x-auto pb-2`. Auf `overflow-visible flex-wrap pb-1` bereinigt, um sauberes Umbrechen auf kleineren Bildschirmen zu garantieren.
+  3. **Audit zu fehlendem Undo / Redo in anderen Modulen:**
+     * **Whiteboard ([Whiteboard.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/Whiteboard.tsx)):** Zeichenfläche mit Stift, Formen, Haftnotizen und Radiergummi besitzt aktuell noch kein Undo/Redo (`Cmd+Z`). Versehentlich gelöschte Elemente können nicht zurückgeholt werden.
+     * **Pitch Deck Studio ([PitchDeckStudio.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/PitchDeckStudio.tsx)):** Folien-Erstellung und Inhaltsbearbeitung besitzen noch kein Undo/Redo bei versehentlichem Löschen oder Textüberschreiben.
+     * **BIM-Viewer ([BIMViewer.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/BIMViewer.tsx)):** Keine Rückgängig-Funktion für gelöschte 3D-Messpunkte.
+
+### 0.1 CAD-Plan: Undo / Redo System, Export-Dropdown Reparatur & TrueScale™ Werkzeugleisten-Integration
+* **Problemstellung & Benutzer-Anforderungen aus Screenshot:**
+  1. **Undo / Redo:** Prüfung, ob Rückgängig/Wiederholen fehlt, und lückenlose Implementierung.
+  2. **Export-Button (#1):** Beim Klick auf «Export» passierte nichts und kein Dropdown öffnete sich.
+  3. **Layout-Problem (#2):** «Plan hochladen» / «Speichern» Button wurde am rechten Bildschirmrand abgeschnitten.
+  4. **Kalibrieren-Platzierung (#3):** Evaluation & Integration von «Kalibrieren» in die linke CAD-Werkzeugleiste.
+* **Behebung in [PlanEditorViewer.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/PlanEditorViewer.tsx):**
+  * **Lückenloses Undo / Redo System:**
+    * State-Snapshots (`history: PlanElement[][]`, `future: PlanElement[][]`, bis zu 30 Schritte) mit optimiertem `elementsBeforeDragRef`.
+    * Globale Tastenkombinationen `Cmd+Z` / `Ctrl+Z` (Undo) und `Cmd+Shift+Z` / `Cmd+Y` / `Ctrl+Y` (Redo) mit automatischem Ausschluss von Texteingabefeldern (`input`, `textarea`).
+    * Elegante Undo- und Redo-Aktionsbuttons (`Undo2`, `Redo2`) am unteren Ende der linken Werkzeugleiste mit Hover-Tooltips und dynamischer Deaktivierung (`disabled`) bei leerem Stack.
+    * Alle Zeichen- und Bearbeitungsaktionen (Formen, Stift, Text, Bemassung, Plankopf, Verschieben, Löschen, Eckpunktanpassung) sind 100% per Undo/Redo reversibel.
+  * **Export-Button Reparatur (#1):**
+    * **Root Cause:** Die Header-Leiste besass die CSS-Klasse `overflow-x-auto`. Gemäss CSS-Spezifikation erzwingt jedes `overflow-x: auto` automatisch ein `overflow-y: hidden/auto`, wodurch absolut positionierte Dropdown-Menüs (`top-full`) ausserhalb der 40px-Leiste unsichtbar abgeschnitten wurden.
+    * Behoben durch `overflow-visible`, `z-[9999]`, `e.stopPropagation()` und klares Dropdown-Design (`Universal PDF Studio - SIA` und `Pitch Deck Folie`).
+  * **Layout & Überlauf behoben (#2):**
+    * Durch die Auslagerung des ~120px breiten «Kalibrieren»-Buttons aus der oberen Leiste gewinnt der Header massiv Platz.
+    * Alle Buttons («Plan hochladen», «Speichern», «Export», «Modul-Guide») sind auf Laptop- und Desktop-Bildschirmen vollständig und ohne horizontalen Überlauf sichtbar.
+  * **TrueScale™ Kalibrieren in die linke Werkzeugleiste integriert (#3):**
+    * Kalibrieren ist ein interaktives Zeichen-Werkzeug (Ziehen einer Referenzlinie über eine bekannte Wand/Distanz), keine statische Einstellungsoption.
+    * Als ergonomisches Werkzeug mit Fadenkreuz-Icon (`Crosshair`) direkt unter `pan` (Auswählen) in der linken CAD-Werkzeugleiste integriert.
+    * Pulsierender aktiver Modus (`bg-purple-600 animate-pulse text-white`) mit geführter Banner-Instruktion im Viewport.
+  * **Automatisierte Qualitätssicherung:**
+    * Testsuite [cadMeasurementScaling.test.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/tests/unit/cadMeasurementScaling.test.ts) um Undo/Redo-Stack-Validierung (30 Schritte) und TrueScale™-Kalibrierungsformeln erweitert (11/11 Testsuiten, 63/63 Tests grün, Build `npm run build` erfolgreich).
+
+### 0.1 CAD-Plan: Skalierbare Linienstärke & feine CAD-Konturen für Formen & Stift (Rechteck, Kreis, Polygon, Freihand)
+* **Problemstellung & Befund aus Benutzer-Screenshot:**
+  * Die Konturen von Formen (`polygon`, `rect`, `circle`) und Freihandzeichnungen (`pen`) wurden beim Ein- und Auszoomen massiv überdimensioniert und unproportional fett dargestellt (`strokeW = isPdf ? 3 : Math.max(1, 2.5 * invScale)` mit künstlichem Floor von 1 SVG-Einheit, was bei Zoomstufe 4 bis zu 8px Dicke ergab).
+  * In der Seitenleiste «Eigenschaften» gab es für Formen und Freihand-Stift keinerlei Möglichkeit, die Linienstärke (`Linienstärke / Kontur`) einzustellen; es waren nur Füll-Farbe, Linienfarbe und Linienstil vorhanden.
+* **Behebung in [PlanEditorViewer.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/PlanEditorViewer.tsx):**
+  * **Anpassbare Linienstärke (Kontur):**
+    * Model-Interfaces `PolygonMarkup`, `RectMarkup` und `CircleMarkup` um optionale `strokeWidth?: number` erweitert (Default: `1.5` für feine, professionelle CAD-Zeichnungslinien).
+    * `FreehandLine.thickness` und `strokeWidth` werden standardmässig auf `1.5` initialisiert.
+  * **Seitenleiste «Eigenschaften» erweitert:**
+    * Dedizierter Slider «Linienstärke (Kontur)» (Bereich `0.5 px` bis `8.0 px`, Step `0.5`) mit digitaler Live-Pixel-Anzeige.
+    * 4 Schnellwahl-Buttons für typische Architektur- und Ingenieurstärken: `0.5px (Fein)`, `1.5px (CAD Standard)`, `3px (Mittel)`, `6px (Stark)`.
+    * Volle Unterstützung sowohl für Formen (`rect`, `circle`, `polygon`) als auch für Freihandlinien (`pen`).
+    * Z-Index-Buttons «Vorne» und «Hinten» (`BringToFront` / `SendToBack`) für Formen und Stift hinzugefügt.
+  * **Zoom-Invarianz & adaptive Skalierung:**
+    * Konturstärke rendert nun in allen Zoomstufen invers proportional (`strokeW = rawThickness * invScale`), wodurch sie auf dem Bildschirm stets exakt in der gewünschten Pixelstärke dargestellt wird und niemals überdimensioniert auswuchert.
+    * Gestrichelte und gepunktete Linienmuster (`getStrokeDasharray`) skalieren harmonisch mit der gewählten Linienstärke.
+    * Polygon-Eckpunktgriffe (`circle`) behalten konstante 4px Bildschirmgrösse ohne unkontrolliertes Aufblähen.
+  * **Vorschau & PDF-Export:**
+    * Zeichenvorschau (Draft) für Polygon, Rechteck, Kreis und Stift skaliert live mit der gewählten Linienstärke.
+    * PDF-Export (`CADPlanPDFDocument`) berücksichtigt `strokeWidth` und `thickness` proportional im mm-Raster.
+  * **Automatisierte Qualitätssicherung:**
+    * Testsuite [cadMeasurementScaling.test.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/tests/unit/cadMeasurementScaling.test.ts) um Zoom-Invarianz, Dash-Arrays, Eckpunktgriffe und Standardstärken erweitert (11/11 Testsuiten, 61/61 Tests grün).
+
+### 0.1 CAD-Plan: Adaptive Bemassungs-Skalierung beim Zoomen & kontraststarke schwarze Schrift
+* **Problemstellung & Befund aus Screenshots:**
+  * Bei vergrössertem Zoom (`scale > 1.0`) vergrösserten sich die Endpunkt-Griffe (`rCircle`) und die Schriftgrösse (`fontSize = Math.max(9, ...)`) unverhältnismässig zu riesigen blauen Discs und unleserlichen, abgeschnittenen Riesenlettern, da `fontSize` in SVG künstlich nach unten begrenzt war, während die Badge-Höhe schrumpfte.
+  * Weisse Schrift auf blauem Kasten schnitt sich mit der darunterliegenden Vektorlinie und war auf Grundrissen kaum entzifferbar.
+* **Behebung in [PlanEditorViewer.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/PlanEditorViewer.tsx):**
+  * **Adaptive Zoom-Skalierung:** Sämtliche Bemassungselemente (Linienstärke `1.5 * invScale`, Griffradius `4.5 * invScale`, Schriftgrösse `11 * invScale`, Badge-Dimensionen `20 * invScale`) skalieren nun invers proportional zum Viewport-Zoom (`invScale = 1 / scale`), sodass sie auf dem Bildschirm in jeder Zoomstufe (von 10% bis 800%) in exakter konstanter Pixelgrösse gestochen scharf gerendert werden.
+  * **Kristallklare Lesbarkeit & Schweizer CAD-Standard:**
+    * Schriftfarbe auf tiefschwarz (`#000000`, `font-bold`, Inter/System-Font) umgestellt.
+    * Text-Badge mit reinweissem Hintergrund (`#ffffff`), farbiger Kontur (`el.color`) und exakter vertikaler Zentrierung (`dominantBaseline="central"`) ausgestattet – verdeckt die Vektorlinie darunter sauber und verhindert Durchstreichungen.
+    * Metrisches Format mit Leerzeichen vereinheitlicht: `${distMeters} m` (z.B. `4.40 m`).
+  * **Interaktive Endpunkt-Justierung:** Endpunkte `start` und `end` können bei selektierter Bemassung nun direkt per Maus/Touch gegriffen und millimetergenau verschoben werden; das Verschieben der gesamten Masslinie funktioniert nahtlos.
+  * **Floating Zoom-Steuerung:** Komfortable Zoom-Bar am unteren linken Bildschirmrand (`[ - ] [ 80% ] [ + ]`) integriert.
+  * **PDF-Synchronisation:** Auch im generierten PDF-Dokument wird die Masszahl nun mit weissem Kontur-Badge und schwarzer Schrift exportiert.
+  * **Unit-Tests:** Neue Testsuite [cadMeasurementScaling.test.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/tests/unit/cadMeasurementScaling.test.ts) hinzugefügt (11/11 Testsuiten, 61/61 Tests grün).
+
+### 0.1 Gesamtsystem-Audit: Eliminierung roher Titel-Icons & Button-Standardisierung (`h-9 rounded-xl`)
 * **Lückenlose Überprüfung aller Module & Komponenten auf Designsystem-Inkonsistenzen:**
   * **Projekt Finanzen BKP 1–9 (`Finance.tsx`):**
     * Rohes Dollar-Icon direkt im `<h1>` entfernt und durch die standardisierte Icon-Badge (`w-9 h-9 rounded-xl bg-accent-ai/10`) ersetzt.

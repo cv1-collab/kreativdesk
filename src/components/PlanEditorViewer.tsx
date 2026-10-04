@@ -6,7 +6,8 @@ import {
   UploadCloud, Image as ImageIcon, MapPin, Square, Circle,
   Trash2, Settings, Layers, Hexagon, Check, LayoutTemplate, MoveHorizontal, Loader2,
   ZoomIn, ZoomOut, MousePointer2, Save, Download, ShieldAlert, Camera as LucideCamera,
-  Eye, EyeOff, Lock, Unlock, Plus, SlidersHorizontal, ImagePlus, BringToFront, SendToBack, Type, PenTool, Ruler, X, ChevronDown, Map
+  Eye, EyeOff, Lock, Unlock, Plus, SlidersHorizontal, ImagePlus, BringToFront, SendToBack, Type, PenTool, Ruler, X, ChevronDown, Map,
+  Crosshair, Undo2, Redo2
 } from 'lucide-react';
 import { cn, sanitizeUrl } from '../utils';
 import { useToast } from '../contexts/ToastContext';
@@ -119,6 +120,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 
 const TOOL_LABELS: Record<string, { de: string; en: string }> = {
   pan: { de: 'Auswählen & Verschieben', en: 'Select & Pan' },
+  calibrate: { de: 'TrueScale™ Kalibrieren', en: 'TrueScale™ Calibrate' },
   measure: { de: 'Messen / Maßstab (Distanz)', en: 'Measure (Distance)' },
   scalebar: { de: 'Grafischer Maßstabsbalken', en: 'Graphic Scale Bar' },
   polygon: { de: 'Polygon / Raumfläche', en: 'Polygon / Room Area' },
@@ -139,9 +141,9 @@ interface DefectMarker extends BaseElement { type: 'defect'; title: string; desc
 interface TextMarkup extends BaseElement { type: 'text'; text: string; color: string; size: number; }
 interface FreehandLine extends BaseElement { type: 'pen'; points: {x: number, y: number}[]; color: string; thickness: number; }
 interface Measurement extends BaseElement { type: 'measure'; start: {x: number, y: number}; end: {x: number, y: number}; color: string; }
-interface PolygonMarkup extends BaseElement { type: 'polygon'; points: {x: number, y: number}[]; color: string; strokeColor: string; borderStyle: LineStyle; }
-interface RectMarkup extends BaseElement { type: 'rect'; w: number; h: number; color: string; strokeColor: string; borderStyle: LineStyle; }
-interface CircleMarkup extends BaseElement { type: 'circle'; r: number; color: string; strokeColor: string; borderStyle: LineStyle; }
+interface PolygonMarkup extends BaseElement { type: 'polygon'; points: {x: number, y: number}[]; color: string; strokeColor: string; borderStyle: LineStyle; strokeWidth?: number; }
+interface RectMarkup extends BaseElement { type: 'rect'; w: number; h: number; color: string; strokeColor: string; borderStyle: LineStyle; strokeWidth?: number; }
+interface CircleMarkup extends BaseElement { type: 'circle'; r: number; color: string; strokeColor: string; borderStyle: LineStyle; strokeWidth?: number; }
 interface ScaleBarMarkup extends BaseElement { type: 'scalebar'; lengthMeters: number; color: string; thickness: number; textSize: number; }
 interface TitleBlockMarkup extends BaseElement { 
   type: 'titleblock'; scale: number; textColor: string;
@@ -222,20 +224,24 @@ const CADPlanPDFDocument = ({ settings, docHeader, planImage, elements, layers, 
                 
                 if (el.type === 'pen') {
                    const pts = el.points.map((p:any) => `${p.x * SAFE_W},${p.y * SAFE_H}`).join(' ');
-                   return <G key={el.id} opacity={totalOpacity}><Polyline points={pts} stroke={el.color} strokeWidth={el.thickness * 2 * SCALE_AVG} fill="none" /></G>;
+                   const thick = ((el.thickness || 1.5) * 0.5 * MM_TO_PX) * SCALE_AVG;
+                   return <G key={el.id} opacity={totalOpacity}><Polyline points={pts} stroke={el.color} strokeWidth={thick} fill="none" /></G>;
                 }
                 if (el.type === 'rect') {
                    const left = Math.min(el.x, el.x + el.w) * SAFE_W; const top = Math.min(el.y, el.y + el.h) * SAFE_H;
                    const w = Math.abs(el.w) * SAFE_W; const h = Math.abs(el.h) * SAFE_H;
-                   return <G key={el.id} opacity={totalOpacity}><Rect x={left} y={top} width={w} height={h} fill={el.color} fillOpacity={el.opacity || 1} stroke={el.strokeColor} strokeWidth={1 * MM_TO_PX * SCALE_AVG} strokeDasharray={getDashArray(el.borderStyle, 1.5 * MM_TO_PX * SCALE_AVG)} /></G>;
+                   const thick = ((el.strokeWidth || 1.5) * 0.5 * MM_TO_PX) * SCALE_AVG;
+                   return <G key={el.id} opacity={totalOpacity}><Rect x={left} y={top} width={w} height={h} fill={el.color} fillOpacity={el.opacity || 1} stroke={el.strokeColor} strokeWidth={thick} strokeDasharray={getDashArray(el.borderStyle, thick * 1.5)} /></G>;
                 }
                 if (el.type === 'circle') {
                    const cx = el.x * SAFE_W; const cy = el.y * SAFE_H; const r = el.r * SAFE_W; 
-                   return <G key={el.id} opacity={totalOpacity}><PDFCircle cx={cx} cy={cy} r={r} fill={el.color} fillOpacity={el.opacity || 1} stroke={el.strokeColor} strokeWidth={1 * MM_TO_PX * SCALE_AVG} strokeDasharray={getDashArray(el.borderStyle, 1.5 * MM_TO_PX * SCALE_AVG)} /></G>;
+                   const thick = ((el.strokeWidth || 1.5) * 0.5 * MM_TO_PX) * SCALE_AVG;
+                   return <G key={el.id} opacity={totalOpacity}><PDFCircle cx={cx} cy={cy} r={r} fill={el.color} fillOpacity={el.opacity || 1} stroke={el.strokeColor} strokeWidth={thick} strokeDasharray={getDashArray(el.borderStyle, thick * 1.5)} /></G>;
                 }
                 if (el.type === 'polygon') {
                    const pts = el.points.map((p:any) => `${p.x * SAFE_W},${p.y * SAFE_H}`).join(' ');
-                   return <G key={el.id} opacity={totalOpacity}><Polygon points={pts} fill={el.color} fillOpacity={el.opacity || 1} stroke={el.strokeColor} strokeWidth={1 * MM_TO_PX * SCALE_AVG} strokeDasharray={getDashArray(el.borderStyle, 1 * MM_TO_PX * SCALE_AVG)} /></G>;
+                   const thick = ((el.strokeWidth || 1.5) * 0.5 * MM_TO_PX) * SCALE_AVG;
+                   return <G key={el.id} opacity={totalOpacity}><Polygon points={pts} fill={el.color} fillOpacity={el.opacity || 1} stroke={el.strokeColor} strokeWidth={thick} strokeDasharray={getDashArray(el.borderStyle, thick * 1.5)} /></G>;
                 }
                 if (el.type === 'measure') {
                    const sx = el.start.x * SAFE_W; const sy = el.start.y * SAFE_H;
@@ -312,8 +318,8 @@ const CADPlanPDFDocument = ({ settings, docHeader, planImage, elements, layers, 
                  const mx = (el.start.x * SAFE_W + el.end.x * SAFE_W) / 2;
                  const my = (el.start.y * SAFE_H + el.end.y * SAFE_H) / 2;
                  return (
-                   <View key={el.id} style={{ position: 'absolute', left: mx - (8 * MM_TO_PX * SCALE_X), top: my - (2.5 * MM_TO_PX * SCALE_Y), width: 16 * MM_TO_PX * SCALE_X, height: 5 * MM_TO_PX * SCALE_Y, backgroundColor: el.color, borderRadius: 1 * MM_TO_PX * SCALE_AVG, justifyContent: 'center', alignItems: 'center', opacity: totalOpacity }}>
-                     <Text style={{ color: '#ffffff', fontSize: 3 * MM_TO_PX * SCALE_AVG, fontFamily: 'Helvetica-Bold' }}>{distMeters}m</Text>
+                   <View key={el.id} style={{ position: 'absolute', left: mx - (8 * MM_TO_PX * SCALE_X), top: my - (2.5 * MM_TO_PX * SCALE_Y), width: 16 * MM_TO_PX * SCALE_X, height: 5 * MM_TO_PX * SCALE_Y, backgroundColor: '#ffffff', border: `0.6px solid ${el.color || '#3b82f6'}`, borderRadius: 1 * MM_TO_PX * SCALE_AVG, justifyContent: 'center', alignItems: 'center', opacity: totalOpacity }}>
+                     <Text style={{ color: '#000000', fontSize: 2.8 * MM_TO_PX * SCALE_AVG, fontFamily: 'Helvetica-Bold' }}>{distMeters} m</Text>
                    </View>
                  );
               }
@@ -456,6 +462,59 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   const [activeLayerId, setActiveLayerId] = useState<string>(() => initialCache?.activeLayerId || 'default');
   
   const [elements, setElements] = useState<PlanElement[]>(() => initialCache?.elements || []);
+  const [history, setHistory] = useState<PlanElement[][]>([]);
+  const [future, setFuture] = useState<PlanElement[][]>([]);
+  const elementsBeforeDragRef = useRef<PlanElement[] | null>(null);
+
+  const commitElements = useCallback((nextElements: PlanElement[]) => {
+    setHistory(prev => [...prev.slice(-29), elements]);
+    setFuture([]);
+    setElements(nextElements);
+  }, [elements]);
+
+  const handleUndo = useCallback(() => {
+    setHistory(prevHistory => {
+      if (prevHistory.length === 0) return prevHistory;
+      const prev = prevHistory[prevHistory.length - 1];
+      setFuture(prevFuture => [elements, ...prevFuture.slice(0, 29)]);
+      setElements(prev);
+      setSelectedElement(null);
+      return prevHistory.slice(0, -1);
+    });
+  }, [elements]);
+
+  const handleRedo = useCallback(() => {
+    setFuture(prevFuture => {
+      if (prevFuture.length === 0) return prevFuture;
+      const next = prevFuture[0];
+      setHistory(prevHistory => [...prevHistory.slice(-29), elements]);
+      setElements(next);
+      setSelectedElement(null);
+      return prevFuture.slice(1);
+    });
+  }, [elements]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          handleRedo();
+        } else {
+          handleUndo();
+        }
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleUndo, handleRedo]);
 
   const savePlanToCache = useCallback((data: {
     id: string | null;
@@ -632,6 +691,8 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     setPlanImage(resolvedImage);
     setPlanName(resolvedName);
     setElements(resolvedElements);
+    setHistory([]);
+    setFuture([]);
     setLayers(resolvedLayers);
     setActiveLayerId(resolvedActiveLayerId);
     setPaperFormat(resolvedPaperFormat);
@@ -1118,14 +1179,32 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
        setPan({ x: e.clientX - startPan.current.x, y: e.clientY - startPan.current.y });
     } else if (draggingElementId) {
        const { nx, ny } = getRelativeCoords(e.clientX, e.clientY);
-       setElements(prev => prev.map(el => el.id === draggingElementId ? { ...el, x: nx, y: ny } : el));
+       setElements(prev => prev.map(el => {
+         if (el.id === draggingElementId) {
+           if (el.type === 'measure') {
+             const curMx = (el.start.x + el.end.x) / 2;
+             const curMy = (el.start.y + el.end.y) / 2;
+             const dx = nx - curMx;
+             const dy = ny - curMy;
+             return { ...el, start: { x: el.start.x + dx, y: el.start.y + dy }, end: { x: el.end.x + dx, y: el.end.y + dy } };
+           }
+           return { ...el, x: nx, y: ny };
+         }
+         return el;
+       }));
     } else if (draggingVertex) {
        const { nx, ny } = getRelativeCoords(e.clientX, e.clientY);
        setElements(prev => prev.map(el => {
-         if (el.id === draggingVertex.elementId && el.type === 'polygon') {
-           const newPts = [...el.points];
-           newPts[draggingVertex.vertexIndex] = { x: nx, y: ny };
-           return { ...el, points: newPts };
+         if (el.id === draggingVertex.elementId) {
+           if (el.type === 'polygon') {
+             const newPts = [...el.points];
+             newPts[draggingVertex.vertexIndex] = { x: nx, y: ny };
+             return { ...el, points: newPts };
+           }
+           if (el.type === 'measure') {
+             if (draggingVertex.vertexIndex === 0) return { ...el, start: { x: nx, y: ny } };
+             if (draggingVertex.vertexIndex === 1) return { ...el, end: { x: nx, y: ny } };
+           }
          }
          return el;
        }));
@@ -1134,6 +1213,13 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
   const handleMainPointerUp = (e: React.PointerEvent) => {
     isPanning.current = false;
+    if (draggingElementId || draggingVertex) {
+      if (elementsBeforeDragRef.current && elementsBeforeDragRef.current !== elements) {
+        setHistory(prev => [...prev.slice(-30), elementsBeforeDragRef.current!]);
+        setFuture([]);
+      }
+      elementsBeforeDragRef.current = null;
+    }
     setDraggingElementId(null);
     setDraggingVertex(null);
     try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch(err){ console.error(err); }
@@ -1146,16 +1232,21 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
   const handleElementPointerDown = (e: React.PointerEvent, el: PlanElement) => { 
     if (activeTool !== 'pan' || isCalibratingMode) return; 
-    e.stopPropagation(); setDraggingElementId(el.id); setSelectedElement(el); 
+    e.stopPropagation(); 
+    elementsBeforeDragRef.current = elements;
+    setDraggingElementId(el.id); 
+    setSelectedElement(el); 
   };
 
   const handleVertexPointerDown = (e: React.PointerEvent, elId: string, vIndex: number) => { 
     if (activeTool !== 'pan' || isCalibratingMode) return; 
-    e.stopPropagation(); setDraggingVertex({ elementId: elId, vertexIndex: vIndex }); 
+    e.stopPropagation(); 
+    elementsBeforeDragRef.current = elements;
+    setDraggingVertex({ elementId: elId, vertexIndex: vIndex }); 
   };
 
   const handleRemoveVertex = (elId: string, vIndex: number) => { 
-    setElements(prev => prev.map(e => {
+    commitElements(elements.map(e => {
       if (e.id === elId && e.type === 'polygon') {
          const p = e as PolygonMarkup;
          if (p.points.length > 3) return { ...p, points: p.points.filter((_, i) => i !== vIndex) };
@@ -1185,7 +1276,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     
     if (activeTool === 'polygon') { 
       e.stopPropagation();
-      if (!draftElement) setDraftElement({ id: `poly_${Date.now()}`, type: 'polygon', x: nx, y: ny, points: [{x: nx, y: ny}], color: '#3b82f6', strokeColor: '#2563eb', opacity: 0.5, borderStyle: 'solid', layerId: activeLayerId }); 
+      if (!draftElement) setDraftElement({ id: `poly_${Date.now()}`, type: 'polygon', x: nx, y: ny, points: [{x: nx, y: ny}], color: '#3b82f6', strokeColor: '#2563eb', strokeWidth: 1.5, opacity: 0.5, borderStyle: 'solid', layerId: activeLayerId }); 
       else setDraftElement({ ...(draftElement as PolygonMarkup), points: [...(draftElement as PolygonMarkup).points, {x: nx, y: ny}] }); 
       return; 
     }
@@ -1198,27 +1289,27 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     e.stopPropagation();
     try { (e.currentTarget as unknown as HTMLElement).setPointerCapture(e.pointerId); } catch(err){ console.error(err); }
     
-    if (activeTool === 'rect') setDraftElement({ id: `rect_${Date.now()}`, type: 'rect', x: nx, y: ny, w: 0.01, h: 0.01, color: '#3b82f6', strokeColor: '#2563eb', borderStyle: 'solid', layerId: activeLayerId, opacity: 0.5 });
-    else if (activeTool === 'circle') setDraftElement({ id: `circle_${Date.now()}`, type: 'circle', x: nx, y: ny, r: 0.01, color: '#3b82f6', strokeColor: '#2563eb', borderStyle: 'solid', layerId: activeLayerId, opacity: 0.5 });
+    if (activeTool === 'rect') setDraftElement({ id: `rect_${Date.now()}`, type: 'rect', x: nx, y: ny, w: 0.01, h: 0.01, color: '#3b82f6', strokeColor: '#2563eb', strokeWidth: 1.5, borderStyle: 'solid', layerId: activeLayerId, opacity: 0.5 });
+    else if (activeTool === 'circle') setDraftElement({ id: `circle_${Date.now()}`, type: 'circle', x: nx, y: ny, r: 0.01, color: '#3b82f6', strokeColor: '#2563eb', strokeWidth: 1.5, borderStyle: 'solid', layerId: activeLayerId, opacity: 0.5 });
     else if (activeTool === 'text') {
       const newEl: TextMarkup = { id: `text_${Date.now()}`, type: 'text', x: nx, y: ny, text: 'Text', color: '#000000', size: 5, layerId: activeLayerId };
-      setElements([...elements, newEl]); setSelectedElement(newEl); setActiveTool('pan');
+      commitElements([...elements, newEl]); setSelectedElement(newEl); setActiveTool('pan');
     } else if (activeTool === 'defect') {
       const nDefect: DefectMarker = { id: `defect_${Date.now()}`, type: 'defect', x: nx, y: ny, title: t('defect'), description: '', priority: 'Medium', trade: 'Planung', status: 'open', isSynced: false, layerId: activeLayerId };
       setDefectPrompt({ isOpen: true, element: nDefect, file: null, preview: null }); setActiveTool('pan');
     } else if (activeTool === 'pen') {
-      setDraftElement({ id: `pen_${Date.now()}`, type: 'pen', x: nx, y: ny, points: [{x: nx, y: ny}, {x: nx, y: ny}], color: '#ef4444', thickness: 2, opacity: 1, layerId: activeLayerId });
+      setDraftElement({ id: `pen_${Date.now()}`, type: 'pen', x: nx, y: ny, points: [{x: nx, y: ny}, {x: nx, y: ny}], color: '#ef4444', thickness: 1.5, opacity: 1, layerId: activeLayerId });
     } else if (activeTool === 'measure') {
       setDraftElement({ id: `measure_${Date.now()}`, type: 'measure', x: nx, y: ny, start: {x: nx, y: ny}, end: {x: nx, y: ny}, color: '#3b82f6', layerId: activeLayerId });
     } else if (activeTool === 'scalebar') {
       const sb: ScaleBarMarkup = { id: `sb_${Date.now()}`, type: 'scalebar', x: nx, y: ny, lengthMeters: 5, color: '#000000', thickness: 1.5, textSize: 4, layerId: activeLayerId };
-      setElements([...elements, sb]); setSelectedElement(sb); setActiveTool('pan');
+      commitElements([...elements, sb]); setSelectedElement(sb); setActiveTool('pan');
     } else if (activeTool === 'titleblock') {
       const tb: TitleBlockMarkup = { 
         id: `tb_${Date.now()}`, type: 'titleblock', x: nx, y: ny, scale: 0.7, textColor: '#000000', layerId: activeLayerId,
         data: { projekt: activeProject?.name || 'PROJEKTNAME', adresse: 'Baustelle', bauherrschaft: 'Auftraggeber', planverfasser: 'Kreativ Desk', phase: 'AUSFÜHRUNG', planinhalt: 'GRUNDRISS', planNummer: '001', datum: new Date().toLocaleDateString('de-CH'), gez: 'AI' } 
       };
-      setElements([...elements, tb]); setSelectedElement(tb); setActiveTool('pan');
+      commitElements([...elements, tb]); setSelectedElement(tb); setActiveTool('pan');
     }
   };
 
@@ -1264,11 +1355,11 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       if (draftElement.type === 'measure') {
         const dist = parseFloat(calculateDistance(draftElement.start, (draftElement as Measurement).end));
         if (dist > 0.02) {
-          setElements([...elements, draftElement]);
+          commitElements([...elements, draftElement]);
           setSelectedElement(draftElement);
         }
       } else {
-        setElements([...elements, draftElement]);
+        commitElements([...elements, draftElement]);
         setSelectedElement(draftElement);
       }
       setDraftElement(null);
@@ -1278,14 +1369,14 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
   const finishPolygon = () => { 
     if (draftElement?.type === 'polygon') { 
-      setElements([...elements, draftElement]); 
+      commitElements([...elements, draftElement]); 
       setDraftElement(null); 
       setActiveTool('pan'); 
     } 
   };
 
-  const updateElement = (upd: PlanElement) => { setElements(elements.map(e => e.id === upd.id ? upd : e)); setSelectedElement(upd); };
-  const deleteElement = (id: string) => { setElements(elements.filter(e => e.id !== id)); setSelectedElement(null); };
+  const updateElement = (upd: PlanElement) => { commitElements(elements.map(e => e.id === upd.id ? upd : e)); setSelectedElement(upd); };
+  const deleteElement = (id: string) => { commitElements(elements.filter(e => e.id !== id)); setSelectedElement(null); };
 
   const allElementsToRender = (draftElement ? [...elements, draftElement] : elements).filter(el => {
      const layer = layers.find(l => l.id === (el.layerId || 'default'));
@@ -1293,7 +1384,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   });
 
   const renderSvgElements = (elementsToRender: PlanElement[], isPdf: boolean = false) => {
-    const invScale = isPdf ? 1 : Math.min(2.5, Math.max(0.12, 1 / scale));
+    const invScale = isPdf ? 1 : Math.min(10, Math.max(0.1, 1 / scale));
 
     return elementsToRender.map(el => {
       const isSelected = selectedElement?.id === el.id && !isPdf;
@@ -1306,7 +1397,8 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
       if (el.type === 'pen') {
         const pointsStr = el.points.map(p => `${p.x * internalW},${p.y * internalH}`).join(' ');
-        const penStroke = (el.thickness || 2) * (isPdf ? MM_TO_PX : Math.max(0.6, MM_TO_PX * invScale));
+        const rawThickness = el.thickness || 1.5;
+        const penStroke = isPdf ? (rawThickness * 1.5) : (rawThickness * invScale);
         return (
           <polyline key={el.id} points={pointsStr} fill="none" stroke={el.color} strokeWidth={`${penStroke}px`} strokeLinecap="round" strokeLinejoin="round"
             style={{ opacity: totalOpacity, cursor: activeTool === 'pan' ? 'move' : 'crosshair', pointerEvents: 'auto', filter: isSelected ? 'drop-shadow(0px 0px 4px rgba(0,0,0,0.5))' : 'none' }} 
@@ -1317,8 +1409,9 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
       if (el.type === 'rect') {
         const rx = Math.min(el.x, el.x + el.w) * internalW; const ry = Math.min(el.y, el.y + el.h) * internalH;
-        const strokeDash = getStrokeDasharray(el.borderStyle, 1.5 * MM_TO_PX);
-        const strokeW = isPdf ? 3 : Math.max(1, 2.5 * invScale);
+        const rawThickness = (el as any).strokeWidth || 1.5;
+        const strokeW = isPdf ? (rawThickness * 1.5) : (rawThickness * invScale);
+        const strokeDash = getStrokeDasharray(el.borderStyle, strokeW);
         return (
           <g key={el.id} style={{ opacity: totalOpacity }}>
             <rect x={`${rx}px`} y={`${ry}px`} width={`${Math.abs(el.w) * internalW}px`} height={`${Math.abs(el.h) * internalH}px`} fill={el.color || '#3b82f6'} fillOpacity={el.opacity || 1} stroke={el.strokeColor || '#2563eb'} strokeWidth={strokeW} strokeDasharray={strokeDash}
@@ -1329,8 +1422,9 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       }
       if (el.type === 'circle') {
         const cx = el.x * internalW; const cy = el.y * internalH; const r = el.r * internalW;
-        const strokeDash = getStrokeDasharray(el.borderStyle, 1.5 * MM_TO_PX);
-        const strokeW = isPdf ? 3 : Math.max(1, 2.5 * invScale);
+        const rawThickness = (el as any).strokeWidth || 1.5;
+        const strokeW = isPdf ? (rawThickness * 1.5) : (rawThickness * invScale);
+        const strokeDash = getStrokeDasharray(el.borderStyle, strokeW);
         return (
           <g key={el.id} style={{ opacity: totalOpacity }}>
             <circle cx={`${cx}px`} cy={`${cy}px`} r={`${r}px`} fill={el.color || '#3b82f6'} fillOpacity={el.opacity || 1} stroke={el.strokeColor || '#2563eb'} strokeWidth={strokeW} strokeDasharray={strokeDash}
@@ -1342,15 +1436,16 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
       if (el.type === 'polygon') {
         const pStr = el.points.map(p => `${p.x * internalW},${p.y * internalH}`).join(' ');
-        const strokeDash = getStrokeDasharray(el.borderStyle, 1 * MM_TO_PX);
-        const strokeW = isPdf ? 3 : Math.max(1, 2.5 * invScale);
+        const rawThickness = (el as any).strokeWidth || 1.5;
+        const strokeW = isPdf ? (rawThickness * 1.5) : (rawThickness * invScale);
+        const strokeDash = getStrokeDasharray(el.borderStyle, strokeW);
         return (
           <g key={el.id} style={{ opacity: totalOpacity }}>
             <polygon points={pStr} fill={el.color || '#3b82f6'} fillOpacity={el.opacity || 1} stroke={el.strokeColor || '#2563eb'} strokeWidth={strokeW} strokeDasharray={strokeDash}
               style={{ cursor: activeTool === 'pan' ? 'move' : 'crosshair', pointerEvents: 'auto' }} onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, el); }} 
             />
             {isSelected && !isPdf && el.points.map((pt, i) => (
-              <circle key={i} cx={`${pt.x * internalW}px`} cy={`${pt.y * internalH}px`} r={`${Math.max(2.5, 4.5 * invScale)}px`} fill="white" stroke="#ef4444" strokeWidth={`${Math.max(1, 1.5 * invScale)}px`}
+              <circle key={i} cx={`${pt.x * internalW}px`} cy={`${pt.y * internalH}px`} r={`${4 * invScale}px`} fill="white" stroke="#ef4444" strokeWidth={`${1.5 * invScale}px`}
                 style={{ cursor: 'crosshair', pointerEvents: 'auto' }} 
                 onPointerDown={(e) => handleVertexPointerDown(e, el.id, i)}
                 onDoubleClick={(e) => { e.stopPropagation(); handleRemoveVertex(el.id, i); }}
@@ -1365,20 +1460,72 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         const ex = el.end.x * internalW; const ey = el.end.y * internalH;
         const mx = (sx + ex) / 2; const my = (sy + ey) / 2;
         const distMeters = calculateDistance(el.start, el.end);
-        const strokeW = isPdf ? 2.5 : Math.max(1, 2 * invScale);
-        const rCircle = isPdf ? 5 : Math.max(2.5, 4.5 * invScale);
-        const fontSize = isPdf ? 12 : Math.max(9, 11 * invScale);
-        const textStr = `${distMeters}m`;
-        const badgeW = isPdf ? 60 : Math.max(38 * invScale, (textStr.length * 7 + 14) * invScale);
-        const badgeH = isPdf ? 20 : 18 * invScale;
-        const badgeRx = isPdf ? 4 : 4 * invScale;
+        const strokeW = isPdf ? 2 : (1.5 * invScale);
+        const rCircle = isPdf ? 4 : (4.5 * invScale);
+        const fontSize = isPdf ? 11 : (11 * invScale);
+        const textStr = `${distMeters} m`;
+        const badgeW = isPdf ? 64 : Math.max(36 * invScale, (textStr.length * 7 + 16) * invScale);
+        const badgeH = isPdf ? 20 : (20 * invScale);
+        const badgeRx = isPdf ? 4 : (4 * invScale);
         return (
           <g key={el.id} style={{ opacity: totalOpacity, cursor: activeTool === 'pan' ? 'move' : 'crosshair', pointerEvents: 'auto' }} onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, el); }}>
-            <line x1={`${sx}px`} y1={`${sy}px`} x2={`${ex}px`} y2={`${ey}px`} stroke={el.color} strokeWidth={strokeW} strokeDasharray={isSelected ? "none" : `${6 * invScale},${6 * invScale}`} />
-            <circle cx={`${sx}px`} cy={`${sy}px`} r={rCircle} fill={el.color} />
-            <circle cx={`${ex}px`} cy={`${ey}px`} r={rCircle} fill={el.color} />
-            <rect x={`${mx - badgeW / 2}px`} y={`${my - badgeH / 2}px`} width={`${badgeW}px`} height={`${badgeH}px`} fill={el.color} rx={`${badgeRx}px`} />
-            <text x={`${mx}px`} y={`${my + (badgeH * 0.22)}px`} fill="white" fontSize={`${fontSize}px`} fontFamily="sans-serif" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">{textStr}</text>
+            {/* Bemassungslinie */}
+            <line 
+              x1={`${sx}px`} y1={`${sy}px`} x2={`${ex}px`} y2={`${ey}px`} 
+              stroke={el.color || '#3b82f6'} 
+              strokeWidth={strokeW} 
+              strokeDasharray={isSelected ? "none" : `${4 * invScale},${4 * invScale}`} 
+            />
+            {/* Endpunkt Start */}
+            <circle 
+              cx={`${sx}px`} cy={`${sy}px`} r={rCircle} 
+              fill={el.color || '#3b82f6'} 
+              stroke="#ffffff" 
+              strokeWidth={Math.max(1, strokeW * 0.75)}
+              style={{ cursor: isSelected ? 'crosshair' : (activeTool === 'pan' ? 'move' : 'crosshair') }}
+              onPointerDown={(e) => {
+                if (isSelected && !isPdf) {
+                  handleVertexPointerDown(e, el.id, 0);
+                }
+              }}
+            />
+            {/* Endpunkt Ende */}
+            <circle 
+              cx={`${ex}px`} cy={`${ey}px`} r={rCircle} 
+              fill={el.color || '#3b82f6'} 
+              stroke="#ffffff" 
+              strokeWidth={Math.max(1, strokeW * 0.75)}
+              style={{ cursor: isSelected ? 'crosshair' : (activeTool === 'pan' ? 'move' : 'crosshair') }}
+              onPointerDown={(e) => {
+                if (isSelected && !isPdf) {
+                  handleVertexPointerDown(e, el.id, 1);
+                }
+              }}
+            />
+            {/* Weisser Hintergrund-Badge: verdeckt Linie & Plan darunter, garantiert optimalen Kontrast */}
+            <rect 
+              x={`${mx - badgeW / 2}px`} 
+              y={`${my - badgeH / 2}px`} 
+              width={`${badgeW}px`} 
+              height={`${badgeH}px`} 
+              fill="#ffffff" 
+              stroke={el.color || '#3b82f6'} 
+              strokeWidth={isSelected ? Math.max(1.5, strokeW * 1.25) : strokeW} 
+              rx={`${badgeRx}px`} 
+            />
+            {/* Schwarze Schrift: perfekt zentriert und kristallklar lesbar */}
+            <text 
+              x={`${mx}px`} 
+              y={`${my}px`} 
+              fill="#000000" 
+              fontSize={`${fontSize}px`} 
+              fontFamily="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" 
+              fontWeight="700" 
+              textAnchor="middle" 
+              dominantBaseline="central"
+            >
+              {textStr}
+            </text>
           </g>
         );
       }
@@ -1468,10 +1615,10 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
       if (el.type === 'defect') {
         const d = el as DefectMarker;
-        const radius = isPdf ? (4 * MM_TO_PX) : Math.max(8, 12 * invScale);
-        const strokeW = isPdf ? (0.8 * MM_TO_PX) : Math.max(1, 1.5 * invScale);
-        const textFz = isPdf ? (4 * MM_TO_PX) : Math.max(8, 11 * invScale);
-        const textY = isPdf ? (1.5 * MM_TO_PX) : (3.5 * invScale);
+        const radius = isPdf ? (4 * MM_TO_PX) : (10 * invScale);
+        const strokeW = isPdf ? (0.8 * MM_TO_PX) : (1.5 * invScale);
+        const textFz = isPdf ? (4 * MM_TO_PX) : (10 * invScale);
+        const textY = isPdf ? (1.5 * MM_TO_PX) : 0;
         const pinColor = d.status === 'resolved' || d.status === 'Behoben' ? "#10b981" : 
                          d.status === 'review' || d.status === 'Abnahme' || d.status === 'Zur Abnahme' ? "#3b82f6" : 
                          d.status === 'in_progress' || d.status === 'In Bearbeitung' ? "#f59e0b" : "#ef4444";
@@ -1657,10 +1804,10 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           </div>
         </div>
 
-        {/* PLAN FORMAT, MASSSTAB & KALIBRIERUNG (ZUSAMMENGEFÜHRT) */}
+        {/* PLAN FORMAT & MASSSTAB */}
         {planImage && (
-          <div className="hidden lg:flex items-center gap-2 bg-background border border-border px-3 h-9 rounded-xl shadow-inner mx-2 shrink-0 text-xs">
-             <span className="text-[10px] font-extrabold uppercase tracking-wider text-text-muted">{t('plan_layout')}:</span>
+          <div className="hidden lg:flex items-center gap-1.5 sm:gap-2 bg-background border border-border px-2.5 h-9 rounded-xl shadow-inner mx-1 sm:mx-2 shrink-0 text-xs">
+             <span className="text-[10px] font-extrabold uppercase tracking-wider text-text-muted hidden xl:inline">{t('plan_layout')}:</span>
              <select value={paperFormat} onChange={e => setPaperFormat(e.target.value)} className="bg-transparent text-xs font-bold text-text-primary outline-none cursor-pointer">
                {Object.keys(PAPER_DIMENSIONS).map(f => <option key={f} value={f} className="bg-surface">{f}</option>)}
              </select>
@@ -1673,26 +1820,13 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
              <select value={planScale} onChange={e => setPlanScale(Number(e.target.value))} className="bg-transparent text-xs font-bold text-text-primary outline-none cursor-pointer">
                <option value={20} className="bg-surface">20</option><option value={50} className="bg-surface">50</option><option value={100} className="bg-surface">100</option><option value={200} className="bg-surface">200</option><option value={500} className="bg-surface">500</option>
              </select>
-             <button 
-               onClick={handleStartCalibration} 
-               className={cn(
-                 "ml-1 px-2.5 h-7 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border cursor-pointer",
-                 isCalibratingMode 
-                   ? "bg-purple-600 text-white border-purple-500 shadow-md shadow-purple-500/25 animate-pulse" 
-                   : "bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 border-purple-500/30"
-               )}
-               title={t('calibrate_truescale_tooltip')}
-             >
-               <Ruler size={13}/>
-               <span className="hidden xl:inline text-[11px]">{t('truescale_calibrate_short')}</span>
-             </button>
           </div>
         )}
 
         {/* RECHTE BUTTONS (ZUSAMMENGEFÜHRT: ARBEIT, EXPORT & GUIDE) */}
-        <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-between sm:justify-end overflow-x-auto hide-scrollbar py-0.5">
+        <div className="flex items-center gap-2 shrink-0 overflow-visible">
           {/* PRIMÄRE ARBEITS-AKTIONEN: UPLOAD & SPEICHERN */}
-          <div className="flex items-center bg-background border border-border rounded-xl p-0.5 shadow-sm h-9">
+          <div className="flex items-center bg-background border border-border rounded-xl p-0.5 shadow-sm h-9 shrink-0">
             <label 
               onClick={(e) => {
                 if (isDemoMode || currentProjectId === 'demo-1') {
@@ -1703,7 +1837,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
               }}
               title={t('upload_plan_tooltip')}
               className={cn(
-                "tour-plan-upload flex items-center gap-1.5 px-3 h-8 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold shadow-sm transition-all whitespace-nowrap",
+                "tour-plan-upload flex items-center gap-1.5 px-3 h-8 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold shadow-sm transition-all whitespace-nowrap shrink-0",
                 (isDemoMode || currentProjectId === 'demo-1') ? "opacity-70 cursor-not-allowed" : "cursor-pointer"
               )}
             >
@@ -1716,7 +1850,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
             <button 
               onClick={handleManualSave} 
               disabled={isSaving || !activePlanId || activePlanId === 'demo-cad-1' || activePlanId === 'system-fallback-plan' || isDemoMode} 
-              className="flex items-center gap-1.5 px-3 h-8 text-text-primary hover:bg-white/5 rounded-lg text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap cursor-pointer" 
+              className="flex items-center gap-1.5 px-3 h-8 text-text-primary hover:bg-white/5 rounded-lg text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap cursor-pointer shrink-0" 
               title={t('save_layers_tooltip')}
             >
               {isSaving ? <Loader2 size={13} className="animate-spin"/> : <Save size={13}/>}
@@ -1725,17 +1859,21 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           </div>
 
           {/* EXPORT & WEITERGABE DROPDOWN (PDF EXPORT + PITCH DECK FOLIE) */}
-          <div className="relative z-40" ref={exportMenuRef}>
+          <div className="relative z-50 shrink-0" ref={exportMenuRef}>
             <button 
-              onClick={() => setExportMenuOpen(!exportMenuOpen)}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setExportMenuOpen(prev => !prev);
+              }}
               disabled={!planImage}
               className={cn(
-                "tour-plan-pdf flex items-center gap-1.5 px-3 h-9 rounded-xl text-xs font-bold border transition-all shadow-sm whitespace-nowrap cursor-pointer",
+                "tour-plan-pdf flex items-center gap-1.5 px-3 h-9 rounded-xl text-xs font-bold border transition-all shadow-sm whitespace-nowrap cursor-pointer shrink-0",
                 exportMenuOpen 
                   ? "bg-accent-ai/15 text-accent-ai border-accent-ai/40" 
                   : "bg-surface hover:bg-white/5 text-text-primary border-border"
               )}
-              title={planImage ? (language === 'de' ? 'Exportieren & Präsentieren' : 'Export & Presentation') : t('export_pdf_tooltip_disabled')}
+              title={planImage ? (currentLang === 'de' ? 'Exportieren & Präsentieren' : 'Export & Presentation') : t('export_pdf_tooltip_disabled')}
             >
               <Download size={13} className="text-text-muted" />
               <span>{t('export_dropdown')}</span>
@@ -1748,10 +1886,12 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                   initial={{ opacity: 0, y: 6, scale: 0.96 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 4, scale: 0.96 }}
-                  className="absolute right-0 top-full mt-1.5 w-64 bg-surface border border-border rounded-xl shadow-2xl p-1.5 z-[100] space-y-1"
+                  className="absolute right-0 top-full mt-2 w-72 bg-surface/98 backdrop-blur-2xl border border-border rounded-2xl shadow-2xl p-2 z-[9999] space-y-1.5"
                 >
                   <button
-                    onClick={() => {
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setExportMenuOpen(false);
                       if (isDemoMode || currentProjectId === 'demo-1') {
                         addToast('PDF Export ist in der Demo blockiert. Erstelle einen kostenlosen Account für diese Funktion!', 'info');
@@ -1760,15 +1900,15 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                       handleOpenPdfStudio();
                     }}
                     disabled={isGeneratingPdf || !planImage}
-                    className="w-full flex items-start gap-2.5 p-2 rounded-lg hover:bg-white/5 text-left text-text-primary transition-colors group cursor-pointer disabled:opacity-40"
+                    className="w-full flex items-start gap-2.5 p-2.5 rounded-xl hover:bg-white/5 text-left text-text-primary transition-colors group cursor-pointer disabled:opacity-40 border border-transparent hover:border-border"
                   >
-                    <div className="p-1.5 rounded-md bg-red-500/10 text-red-400 group-hover:bg-red-500/20 shrink-0 mt-0.5">
-                      {isGeneratingPdf ? <Loader2 size={14} className="animate-spin"/> : <Download size={14} />}
+                    <div className="p-2 rounded-lg bg-red-500/10 text-red-400 group-hover:bg-red-500/20 shrink-0 mt-0.5">
+                      {isGeneratingPdf ? <Loader2 size={16} className="animate-spin"/> : <Download size={16} />}
                     </div>
                     <div>
                       <div className="text-xs font-bold flex items-center gap-1.5">
                         {t('export_pdf_title')}
-                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-red-500/15 text-red-400 font-extrabold">SIA</span>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-400 font-extrabold">SIA</span>
                       </div>
                       <div className="text-[10px] text-text-muted leading-tight mt-0.5">
                         {t('export_pdf_sub')}
@@ -1777,7 +1917,9 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                   </button>
 
                   <button
-                    onClick={() => {
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setExportMenuOpen(false);
                       if (isDemoMode || currentProjectId === 'demo-1') {
                         addToast('Snapshot an Pitch Deck ist in der Demo deaktiviert.', 'info');
@@ -1786,15 +1928,15 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                       handleSaveSnapshotToPitchDeck();
                     }}
                     disabled={!planImage}
-                    className="w-full flex items-start gap-2.5 p-2 rounded-lg hover:bg-white/5 text-left text-text-primary transition-colors group cursor-pointer disabled:opacity-40"
+                    className="w-full flex items-start gap-2.5 p-2.5 rounded-xl hover:bg-white/5 text-left text-text-primary transition-colors group cursor-pointer disabled:opacity-40 border border-transparent hover:border-border"
                   >
-                    <div className="p-1.5 rounded-md bg-pink-500/10 text-pink-400 group-hover:bg-pink-500/20 shrink-0 mt-0.5">
-                      <ImageIcon size={14} />
+                    <div className="p-2 rounded-lg bg-pink-500/10 text-pink-400 group-hover:bg-pink-500/20 shrink-0 mt-0.5">
+                      <ImageIcon size={16} />
                     </div>
                     <div>
                       <div className="text-xs font-bold flex items-center gap-1.5">
                         {t('export_pitch_title')}
-                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-pink-500/15 text-pink-400 font-extrabold">Folie</span>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-pink-500/15 text-pink-400 font-extrabold">Folie</span>
                       </div>
                       <div className="text-[10px] text-text-muted leading-tight mt-0.5">
                         {t('export_pitch_sub')}
@@ -1807,10 +1949,10 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           </div>
 
           {/* MODUL GUIDE */}
-          <ModuleGuideButton moduleId="plans" compact className="h-9 px-3 rounded-xl text-xs flex items-center justify-center" />
+          <ModuleGuideButton moduleId="plans" compact className="h-9 px-3 rounded-xl text-xs flex items-center justify-center shrink-0" />
 
           {/* MOBIL EBENEN-TOGGLE */}
-          <button onClick={() => setShowMobileRightPanel(!showMobileRightPanel)} className="md:hidden h-9 w-9 p-0 bg-surface border border-border rounded-xl text-text-primary text-xs font-bold flex items-center justify-center cursor-pointer">
+          <button onClick={() => setShowMobileRightPanel(!showMobileRightPanel)} className="md:hidden h-9 w-9 p-0 bg-surface border border-border rounded-xl text-text-primary text-xs font-bold flex items-center justify-center cursor-pointer shrink-0">
             <Layers size={16}/>
           </button>
         </div>
@@ -1818,9 +1960,49 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
       <div className="flex-1 flex overflow-hidden relative bg-background touch-none">
         
-        {/* WERKZEUGLEISTE LINKS (MESSWERKZEUG AN POS 2 DIREKT UNTER PAN) */}
+        {/* WERKZEUGLEISTE LINKS (PAN, KALIBRIEREN, MESSWERKZEUGE, FORMEN & UNDO/REDO) */}
         <aside className="tour-plan-toolbar absolute left-2 sm:left-4 top-2 sm:top-4 w-11 sm:w-12 flex flex-col items-center gap-1 py-1.5 z-30 bg-surface/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl overflow-y-auto max-h-[calc(100%-1.5rem)] custom-scrollbar">
-           {(['pan', 'measure', 'scalebar', 'polygon', 'rect', 'circle', 'pen', 'text', 'defect', 'titleblock', 'image'] as ToolType[]).map(tool => (
+           {/* PAN / AUSWAHL */}
+           <button 
+             key="pan" 
+             onClick={() => {
+               if (isCalibratingMode) setIsCalibratingMode(false);
+               setActiveTool('pan');
+             }} 
+             className={cn(
+               "p-2 rounded-xl transition-all relative group shrink-0 cursor-pointer", 
+               activeTool === 'pan' && !isCalibratingMode 
+                 ? "bg-blue-600 text-white shadow-md shadow-blue-500/25 scale-105" 
+                 : "text-text-muted hover:bg-white/5 hover:text-text-primary"
+             )}
+             title={TOOL_LABELS['pan']?.[currentLang as 'de' | 'en'] || 'Pan'}
+           >
+             <MousePointer2 size={16} className="sm:w-[17px] sm:h-[17px]"/>
+           </button>
+
+           {/* TRUESCALE KALIBRIEREN (INTEGRIERT IN WERKZEUGLEISTE) */}
+           <button 
+             key="calibrate" 
+             onClick={() => {
+               if (isCalibratingMode) {
+                 setIsCalibratingMode(false);
+               } else {
+                 handleStartCalibration();
+               }
+             }} 
+             className={cn(
+               "p-2 rounded-xl transition-all relative group shrink-0 cursor-pointer", 
+               isCalibratingMode 
+                 ? "bg-purple-600 text-white shadow-md shadow-purple-500/30 scale-105 animate-pulse" 
+                 : "text-purple-400 hover:bg-purple-500/15 hover:text-purple-300"
+             )}
+             title={t('calibrate_truescale_tooltip')}
+           >
+             <Crosshair size={16} className="sm:w-[17px] sm:h-[17px]"/>
+           </button>
+
+           {/* ZEICHEN- & PLANWERKZEUGE */}
+           {(['measure', 'scalebar', 'polygon', 'rect', 'circle', 'pen', 'text', 'defect', 'titleblock', 'image'] as ToolType[]).map(tool => (
              <button 
                key={tool} 
                onClick={() => {
@@ -1837,13 +2019,12 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                }} 
                className={cn(
                  "p-2 rounded-xl transition-all relative group shrink-0 cursor-pointer", 
-                 activeTool === tool 
+                 activeTool === tool && !isCalibratingMode
                    ? "bg-blue-600 text-white shadow-md shadow-blue-500/25 scale-105" 
                    : "text-text-muted hover:bg-white/5 hover:text-text-primary"
                )}
                title={TOOL_LABELS[tool]?.[currentLang as 'de' | 'en'] || tool}
              >
-               {tool === 'pan' && <MousePointer2 size={16} className="sm:w-[17px] sm:h-[17px]"/>}
                {tool === 'measure' && <Ruler size={16} className="sm:w-[17px] sm:h-[17px]"/>}
                {tool === 'scalebar' && <MoveHorizontal size={16} className="sm:w-[17px] sm:h-[17px]"/>}
                {tool === 'polygon' && <Hexagon size={16} className="sm:w-[17px] sm:h-[17px]"/>}
@@ -1861,6 +2042,27 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                )}
              </button>
            ))}
+
+           {/* TRENNLINIE */}
+           <div className="w-6 h-px bg-border/60 my-0.5 shrink-0" />
+
+           {/* UNDO / REDO */}
+           <button
+             onClick={handleUndo}
+             disabled={history.length === 0}
+             className="p-2 rounded-xl text-text-muted hover:bg-white/5 hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-all shrink-0 cursor-pointer"
+             title={currentLang === 'de' ? 'Rückgängig (Cmd+Z)' : 'Undo (Cmd+Z)'}
+           >
+             <Undo2 size={16} className="sm:w-[17px] sm:h-[17px]" />
+           </button>
+           <button
+             onClick={handleRedo}
+             disabled={future.length === 0}
+             className="p-2 rounded-xl text-text-muted hover:bg-white/5 hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-all shrink-0 cursor-pointer"
+             title={currentLang === 'de' ? 'Wiederholen (Cmd+Shift+Z)' : 'Redo (Cmd+Shift+Z)'}
+           >
+             <Redo2 size={16} className="sm:w-[17px] sm:h-[17px]" />
+           </button>
         </aside>
 
         {/* EBENEN & PROPERTIES RECHTS */}
@@ -1942,9 +2144,85 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                            </div>
                         </div>
                         <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <label className="text-[10px] font-bold uppercase block">{t('line_thickness')} (Kontur)</label>
+                            <span className="text-xs font-bold text-primary">{((selectedElement as any).strokeWidth ?? 1.5)} px</span>
+                          </div>
+                          <input 
+                            type="range" 
+                            min="0.5" 
+                            max="8" 
+                            step="0.5" 
+                            value={((selectedElement as any).strokeWidth ?? 1.5)} 
+                            onChange={e => updateElement({...selectedElement, strokeWidth: Number(e.target.value)} as any)} 
+                            className="w-full accent-blue-500 cursor-pointer" 
+                          />
+                          <div className="flex justify-between text-[10px] text-text-muted mt-1 gap-1">
+                            <button type="button" className="px-1.5 py-0.5 rounded bg-background border border-border hover:border-primary/50 text-[10px] font-medium" onClick={() => updateElement({...selectedElement, strokeWidth: 0.5} as any)}>0.5px (Fein)</button>
+                            <button type="button" className="px-1.5 py-0.5 rounded bg-background border border-border hover:border-primary/50 text-[10px] font-medium" onClick={() => updateElement({...selectedElement, strokeWidth: 1.5} as any)}>1.5px (CAD)</button>
+                            <button type="button" className="px-1.5 py-0.5 rounded bg-background border border-border hover:border-primary/50 text-[10px] font-medium" onClick={() => updateElement({...selectedElement, strokeWidth: 3} as any)}>3px</button>
+                            <button type="button" className="px-1.5 py-0.5 rounded bg-background border border-border hover:border-primary/50 text-[10px] font-medium" onClick={() => updateElement({...selectedElement, strokeWidth: 6} as any)}>6px (Stark)</button>
+                          </div>
+                        </div>
+                        <div>
                           <label className="text-[10px] font-bold uppercase mb-1 block">Deckkraft Form</label>
                           <input type="range" min="0" max="1" step="0.05" value={selectedElement.opacity ?? 1} onChange={e => updateElement({...selectedElement, opacity: Number(e.target.value)} as any)} className="w-full accent-blue-500" />
                           <span className="text-xs text-text-muted">{Math.round((selectedElement.opacity ?? 1)*100)}%</span>
+                        </div>
+                        <div className="flex gap-2 pt-1">
+                          <button onClick={() => {
+                            const newEls = elements.filter(e => e.id !== selectedElement.id);
+                            setElements([...newEls, selectedElement]);
+                          }} className="flex-1 py-2 bg-background border border-border rounded-lg text-xs font-bold hover:bg-white/5"><BringToFront size={16} className="mx-auto mb-1"/> Vorne</button>
+                          <button onClick={() => {
+                            const newEls = elements.filter(e => e.id !== selectedElement.id);
+                            setElements([selectedElement, ...newEls]);
+                          }} className="flex-1 py-2 bg-background border border-border rounded-lg text-xs font-bold hover:bg-white/5"><SendToBack size={16} className="mx-auto mb-1"/> Hinten</button>
+                        </div>
+                      </>
+                    )}
+
+                    {selectedElement.type === 'pen' && (
+                      <>
+                        <div>
+                          <label className="text-[10px] font-bold uppercase mb-1 block">{t('color')}</label>
+                          <input type="color" value={(selectedElement as FreehandLine).color || '#ef4444'} onChange={e => updateElement({...selectedElement, color: e.target.value} as any)} className="w-full h-8 rounded border border-border cursor-pointer" />
+                        </div>
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <label className="text-[10px] font-bold uppercase block">{t('line_thickness')}</label>
+                            <span className="text-xs font-bold text-primary">{((selectedElement as FreehandLine).thickness ?? 1.5)} px</span>
+                          </div>
+                          <input 
+                            type="range" 
+                            min="0.5" 
+                            max="8" 
+                            step="0.5" 
+                            value={((selectedElement as FreehandLine).thickness ?? 1.5)} 
+                            onChange={e => updateElement({...selectedElement, thickness: Number(e.target.value)} as any)} 
+                            className="w-full accent-blue-500 cursor-pointer" 
+                          />
+                          <div className="flex justify-between text-[10px] text-text-muted mt-1 gap-1">
+                            <button type="button" className="px-1.5 py-0.5 rounded bg-background border border-border hover:border-primary/50 text-[10px] font-medium" onClick={() => updateElement({...selectedElement, thickness: 0.5} as any)}>0.5px (Fein)</button>
+                            <button type="button" className="px-1.5 py-0.5 rounded bg-background border border-border hover:border-primary/50 text-[10px] font-medium" onClick={() => updateElement({...selectedElement, thickness: 1.5} as any)}>1.5px (CAD)</button>
+                            <button type="button" className="px-1.5 py-0.5 rounded bg-background border border-border hover:border-primary/50 text-[10px] font-medium" onClick={() => updateElement({...selectedElement, thickness: 3} as any)}>3px</button>
+                            <button type="button" className="px-1.5 py-0.5 rounded bg-background border border-border hover:border-primary/50 text-[10px] font-medium" onClick={() => updateElement({...selectedElement, thickness: 6} as any)}>6px (Stark)</button>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold uppercase mb-1 block">Deckkraft</label>
+                          <input type="range" min="0" max="1" step="0.05" value={selectedElement.opacity ?? 1} onChange={e => updateElement({...selectedElement, opacity: Number(e.target.value)} as any)} className="w-full accent-blue-500" />
+                          <span className="text-xs text-text-muted">{Math.round((selectedElement.opacity ?? 1)*100)}%</span>
+                        </div>
+                        <div className="flex gap-2 pt-1">
+                          <button onClick={() => {
+                            const newEls = elements.filter(e => e.id !== selectedElement.id);
+                            setElements([...newEls, selectedElement]);
+                          }} className="flex-1 py-2 bg-background border border-border rounded-lg text-xs font-bold hover:bg-white/5"><BringToFront size={16} className="mx-auto mb-1"/> Vorne</button>
+                          <button onClick={() => {
+                            const newEls = elements.filter(e => e.id !== selectedElement.id);
+                            setElements([selectedElement, ...newEls]);
+                          }} className="flex-1 py-2 bg-background border border-border rounded-lg text-xs font-bold hover:bg-white/5"><SendToBack size={16} className="mx-auto mb-1"/> Hinten</button>
                         </div>
                       </>
                     )}
@@ -2154,16 +2432,16 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                   
                   {/* ZEICHEN VORSCHAU (DRAFT) */}
                   {activeTool === 'polygon' && draftElement && (
-                    <polygon points={(draftElement as PolygonMarkup).points.map(p => `${p.x * internalW},${p.y * internalH}`).join(' ')} fill="rgba(59, 130, 246, 0.4)" stroke="#2563eb" strokeWidth={Math.max(1, 2.5 * (1 / scale))} />
+                    <polygon points={(draftElement as PolygonMarkup).points.map(p => `${p.x * internalW},${p.y * internalH}`).join(' ')} fill="rgba(59, 130, 246, 0.4)" stroke="#2563eb" strokeWidth={((draftElement as PolygonMarkup).strokeWidth || 1.5) * (1 / scale)} />
                   )}
                   {activeTool === 'rect' && draftElement && (
-                    <rect x={Math.min(draftElement.x, draftElement.x + (draftElement as RectMarkup).w) * internalW} y={Math.min(draftElement.y, draftElement.y + (draftElement as RectMarkup).h) * internalH} width={Math.abs((draftElement as RectMarkup).w) * internalW} height={Math.abs((draftElement as RectMarkup).h) * internalH} fill="rgba(59, 130, 246, 0.4)" stroke="#2563eb" strokeWidth={Math.max(1, 2.5 * (1 / scale))} />
+                    <rect x={Math.min(draftElement.x, draftElement.x + (draftElement as RectMarkup).w) * internalW} y={Math.min(draftElement.y, draftElement.y + (draftElement as RectMarkup).h) * internalH} width={Math.abs((draftElement as RectMarkup).w) * internalW} height={Math.abs((draftElement as RectMarkup).h) * internalH} fill="rgba(59, 130, 246, 0.4)" stroke="#2563eb" strokeWidth={((draftElement as RectMarkup).strokeWidth || 1.5) * (1 / scale)} />
                   )}
                   {activeTool === 'circle' && draftElement && (
-                    <circle cx={draftElement.x * internalW} cy={draftElement.y * internalH} r={(draftElement as CircleMarkup).r * internalW} fill="rgba(59, 130, 246, 0.4)" stroke="#2563eb" strokeWidth={Math.max(1, 2.5 * (1 / scale))} />
+                    <circle cx={draftElement.x * internalW} cy={draftElement.y * internalH} r={(draftElement as CircleMarkup).r * internalW} fill="rgba(59, 130, 246, 0.4)" stroke="#2563eb" strokeWidth={((draftElement as CircleMarkup).strokeWidth || 1.5) * (1 / scale)} />
                   )}
                   {activeTool === 'pen' && draftElement && (
-                    <polyline points={(draftElement as FreehandLine).points.map(p => `${p.x * internalW},${p.y * internalH}`).join(' ')} fill="none" stroke="#ef4444" strokeWidth={Math.max(1, 2.5 * (1 / scale))} strokeLinecap="round" strokeLinejoin="round" />
+                    <polyline points={(draftElement as FreehandLine).points.map(p => `${p.x * internalW},${p.y * internalH}`).join(' ')} fill="none" stroke="#ef4444" strokeWidth={((draftElement as FreehandLine).thickness || 1.5) * (1 / scale)} strokeLinecap="round" strokeLinejoin="round" />
                   )}
                   {activeTool === 'measure' && draftElement && (() => {
                     const m = draftElement as Measurement;
@@ -2171,21 +2449,21 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                     const ex = m.end.x * internalW; const ey = m.end.y * internalH;
                     const mx = (sx + ex) / 2; const my = (sy + ey) / 2;
                     const dist = calculateDistance(m.start, m.end);
-                    const invScale = Math.min(2.5, Math.max(0.12, 1 / scale));
-                    const strokeW = Math.max(1, 2 * invScale);
-                    const rCircle = Math.max(2.5, 4.5 * invScale);
-                    const fontSize = Math.max(9, 11 * invScale);
-                    const textStr = `${dist}m`;
-                    const badgeW = Math.max(38 * invScale, (textStr.length * 7 + 14) * invScale);
-                    const badgeH = 18 * invScale;
+                    const invScale = Math.min(10, Math.max(0.1, 1 / scale));
+                    const strokeW = 1.5 * invScale;
+                    const rCircle = 4.5 * invScale;
+                    const fontSize = 11 * invScale;
+                    const textStr = `${dist} m`;
+                    const badgeW = Math.max(36 * invScale, (textStr.length * 7 + 16) * invScale);
+                    const badgeH = 20 * invScale;
                     const badgeRx = 4 * invScale;
                     return (
                       <g>
-                        <line x1={sx} y1={sy} x2={ex} y2={ey} stroke="#3b82f6" strokeWidth={strokeW} strokeDasharray={`${6 * invScale},${6 * invScale}`} />
-                        <circle cx={sx} cy={sy} r={rCircle} fill="#3b82f6" />
-                        <circle cx={ex} cy={ey} r={rCircle} fill="#3b82f6" />
-                        <rect x={mx - badgeW / 2} y={my - badgeH / 2} width={badgeW} height={badgeH} rx={badgeRx} fill="#1d4ed8" />
-                        <text x={mx} y={my + (badgeH * 0.22)} fill="white" fontSize={fontSize} fontFamily="sans-serif" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">{textStr}</text>
+                        <line x1={sx} y1={sy} x2={ex} y2={ey} stroke="#3b82f6" strokeWidth={strokeW} strokeDasharray={`${4 * invScale},${4 * invScale}`} />
+                        <circle cx={sx} cy={sy} r={rCircle} fill="#3b82f6" stroke="#ffffff" strokeWidth={Math.max(1, strokeW * 0.75)} />
+                        <circle cx={ex} cy={ey} r={rCircle} fill="#3b82f6" stroke="#ffffff" strokeWidth={Math.max(1, strokeW * 0.75)} />
+                        <rect x={mx - badgeW / 2} y={my - badgeH / 2} width={badgeW} height={badgeH} rx={badgeRx} fill="#ffffff" stroke="#3b82f6" strokeWidth={strokeW} />
+                        <text x={mx} y={my} fill="#000000" fontSize={fontSize} fontFamily="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" fontWeight="700" textAnchor="middle" dominantBaseline="central">{textStr}</text>
                       </g>
                     );
                   })()}
@@ -2201,21 +2479,21 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                     const dxMm = (calibrationLine.end.x - calibrationLine.start.x) * paperW_mm;
                     const dyMm = (calibrationLine.end.y - calibrationLine.start.y) * paperH_mm;
                     const distMm = Math.sqrt(dxMm * dxMm + dyMm * dyMm);
-                    const invScale = Math.min(2.5, Math.max(0.12, 1 / scale));
-                    const strokeW = Math.max(1.2, 2.5 * invScale);
-                    const rCircle = Math.max(2.5, 4.5 * invScale);
-                    const fontSize = Math.max(9, 11 * invScale);
+                    const invScale = Math.min(10, Math.max(0.1, 1 / scale));
+                    const strokeW = 1.8 * invScale;
+                    const rCircle = 4.5 * invScale;
+                    const fontSize = 11 * invScale;
                     const textStr = `${distMm.toFixed(1)} mm`;
-                    const badgeW = Math.max(48 * invScale, (textStr.length * 7 + 14) * invScale);
-                    const badgeH = 18 * invScale;
+                    const badgeW = Math.max(40 * invScale, (textStr.length * 7 + 16) * invScale);
+                    const badgeH = 20 * invScale;
                     const badgeRx = 4 * invScale;
                     return (
                       <g>
-                        <line x1={sx} y1={sy} x2={ex} y2={ey} stroke="#a855f7" strokeWidth={strokeW} strokeDasharray={`${6 * invScale},${5 * invScale}`} />
-                        <circle cx={sx} cy={sy} r={rCircle} fill="#a855f7" />
-                        <circle cx={ex} cy={ey} r={rCircle} fill="#a855f7" />
-                        <rect x={mx - badgeW / 2} y={my - badgeH / 2} width={badgeW} height={badgeH} rx={badgeRx} fill="#9333ea" />
-                        <text x={mx} y={my + (badgeH * 0.22)} fill="white" fontSize={fontSize} fontFamily="sans-serif" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">{textStr}</text>
+                        <line x1={sx} y1={sy} x2={ex} y2={ey} stroke="#a855f7" strokeWidth={strokeW} strokeDasharray={`${4 * invScale},${4 * invScale}`} />
+                        <circle cx={sx} cy={sy} r={rCircle} fill="#a855f7" stroke="#ffffff" strokeWidth={Math.max(1, strokeW * 0.75)} />
+                        <circle cx={ex} cy={ey} r={rCircle} fill="#a855f7" stroke="#ffffff" strokeWidth={Math.max(1, strokeW * 0.75)} />
+                        <rect x={mx - badgeW / 2} y={my - badgeH / 2} width={badgeW} height={badgeH} rx={badgeRx} fill="#ffffff" stroke="#a855f7" strokeWidth={strokeW} />
+                        <text x={mx} y={my} fill="#000000" fontSize={fontSize} fontFamily="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" fontWeight="700" textAnchor="middle" dominantBaseline="central">{textStr}</text>
                       </g>
                     );
                   })()}
@@ -2238,6 +2516,36 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 md:gap-4 bg-blue-600 text-white px-4 md:px-6 py-2 md:py-3 rounded-2xl shadow-2xl whitespace-nowrap">
              <span className="text-xs md:text-sm font-bold">{t('polygon_click_corners')}</span>
              <button onClick={finishPolygon} className="flex items-center gap-1 md:gap-2 bg-white/20 hover:bg-white/30 px-2 md:px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"><Check size={14}/> <span className="hidden sm:inline">{t('close_shape')}</span></button>
+          </div>
+        )}
+
+        {/* FLOATING ZOOM CONTROLS */}
+        {planImage && (
+          <div className="absolute left-2 sm:left-4 bottom-3 z-30 flex items-center bg-surface/95 backdrop-blur-xl border border-border rounded-xl shadow-lg p-1 gap-1 text-xs">
+            <button 
+              type="button"
+              onClick={() => setScale(s => Math.max(0.1, +(s - 0.15).toFixed(2)))} 
+              title="Zoom Out (-)"
+              className="p-1.5 hover:bg-white/10 rounded-lg text-text-muted hover:text-text-primary transition-colors cursor-pointer"
+            >
+              <ZoomOut size={15} />
+            </button>
+            <button 
+              type="button"
+              onClick={() => { setScale(0.8); setPan({ x: 0, y: 0 }); }} 
+              title="Zoom zurücksetzen (100%)"
+              className="px-2 py-1 hover:bg-white/10 rounded-lg text-text-muted hover:text-text-primary font-mono text-[11px] font-bold transition-colors cursor-pointer"
+            >
+              {Math.round(scale * 100)}%
+            </button>
+            <button 
+              type="button"
+              onClick={() => setScale(s => Math.min(8, +(s + 0.15).toFixed(2)))} 
+              title="Zoom In (+)"
+              className="p-1.5 hover:bg-white/10 rounded-lg text-text-muted hover:text-text-primary transition-colors cursor-pointer"
+            >
+              <ZoomIn size={15} />
+            </button>
           </div>
         )}
       </div>

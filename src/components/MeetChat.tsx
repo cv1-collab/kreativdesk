@@ -1398,7 +1398,7 @@ export default function MeetChat() {
 
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-1 flex-col min-h-0 space-y-4 h-full">
 
-        <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 shrink-0 overflow-x-auto pb-2">
+        <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 shrink-0 overflow-visible pb-1">
           <div className="shrink-0 flex flex-col">
             <h1 className="text-2xl font-semibold tracking-tight">{t('live_collaboration')}</h1>
             <p className="text-text-muted text-sm mt-1">{t('weekly_coordination')}</p>

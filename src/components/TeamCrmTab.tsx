@@ -1389,7 +1389,7 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
           <h2 className="text-xl md:text-2xl font-bold tracking-tight text-text-primary">{t('smart_crm')}</h2>
         </div>
         
-        <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1 w-full md:w-auto">
+        <div className="flex flex-wrap items-center gap-2 overflow-visible w-full md:w-auto">
           {/* Modul-Guide Button (Nummer 9) */}
           <ModuleGuideButton moduleId="team" />
 
