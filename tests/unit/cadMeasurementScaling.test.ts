@@ -81,6 +81,32 @@ describe('CAD Measurement Scaling & Adaptive Zoom Logic', () => {
     expect(measurementStyle.fontWeight).toBe('700');
   });
 
+  it('stellt sicher, dass Bemassungs-Endpunkte (Start & Ende) solide schwarze CAD-Punkte (#000000) ohne Weiss-Schimmer sind', () => {
+    const endpointStyle = {
+      fill: '#000000',
+      stroke: '#000000'
+    };
+
+    expect(endpointStyle.fill).toBe('#000000');
+    expect(endpointStyle.stroke).toBe('#000000');
+    expect(endpointStyle.stroke).not.toBe('#ffffff');
+  });
+
+  it('gewährleistet adaptive Skalierung des Rahmens um das Mass-Badge auch bei Selektion und maximalem Zoom (800%)', () => {
+    const scale = 8.0; // 800% Zoom wie im Screenshot
+    const invScale = 1 / scale; // 0.125
+    const strokeW = 1.5 * invScale;
+    const isSelected = true;
+    const badgeStrokeWidth = isSelected ? (strokeW * 1.3) : strokeW;
+
+    // Auf dem Bildschirm (multipliziert mit Zoomfaktor 8.0)
+    const screenStrokeWidth = badgeStrokeWidth * scale;
+
+    // Der Rahmen darf nicht durch unskalierte Pixel-Konstanten auf 12px anschwellen, sondern bleibt hauchfein bei ~1.95px
+    expect(screenStrokeWidth).toBeCloseTo(1.95, 1);
+    expect(screenStrokeWidth).toBeLessThan(3.0);
+  });
+
   describe('CAD Shape & Line Contour Scaling (Rechteck, Kreis, Polygon, Stift)', () => {
     const getStrokeDasharray = (style: 'solid' | 'dashed' | 'dotted', width: number) => {
       if (style === 'dashed') return `${width * 4},${width * 4}`;

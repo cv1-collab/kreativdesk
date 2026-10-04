@@ -248,9 +248,9 @@ const CADPlanPDFDocument = ({ settings, docHeader, planImage, elements, layers, 
                    const ex = el.end.x * SAFE_W; const ey = el.end.y * SAFE_H;
                    return (
                      <G key={el.id} opacity={totalOpacity}>
-                       <Line x1={sx} y1={sy} x2={ex} y2={ey} stroke={el.color} strokeWidth={0.5 * MM_TO_PX * SCALE_AVG} strokeDasharray="4,4" />
-                       <PDFCircle cx={sx} cy={sy} r={1.5 * MM_TO_PX * SCALE_AVG} fill={el.color} />
-                       <PDFCircle cx={ex} cy={ey} r={1.5 * MM_TO_PX * SCALE_AVG} fill={el.color} />
+                       <Line x1={sx} y1={sy} x2={ex} y2={ey} stroke={el.color || '#3b82f6'} strokeWidth={0.5 * MM_TO_PX * SCALE_AVG} />
+                       <PDFCircle cx={sx} cy={sy} r={1.2 * MM_TO_PX * SCALE_AVG} fill="#000000" />
+                       <PDFCircle cx={ex} cy={ey} r={1.2 * MM_TO_PX * SCALE_AVG} fill="#000000" />
                      </G>
                    );
                 }
@@ -1460,28 +1460,27 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         const ex = el.end.x * internalW; const ey = el.end.y * internalH;
         const mx = (sx + ex) / 2; const my = (sy + ey) / 2;
         const distMeters = calculateDistance(el.start, el.end);
-        const strokeW = isPdf ? 2 : (1.5 * invScale);
-        const rCircle = isPdf ? 4 : (4.5 * invScale);
+        const strokeW = isPdf ? 1.5 : (1.5 * invScale);
+        const rCircle = isPdf ? 3.5 : (3.5 * invScale);
         const fontSize = isPdf ? 11 : (11 * invScale);
         const textStr = `${distMeters} m`;
-        const badgeW = isPdf ? 64 : Math.max(36 * invScale, (textStr.length * 7 + 16) * invScale);
-        const badgeH = isPdf ? 20 : (20 * invScale);
-        const badgeRx = isPdf ? 4 : (4 * invScale);
+        const badgeW = isPdf ? 60 : Math.max(30 * invScale, (textStr.length * 6.5 + 14) * invScale);
+        const badgeH = isPdf ? 18 : (18 * invScale);
+        const badgeRx = isPdf ? 3.5 : (3.5 * invScale);
         return (
           <g key={el.id} style={{ opacity: totalOpacity, cursor: activeTool === 'pan' ? 'move' : 'crosshair', pointerEvents: 'auto' }} onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, el); }}>
-            {/* Bemassungslinie */}
+            {/* Bemassungslinie (präzise durchgezogen) */}
             <line 
               x1={`${sx}px`} y1={`${sy}px`} x2={`${ex}px`} y2={`${ey}px`} 
               stroke={el.color || '#3b82f6'} 
               strokeWidth={strokeW} 
-              strokeDasharray={isSelected ? "none" : `${4 * invScale},${4 * invScale}`} 
             />
-            {/* Endpunkt Start */}
+            {/* Endpunkt Start: Solider schwarzer CAD-Endpunkt (kein weiss) */}
             <circle 
               cx={`${sx}px`} cy={`${sy}px`} r={rCircle} 
-              fill={el.color || '#3b82f6'} 
-              stroke="#ffffff" 
-              strokeWidth={Math.max(1, strokeW * 0.75)}
+              fill="#000000" 
+              stroke="#000000" 
+              strokeWidth={strokeW}
               style={{ cursor: isSelected ? 'crosshair' : (activeTool === 'pan' ? 'move' : 'crosshair') }}
               onPointerDown={(e) => {
                 if (isSelected && !isPdf) {
@@ -1489,12 +1488,12 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                 }
               }}
             />
-            {/* Endpunkt Ende */}
+            {/* Endpunkt Ende: Solider schwarzer CAD-Endpunkt (kein weiss) */}
             <circle 
               cx={`${ex}px`} cy={`${ey}px`} r={rCircle} 
-              fill={el.color || '#3b82f6'} 
-              stroke="#ffffff" 
-              strokeWidth={Math.max(1, strokeW * 0.75)}
+              fill="#000000" 
+              stroke="#000000" 
+              strokeWidth={strokeW}
               style={{ cursor: isSelected ? 'crosshair' : (activeTool === 'pan' ? 'move' : 'crosshair') }}
               onPointerDown={(e) => {
                 if (isSelected && !isPdf) {
@@ -1502,15 +1501,15 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                 }
               }}
             />
-            {/* Weisser Hintergrund-Badge: verdeckt Linie & Plan darunter, garantiert optimalen Kontrast */}
+            {/* Weisser Hintergrund-Badge: verdeckt Linie darunter, fein skalierter Rahmen ohne Überdimensionierung */}
             <rect 
               x={`${mx - badgeW / 2}px`} 
               y={`${my - badgeH / 2}px`} 
               width={`${badgeW}px`} 
               height={`${badgeH}px`} 
               fill="#ffffff" 
-              stroke={el.color || '#3b82f6'} 
-              strokeWidth={isSelected ? Math.max(1.5, strokeW * 1.25) : strokeW} 
+              stroke={isSelected ? '#2563eb' : (el.color || '#3b82f6')} 
+              strokeWidth={isSelected ? (strokeW * 1.3) : strokeW} 
               rx={`${badgeRx}px`} 
             />
             {/* Schwarze Schrift: perfekt zentriert und kristallklar lesbar */}
@@ -2465,17 +2464,17 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                     const dist = calculateDistance(m.start, m.end);
                     const invScale = Math.min(10, Math.max(0.1, 1 / scale));
                     const strokeW = 1.5 * invScale;
-                    const rCircle = 4.5 * invScale;
+                    const rCircle = 3.5 * invScale;
                     const fontSize = 11 * invScale;
                     const textStr = `${dist} m`;
-                    const badgeW = Math.max(36 * invScale, (textStr.length * 7 + 16) * invScale);
-                    const badgeH = 20 * invScale;
-                    const badgeRx = 4 * invScale;
+                    const badgeW = Math.max(30 * invScale, (textStr.length * 6.5 + 14) * invScale);
+                    const badgeH = 18 * invScale;
+                    const badgeRx = 3.5 * invScale;
                     return (
                       <g>
                         <line x1={sx} y1={sy} x2={ex} y2={ey} stroke="#3b82f6" strokeWidth={strokeW} strokeDasharray={`${4 * invScale},${4 * invScale}`} />
-                        <circle cx={sx} cy={sy} r={rCircle} fill="#3b82f6" stroke="#ffffff" strokeWidth={Math.max(1, strokeW * 0.75)} />
-                        <circle cx={ex} cy={ey} r={rCircle} fill="#3b82f6" stroke="#ffffff" strokeWidth={Math.max(1, strokeW * 0.75)} />
+                        <circle cx={sx} cy={sy} r={rCircle} fill="#000000" stroke="#000000" strokeWidth={strokeW} />
+                        <circle cx={ex} cy={ey} r={rCircle} fill="#000000" stroke="#000000" strokeWidth={strokeW} />
                         <rect x={mx - badgeW / 2} y={my - badgeH / 2} width={badgeW} height={badgeH} rx={badgeRx} fill="#ffffff" stroke="#3b82f6" strokeWidth={strokeW} />
                         <text x={mx} y={my} fill="#000000" fontSize={fontSize} fontFamily="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" fontWeight="700" textAnchor="middle" dominantBaseline="central">{textStr}</text>
                       </g>
@@ -2494,18 +2493,18 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                     const dyMm = (calibrationLine.end.y - calibrationLine.start.y) * paperH_mm;
                     const distMm = Math.sqrt(dxMm * dxMm + dyMm * dyMm);
                     const invScale = Math.min(10, Math.max(0.1, 1 / scale));
-                    const strokeW = 1.8 * invScale;
-                    const rCircle = 4.5 * invScale;
+                    const strokeW = 1.5 * invScale;
+                    const rCircle = 3.5 * invScale;
                     const fontSize = 11 * invScale;
                     const textStr = `${distMm.toFixed(1)} mm`;
-                    const badgeW = Math.max(40 * invScale, (textStr.length * 7 + 16) * invScale);
-                    const badgeH = 20 * invScale;
-                    const badgeRx = 4 * invScale;
+                    const badgeW = Math.max(36 * invScale, (textStr.length * 6.5 + 14) * invScale);
+                    const badgeH = 18 * invScale;
+                    const badgeRx = 3.5 * invScale;
                     return (
                       <g>
                         <line x1={sx} y1={sy} x2={ex} y2={ey} stroke="#a855f7" strokeWidth={strokeW} strokeDasharray={`${4 * invScale},${4 * invScale}`} />
-                        <circle cx={sx} cy={sy} r={rCircle} fill="#a855f7" stroke="#ffffff" strokeWidth={Math.max(1, strokeW * 0.75)} />
-                        <circle cx={ex} cy={ey} r={rCircle} fill="#a855f7" stroke="#ffffff" strokeWidth={Math.max(1, strokeW * 0.75)} />
+                        <circle cx={sx} cy={sy} r={rCircle} fill="#000000" stroke="#000000" strokeWidth={strokeW} />
+                        <circle cx={ex} cy={ey} r={rCircle} fill="#000000" stroke="#000000" strokeWidth={strokeW} />
                         <rect x={mx - badgeW / 2} y={my - badgeH / 2} width={badgeW} height={badgeH} rx={badgeRx} fill="#ffffff" stroke="#a855f7" strokeWidth={strokeW} />
                         <text x={mx} y={my} fill="#000000" fontSize={fontSize} fontFamily="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" fontWeight="700" textAnchor="middle" dominantBaseline="central">{textStr}</text>
                       </g>

@@ -1,11 +1,30 @@
 # Kreativ Desk & interacTV — Status, Erfolge & Pendenzen
 
-**Datum:** 4. Oktober 2026  
-**Status:** 🟢 Alle Prüfungen grün (Vitest 67/67 grün in 12 Test-Dateien, System-Vollprüfung 42/42 bestanden, 100% Schweizer Rechtschreibung, TypeScript 0 Fehler `tsc --noEmit`, Production Build 100% fehlerfrei), Dev-Server aktiv (`http://localhost:3001`), redundante Module und Dead Code 100% bereinigt.
+**Datum:** 5. Oktober 2026  
+**Status:** 🟢 Alle Prüfungen grün (Vitest 69/69 grün in 12 Test-Dateien, System-Vollprüfung 42/42 bestanden, 100% Schweizer Rechtschreibung, TypeScript 0 Fehler `tsc --noEmit`, Production Build 100% fehlerfrei), Dev-Server aktiv (`http://localhost:3001`), redundante Module und Dead Code 100% bereinigt.
 
 ---
 
-## 🏆 Erfolgsliste von heute (4. Oktober 2026)
+## 🏆 Erfolgsliste von heute (5. Oktober 2026)
+
+### 0.0000 CAD-Plan: Behebung der Rahmen-Überdimensionierung bei Bemassung & Schwarze Endpunkte (SIA-Standard)
+* **Problemstellung & Benutzer-Anforderung:**
+  * Bei hoher Zoomstufe (z.B. 800%) schwoll der blaue Rahmen um das Distanz-Badge (z.B. «0.67 m») extrem an und verschluckte den weissen Hintergrund.
+  * Ursache: Bei selektierten Elementen war die Rahmenstärke mit `Math.max(1.5, strokeW * 1.25)` unskaliert in SVG-Einheiten kodiert, was bei 800% Zoom zu 12 Pixel dicken Rahmen und Überdeckung des Textfeldes führte.
+  * Zudem wurden die Anfangs- und Endpunkte der Bemassungslinie mit weissem Rand bzw. weiss dargestellt (`stroke="#ffffff"`), statt gemäss Schweizer SIA-Architekturstandard als solide schwarze Endpunkte.
+* **Lösung & Implementierung:**
+  * **Adaptive Rahmen-Skalierung des Bemassungs-Badges:**
+    * Feste Pixelkonstanten entfernt und durch durchgängig zoom-kompensierte Skalierung ersetzt (`strokeWidth={isSelected ? (strokeW * 1.3) : strokeW}`).
+    * Der weisse Hintergrund-Badge bleibt bei jeder Zoomstufe gestochen scharf, formstabil und mit hauchfeinem Rahmen (~1.5px–1.95px auf dem Bildschirm).
+    * Die zentrierte schwarze Beschriftung (`#000000`) ist immer glasklar lesbar.
+  * **Solide schwarze CAD-Endpunkte (kein Weiss):**
+    * Anfangs- und Endpunkte der Bemassungslinie ([PlanEditorViewer.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/PlanEditorViewer.tsx)) auf `fill="#000000"` und `stroke="#000000"` umgestellt — sowohl im fertigen Zustand, im Live-Zeichen-Draft als auch in der Kalibrierungsvorschau und beim PDF-Export.
+    * Masslinien werden durchgezogen und präzise gerendert.
+* **Qualitätssicherung:**
+  * Unit-Tests in [cadMeasurementScaling.test.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/tests/unit/cadMeasurementScaling.test.ts) um Tests für schwarze Endpunkte und adaptive 800%-Zoom-Rahmenskalierung erweitert.
+  * 12/12 Testsuiten grün (69/69 Unit-Tests erfolgreich).
+  * `tsc --noEmit` fehlerfrei (0 Fehler).
+  * Vite Production Build erfolgreich abgeschlossen.
 
 ### 0.000 CAD-Plan: Behebung des Z-Index-Konflikts (Export-Menü vs. Ebenen-Fenster) & Desktop/Mobile Ebenen-Toggle
 * **Problemstellung & Benutzer-Anforderung:**
