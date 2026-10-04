@@ -117,7 +117,7 @@ const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
     clear_all_pins: 'Alle Pins löschen', click_point_start: 'Klicke für Startpunkt',
     click_second_point: 'Klicke für Endpunkt', distance_calculated: 'Distanz berechnet',
     audit_report: 'Prüfbericht', no_report_generated: 'Klicke auf "KI Modell-Audit", um die aktuelle Ansicht zu prüfen.',
-    close_audit: 'Audit schließen', click_object_3d: 'Klicke auf ein Objekt im 3D-Modell, um Details zu sehen.',
+    close_audit: 'Audit schliessen', click_object_3d: 'Klicke auf ein Objekt im 3D-Modell, um Details zu sehen.',
     ai_high_end_rendering: 'KI High-End Rendering', style_presets: 'Stil-Vorlagen',
     photorealistic: 'Fotorealistisch', blue_hour: 'Blaue Stunde', cyberpunk: 'Cyberpunk',
     pencil_sketch: 'Bleistiftskizze', clay_model: 'Gipsmodell', watercolor: 'Aquarell',

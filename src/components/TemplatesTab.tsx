@@ -16,6 +16,8 @@ import { callGeminiAPI } from '../utils/geminiClient';
 import DocumentStudioModal from './DocumentStudioModal';
 import { sendNotification } from '../lib/notifications';
 import { safeStorage } from '../utils/safeStorage';
+import { queryClient } from '../lib/queryClient';
+import { DOCUMENTS_QUERY_KEY } from '../hooks/queries/useDocumentsQuery';
 import { MASTER_TEMPLATES, TEMPLATE_CATEGORIES, MasterTemplate } from '../data/masterTemplates';
 import { bindTemplateVariables, getCachedCompanyProfile } from '../utils/templateVariableEngine';
 import ModuleGuideButton from './ModuleGuideButton';
@@ -184,7 +186,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     vcard: 'Digitale Visitenkarte', vcard_desc: 'Kontaktkarten (QR/NFC) fürs Team.',
     lead_form: 'Lead-Formulare', lead_form_desc: 'Formulare für Messen & Akquise.',
     pitch_deck: 'Pitch Deck', pitch_deck_desc: 'KI-gestützte Kundenpräsentationen.',
-    ai_template: 'KI-Vorlage erstellen', ai_template_desc: 'Generiere maßgeschneiderte Verträge & Dokumente mit KI.',
+    ai_template: 'KI-Vorlage erstellen', ai_template_desc: 'Generiere massgeschneiderte Verträge & Dokumente mit KI.',
     free_editor: 'Freier Brief- & Vertrags-Editor', free_editor_desc: 'DIN-A4 Live-Studio für Schweizer Briefe, Protokolle & Verträge.',
     open_tool: 'Tool öffnen',
     ai_modal_title: 'KI-Vorlagen- & Vertrags-Generator',
@@ -343,10 +345,10 @@ export default function TemplatesTab({
     if (!generatedTemplate || isSavingDoc) return;
     setIsSavingDoc(true);
     try {
-      const safeCompanyId = currentUser?.companyId || currentUser?.uid || 'global';
+      const safeCompanyId = (currentUser?.companyId && currentUser.companyId !== 'global') ? currentUser.companyId : (currentUser?.uid || null);
       const title = studioDocTitle.trim() || (aiPrompt.trim() ? `KI-Vorlage: ${aiPrompt}` : 'KI-Vorlage (Vertrag / Brief)');
       const isProjectScope = saveScope === 'project';
-      const targetProjectId = isProjectScope ? (activeProjectId || 'global') : 'global';
+      const targetProjectId = isProjectScope && activeProjectId && activeProjectId !== 'global' ? activeProjectId : null;
       const category = isProjectScope ? 'projects' : 'company';
       
       const docFileName = title.endsWith('.txt') ? title : `${title}.txt`;
@@ -369,6 +371,8 @@ export default function TemplatesTab({
 
       if (error) throw error;
 
+      queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
+
       safeStorage.setItem('has_new_document', 'true');
       safeStorage.setItem('last_created_doc_title', docFileName);
       window.dispatchEvent(new CustomEvent('document_created', { detail: { title: docFileName, id: data?.id } }));
@@ -380,7 +384,7 @@ export default function TemplatesTab({
         title: '📄 Neue Vorlage gespeichert',
         message: `Vorlage "${docFileName}" wurde in ${locationName} abgelegt.`,
         type: 'document',
-        link: isProjectScope ? `/project/${targetProjectId}/documents` : '/app'
+        link: isProjectScope && targetProjectId ? `/project/${targetProjectId}/documents` : '/app'
       });
 
       addToast(`Vorlage "${docFileName}" erfolgreich in ${locationName} gespeichert!`, 'success');
@@ -468,7 +472,7 @@ Sehr geehrte Damen und Herren,
 in Ergänzung zu den bisherigen Vereinbarungen erhalten Sie nachfolgend die rechtsgültigen Vertragsbestimmungen und Konditionen zum Thema "${aiPrompt}":
 
 1. LEISTUNGSUMFANG & GEGENSTAND
-   - Vereinbarungsgemäße Erbringung der Dienstleistungen nach Schweizer Standards (SIA / OR).
+   - Vereinbarungsgemässe Erbringung der Dienstleistungen nach Schweizer Standards (SIA / OR).
    - Sorgfältige Dokumentation, Terminüberwachung und Qualitätssicherung.
 
 2. VERGÜTUNG & ZAHLUNGSKONDITIONEN

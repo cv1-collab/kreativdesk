@@ -179,7 +179,7 @@ export default function WelcomeOnboarding({ currentUser, onComplete }: { current
               </h3>
               <p className="text-text-muted text-sm">
                 {isGerman
-                  ? 'Dein Profil wurde erfolgreich eingerichtet. Viel Spaß mit Kreativ Desk!'
+                  ? 'Dein Profil wurde erfolgreich eingerichtet. Viel Spass mit Kreativ Desk!'
                   : 'Your profile has been set up successfully. Enjoy Kreativ Desk!'}
               </p>
             </div>

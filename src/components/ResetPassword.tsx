@@ -55,7 +55,7 @@ export default function ResetPassword() {
 
     if (strength.score < 2) {
       return setError(isGerman
-        ? 'Das Passwort ist zu einfach. Bitte kombiniere Groß-/Kleinbuchstaben, Zahlen oder Sonderzeichen.'
+        ? 'Das Passwort ist zu einfach. Bitte kombiniere Gross-/Kleinbuchstaben, Zahlen oder Sonderzeichen.'
         : 'Password is too weak. Please combine uppercase, lowercase, numbers or symbols.');
     }
 

@@ -41,7 +41,7 @@ export default function LegalPage() {
   const t = {
     de: {
       title: 'Impressum & Rechtliche Informationen',
-      desc: 'Angaben gemäß den gesetzlichen Informationspflichten der Schweiz.',
+      desc: 'Angaben gemäss den gesetzlichen Informationspflichten der Schweiz.',
       agb: 'AGB herunterladen',
       privacy: 'Datenschutzerklärung herunterladen'
     },

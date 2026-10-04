@@ -140,7 +140,7 @@ const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
     save_cloud: 'In Cloud speichern', saving_cloud: 'Speichert...', saved_cloud: 'Im Dokumenten-Ordner gespeichert!', 
     send_slides: 'An Pitch Deck', sending: 'Sende...', sent: 'Gesendet!', 
     draw_polygon: 'Polygon', img_adjust: 'Bildbearbeitung', brightness: 'Helligkeit', 
-    contrast: 'Kontrast', saturation: 'Sättigung', delete_btn: 'Löschen', close_shape: 'Schließen', 
+    contrast: 'Kontrast', saturation: 'Sättigung', delete_btn: 'Löschen', close_shape: 'Schliessen', 
     ai_analyzing: 'KI analysiert...', no_data: 'Noch keine Sprachnotizen.', ai_summary: 'KI Zusammenfassung', 
     full_transcript: 'Transkription', info_text: 'Die KI analysiert deine Aufnahme und leitet automatisch Aufgaben ab.', 
     stop_rec: 'Aufnahme stoppen', start_rec: 'Sprachnotiz aufnehmen', click_points: 'Klicke auf Punkte...', 
@@ -2136,7 +2136,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
   const ensureFolder = async (folderName: string, docCategory: string) => {
     const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
     if (!currentUser || !safeCompanyId) return '';
-    const currentProjectId = activeProject?.id || 'global';
+    const currentProjectId = activeProject?.id && activeProject.id !== 'global' ? activeProject.id : null;
     const { data: existingFolder } = await supabase
       .from('documents')
       .select('id')
@@ -2160,10 +2160,11 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
       const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
       const downloadUrl = pubData.publicUrl;
 
-      const docCategory = activeProject?.id === 'global' ? 'company' : 'projects';
+      const docCategory = !activeProject?.id || activeProject?.id === 'global' ? 'company' : 'projects';
       const targetFolderId = await ensureFolder("Whiteboards", docCategory);
+      const targetProjectId = activeProject?.id && activeProject.id !== 'global' ? activeProject.id : null;
       await supabase.from('documents').insert({
-        name: fileName, url: downloadUrl, file_url: downloadUrl, project_id: activeProject?.id || null, folder_id: targetFolderId, category: docCategory, owner_id: currentUser.uid, company_id: safeCompanyId, uploaded_by: currentUser.uid, type: 'application/pdf', size: formatBytes(blob.size), is_folder: false, created_at: new Date().toISOString(), uploaded_at: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH')
+        name: fileName, url: downloadUrl, file_url: downloadUrl, project_id: targetProjectId, folder_id: targetFolderId, category: docCategory, owner_id: currentUser.uid, company_id: safeCompanyId, uploaded_by: currentUser.uid, type: 'application/pdf', size: formatBytes(blob.size), is_folder: false, created_at: new Date().toISOString(), uploaded_at: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH')
       });
       queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
       addToast(t('saved_cloud'), 'success'); setIsPdfStudioOpen(false);
@@ -2295,11 +2296,12 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
         const downloadUrl = pubData.publicUrl;
 
         const id = `wb-${Date.now()}`;
+        const targetProjectId = activeProjectId && activeProjectId !== 'global' ? activeProjectId : null;
         try {
           await supabase.from('whiteboard_exports').insert({ 
             id, 
             image_url: downloadUrl, 
-            project_id: activeProjectId || 'global', 
+            project_id: targetProjectId, 
             company_id: safeCompanyId, 
             created_at: new Date().toISOString() 
           });
@@ -2311,7 +2313,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
             name: `Whiteboard_Export_${Date.now()}.jpg`,
             url: downloadUrl,
             file_url: downloadUrl,
-            project_id: activeProjectId || 'global',
+            project_id: targetProjectId,
             owner_id: currentUser.uid,
             company_id: safeCompanyId,
             category: 'whiteboard',
@@ -2320,6 +2322,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
             type: 'image/jpeg',
             created_at: new Date().toISOString()
           });
+          queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
         } catch (docErr) {}
         
         setIsSending(false); setSendSuccess(true); setTimeout(() => setSendSuccess(false), 3000);
@@ -3061,7 +3064,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                   <button
                     onClick={() => { setSelectedShapeId(null); setShowItemFilters(false); }}
                     className="p-1.5 rounded-lg bg-surface hover:bg-background text-text-muted hover:text-text-primary border border-border transition-colors cursor-pointer shrink-0"
-                    title={language === 'de' ? 'Auswahl aufheben (Schließen)' : 'Deselect'}
+                    title={language === 'de' ? 'Auswahl aufheben (Schliessen)' : 'Deselect'}
                   >
                     <X size={14} />
                   </button>
@@ -3951,7 +3954,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                           <span className="text-xs font-bold">Farbe entfernen (Chroma)</span>
                         </div>
                         <p className="text-[11px] text-text-muted leading-tight">
-                          Weißer, grüner oder einfarbiger Hintergrund wird sofort lokal transparent gestanzt.
+                          Weisser, grüner oder einfarbiger Hintergrund wird sofort lokal transparent gestanzt.
                         </p>
                       </button>
                     </div>
@@ -3964,7 +3967,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                           </label>
                           <div className="flex items-center gap-3">
                             {[
-                              { color: '#ffffff', label: 'Weiß' },
+                              { color: '#ffffff', label: 'Weiss' },
                               { color: '#000000', label: 'Schwarz' },
                               { color: '#00ff00', label: 'Green Screen' },
                               { color: '#121214', label: 'Dunkelgrau' }
@@ -4110,7 +4113,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                     <RefreshCw size={14} className={isAiAuditing ? "animate-spin" : ""} /> Audit erneut ausführen
                   </button>
                   <button onClick={() => setIsAiAuditModalOpen(false)} className="px-5 py-2 bg-accent-ai text-white rounded-lg text-xs font-bold hover:bg-accent-ai/90 transition-all">
-                    Schließen
+                    Schliessen
                   </button>
                 </div>
               </motion.div>

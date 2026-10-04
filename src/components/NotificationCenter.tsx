@@ -24,7 +24,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     new_b2b_lead: 'Neue B2B Anfrage',
     all_green: 'Alles im grünen Bereich',
     no_new_messages: 'Keine neuen System-Meldungen oder Anfragen.',
-    close: 'Schließen',
+    close: 'Schliessen',
     mark_seen: 'Gelesen',
   }
 };

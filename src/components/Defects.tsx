@@ -72,7 +72,7 @@ const DEMO_DEFECTS: any[] = [
     id: 'demo-def-3',
     projectId: 'demo-1',
     title: 'Fenstergriff klemmt',
-    description: 'Der Griff des Südfensters lässt sich nicht vollständig schließen. Beschlag muss justiert werden.',
+    description: 'Der Griff des Südfensters lässt sich nicht vollständig schliessen. Beschlag muss justiert werden.',
     status: 'In Review',
     priority: 'Low',
     trade: 'Fensterbauer',

@@ -688,8 +688,8 @@ const SLIDE_CONTENT_TRANSLATIONS: Record<string, { de: string; en: string; fr: s
     en: 'Safe transport in custom CNC foam inlay. Maximum flexibility: Use your own screens via universal VESA 200/400 mount or certified 4K PCAP multitouch displays (32" to 98").',
     fr: 'Transport sécurisé dans un calage en mousse usiné par CNC. Flexibilité maximale : utilisez vos propres écrans avec fixation VESA 200/400 universelle ou des écrans tactiles 4K PCAP certifiés (32" à 98").'
   },
-  'Die Rohbauarbeiten sind zu 80% abgeschlossen. Der Innenausbau startet planmäßig nächste Woche.': {
-    de: 'Die Rohbauarbeiten sind zu 80% abgeschlossen. Der Innenausbau startet planmäßig nächste Woche.',
+  'Die Rohbauarbeiten sind zu 80% abgeschlossen. Der Innenausbau startet planmässig nächste Woche.': {
+    de: 'Die Rohbauarbeiten sind zu 80% abgeschlossen. Der Innenausbau startet planmässig nächste Woche.',
     en: 'Structural work is 80% complete. Interior construction begins as scheduled next week.',
     fr: 'Les travaux de gros œuvre sont achevés à 80%. L’aménagement intérieur commence comme prévu la semaine prochaine.'
   },

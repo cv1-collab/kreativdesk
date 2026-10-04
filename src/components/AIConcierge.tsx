@@ -11,6 +11,8 @@ import { safeStorage } from '../utils/safeStorage';
 
 import { callGeminiAPI, callGeminiChatAPI } from '../utils/geminiClient';
 import { useLanguage } from '../contexts/LanguageContext';
+import { queryClient } from '../lib/queryClient';
+import { DEFECTS_QUERY_KEY } from '../hooks/queries/useDefectsQuery';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -170,17 +172,25 @@ WICHTIG: Wenn der Nutzer dich bittet, eine Aufgabe, einen Mangel oder ein Ticket
         try {
           const parsed = JSON.parse(jsonMatch[1]);
           if (parsed.action === 'CREATE_TASK') {
-            if (activeProjectId) {
-              await supabase.from('defects').insert({
-                prompt: parsed.title,
-                description: parsed.description,
-                project_id: activeProjectId,
-                company_id: currentUser?.companyId || 'global',
-                owner_id: currentUser?.uid || 'unknown',
-                status: 'open',
+            const safeProjectId = (activeProjectId && activeProjectId !== 'global') ? activeProjectId : null;
+            if (safeProjectId) {
+              const safeCompanyId = (currentUser?.companyId && currentUser.companyId !== 'global') ? currentUser.companyId : null;
+              const safeOwnerId = currentUser?.uid || null;
+
+              const { error: insertErr } = await supabase.from('defects').insert({
+                prompt: parsed.title || 'KI-Aufgabe',
+                description: parsed.description || '',
+                project_id: safeProjectId,
+                company_id: safeCompanyId,
+                owner_id: safeOwnerId,
+                status: 'To Do',
                 severity: 'Medium',
                 created_at: new Date().toISOString()
               });
+
+              if (!insertErr) {
+                queryClient.invalidateQueries({ queryKey: [DEFECTS_QUERY_KEY] });
+              }
               aiText = aiText.replace(jsonMatch[0], '').trim();
               if (!aiText) aiText = "Aufgabe wurde erfolgreich im aktuellen Projekt erstellt!";
             } else {

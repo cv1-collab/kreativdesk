@@ -78,7 +78,7 @@ export function calculatePasswordStrength(password: string, email?: string, lang
     suggestions.push(isDe ? 'Mindestens 8 Zeichen verwenden' : 'Use at least 8 characters');
   }
   if (!criteria.hasUpper || !criteria.hasLower) {
-    suggestions.push(isDe ? 'Groß- und Kleinbuchstaben kombinieren' : 'Combine upper and lower case letters');
+    suggestions.push(isDe ? 'Gross- und Kleinbuchstaben kombinieren' : 'Combine upper and lower case letters');
   }
   if (!criteria.hasNumber) {
     suggestions.push(isDe ? 'Mindestens eine Ziffer (0-9) hinzufügen' : 'Add at least one number (0-9)');
@@ -222,7 +222,7 @@ export function mapAuthErrorMessage(err: any, lang: 'de' | 'en' = 'de'): string 
     rawMsg.includes('leaked')
   ) {
     return isDe
-      ? 'Das eingegebene Passwort gilt als zu schwach oder leicht erratbar. Bitte wähle ein Passwort mit mind. 8 Zeichen, Groß- und Kleinbuchstaben, Zahlen und einem Sonderzeichen – oder klicke oben auf "Sicheres Passwort generieren".'
+      ? 'Das eingegebene Passwort gilt als zu schwach oder leicht erratbar. Bitte wähle ein Passwort mit mind. 8 Zeichen, Gross- und Kleinbuchstaben, Zahlen und einem Sonderzeichen – oder klicke oben auf "Sicheres Passwort generieren".'
       : 'Password is known to be weak or easy to guess. Please choose a stronger password with at least 8 characters, uppercase, lowercase, numbers, and symbols – or click "Generate secure password".';
   }
 

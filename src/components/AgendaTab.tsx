@@ -400,7 +400,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
       2. 🚨 Open Points & Risks
       3. 🎯 Next Steps`;
 
-      const aiResponse = await callGeminiAPI('gemini-2.0-flash', [{ text: prompt }]);
+      const aiResponse = await callGeminiAPI('gemini-2.5-flash', [{ text: prompt }]);
       const textOutput = typeof aiResponse === 'string' ? aiResponse : (aiResponse?.text || aiResponse?.candidates?.[0]?.content?.parts?.[0]?.text || JSON.stringify(aiResponse));
       setAiRapportText(textOutput);
       setAiRapportModalOpen(true);
@@ -417,7 +417,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
 - Laufende Überprüfung der offenen Baustellen-Traktanden und Zeiterfassungen.
 
 3. 🎯 Nächste Schritte
-- Anstehende Termine und Arbeitsstunden gemäß Wochenplan abwickeln.`;
+- Anstehende Termine und Arbeitsstunden gemäss Wochenplan abwickeln.`;
       setAiRapportText(fallbackReport);
       setAiRapportModalOpen(true);
       setIsGeneratingAIRapport(false);

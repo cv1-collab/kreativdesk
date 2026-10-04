@@ -1091,17 +1091,25 @@ export default function Calendar() {
 
   const ensureFolderLocal = async (folderName: string, docCategory: string) => {
     const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
-    if (!currentUser || !safeCompanyId || !currentProjectId) return 'root';
-    const { data: existing } = await supabase
+    if (!currentUser || !safeCompanyId) return 'root';
+    const safeProjectId = currentProjectId === 'global' ? null : currentProjectId;
+
+    let existingQuery = supabase
       .from('documents')
       .select('id')
       .eq('name', folderName)
-      .eq('project_id', currentProjectId)
-      .eq('company_id', safeCompanyId)
-      .maybeSingle();
+      .eq('company_id', safeCompanyId);
+
+    if (safeProjectId) {
+      existingQuery = existingQuery.eq('project_id', safeProjectId);
+    } else {
+      existingQuery = existingQuery.is('project_id', null);
+    }
+
+    const { data: existing } = await existingQuery.maybeSingle();
     if (existing) return existing.id;
     const { data: newF } = await supabase.from('documents').insert({
-      name: folderName, is_folder: true, category: docCategory, owner_id: currentUser.uid, project_id: currentProjectId, company_id: safeCompanyId, created_at: new Date().toISOString()
+      name: folderName, is_folder: true, category: docCategory, owner_id: currentUser.uid, project_id: safeProjectId, company_id: safeCompanyId, created_at: new Date().toISOString()
     }).select().maybeSingle();
     return newF ? newF.id : 'root';
   };
@@ -1124,12 +1132,13 @@ export default function Calendar() {
 
       const docCategory = currentProjectId === 'global' ? 'company' : 'projects';
       const targetFolderId = await ensureFolderLocal("Kalender & Zeitpläne", docCategory);
+      const safeProjectId = currentProjectId === 'global' ? null : currentProjectId;
 
       await supabase.from('documents').insert({
         name: fileName,
         url: downloadUrl,
         file_url: downloadUrl,
-        project_id: currentProjectId,
+        project_id: safeProjectId,
         folder_id: targetFolderId, 
         category: docCategory, 
         owner_id: currentUser.uid,
@@ -2355,7 +2364,7 @@ export default function Calendar() {
               )}
               {editingShape.type === 'note' && (
                 <div className="pt-4 border-t border-border/50">
-                  <div className="text-xs text-text-muted">Notizen sind standardmäßig immer gelb.</div>
+                  <div className="text-xs text-text-muted">Notizen sind standardmässig immer gelb.</div>
                 </div>
               )}
               {!isDrawing && (
@@ -2368,7 +2377,7 @@ export default function Calendar() {
                <button onClick={() => {
                  if (editingShape) setShapes(shapes.map(s => s.id === editingShape.id ? editingShape : s));
                  setEditingShape(null);
-               }} className="w-full py-3 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-500 shadow-lg shadow-blue-900/20">Anwenden & Schließen</button>
+               }} className="w-full py-3 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-500 shadow-lg shadow-blue-900/20">Anwenden & Schliessen</button>
             </div>
           </motion.aside>
         )}

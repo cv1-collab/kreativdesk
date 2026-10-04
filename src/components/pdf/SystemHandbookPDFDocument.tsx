@@ -719,7 +719,7 @@ export default function SystemHandbookPDFDocument({ settings, companyName = 'Kre
             <Text style={styles.workflowStepText}>
               {isEn 
                 ? 'Budget Rollup: Project expenses and approved subcontractor invoices roll up securely into company cashflow projections in real time.' 
-                : 'Finanz-Rollup: Freigegebene Rechnungen und Zahlungspläne fließen in Echtzeit in die übergreifende Firmen-Liquiditätsplanung ein.'}
+                : 'Finanz-Rollup: Freigegebene Rechnungen und Zahlungspläne fliessen in Echtzeit in die übergreifende Firmen-Liquiditätsplanung ein.'}
             </Text>
           </View>
           <View style={styles.workflowStep}>
@@ -892,7 +892,7 @@ export default function SystemHandbookPDFDocument({ settings, companyName = 'Kre
               <Text style={styles.moduleSubtitle}>
                 {isEn 
                   ? 'TrueScale scale calibration, multi-layer floor plans and millimeter-exact defect pins' 
-                  : 'Digitale TrueScale Maßstabskalibrierung und millimetergenaue Mängelverortung im Plan'}
+                  : 'Digitale TrueScale Massstabskalibrierung und millimetergenaue Mängelverortung im Plan'}
               </Text>
             </View>
           </View>
@@ -919,7 +919,7 @@ export default function SystemHandbookPDFDocument({ settings, companyName = 'Kre
             <Text style={styles.featureCardText}>
               {isEn
                 ? 'Draw a reference line along a known measure (e.g. 1.00m doorway). The engine immediately calculates the exact pixel-to-meter ratio for accurate on-plan measurements.'
-                : 'Eine Referenzlinie an einem bekannten Maß ziehen (z.B. 1,00m Türbreite) — das System kalibriert den Maßstab automatisch für exakte digitale Kontrollmaße.'}
+                : 'Eine Referenzlinie an einem bekannten Mass ziehen (z.B. 1,00m Türbreite) — das System kalibriert den Massstab automatisch für exakte digitale Kontrollmasse.'}
             </Text>
           </View>
 
@@ -1772,7 +1772,7 @@ export default function SystemHandbookPDFDocument({ settings, companyName = 'Kre
           <Text style={styles.calloutText}>
             {isEn
               ? 'Once signed by the client, the proposal can be converted into an active operational project workspace with a single click, transferring budget numbers directly into BKP 1–9.'
-              : 'Nach erfolgter Signatur kann die Offerte mit einem Klick in ein aktives Projekt überführt werden — alle Budgetpositionen fließen direkt in den BKP 1–9 Kostenplan.'}
+              : 'Nach erfolgter Signatur kann die Offerte mit einem Klick in ein aktives Projekt überführt werden — alle Budgetpositionen fliessen direkt in den BKP 1–9 Kostenplan.'}
           </Text>
         </View>
 
@@ -1963,7 +1963,7 @@ export default function SystemHandbookPDFDocument({ settings, companyName = 'Kre
           </View>
           <View style={[styles.tableRow, styles.tableRowEven]}>
             <Text style={[styles.tableCellBold, { width: '22%', color: '#D97706' }]}>{isEn ? 'SUBCONTRACTOR' : 'HANDWERKER (EXTERN)'}</Text>
-            <Text style={[styles.tableCell, { width: '38%' }]}>{isEn ? 'Strictly limited to assigned trade pins and tasks.' : 'Ausschließlich eigenes Gewerk (Pläne & Mängel).'}</Text>
+            <Text style={[styles.tableCell, { width: '38%' }]}>{isEn ? 'Strictly limited to assigned trade pins and tasks.' : 'Ausschliesslich eigenes Gewerk (Pläne & Mängel).'}</Text>
             <Text style={[styles.tableCell, { width: '40%' }]}>{isEn ? 'ZERO LEAKAGE: Cannot see other trades or budgets.' : 'ZERO LEAKAGE: Sieht weder Budgets noch Dritte.'}</Text>
           </View>
         </View>

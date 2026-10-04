@@ -87,7 +87,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     live_qr_scanner: 'Live QR-Scanner', qr_scan_desc: 'Scanne diesen Code mit der Handy-Kamera, um eine physische Visitenkarte abzufotografieren.',
     contact_type: 'Kontakt-Typ', internal_team: 'Intern (Team)', external_client_partner: 'Extern (Kunde / Partner)',
     first_name: 'Vorname', last_name: 'Nachname', company: 'Firma', email: 'E-Mail', phone: 'Telefon',
-    street_number: 'Straße & Hausnummer', zip_code: 'PLZ', city: 'Ort', website: 'Webseite', uid_number: 'UID-Nummer',
+    street_number: 'Strasse & Hausnummer', zip_code: 'PLZ', city: 'Ort', website: 'Webseite', uid_number: 'UID-Nummer',
     vat_number: 'MwSt.-Nummer', cancel: 'Abbrechen', save_changes: 'Änderungen speichern', save_contact: 'Kontakt speichern',
     vcard_received: 'Visitenkarten-Daten vom Smartphone empfangen!', delete_user_confirm: 'Diesen Kontakt wirklich unwiderruflich löschen und alle Verknüpfungen freigeben?',
     completed: 'erfolgreich', upload_failed: 'Aktion fehlgeschlagen.', delete_failed: 'Fehler beim Löschen des Kontakts.', update_failed: 'Fehler beim Aktualisieren.', pdf_export_failed: 'Fehler beim Exportieren des PDFs.', save: 'Speichern', role: 'Rolle', name_or_company_required: 'Bitte Name oder Firma angeben.',

@@ -1845,7 +1845,7 @@ export default function Finance() {
                 onClick={() => { setIsLandscapeMode(false); setForceLandscapeView(false); setIsRotatedCss(false); }}
                 className="h-9 px-3 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-colors font-bold flex items-center gap-1.5 cursor-pointer shadow-xs text-xs"
               >
-                <X size={16} /> <span className="hidden sm:inline">Schließen</span>
+                <X size={16} /> <span className="hidden sm:inline">Schliessen</span>
               </button>
             </div>
           </div>

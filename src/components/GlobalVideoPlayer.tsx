@@ -65,7 +65,7 @@ export function GlobalVideoPlayer() {
     const targetId = incomingCall.id;
     const targetProject = incomingCall.projectId;
 
-    setIncomingCall(null); // Popup schließen
+    setIncomingCall(null); // Popup schliessen
     if (targetProject && targetProject !== 'global') {
       navigate(`/project/${targetProject}/meet`); // Ins richtige Projekt navigieren
     } else {

@@ -77,7 +77,10 @@ export async function callGeminiAPI(model: string, rawContents: any, config?: an
         throw new Error('Die Datei ist zu gross für die KI-Analyse (Server-Payload-Limit). Bitte erstelle einen kleineren Bildausschnitt oder ein kleineres Dokument.');
       }
       if (response.status === 401) {
-        throw new Error('Nicht autorisiert oder Sitzung abgelaufen. Bitte melde dich erneut an.');
+        if (token) {
+          throw new Error('Nicht autorisiert oder Sitzung abgelaufen. Bitte melde dich erneut an.');
+        }
+        // When no token was present (public guest), allow falling back without fatal session error
       }
       if (response.status === 429) {
         throw new Error('Zu viele KI-Anfragen in kurzer Zeit. Bitte versuche es in wenigen Sekunden erneut.');

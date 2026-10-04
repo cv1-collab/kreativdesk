@@ -164,7 +164,7 @@ export default function Signup() {
 
     if (strength.score < 2) {
       return setError(currentLang === 'de'
-        ? 'Das Passwort ist zu einfach. Bitte kombiniere Groß-/Kleinbuchstaben, Zahlen oder Sonderzeichen – oder klicke auf "Sicheres Passwort generieren".'
+        ? 'Das Passwort ist zu einfach. Bitte kombiniere Gross-/Kleinbuchstaben, Zahlen oder Sonderzeichen – oder klicke auf "Sicheres Passwort generieren".'
         : 'Password is too weak. Please combine upper/lowercase, numbers or symbols – or click "Generate secure password".');
     }
     if (!agreedToTerms) {

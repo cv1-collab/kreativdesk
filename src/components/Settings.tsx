@@ -61,7 +61,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     display_name: 'Name',
     email_address: 'E-Mail Adresse',
     phone: 'Telefon',
-    street: 'Straße',
+    street: 'Strasse',
     zip_city: 'PLZ & Ort',
     update_profile: 'Profil speichern',
     save: 'Gespeichert',

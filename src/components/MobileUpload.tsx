@@ -346,7 +346,7 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                 <CheckCircle2 size={40} />
               </div>
               <p className="font-bold text-emerald-500 text-lg">Erfolgreich übertragen!</p>
-              <p className="text-xs text-[#a1a1aa] mt-2">Die Datei wurde erfasst. Du kannst dieses Fenster jetzt schließen.</p>
+              <p className="text-xs text-[#a1a1aa] mt-2">Die Datei wurde erfasst. Du kannst dieses Fenster jetzt schliessen.</p>
             </div>
           ) : (
             <label className={cn("w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-3 transition-all cursor-pointer shadow-lg active:scale-95", isUploading ? "bg-[#27272a] text-[#a1a1aa]" : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-blue-500/25")}>

@@ -169,7 +169,7 @@ export default function PasswordInput({
 
               <div className={`flex items-center gap-1.5 ${(strength.criteria.hasLower && strength.criteria.hasUpper) ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-slate-500 dark:text-zinc-400'}`}>
                 {(strength.criteria.hasLower && strength.criteria.hasUpper) ? <Check size={12} className="shrink-0 text-emerald-500" /> : <span className="w-3 h-3 flex items-center justify-center text-[10px] text-slate-400">•</span>}
-                <span>{isDe ? 'Groß- & Kleinbuchstaben' : 'Upper & lowercase'}</span>
+                <span>{isDe ? 'Gross- & Kleinbuchstaben' : 'Upper & lowercase'}</span>
               </div>
 
               <div className={`flex items-center gap-1.5 ${strength.criteria.hasNumber ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-slate-500 dark:text-zinc-400'}`}>

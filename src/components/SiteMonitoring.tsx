@@ -12,9 +12,12 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useToast } from '../contexts/ToastContext';
 import { useLanguage } from '../contexts/LanguageContext'; 
 import { useProject } from '../contexts/ProjectContext';
+import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { sendNotification } from '../lib/notifications';
 import { safeStorage } from '../utils/safeStorage';
+import { queryClient } from '../lib/queryClient';
+import { DEFECTS_QUERY_KEY } from '../hooks/queries/useDefectsQuery';
 import ModuleGuideButton from './ModuleGuideButton';
 
 // === PROVIDER PRESETS FÜR SCHNELLE EINBINDUNG ===
@@ -199,6 +202,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
 
   const { isDemoMode } = projectCtx; // WICHTIG: Auslesen des Demo-Status
   const isDemo = isDemoMode || currentProjectId === 'demo-1' || currentProjectId?.startsWith('demo-');
+  const { currentUser } = useAuth();
 
   const [activeTab, setActiveTabRaw] = useState<'overview' | 'safety' | 'logistics' | 'drones' | 'access'>(() => {
     const saved = safeStorage.getString(`camera_activeTab_${currentProjectId}`);
@@ -253,8 +257,50 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
     setIsWeatherModalOpen(true);
   };
 
-  const handleEscalateToDefects = () => {
-    addToast(t('safety_warning_escalated'), "success");
+  const handleEscalateToDefects = async () => {
+    if (isDemo) {
+      addToast(t('demo_disabled'), 'info');
+      return;
+    }
+    try {
+      const safeCompanyId = currentUser?.companyId || (activeProject as any)?.company_id || null;
+      const safeProjectId = (currentProjectId && currentProjectId !== 'global') ? currentProjectId : (activeProject?.id || null);
+
+      const { error } = await supabase.from('defects').insert({
+        project_id: safeProjectId,
+        company_id: safeCompanyId,
+        owner_id: currentUser?.uid || null,
+        prompt: 'Arbeitsschutz-Verletzung: Kein Schutzhelm erkannt',
+        description: 'Automatische AI-Vision-Erkennung aus Kamera-Feed: Arbeitskraft ohne Schutzhelm in Gefahrenzone festgestellt.',
+        severity: 'Critical',
+        status: 'To Do',
+        trade: 'Sicherheitsbeauftragter / Bauleitung',
+        location: effectiveLocation || activeProject?.address || 'Baustelle (Kamera-Zone)',
+        created_at: new Date().toISOString()
+      });
+
+      if (error) {
+        console.error('Failed to escalate defect ticket:', error);
+        addToast('Fehler beim Eskalieren des Tickets in Mängel-Modul', 'error');
+        return;
+      }
+
+      queryClient.invalidateQueries({ queryKey: [DEFECTS_QUERY_KEY] });
+      addToast(t('safety_warning_escalated'), 'success');
+
+      if (safeCompanyId) {
+        await sendNotification({
+          companyId: safeCompanyId,
+          title: '🚨 Sicherheits-Ticket eskaliert',
+          message: 'Automatische AI-Vision-Erkennung: Person ohne Schutzhelm festgestellt. Ticket im Mängel-Modul angelegt.',
+          type: 'info',
+          link: safeProjectId ? `/project/${safeProjectId}/defects` : '/app'
+        }).catch(() => {});
+      }
+    } catch (err) {
+      console.error('Error escalating defect ticket:', err);
+      addToast('Fehler beim Erstellen des Mangels', 'error');
+    }
   };
 
   const handleCopyApiEndpoint = () => {

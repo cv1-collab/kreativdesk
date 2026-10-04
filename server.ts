@@ -91,6 +91,38 @@ async function startServer() {
     }
   };
 
+  // --- 0.2 AUTH OR PUBLIC MIDDLEWARE (FOR AI PROXY) ---
+  const verifyAuthOrPublic = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const isPublic = req.body?.isPublic === true;
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      if (isPublic) return next();
+      return res.status(401).json({ error: 'Unauthorized: Missing or invalid token' });
+    }
+    const idToken = authHeader.split('Bearer ')[1];
+    try {
+      const { data: { user }, error } = await supabaseAdmin.auth.getUser(idToken);
+      if (error || !user) {
+        if (isPublic) return next();
+        return res.status(401).json({ error: 'Unauthorized: Token verification failed' });
+      }
+      (req as any).user = { ...user, uid: user.id };
+      next();
+    } catch (err) {
+      if (isPublic) return next();
+      return res.status(401).json({ error: 'Unauthorized: Token verification failed' });
+    }
+  };
+
+  const verifySubscriptionOrPublic = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const isPublic = req.body?.isPublic === true;
+    const user = (req as any).user;
+    if (!user && isPublic) {
+      return next();
+    }
+    return verifySubscription(req, res, next);
+  };
+
   // --- 1. STRIPE CHECKOUT SESSION ---
   app.post('/api/create-checkout-session', verifyAuth, async (req, res) => {
     try {
@@ -491,7 +523,7 @@ function isSafeExternalUrl(urlStr: string): boolean {
   });
 
   // --- 7. GEMINI AI PROXY ---
-  app.post('/api/generate', verifyAuth, verifySubscription, async (req, res) => {
+  app.post('/api/generate', verifyAuthOrPublic, verifySubscriptionOrPublic, async (req, res) => {
     try {
       const apiKey = process.env.GEMINI_API_KEY; 
       if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured' });

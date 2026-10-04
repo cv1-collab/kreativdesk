@@ -79,11 +79,11 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     cad_title: 'CAD Pläne',
     cad_subtitle: '2D-Baupläne, TrueScale™ Vermessung & SIA-118 Mängel-Pins',
     save: 'Speichern', upload_success: 'Upload erfolgreich!', upload_failed: 'Upload fehlgeschlagen.',
-    polygon_click_corners: 'Ecken klicken.', close_shape: 'Schließen', upload_cad_plan: 'Plan hochladen',
+    polygon_click_corners: 'Ecken klicken.', close_shape: 'Schliessen', upload_cad_plan: 'Plan hochladen',
     upload_cad_desc: 'Ziehe eine Datei (JPG, PNG, PDF) herein.', true_scale_engine: 'TrueScale™ Engine',
     no_plan_loaded: 'Kein Plan geladen', landscape: 'Querformat', portrait: 'Hochformat', upload_plan: 'Plan hochladen',
     pdf_export: 'PDF Export', save_cloud: 'In Cloud speichern', properties: 'Eigenschaften', length_meters: 'Länge in Metern',
-    color: 'Farbe', line_thickness: 'Linienstärke', text_size: 'Textgröße', scale: 'Maßstab', project: 'Projekt',
+    color: 'Farbe', line_thickness: 'Linienstärke', text_size: 'Textgrösse', scale: 'Massstab', project: 'Projekt',
     client: 'Bauherrschaft', planner: 'Planverfasser', content: 'Planinhalt', phase: 'Phase', format: 'Format', date: 'Datum',
     drawn_by: 'Gezeichnet', plan_no: 'Plannummer', line_style: 'Linienstil', opacity: 'Deckkraft', delete_element: 'Element löschen',
     describe_defect: 'Mangel beschreiben', create_ticket: 'Ticket erstellen', cancel: 'Abbrechen', defect_saved: 'Mangel gespeichert!',
@@ -107,11 +107,11 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     default_layer: 'Standard-Ebene',
     add_layer: 'Zeichenebene hinzufügen',
     layer_prefix: 'Ebene',
-    truescale_modal_title: 'TrueScale™ Maßstabs-Kalibrierung',
-    truescale_modal_desc: 'Zeichne eine Referenzlinie über eine bekannte Distanz (z.B. eine Wand) und gib den exakten Wert in Metern ein. Das CAD-System berechnet automatisch den Maßstab (1:50, 1:100 etc.).',
+    truescale_modal_title: 'TrueScale™ Massstabs-Kalibrierung',
+    truescale_modal_desc: 'Zeichne eine Referenzlinie über eine bekannte Distanz (z.B. eine Wand) und gib den exakten Wert in Metern ein. Das CAD-System berechnet automatisch den Massstab (1:50, 1:100 etc.).',
     known_real_length: 'Bekannte Reallänge in Metern (m)',
-    apply_calibration_btn: 'Maßstab Kalibrieren',
-    calibrate_truescale_tooltip: 'Plan-Maßstab anhand Referenzlinie kalibrieren (TrueScale™)',
+    apply_calibration_btn: 'Massstab Kalibrieren',
+    calibrate_truescale_tooltip: 'Plan-Massstab anhand Referenzlinie kalibrieren (TrueScale™)',
     export_dropdown: 'Export',
     export_pdf_title: 'PDF Plan exportieren',
     export_pdf_sub: 'Druckfertiger Plan mit SIA-Plankopf im Universal PDF Studio',
@@ -124,8 +124,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 const TOOL_LABELS: Record<string, { de: string; en: string }> = {
   pan: { de: 'Auswählen & Verschieben', en: 'Select & Pan' },
   calibrate: { de: 'TrueScale™ Kalibrieren', en: 'TrueScale™ Calibrate' },
-  measure: { de: 'Messen / Maßstab (Distanz)', en: 'Measure (Distance)' },
-  scalebar: { de: 'Grafischer Maßstabsbalken', en: 'Graphic Scale Bar' },
+  measure: { de: 'Messen / Massstab (Distanz)', en: 'Measure (Distance)' },
+  scalebar: { de: 'Grafischer Massstabsbalken', en: 'Graphic Scale Bar' },
   polygon: { de: 'Polygon / Raumfläche', en: 'Polygon / Room Area' },
   rect: { de: 'Rechteck', en: 'Rectangle' },
   circle: { de: 'Kreis', en: 'Circle' },
@@ -661,7 +661,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       setPlanScale(computedScaleRatio);
       addToast(
         currentLang === 'de' 
-          ? `TrueScale™ Maßstab erfolgreich kalibriert auf 1:${computedScaleRatio}!` 
+          ? `TrueScale™ Massstab erfolgreich kalibriert auf 1:${computedScaleRatio}!` 
           : `TrueScale™ scale successfully calibrated to 1:${computedScaleRatio}!`, 
         'success'
       );
@@ -2667,7 +2667,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                     {selectedElement.type === 'image' && (
                       <>
                         <div>
-                          <label className="text-[10px] font-bold uppercase mb-1 block">Bildgröße</label>
+                          <label className="text-[10px] font-bold uppercase mb-1 block">Bildgrösse</label>
                           <input type="range" min="0.1" max="5" step="0.1" value={(selectedElement as ImageMarkup).scale ?? 1} onChange={e => updateElement({...selectedElement, scale: Number(e.target.value)} as any)} className="w-full accent-blue-500" />
                         </div>
                         <div>
@@ -2890,7 +2890,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                             <input type="color" value={(selectedElement as TextMarkup).color || '#3b82f6'} onChange={e => updateElement({...selectedElement, color: e.target.value} as any)} className="w-full h-8 rounded border border-border cursor-pointer" />
                           </div>
                           <div>
-                            <label className="text-[10px] font-bold uppercase mb-1 block">Größe</label>
+                            <label className="text-[10px] font-bold uppercase mb-1 block">Grösse</label>
                             <input type="number" value={(selectedElement as TextMarkup).size || ''} onChange={e => updateElement({...selectedElement, size: parseFloat(e.target.value) || 12} as any)} className="w-full bg-background border border-border rounded-xl px-4 py-1.5 text-sm font-bold focus:border-blue-500 outline-none" />
                           </div>
                         </div>
@@ -3408,7 +3408,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
               </div>
               {calibPaperDistMm > 0 && parseFloat(calibrationMetersInput) > 0 && (
                 <p className="text-[11px] text-text-muted pt-1">
-                  {currentLang === 'de' ? 'Berechneter Maßstab:' : 'Calculated scale:'} <strong className="text-purple-400 font-mono font-bold text-xs">1:{Math.round((parseFloat(calibrationMetersInput) * 1000) / calibPaperDistMm)}</strong>
+                  {currentLang === 'de' ? 'Berechneter Massstab:' : 'Calculated scale:'} <strong className="text-purple-400 font-mono font-bold text-xs">1:{Math.round((parseFloat(calibrationMetersInput) * 1000) / calibPaperDistMm)}</strong>
                 </p>
               )}
             </div>
