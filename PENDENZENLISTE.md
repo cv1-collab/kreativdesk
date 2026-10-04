@@ -1,11 +1,40 @@
 # Kreativ Desk & interacTV — Status, Erfolge & Pendenzen
 
-**Datum:** 3. Oktober 2026  
-**Status:** 🟢 Alle Prüfungen grün (Vitest 65/65 grün, System-Vollprüfung 42/42 bestanden, 100% Schweizer Rechtschreibung, TypeScript 0 Fehler `tsc --noEmit`), Dev-Server aktiv (`http://localhost:3001`), redundante Module und Dead Code 100% bereinigt.
+**Datum:** 4. Oktober 2026  
+**Status:** 🟢 Alle Prüfungen grün (Vitest 67/67 grün in 12 Test-Dateien, System-Vollprüfung 42/42 bestanden, 100% Schweizer Rechtschreibung, TypeScript 0 Fehler `tsc --noEmit`, Production Build 100% fehlerfrei), Dev-Server aktiv (`http://localhost:3001`), redundante Module und Dead Code 100% bereinigt.
 
 ---
 
 ## 🏆 Erfolgsliste von heute (4. Oktober 2026)
+
+### 0.0 Whiteboard: Lückenloses Undo / Redo System (Cmd+Z / Cmd+Shift+Z, Floating Toolbar-Buttons & 30-Schritte-History)
+* **Problemstellung & Benutzer-Anforderung:**
+  * Das interaktive Whiteboard ([Whiteboard.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/Whiteboard.tsx)) mit Stift, Radiergummi, geometrischen Formen, Notizzetteln, Text und Ebenen besass bisher keine Rückgängig-/Wiederholen-Funktion. Versehentlich gelöschte, verschobene oder gezeichnete Elemente konnten nicht rückgängig gemacht werden.
+* **Lösung & Implementierung:**
+  * **30-Schritte Deep-Clone State History:**
+    * `history: LayerData[][]` und `future: LayerData[][]` Stacks mit unveränderlichen Deep-Clones (`JSON.parse(JSON.stringify(...))`), wodurch nachträgliche In-Place-Mutationen bei Konva-Verschiebungen alte Zustände nicht verfälschen.
+    * Gecachter `layersBeforeActionRef` garantiert, dass Maus- und Touch-Verschiebungen vor Beginn gecacht und erst beim Loslassen (`onDragEnd`, `handleMouseUp`) als genau ein Snapshot committet werden.
+  * **Visuelle Toolbar-Buttons:**
+    * `Undo2` und `Redo2` Buttons ergonomisch in die obere schwebende Werkzeugleiste (`tour-whiteboard-tools`) direkt neben den Auswahlwerkzeugen platziert.
+    * Dynamische Deaktivierung (`disabled`, reduzierte Deckkraft, Cursor `not-allowed`) wenn der jeweilige Stack leer ist.
+    * Mehrsprachige Tooltips (`undo` / `redo` in Deutsch, Englisch, Französisch).
+  * **Globale Tastenkombinationen:**
+    * `Cmd+Z` / `Ctrl+Z` für Rückgängig.
+    * `Cmd+Shift+Z` / `Cmd+Y` / `Ctrl+Y` für Wiederholen.
+    * Automatischer Ausschluss aktiver Formular- und Editierfelder (`input`, `textarea`, `isContentEditable`).
+  * **Vollständige Aktions-Abdeckung:**
+    * Freihand-Stift & Radiergummi (`pen`, `eraser`).
+    * Formen & Sticky Notes (`rect`, `circle`, `polygon`, `text`).
+    * Verschieben von Objekten & Polygon-Ankerpunkten (`onDragStart` -> `onDragEnd`).
+    * Transformieren / Skalieren von Bildern und Elementen (`onTransformStart`).
+    * Element- und Ebenen-Duplizierung (`duplicateItem`, `duplicateLayer`).
+    * Ebenen-Verschiebung & Z-Index (`moveLayerUp`, `moveLayerDown`, `bringItemForward`, `sendItemBackward`).
+    * Ebenen-Deckkraft & Bildfilter-Anpassungen (Helligkeit, Kontrast, Sättigung, Reset).
+    * Farbwahl, Notiz-Texteingabe, Bild-Zuschneiden (`applyCrop`) und Bild-Freistellen (`freistellen`).
+    * Löschen von Einzelelementen (`deleteSelectedItem`) und Ebenen (`deleteLayer`) sowie Board leeren (`clearBoard`).
+  * **Automatisierte Qualitätssicherung:**
+    * Neuer Unit-Test [whiteboardHistory.test.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/tests/unit/whiteboardHistory.test.ts) (4/4 Tests grün, tiefes Klonen, sequentielles Undo/Redo, Future-Purge bei Neuaktion, 30-Schritte-Limit).
+    * Alle 12 Testsuiten (67/67 Tests) bestanden, `tsc --noEmit` fehlerfrei, Vite Production-Bundle erfolgreich erstellt.
 
 ### 0. Gesamtsystem-Audit: Behebung identischer Overflow-Clipping-Fehler & Analyse fehlender Undo/Redo-Funktionen
 * **Systemweite Prüfung nach dem Vorbild der CAD-Plan-Fehler:**
@@ -15,7 +44,7 @@
   2. **Live Meet & Video ([MeetChat.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/MeetChat.tsx)):**
      * **Header-Overflow:** Header hatte unnötiges `overflow-x-auto pb-2`. Auf `overflow-visible flex-wrap pb-1` bereinigt, um sauberes Umbrechen auf kleineren Bildschirmen zu garantieren.
   3. **Audit zu fehlendem Undo / Redo in anderen Modulen:**
-     * **Whiteboard ([Whiteboard.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/Whiteboard.tsx)):** Zeichenfläche mit Stift, Formen, Haftnotizen und Radiergummi besitzt aktuell noch kein Undo/Redo (`Cmd+Z`). Versehentlich gelöschte Elemente können nicht zurückgeholt werden.
+     * **Whiteboard ([Whiteboard.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/Whiteboard.tsx)):** ✅ **Vollständig behoben:** Lückenloses Undo / Redo System mit 30-Schritte-History, `Cmd+Z` / `Cmd+Shift+Z` und Toolbar-Buttons integriert.
      * **Pitch Deck Studio ([PitchDeckStudio.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/PitchDeckStudio.tsx)):** Folien-Erstellung und Inhaltsbearbeitung besitzen noch kein Undo/Redo bei versehentlichem Löschen oder Textüberschreiben.
      * **BIM-Viewer ([BIMViewer.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/BIMViewer.tsx)):** Keine Rückgängig-Funktion für gelöschte 3D-Messpunkte.
 

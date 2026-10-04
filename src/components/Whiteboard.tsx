@@ -7,7 +7,8 @@ import {
   PenTool, Mic, Square, Circle, Type, Image as ImageIcon, Sparkles, Send, Eraser, 
   CheckCircle2, Loader2, Play, Square as StopIcon, FileAudio, FileText, Download, 
   Hexagon, FileDown, UploadCloud, SlidersHorizontal, X, MousePointer2, Hand, ZoomIn, ZoomOut, Maximize, Minimize, Focus, Trash2, Layers, Plus, Eye, EyeOff, Wand2, ImagePlus, Cloud, Check, RefreshCw,
-  ChevronDown, Share2, Presentation, Crop, Scissors, Lock, Unlock, Copy, ArrowUp, ArrowDown, RotateCw, Palette, SunMedium, Move
+  ChevronDown, Share2, Presentation, Crop, Scissors, Lock, Unlock, Copy, ArrowUp, ArrowDown, RotateCw, Palette, SunMedium, Move,
+  Undo2, Redo2
 } from 'lucide-react';
 import { cn } from '../utils';
 import { safeRequestFullscreen, safeExitFullscreen, isFullscreenActive, addFullscreenChangeListener } from '../utils/fullscreen';
@@ -127,7 +128,9 @@ const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
     color_pick: 'Pick color: ',
     sticky_yellow: 'Insert yellow note',
     sticky_cyan: 'Insert blue note',
-    sticky_pink: 'Insert pink note'
+    sticky_pink: 'Insert pink note',
+    undo: 'Undo (Cmd+Z)',
+    redo: 'Redo (Cmd+Shift+Z)'
   },
   de: { 
     title: 'Whiteboard & Audio Hub', desc: 'Interaktive Zeichenfläche und KI-transkribierte Sprachnotizen.', 
@@ -184,7 +187,9 @@ const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
     color_pick: 'Farbe wählen: ',
     sticky_yellow: 'Gelbe Notiz einfügen',
     sticky_cyan: 'Blaue Notiz einfügen',
-    sticky_pink: 'Rosa Notiz einfügen'
+    sticky_pink: 'Rosa Notiz einfügen',
+    undo: 'Rückgängig (Cmd+Z)',
+    redo: 'Wiederholen (Cmd+Shift+Z)'
   },
   fr: { 
     title: 'Tableau blanc & Audio Hub', desc: 'Espace de dessin interactif et notes vocales transcrites par IA.', 
@@ -241,7 +246,9 @@ const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
     color_pick: 'Choisir la couleur : ',
     sticky_yellow: 'Insérer note jaune',
     sticky_cyan: 'Insérer note bleue',
-    sticky_pink: 'Insérer note rose'
+    sticky_pink: 'Insérer note rose',
+    undo: 'Annuler (Cmd+Z)',
+    redo: 'Rétablir (Cmd+Shift+Z)'
   }
 };
 
@@ -262,7 +269,8 @@ const KonvaImageItem: React.FC<{
   layerLocked?: boolean;
   onSelect: (id: string) => void;
   onUpdate: (id: string, updateFn: (old: any) => any) => void;
-}> = ({ item, isSelected, tool, stageScale, layerLocked, onSelect, onUpdate }) => {
+  onBeforeChange?: () => void;
+}> = ({ item, isSelected, tool, stageScale, layerLocked, onSelect, onUpdate, onBeforeChange }) => {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const imageRef = useRef<any>(null);
 
@@ -312,9 +320,15 @@ const KonvaImageItem: React.FC<{
           onSelect(item.id);
         }
       }}
+      onDragStart={() => {
+        onBeforeChange?.();
+      }}
       onDragEnd={(e) => {
         e.cancelBubble = true;
         onUpdate(item.id, old => ({ ...old, x: Math.round(e.target.x()), y: Math.round(e.target.y()) }));
+      }}
+      onTransformStart={() => {
+        onBeforeChange?.();
       }}
       onTransformEnd={(e) => {
         const node = e.target;
@@ -375,6 +389,53 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
   const [activeColor, setActiveColor] = useState(initialDraft?.activeColor || wbCache.activeColor);
   const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
   const [layers, setLayers] = useState<LayerData[]>(initialDraft?.layers || wbCache.layers);
+  const [history, setHistory] = useState<LayerData[][]>([]);
+  const [future, setFuture] = useState<LayerData[][]>([]);
+  const layersBeforeActionRef = useRef<LayerData[] | null>(null);
+
+  const commitSnapshot = useCallback((customSnapshot?: LayerData[]) => {
+    const snap = customSnapshot || layersBeforeActionRef.current || layers;
+    try {
+      const clonedSnap: LayerData[] = JSON.parse(JSON.stringify(snap));
+      setHistory(prev => [...prev.slice(-29), clonedSnap]);
+      setFuture([]);
+    } catch (e) {
+      console.warn("Failed to clone snapshot for history:", e);
+    }
+    layersBeforeActionRef.current = null;
+  }, [layers]);
+
+  const handleUndo = useCallback(() => {
+    setHistory(prevHistory => {
+      if (prevHistory.length === 0) return prevHistory;
+      const prev = prevHistory[prevHistory.length - 1];
+      setLayers(currentLayers => {
+        try {
+          const clonedCurrent: LayerData[] = JSON.parse(JSON.stringify(currentLayers));
+          setFuture(prevFuture => [clonedCurrent, ...prevFuture.slice(0, 29)]);
+        } catch (e) {}
+        return prev;
+      });
+      setSelectedShapeId(null);
+      return prevHistory.slice(0, -1);
+    });
+  }, []);
+
+  const handleRedo = useCallback(() => {
+    setFuture(prevFuture => {
+      if (prevFuture.length === 0) return prevFuture;
+      const next = prevFuture[0];
+      setLayers(currentLayers => {
+        try {
+          const clonedCurrent: LayerData[] = JSON.parse(JSON.stringify(currentLayers));
+          setHistory(prevHistory => [...prevHistory.slice(-29), clonedCurrent]);
+        } catch (e) {}
+        return next;
+      });
+      setSelectedShapeId(null);
+      return prevFuture.slice(1);
+    });
+  }, []);
   const [activeLayerId, setActiveLayerId] = useState<string>(initialDraft?.activeLayerId || wbCache.activeLayerId);
   const [showLayersPanel, setShowLayersPanel] = useState(false);
 
@@ -812,6 +873,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
   const duplicateLayer = (id: string) => {
     const target = layers.find(l => l.id === id);
     if (!target) return;
+    commitSnapshot();
     const newId = `layer-${Date.now()}`;
     const duplicatedItems = (target.items || []).map(item => ({
       ...item,
@@ -835,6 +897,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
   const moveLayerUp = (id: string) => {
     const index = layers.findIndex(l => l.id === id);
     if (index >= layers.length - 1) return;
+    commitSnapshot();
     const newLayers = [...layers];
     const temp = newLayers[index];
     newLayers[index] = newLayers[index + 1];
@@ -845,6 +908,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
   const moveLayerDown = (id: string) => {
     const index = layers.findIndex(l => l.id === id);
     if (index <= 0) return;
+    commitSnapshot();
     const newLayers = [...layers];
     const temp = newLayers[index];
     newLayers[index] = newLayers[index - 1];
@@ -853,6 +917,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
   };
 
   const bringItemForward = (itemId: string) => {
+    commitSnapshot();
     setLayers(prev => prev.map(layer => {
       const items = layer.items || [];
       const idx = items.findIndex(i => i.id === itemId);
@@ -867,6 +932,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
   };
 
   const sendItemBackward = (itemId: string) => {
+    commitSnapshot();
     setLayers(prev => prev.map(layer => {
       const items = layer.items || [];
       const idx = items.findIndex(i => i.id === itemId);
@@ -883,6 +949,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
   const duplicateItem = (itemId: string) => {
     const item = selectedItem;
     if (!item) return;
+    commitSnapshot();
     const newItem = {
       ...item,
       id: `${item.type || 'item'}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
@@ -939,6 +1006,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
       };
 
       const activeLayer = getEnsureActiveLayer();
+      commitSnapshot();
       addItemToActiveLayer(newImageItem, activeLayer.id);
       setSelectedShapeId(newImageItem.id);
       setTool('select');
@@ -1055,6 +1123,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
 
       ctx.drawImage(img, safeX, safeY, safeW, safeH, 0, 0, safeW, safeH);
       const croppedDataUrl = canvas.toDataURL('image/png');
+      commitSnapshot();
 
       if (asNewLayer) {
         const newItem = {
@@ -1108,6 +1177,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
             }
           });
           if (res?.image?.url) {
+            commitSnapshot();
             updateItemById(freistellenTargetItem.id, old => ({
               ...old,
               src: res.image.url
@@ -1155,6 +1225,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
 
         ctx.putImageData(imgData, 0, 0);
         const resultUrl = canvas.toDataURL('image/png');
+        commitSnapshot();
         updateItemById(freistellenTargetItem.id, old => ({
           ...old,
           src: resultUrl
@@ -1512,6 +1583,11 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
 
     drawingStartPos.current = { x: pos.x, y: pos.y };
     isDrawing.current = true;
+    try {
+      layersBeforeActionRef.current = JSON.parse(JSON.stringify(layers));
+    } catch (e) {
+      layersBeforeActionRef.current = layers;
+    }
     const id = `item-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     currentDrawingLayerId.current = activeLayer.id;
     currentDrawingItemId.current = id;
@@ -1676,6 +1752,9 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
       }, targetLayerId, targetItemId);
     }
 
+    if (layersBeforeActionRef.current) {
+      commitSnapshot(layersBeforeActionRef.current);
+    }
     drawingStartPos.current = null;
     currentDrawingLayerId.current = null;
     currentDrawingItemId.current = null;
@@ -1712,6 +1791,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
   const handleColorPick = (c: string) => {
     setActiveColor(c);
     if (selectedShapeId) {
+      commitSnapshot();
       updateItemById(selectedShapeId, item => ({
         ...item,
         color: c,
@@ -1725,6 +1805,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
   };
 
   const handleAddStickyNote = (fillColor: string, strokeColor: string) => {
+    commitSnapshot();
     const currentLayer = getEnsureActiveLayer();
 
     const centerX = stageSize.width > 0 
@@ -1756,6 +1837,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
 
   const finishPolygon = () => {
     if (currentPolygon.length > 4) {
+      commitSnapshot();
       const finalPoly = currentPolygon.slice(0, -2); const newId = Date.now().toString();
       addItemToActiveLayer({ type: 'polygon', points: finalPoly, id: newId, x: 0, y: 0, color: activeColor });
       setSelectedShapeId(newId); 
@@ -1767,6 +1849,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
   const handleTextSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (textPrompt && textPrompt.value) {
+      commitSnapshot();
       addItemToActiveLayer({ type: 'text', x: textPrompt.x, y: textPrompt.y, text: textPrompt.value, id: Date.now().toString(), color: activeColor });
     }
     setTextPrompt(null); 
@@ -1776,6 +1859,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
 
   const clearBoard = async () => {
     if (window.confirm(t('clear_canvas'))) {
+      commitSnapshot();
       const defaultLayers = [{ id: 'layer-1', name: t('base_layer'), visible: true, items: [] }];
       setLayers(defaultLayers);
       setActiveLayerId('layer-1'); 
@@ -1817,6 +1901,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
   };
 
   const handleAddLayer = () => {
+    commitSnapshot();
     const newId = `layer-${Date.now()}`;
     setLayers([...layers, { id: newId, name: `${t('layers')} ${layers.length + 1}`, visible: true, items: [] }]);
     setActiveLayerId(newId);
@@ -1827,6 +1912,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
   const deleteLayer = (id: string) => {
     if (layers.length <= 1) return addToast('Die letzte Ebene kann nicht gelöscht werden.', 'info');
     if (window.confirm('Ebene inkl. aller Inhalte löschen?')) {
+      commitSnapshot();
       const newLayers = layers.filter(l => l.id !== id); setLayers(newLayers);
       if (activeLayerId === id) setActiveLayerId(newLayers[newLayers.length - 1].id);
     }
@@ -1834,19 +1920,35 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
 
   const deleteSelectedItem = useCallback(() => {
     if (!selectedShapeId) return;
+    commitSnapshot();
     setLayers(prev => prev.map(layer => ({
       ...layer,
       items: layer.items.filter(it => it.id !== selectedShapeId)
     })));
     setSelectedShapeId(null);
     addToast('Element gelöscht', 'info');
-  }, [selectedShapeId, addToast]);
+  }, [selectedShapeId, commitSnapshot, addToast]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const activeEl = document.activeElement;
       const isInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || (activeEl as HTMLElement).isContentEditable);
       if (isInput) return;
+
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const modifier = isMac ? e.metaKey : e.ctrlKey;
+
+      if (modifier && !e.shiftKey && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        handleUndo();
+        return;
+      }
+      if ((modifier && e.shiftKey && e.key.toLowerCase() === 'z') || (modifier && e.key.toLowerCase() === 'y')) {
+        e.preventDefault();
+        handleRedo();
+        return;
+      }
+
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedShapeId) {
         e.preventDefault();
         deleteSelectedItem();
@@ -1854,7 +1956,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedShapeId, deleteSelectedItem]);
+  }, [selectedShapeId, deleteSelectedItem, handleUndo, handleRedo]);
 
   const getCanvasDataUrl = (scale: number = 2, mimeType: string = 'image/png', forceWhiteBg: boolean = false) => {
     if (!stageRef.current) return null;
@@ -2602,6 +2704,30 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
               <button onClick={() => { setTool('pan'); setSelectedShapeId(null); }} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0 cursor-pointer", tool === 'pan' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title={t('tool_pan')}><Hand size={16} /></button>
               <button onClick={() => setTool('select')} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0 cursor-pointer", tool === 'select' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title={t('tool_select')}><MousePointer2 size={16} /></button>
               <div className="w-px h-5 bg-border mx-1 shrink-0"></div>
+              {/* UNDO & REDO BUTTONS */}
+              <button 
+                onClick={handleUndo} 
+                disabled={history.length === 0} 
+                className={cn(
+                  "p-1.5 md:p-2 rounded-lg transition-all shrink-0 cursor-pointer", 
+                  history.length === 0 ? "opacity-30 cursor-not-allowed text-text-muted" : "text-text-primary hover:bg-white/10 active:scale-95"
+                )} 
+                title={t('undo')}
+              >
+                <Undo2 size={16} />
+              </button>
+              <button 
+                onClick={handleRedo} 
+                disabled={future.length === 0} 
+                className={cn(
+                  "p-1.5 md:p-2 rounded-lg transition-all shrink-0 cursor-pointer", 
+                  future.length === 0 ? "opacity-30 cursor-not-allowed text-text-muted" : "text-text-primary hover:bg-white/10 active:scale-95"
+                )} 
+                title={t('redo')}
+              >
+                <Redo2 size={16} />
+              </button>
+              <div className="w-px h-5 bg-border mx-1 shrink-0"></div>
               <button onClick={() => { setTool('pen'); setSelectedShapeId(null); }} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0 cursor-pointer", tool === 'pen' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title={t('tool_pen')}><PenTool size={16} /></button>
               <button onClick={() => { setTool('eraser'); setSelectedShapeId(null); }} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0 cursor-pointer", tool === 'eraser' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title={t('tool_eraser')}><Eraser size={16} /></button>
               <div className="w-px h-5 bg-border mx-1 shrink-0"></div>
@@ -2684,6 +2810,8 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                             max="1"
                             step="0.05"
                             value={activeL.opacity ?? 1}
+                            onMouseDown={() => commitSnapshot()}
+                            onTouchStart={() => commitSnapshot()}
                             onChange={(e) => setLayerOpacity(activeL.id, parseFloat(e.target.value))}
                             className="w-full accent-accent-ai h-1.5"
                           />
@@ -2957,6 +3085,8 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                       max="1"
                       step="0.05"
                       value={selectedItem.brightness || 0}
+                      onMouseDown={() => commitSnapshot()}
+                      onTouchStart={() => commitSnapshot()}
                       onChange={(e) => updateItemById(selectedItem.id, old => ({ ...old, brightness: parseFloat(e.target.value) }))}
                       className="w-full accent-accent-ai"
                     />
@@ -2972,6 +3102,8 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                       max="100"
                       step="5"
                       value={selectedItem.contrast || 0}
+                      onMouseDown={() => commitSnapshot()}
+                      onTouchStart={() => commitSnapshot()}
                       onChange={(e) => updateItemById(selectedItem.id, old => ({ ...old, contrast: parseFloat(e.target.value) }))}
                       className="w-full accent-accent-ai"
                     />
@@ -2987,6 +3119,8 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                       max="2"
                       step="0.1"
                       value={selectedItem.saturation || 0}
+                      onMouseDown={() => commitSnapshot()}
+                      onTouchStart={() => commitSnapshot()}
                       onChange={(e) => updateItemById(selectedItem.id, old => ({ ...old, saturation: parseFloat(e.target.value) }))}
                       className="w-full accent-accent-ai"
                     />
@@ -3002,12 +3136,17 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                       max="1"
                       step="0.05"
                       value={selectedItem.opacity ?? 1}
+                      onMouseDown={() => commitSnapshot()}
+                      onTouchStart={() => commitSnapshot()}
                       onChange={(e) => updateItemById(selectedItem.id, old => ({ ...old, opacity: parseFloat(e.target.value) }))}
                       className="w-full accent-accent-ai"
                     />
                   </div>
                   <button
-                    onClick={() => updateItemById(selectedItem.id, old => ({ ...old, brightness: 0, contrast: 0, saturation: 0, opacity: 1 }))}
+                    onClick={() => {
+                      commitSnapshot();
+                      updateItemById(selectedItem.id, old => ({ ...old, brightness: 0, contrast: 0, saturation: 0, opacity: 1 }));
+                    }}
                     className="w-full py-1.5 text-xs font-semibold rounded-lg bg-surface border border-border text-text-muted hover:text-text-primary hover:bg-background transition-colors"
                   >
                     Filter zurücksetzen
@@ -3045,6 +3184,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                                 layerLocked={layer.locked}
                                 onSelect={(id) => setSelectedShapeId(id)}
                                 onUpdate={(id, updateFn) => updateItemById(id, updateFn)}
+                                onBeforeChange={() => commitSnapshot()}
                               />
                             );
                           }
@@ -3078,7 +3218,20 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                                   listening={tool === 'select'} 
                                   onClick={() => { if (tool === 'select') setSelectedShapeId(item.id); }} 
                                   onTap={() => { if (tool === 'select') setSelectedShapeId(item.id); }} 
-                                  onDragEnd={(e) => { e.cancelBubble = true; updateItemById(item.id, old => ({ ...old, x: e.target.x(), y: e.target.y() })); }} 
+                                  onDragStart={() => {
+                                    try {
+                                      layersBeforeActionRef.current = JSON.parse(JSON.stringify(layers));
+                                    } catch (e) {
+                                      layersBeforeActionRef.current = layers;
+                                    }
+                                  }}
+                                  onDragEnd={(e) => { 
+                                    e.cancelBubble = true; 
+                                    if (layersBeforeActionRef.current) {
+                                      commitSnapshot(layersBeforeActionRef.current);
+                                    }
+                                    updateItemById(item.id, old => ({ ...old, x: e.target.x(), y: e.target.y() })); 
+                                  }} 
                                 />
                               </Group>
                             );
@@ -3099,10 +3252,26 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                                 onDblClick={() => {
                                   if (item.text !== undefined) {
                                     const newText = window.prompt("Notiz-Text bearbeiten:", item.text);
-                                    if (newText !== null) updateItemById(item.id, old => ({ ...old, text: newText }));
+                                    if (newText !== null) {
+                                      commitSnapshot();
+                                      updateItemById(item.id, old => ({ ...old, text: newText }));
+                                    }
                                   }
                                 }}
-                                onDragEnd={(e) => { e.cancelBubble = true; updateItemById(item.id, old => ({...old, x: e.target.x(), y: e.target.y()}))}}
+                                onDragStart={() => {
+                                  try {
+                                    layersBeforeActionRef.current = JSON.parse(JSON.stringify(layers));
+                                  } catch (e) {
+                                    layersBeforeActionRef.current = layers;
+                                  }
+                                }}
+                                onDragEnd={(e) => { 
+                                  e.cancelBubble = true; 
+                                  if (layersBeforeActionRef.current) {
+                                    commitSnapshot(layersBeforeActionRef.current);
+                                  }
+                                  updateItemById(item.id, old => ({...old, x: e.target.x(), y: e.target.y()}));
+                                }}
                               >
                                 <Rect 
                                   width={item.width} 
@@ -3154,7 +3323,20 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                                 listening={tool === 'select'} 
                                 onClick={() => { if (tool === 'select') setSelectedShapeId(item.id); }} 
                                 onTap={() => { if (tool === 'select') setSelectedShapeId(item.id); }} 
-                                onDragEnd={(e) => { e.cancelBubble = true; updateItemById(item.id, old => ({...old, x: e.target.x(), y: e.target.y()}))}}
+                                onDragStart={() => {
+                                  try {
+                                    layersBeforeActionRef.current = JSON.parse(JSON.stringify(layers));
+                                  } catch (e) {
+                                    layersBeforeActionRef.current = layers;
+                                  }
+                                }}
+                                onDragEnd={(e) => { 
+                                  e.cancelBubble = true; 
+                                  if (layersBeforeActionRef.current) {
+                                    commitSnapshot(layersBeforeActionRef.current);
+                                  }
+                                  updateItemById(item.id, old => ({...old, x: e.target.x(), y: e.target.y()}));
+                                }}
                               >
                                 <KonvaCircle 
                                   x={item.x} 
@@ -3190,9 +3372,25 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                                 onTap={() => { if (tool === 'select') setSelectedShapeId(item.id); }} 
                                 onDblClick={() => {
                                   const newText = window.prompt("Text bearbeiten:", item.text);
-                                  if (newText !== null) updateItemById(item.id, old => ({ ...old, text: newText }));
+                                  if (newText !== null) {
+                                    commitSnapshot();
+                                    updateItemById(item.id, old => ({ ...old, text: newText }));
+                                  }
                                 }}
-                                onDragEnd={(e) => { e.cancelBubble = true; updateItemById(item.id, old => ({...old, x: e.target.x(), y: e.target.y()}))}}
+                                onDragStart={() => {
+                                  try {
+                                    layersBeforeActionRef.current = JSON.parse(JSON.stringify(layers));
+                                  } catch (e) {
+                                    layersBeforeActionRef.current = layers;
+                                  }
+                                }}
+                                onDragEnd={(e) => { 
+                                  e.cancelBubble = true; 
+                                  if (layersBeforeActionRef.current) {
+                                    commitSnapshot(layersBeforeActionRef.current);
+                                  }
+                                  updateItemById(item.id, old => ({...old, x: e.target.x(), y: e.target.y()}));
+                                }}
                               >
                                 <KonvaText 
                                   text={item.text} 
@@ -3230,7 +3428,20 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                                   listening={tool === 'select'} 
                                   onClick={() => { if (tool === 'select') setSelectedShapeId(item.id); }} 
                                   onTap={() => { if (tool === 'select') setSelectedShapeId(item.id); }} 
-                                  onDragEnd={(e) => { e.cancelBubble = true; updateItemById(item.id, old => ({...old, x: e.target.x(), y: e.target.y()}))}} 
+                                  onDragStart={() => {
+                                    try {
+                                      layersBeforeActionRef.current = JSON.parse(JSON.stringify(layers));
+                                    } catch (e) {
+                                      layersBeforeActionRef.current = layers;
+                                    }
+                                  }}
+                                  onDragEnd={(e) => { 
+                                    e.cancelBubble = true; 
+                                    if (layersBeforeActionRef.current) {
+                                      commitSnapshot(layersBeforeActionRef.current);
+                                    }
+                                    updateItemById(item.id, old => ({...old, x: e.target.x(), y: e.target.y()}));
+                                  }} 
                                 />
                                 {isSelected && (
                                   <>
@@ -3254,13 +3465,25 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                                         stroke="#3b82f6" 
                                         strokeWidth={2 / stageScale} 
                                         draggable 
+                                        onDragStart={() => {
+                                          try {
+                                            layersBeforeActionRef.current = JSON.parse(JSON.stringify(layers));
+                                          } catch (e) {
+                                            layersBeforeActionRef.current = layers;
+                                          }
+                                        }}
                                         onDragMove={(e) => { 
                                           const newPoints = [...item.points]; 
                                           newPoints[ptIndex * 2] = e.target.x() - (item.x || 0); 
                                           newPoints[ptIndex * 2 + 1] = e.target.y() - (item.y || 0); 
                                           updateItemById(item.id, old => ({...old, points: newPoints})); 
                                         }} 
-                                        onDragEnd={(e) => { e.cancelBubble = true; }} 
+                                        onDragEnd={(e) => { 
+                                          e.cancelBubble = true; 
+                                          if (layersBeforeActionRef.current) {
+                                            commitSnapshot(layersBeforeActionRef.current);
+                                          }
+                                        }} 
                                       />
                                     ))}
                                   </>
@@ -3281,6 +3504,9 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                   <KonvaLayer name="transformer-layer">
                     <Transformer
                       ref={transformerRef}
+                      onTransformStart={() => {
+                        commitSnapshot();
+                      }}
                       boundBoxFunc={(oldBox, newBox) => {
                         if (Math.abs(newBox.width) < 15 || Math.abs(newBox.height) < 15) return oldBox;
                         return newBox;
