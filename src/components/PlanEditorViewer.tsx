@@ -7,7 +7,7 @@ import {
   Trash2, Settings, Layers, Hexagon, Check, LayoutTemplate, MoveHorizontal, Loader2,
   ZoomIn, ZoomOut, MousePointer2, Save, Download, ShieldAlert, Camera as LucideCamera,
   Eye, EyeOff, Lock, Unlock, Plus, SlidersHorizontal, ImagePlus, BringToFront, SendToBack, Type, PenTool, Ruler, X, ChevronDown, Map,
-  Crosshair, Undo2, Redo2
+  Crosshair, Undo2, Redo2, ExternalLink
 } from 'lucide-react';
 import { cn, sanitizeUrl } from '../utils';
 import { useToast } from '../contexts/ToastContext';
@@ -21,6 +21,8 @@ import { uploadPdfBlobWithFallback, uploadFileWithFallback } from '../utils/clou
 import { notifyNewDocument } from '../utils/documentNotificationHelper';
 import { safeStorage } from '../utils/safeStorage';
 import { dummySvgPlan } from '../utils/cadDemoPlan';
+import { queryClient } from '../lib/queryClient';
+import { DEFECTS_QUERY_KEY } from '../hooks/queries/useDefectsQuery';
 
 // NATIVE PDF ENGINE IMPORTS
 import UniversalPDFStudio from './UniversalPDFStudio';
@@ -136,8 +138,34 @@ const TOOL_LABELS: Record<string, { de: string; en: string }> = {
 type ToolType = 'pan' | 'defect' | 'zone' | 'text' | 'pen' | 'measure' | 'polygon' | 'titleblock' | 'rect' | 'circle' | 'scalebar' | 'image';
 type LineStyle = 'solid' | 'dashed' | 'dotted';
 
+export const SWISS_TRADES = [
+  'Baumeister',
+  'Gipser / Maler',
+  'Elektro',
+  'Sanitär / Heizung',
+  'Lüftung / Klima',
+  'Fensterbau / Fassade',
+  'Schreiner / Innenausbau',
+  'Bodenleger / Parkett',
+  'Dachdecker / Spengler',
+  'Metallbau',
+  'Gartenbau / Umgebung',
+  'Planung / Bauleitung'
+];
+
 interface BaseElement { id: string; type: ToolType; x: number; y: number; layerId?: string; opacity?: number; }
-interface DefectMarker extends BaseElement { type: 'defect'; title: string; description: string; priority?: string; trade?: string; status: 'open' | 'in_progress' | 'review' | 'closed' | 'resolved' | string; isSynced?: boolean; color?: string; strokeColor?: string;}
+interface DefectMarker extends BaseElement { 
+  type: 'defect'; 
+  title: string; 
+  description: string; 
+  priority?: 'Critical' | 'High' | 'Medium' | 'Low' | string; 
+  trade?: string; 
+  status: 'To Do' | 'In Progress' | 'In Review' | 'Done' | 'open' | 'in_progress' | 'review' | 'closed' | 'resolved' | string; 
+  isSynced?: boolean; 
+  color?: string; 
+  strokeColor?: string;
+  imageUrl?: string | null;
+}
 interface TextMarkup extends BaseElement { type: 'text'; text: string; color: string; size: number; }
 interface FreehandLine extends BaseElement { type: 'pen'; points: {x: number, y: number}[]; color: string; thickness: number; }
 interface Measurement extends BaseElement { type: 'measure'; start: {x: number, y: number}; end: {x: number, y: number}; color: string; }
@@ -265,13 +293,17 @@ const CADPlanPDFDocument = ({ settings, docHeader, planImage, elements, layers, 
                    );
                 }
                 if (el.type === 'defect') {
-                   const x = el.x * SAFE_W; const y = el.y * SAFE_H; const r = 4 * MM_TO_PX * SCALE_AVG;
-                   const pinColor = el.status === 'resolved' || el.status === 'Behoben' ? "#10b981" : 
-                                    el.status === 'review' || el.status === 'Abnahme' || el.status === 'Zur Abnahme' ? "#3b82f6" : 
-                                    el.status === 'in_progress' || el.status === 'In Bearbeitung' ? "#f59e0b" : "#ef4444";
+                   const x = el.x * SAFE_W; const y = el.y * SAFE_H; const r = 3.5 * MM_TO_PX * SCALE_AVG;
+                   const st = (el.status || '').toLowerCase();
+                   const isDone = st === 'done' || st === 'resolved' || st === 'behoben' || st === 'erledigt';
+                   const isReview = st === 'in review' || st === 'review' || st === 'abnahme';
+                   const isInProgress = st === 'in progress' || st === 'in_progress' || st === 'in arbeit';
+                   const pinColor = isDone ? "#10b981" : isReview ? "#3b82f6" : isInProgress ? "#f59e0b" : "#ef4444";
                    return (
                      <G key={el.id} opacity={totalOpacity}>
-                       <PDFCircle cx={x} cy={y} r={r} fill={pinColor} stroke="#ffffff" strokeWidth={0.8 * MM_TO_PX * SCALE_AVG} />
+                       <PDFCircle cx={x} cy={y} r={1.5 * MM_TO_PX * SCALE_AVG} fill="#000000" />
+                       <PDFCircle cx={x} cy={y - (4 * MM_TO_PX * SCALE_AVG)} r={r} fill={pinColor} stroke="#ffffff" strokeWidth={0.8 * MM_TO_PX * SCALE_AVG} />
+                       <PDFCircle cx={x} cy={y - (4 * MM_TO_PX * SCALE_AVG)} r={r * 0.45} fill="#ffffff" />
                      </G>
                    );
                 }
@@ -387,13 +419,14 @@ const CADPlanPDFDocument = ({ settings, docHeader, planImage, elements, layers, 
 };
 
 const defaultDemoDefectPins: DefectMarker[] = [
-  { id: 'el1', type: 'defect', x: 0.28, y: 0.35, title: 'Riss im Sichtbeton Achse B (Treppenhaus)', description: 'Haarriss Treppenhaus EG-1.OG. SIA 118 Rügefrist läuft. Spachtelung erforderlich.', status: 'open', priority: 'High', trade: 'Baumeister (Gebr. Keller Bau AG)', layerId: 'default' },
-  { id: 'el2', type: 'defect', x: 0.65, y: 0.22, title: 'Fensterdichtung beschädigt Nordfassade', description: 'Dichtungsprofil Wetterseite 1. OG eingedrückt. Vor Montage der Leibung ersetzen.', status: 'in_progress', priority: 'Medium', trade: 'Fensterbau (SwissWindows AG)', layerId: 'default' },
-  { id: 'el3', type: 'defect', x: 0.72, y: 0.70, title: 'Schutzabdeckung Bodenheizung montiert', description: 'Trittschutz vor Einbringen des Unterlagsbodens montiert. Bereit zur Bauleitung-Abnahme.', status: 'review', priority: 'Medium', trade: 'Heizung / Sanitär', layerId: 'default' },
-  { id: 'el4', type: 'defect', x: 0.38, y: 0.78, title: 'Aussparung Steigzone brandschutzverkleidet (SIA 118)', description: 'Aussparung mit Promat EI90 verkleidet und gemäss Brandschutzvorschriften VKF abgenommen.', status: 'resolved', priority: 'Low', trade: 'Brandschutz & Dämmung', layerId: 'default' }
+  { id: 'el1', type: 'defect', x: 0.28, y: 0.35, title: 'Riss im Sichtbeton Achse B (Treppenhaus)', description: 'Haarriss Treppenhaus EG-1.OG. SIA 118 Rügefrist läuft. Spachtelung erforderlich.', status: 'To Do', priority: 'High', trade: 'Baumeister (Gebr. Keller Bau AG)', layerId: 'default' },
+  { id: 'el2', type: 'defect', x: 0.65, y: 0.22, title: 'Fensterdichtung beschädigt Nordfassade', description: 'Dichtungsprofil Wetterseite 1. OG eingedrückt. Vor Montage der Leibung ersetzen.', status: 'In Progress', priority: 'Medium', trade: 'Fensterbau (SwissWindows AG)', layerId: 'default' },
+  { id: 'el3', type: 'defect', x: 0.72, y: 0.70, title: 'Schutzabdeckung Bodenheizung montiert', description: 'Trittschutz vor Einbringen des Unterlagsbodens montiert. Bereit zur Bauleitung-Abnahme.', status: 'In Review', priority: 'Medium', trade: 'Heizung / Sanitär', layerId: 'default' },
+  { id: 'el4', type: 'defect', x: 0.38, y: 0.78, title: 'Aussparung Steigzone brandschutzverkleidet (SIA 118)', description: 'Aussparung mit Promat EI90 verkleidet und gemäss Brandschutzvorschriften VKF abgenommen.', status: 'Done', priority: 'Low', trade: 'Brandschutz & Dämmung', layerId: 'default' }
 ];
 
 export default function PlanEditorViewer({ projectId: propProjectId }: { projectId?: string }) {
+  const navigate = useNavigate();
   const { addToast } = useToast();
   const { currentUser } = useAuth();
   const { activeProjectId, projects, isDemoMode, demoData } = useProject() as any; 
@@ -763,7 +796,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
        return; 
     }
 
-    const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
     const fetchPlans = async () => {
       try {
         const { data: plans, error: fetchErr } = await supabase
@@ -775,11 +808,52 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           console.warn("Fehler beim Abrufen der CAD-Pläne:", fetchErr);
         }
 
+        let dbDefects: any[] = [];
+        try {
+          const { data: dData } = await supabase
+            .from('defects')
+            .select('*')
+            .eq('project_id', currentProjectId);
+          if (dData && dData.length > 0) dbDefects = dData;
+        } catch (_) {}
+
         if (plans && plans.length > 0) {
           const mappedPlans = plans.map((p: any) => {
             const metaEl = Array.isArray(p.elements) ? p.elements.find((e: any) => e?.id === '__plan_meta__') : null;
             const bgImgEl = Array.isArray(p.elements) ? p.elements.find((e: any) => e?.id === 'bg-img' || e?.type === 'image') : null;
             const resolvedImage = p.plan_image || p.planImage || metaEl?.plan_image || bgImgEl?.url || (isDemoProject ? dummySvgPlan : null);
+
+            let mergedElements: PlanElement[] = (p.elements || []).filter((e: any) => e?.id !== '__plan_meta__');
+
+            // Merge / sync defects from Supabase defects table
+            dbDefects.forEach(dbDef => {
+              const pos = dbDef.position || {};
+              const posX = typeof dbDef.position_x === 'number' ? dbDef.position_x : (typeof pos.x === 'number' ? pos.x : null);
+              const posY = typeof dbDef.position_y === 'number' ? dbDef.position_y : (typeof pos.y === 'number' ? pos.y : null);
+              if (posX !== null && posY !== null) {
+                const existingIdx = mergedElements.findIndex(e => e.id === dbDef.id);
+                const marker: DefectMarker = {
+                  id: dbDef.id,
+                  type: 'defect',
+                  x: posX,
+                  y: posY,
+                  title: dbDef.prompt || dbDef.title || 'Mangel',
+                  description: dbDef.description || '',
+                  status: dbDef.status || 'To Do',
+                  priority: dbDef.severity || dbDef.priority || 'High',
+                  trade: dbDef.trade || 'Baumeister',
+                  imageUrl: dbDef.image_url || null,
+                  layerId: 'default',
+                  isSynced: true
+                };
+                if (existingIdx >= 0) {
+                  mergedElements[existingIdx] = { ...mergedElements[existingIdx], ...marker };
+                } else {
+                  mergedElements.push(marker);
+                }
+              }
+            });
+
             return {
               ...p,
               plan_name: p.name || p.plan_name || (isDemoProject ? 'Grundriss EG - Architektur & Tragwerk' : 'Unbenannter Plan'),
@@ -787,7 +861,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
               paper_format: p.paper_format || metaEl?.paper_format || 'A3',
               paper_orientation: p.paper_orientation || metaEl?.paper_orientation || 'landscape',
               plan_scale: p.plan_scale || metaEl?.plan_scale || 50,
-              elements: (p.elements || []).filter((e: any) => e?.id !== '__plan_meta__')
+              elements: mergedElements
             };
           });
           setProjectPlans(mappedPlans as any);
@@ -1295,8 +1369,22 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       const newEl: TextMarkup = { id: `text_${Date.now()}`, type: 'text', x: nx, y: ny, text: 'Text', color: '#000000', size: 5, layerId: activeLayerId };
       commitElements([...elements, newEl]); setSelectedElement(newEl); setActiveTool('pan');
     } else if (activeTool === 'defect') {
-      const nDefect: DefectMarker = { id: `defect_${Date.now()}`, type: 'defect', x: nx, y: ny, title: t('defect'), description: '', priority: 'Medium', trade: 'Planung', status: 'open', isSynced: false, layerId: activeLayerId };
-      setDefectPrompt({ isOpen: true, element: nDefect, file: null, preview: null }); setActiveTool('pan');
+      const nDefect: DefectMarker = { 
+        id: `defect_${Date.now()}`, 
+        type: 'defect', 
+        x: nx, 
+        y: ny, 
+        title: '', 
+        description: '', 
+        priority: 'High', 
+        trade: 'Baumeister', 
+        status: 'To Do', 
+        isSynced: false, 
+        layerId: activeLayerId,
+        imageUrl: null
+      };
+      setDefectPrompt({ isOpen: true, element: nDefect, file: null, preview: null }); 
+      setActiveTool('pan');
     } else if (activeTool === 'pen') {
       setDraftElement({ id: `pen_${Date.now()}`, type: 'pen', x: nx, y: ny, points: [{x: nx, y: ny}, {x: nx, y: ny}], color: '#ef4444', thickness: 1.5, opacity: 1, layerId: activeLayerId });
     } else if (activeTool === 'measure') {
@@ -1376,7 +1464,16 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   };
 
   const updateElement = (upd: PlanElement) => { commitElements(elements.map(e => e.id === upd.id ? upd : e)); setSelectedElement(upd); };
-  const deleteElement = (id: string) => { commitElements(elements.filter(e => e.id !== id)); setSelectedElement(null); };
+  const deleteElement = (id: string) => { 
+    const target = elements.find(e => e.id === id);
+    commitElements(elements.filter(e => e.id !== id)); 
+    setSelectedElement(null); 
+    if (target?.type === 'defect' && id && !id.startsWith('defect_') && !isDemoMode) {
+      supabase.from('defects').delete().eq('id', id).then(() => {
+        queryClient.invalidateQueries({ queryKey: [DEFECTS_QUERY_KEY] });
+      });
+    }
+  };
 
   const allElementsToRender = (draftElement ? [...elements, draftElement] : elements).filter(el => {
      const layer = layers.find(l => l.id === (el.layerId || 'default'));
@@ -1614,17 +1711,119 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
       if (el.type === 'defect') {
         const d = el as DefectMarker;
-        const radius = isPdf ? (4 * MM_TO_PX) : (10 * invScale);
-        const strokeW = isPdf ? (0.8 * MM_TO_PX) : (1.5 * invScale);
-        const textFz = isPdf ? (4 * MM_TO_PX) : (10 * invScale);
-        const textY = isPdf ? (1.5 * MM_TO_PX) : 0;
-        const pinColor = d.status === 'resolved' || d.status === 'Behoben' ? "#10b981" : 
-                         d.status === 'review' || d.status === 'Abnahme' || d.status === 'Zur Abnahme' ? "#3b82f6" : 
-                         d.status === 'in_progress' || d.status === 'In Bearbeitung' ? "#f59e0b" : "#ef4444";
+        const isSel = selectedElement?.id === d.id && !isPdf;
+        const pinScale = isPdf ? (MM_TO_PX * 0.7) : (1.1 * invScale);
+
+        const rawSt = (d.status || '').toLowerCase().trim();
+        const isDone = rawSt === 'done' || rawSt === 'erledigt' || rawSt === 'behoben' || rawSt === 'resolved' || rawSt === 'closed';
+        const isReview = rawSt === 'in review' || rawSt === 'review' || rawSt === 'in prüfung' || rawSt === 'abnahme' || rawSt === 'zur abnahme';
+        const isInProgress = rawSt === 'in progress' || rawSt === 'in arbeit' || rawSt === 'in_progress';
+
+        const pinColor = isDone ? "#10b981" : 
+                         isReview ? "#3b82f6" : 
+                         isInProgress ? "#f59e0b" : "#ef4444";
+
+        const w = 18 * pinScale;
+        const h = 26 * pinScale;
+        const headCenterY = -17 * pinScale;
+        const badgeRadius = 6.5 * pinScale;
+
         return (
-          <g key={d.id} style={{ opacity: totalOpacity, cursor: activeTool === 'pan' ? 'move' : 'pointer', pointerEvents: 'auto' }} transform={`translate(${d.x * internalW}, ${d.y * internalH})`} onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, d); }}>
-            <circle cx="0" cy="0" r={`${radius}px`} fill={pinColor} stroke="#ffffff" strokeWidth={`${strokeW}px`} />
-            <text x="0" y={`${textY}px`} fill="#ffffff" fontSize={`${textFz}px`} fontFamily="sans-serif" fontWeight="bold" textAnchor="middle">!</text>
+          <g 
+            key={d.id} 
+            style={{ 
+              opacity: totalOpacity, 
+              cursor: activeTool === 'pan' ? 'pointer' : 'default', 
+              pointerEvents: 'auto'
+            }} 
+            transform={`translate(${d.x * internalW}, ${d.y * internalH})`} 
+            onPointerDown={(e) => { if (!isPdf) handleElementPointerDown(e, d); }}
+          >
+            {/* Coordinate Target Anchor on Plan Floor */}
+            <circle cx="0" cy="0" r={3 * pinScale} fill="rgba(0,0,0,0.25)" />
+            <circle cx="0" cy="0" r={1.5 * pinScale} fill="#000000" />
+
+            {/* Selection Glow / Pulse */}
+            {isSel && (
+              <circle 
+                cx="0" 
+                cy={headCenterY} 
+                r={14 * pinScale} 
+                fill="none" 
+                stroke="#3b82f6" 
+                strokeWidth={2.5 * pinScale} 
+                strokeDasharray={`${4 * pinScale},${3 * pinScale}`}
+              />
+            )}
+
+            {/* Teardrop Pin Body */}
+            <path 
+              d={`M 0 0 C -${w * 0.45} -${h * 0.35}, -${w * 0.55} -${h * 0.75}, -${w * 0.5} -${h * 0.8} A ${w * 0.5} ${w * 0.5} 0 1 1 ${w * 0.5} -${h * 0.8} C ${w * 0.55} -${h * 0.75}, ${w * 0.45} -${h * 0.35}, 0 0 Z`} 
+              fill={pinColor} 
+              stroke="#ffffff" 
+              strokeWidth={1.8 * pinScale} 
+              filter={isSel ? "drop-shadow(0 0 8px rgba(59, 130, 246, 0.9))" : "drop-shadow(0 2px 5px rgba(0,0,0,0.4))"}
+            />
+
+            {/* Inner White Badge */}
+            <circle cx="0" cy={headCenterY} r={badgeRadius} fill="#ffffff" />
+
+            {/* Centered Status Icon inside Badge */}
+            {isDone ? (
+              <text 
+                x="0" 
+                y={headCenterY} 
+                fill={pinColor} 
+                fontSize={8 * pinScale} 
+                fontFamily="system-ui, sans-serif" 
+                fontWeight="900" 
+                textAnchor="middle" 
+                dominantBaseline="central"
+              >
+                ✓
+              </text>
+            ) : (
+              <text 
+                x="0" 
+                y={headCenterY} 
+                fill={pinColor} 
+                fontSize={9 * pinScale} 
+                fontFamily="system-ui, sans-serif" 
+                fontWeight="900" 
+                textAnchor="middle" 
+                dominantBaseline="central"
+              >
+                !
+              </text>
+            )}
+
+            {/* Label Pill on Selection or Hover (Title & Trade) */}
+            {!isPdf && (isSel || d.title) && (
+              <g transform={`translate(0, ${-h - (8 * pinScale)})`}>
+                <rect 
+                  x={-Math.min(90 * pinScale, ((d.title || 'Mangel').length * 3.8 + 8) * pinScale)} 
+                  y={-7 * pinScale} 
+                  width={Math.min(180 * pinScale, ((d.title || 'Mangel').length * 7.6 + 16) * pinScale)} 
+                  height={14 * pinScale} 
+                  rx={4 * pinScale} 
+                  fill="rgba(15, 23, 42, 0.92)" 
+                  stroke={isSel ? "#3b82f6" : "rgba(255, 255, 255, 0.25)"} 
+                  strokeWidth={1 * pinScale}
+                />
+                <text 
+                  x="0" 
+                  y="0" 
+                  fill="#ffffff" 
+                  fontSize={7.5 * pinScale} 
+                  fontFamily="system-ui, sans-serif" 
+                  fontWeight="bold" 
+                  textAnchor="middle" 
+                  dominantBaseline="central"
+                >
+                  {(d.title || 'Mangel').length > 22 ? (d.title || 'Mangel').substring(0, 20) + '...' : (d.title || 'Mangel')}
+                </text>
+              </g>
+            )}
           </g>
         );
       }
@@ -1705,52 +1904,100 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
   const handleDefectSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!defectPrompt || !defectPrompt.element.description) return;
-    setIsSavingDefect(true);
-    const newPin = defectPrompt.element; 
-    newPin.isSynced = true; 
-    setElements([...elements, newPin]);
-
-    if (isDemoMode) {
-      addToast(t('defect_saved'), 'success'); 
-      setDefectPrompt(null);
-      setIsSavingDefect(false);
+    if (!defectPrompt || !defectPrompt.element.title?.trim()) {
+      addToast(currentLang === 'de' ? 'Bitte einen Titel eingeben.' : 'Please enter a title.', 'info');
       return;
     }
-    
-    if (currentUser) {
-      try {
-        const safeCompanyId = currentUser.companyId || (currentUser as any)?.company_id || currentUser.uid;
+    setIsSavingDefect(true);
+    const newPin: DefectMarker = { ...defectPrompt.element };
+    newPin.title = newPin.title.trim();
+    newPin.description = newPin.description?.trim() || '';
+    newPin.status = 'To Do';
+    newPin.priority = newPin.priority || 'High';
+    newPin.trade = newPin.trade || 'Baumeister';
+    newPin.isSynced = true;
+
+    let imageUrl: string | null = null;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+
+    try {
+      // 1. Upload photo evidence if attached
+      if (defectPrompt.file && safeCompanyId) {
+        try {
+          const file = defectPrompt.file;
+          const fileExt = file.name.split('.').pop() || 'jpg';
+          const filePath = `${safeCompanyId}/defects/${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
+          const { error: uploadErr } = await supabase.storage.from('defects').upload(filePath, file, { upsert: true });
+          if (!uploadErr) {
+            const { data: urlData } = supabase.storage.from('defects').getPublicUrl(filePath);
+            imageUrl = urlData?.publicUrl || null;
+            newPin.imageUrl = imageUrl;
+          }
+        } catch (uploadErr) {
+          console.warn("Storage upload error:", uploadErr);
+        }
+      }
+
+      // 2. Insert into Supabase defects table
+      if (!isDemoMode && currentUser) {
         const payload: any = {
-          prompt: newPin.description || 'CAD Mangel',
-          description: `Erfasst im 2D Plan Editor (${planName || 'Unbenannt'}).`,
+          prompt: newPin.title,
+          description: newPin.description || `Erfasst im 2D CAD Plan Editor (${planName || 'CAD Grundriss'}).`,
           status: 'To Do',
-          severity: 'High',
+          severity: newPin.priority || 'High',
+          trade: newPin.trade || 'Baumeister',
+          location: planName || 'CAD Grundriss',
           project_id: currentProjectId || 'global',
           company_id: safeCompanyId || null,
           owner_id: currentUser.uid || null,
           position: { x: newPin.x, y: newPin.y, z: 0 },
+          image_url: imageUrl,
           created_at: new Date().toISOString()
         };
 
         const { data: created, error } = await supabase.from('defects').insert(payload).select().maybeSingle();
-        if (error) throw error;
-
-        if (created?.id) {
-          setElements(prev => prev.map(el => el.id === newPin.id ? { ...el, id: created.id } : el));
+        if (error) {
+          console.error("CAD Defect Insert Error:", error);
+          throw error;
         }
 
-        addToast(t('defect_saved'), 'success'); 
-        setDefectPrompt(null);
-      } catch (err) { 
-        console.error("CAD Defect Error:", err);
-        addToast(t('error_saving_defect'), 'error'); 
-      } finally { 
-        setIsSavingDefect(false); 
+        if (created?.id) {
+          newPin.id = created.id;
+        }
+
+        // Invalidate TanStack query cache so Defects.tsx receives the new ticket immediately
+        queryClient.invalidateQueries({ queryKey: [DEFECTS_QUERY_KEY] });
       }
-    } else { 
-      setDefectPrompt(null); 
-      setIsSavingDefect(false); 
+
+      // 3. Commit elements into CAD state & undo/redo stack
+      const updatedElements = [...elements, newPin];
+      commitElements(updatedElements);
+      setSelectedElement(newPin);
+
+      // 4. Auto-save to cad_plans table
+      if (activePlanId && activePlanId !== 'demo-cad-1' && activePlanId !== 'system-fallback-plan') {
+        const metaEl = {
+          id: '__plan_meta__',
+          type: '__plan_meta__',
+          plan_image: planImage,
+          paper_format: paperFormat,
+          paper_orientation: paperOrientation,
+          plan_scale: planScale
+        };
+        const elementsToPersist = [...updatedElements.filter((el: any) => el?.id !== '__plan_meta__'), metaEl];
+        supabase.from('cad_plans').update({
+          elements: elementsToPersist,
+          updated_at: new Date().toISOString()
+        }).eq('id', activePlanId).then(() => {});
+      }
+
+      addToast(t('defect_saved'), 'success');
+      setDefectPrompt(null);
+    } catch (err) {
+      console.error("CAD Defect Error:", err);
+      addToast(t('error_saving_defect'), 'error');
+    } finally {
+      setIsSavingDefect(false);
     }
   };
 
@@ -2118,6 +2365,165 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                   </div>
                   
                   <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-1">
+                    {selectedElement.type === 'defect' && (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500">
+                          <MapPin size={18} className="shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-bold uppercase tracking-wider">SIA 118 Mangel-Pin</div>
+                            <div className="text-[10px] text-text-muted truncate">
+                              Plan-Koordinaten: X {Math.round((selectedElement as DefectMarker).x * 100)}% · Y {Math.round((selectedElement as DefectMarker).y * 100)}%
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-bold uppercase text-text-muted mb-1 block">Titel / Mangel</label>
+                          <input 
+                            type="text" 
+                            value={(selectedElement as DefectMarker).title || ''} 
+                            onChange={(e) => {
+                              const updated = { ...(selectedElement as DefectMarker), title: e.target.value };
+                              updateElement(updated);
+                              if (updated.id && !updated.id.startsWith('defect_') && !isDemoMode) {
+                                supabase.from('defects').update({ prompt: e.target.value }).eq('id', updated.id).then(() => {
+                                  queryClient.invalidateQueries({ queryKey: [DEFECTS_QUERY_KEY] });
+                                });
+                              }
+                            }} 
+                            className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs font-bold text-text-primary outline-none focus:border-red-500/50" 
+                            placeholder="Mangel-Titel"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2.5">
+                          <div>
+                            <label className="text-[10px] font-bold uppercase text-text-muted mb-1 block">Status</label>
+                            <select 
+                              value={(selectedElement as DefectMarker).status || 'To Do'} 
+                              onChange={(e) => {
+                                const newStatus = e.target.value;
+                                const updated = { ...(selectedElement as DefectMarker), status: newStatus };
+                                updateElement(updated);
+                                if (updated.id && !updated.id.startsWith('defect_') && !isDemoMode) {
+                                  supabase.from('defects').update({ status: newStatus }).eq('id', updated.id).then(() => {
+                                    queryClient.invalidateQueries({ queryKey: [DEFECTS_QUERY_KEY] });
+                                  });
+                                }
+                              }}
+                              className="w-full bg-background border border-border rounded-xl px-2 py-2 text-xs font-bold text-text-primary outline-none cursor-pointer"
+                            >
+                              <option value="To Do">🔴 To Do (Offen)</option>
+                              <option value="In Progress">🟠 In Progress</option>
+                              <option value="In Review">🔵 In Review</option>
+                              <option value="Done">🟢 Done (Erledigt)</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] font-bold uppercase text-text-muted mb-1 block">Priorität</label>
+                            <select 
+                              value={(selectedElement as DefectMarker).priority || 'High'} 
+                              onChange={(e) => {
+                                const newSev = e.target.value;
+                                const updated = { ...(selectedElement as DefectMarker), priority: newSev };
+                                updateElement(updated);
+                                if (updated.id && !updated.id.startsWith('defect_') && !isDemoMode) {
+                                  supabase.from('defects').update({ severity: newSev }).eq('id', updated.id).then(() => {
+                                    queryClient.invalidateQueries({ queryKey: [DEFECTS_QUERY_KEY] });
+                                  });
+                                }
+                              }}
+                              className="w-full bg-background border border-border rounded-xl px-2 py-2 text-xs font-bold text-text-primary outline-none cursor-pointer"
+                            >
+                              <option value="Critical">Kritisch</option>
+                              <option value="High">Hoch</option>
+                              <option value="Medium">Mittel</option>
+                              <option value="Low">Niedrig</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-bold uppercase text-text-muted mb-1 block">Gewerk / Handwerker</label>
+                          <input 
+                            type="text" 
+                            list="cad-swiss-trades-list"
+                            value={(selectedElement as DefectMarker).trade || ''} 
+                            onChange={(e) => {
+                              const updated = { ...(selectedElement as DefectMarker), trade: e.target.value };
+                              updateElement(updated);
+                              if (updated.id && !updated.id.startsWith('defect_') && !isDemoMode) {
+                                supabase.from('defects').update({ trade: e.target.value }).eq('id', updated.id).then(() => {
+                                  queryClient.invalidateQueries({ queryKey: [DEFECTS_QUERY_KEY] });
+                                });
+                              }
+                            }} 
+                            className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs font-medium text-text-primary outline-none focus:border-red-500/50" 
+                            placeholder="z.B. Baumeister, Gipser, Elektro"
+                          />
+                          <datalist id="cad-swiss-trades-list">
+                            {SWISS_TRADES.map(tr => (
+                              <option key={tr} value={tr} />
+                            ))}
+                          </datalist>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-bold uppercase text-text-muted mb-1 block">Beschreibung</label>
+                          <textarea 
+                            rows={3} 
+                            value={(selectedElement as DefectMarker).description || ''} 
+                            onChange={(e) => {
+                              const updated = { ...(selectedElement as DefectMarker), description: e.target.value };
+                              updateElement(updated);
+                              if (updated.id && !updated.id.startsWith('defect_') && !isDemoMode) {
+                                supabase.from('defects').update({ description: e.target.value }).eq('id', updated.id).then(() => {
+                                  queryClient.invalidateQueries({ queryKey: [DEFECTS_QUERY_KEY] });
+                                });
+                              }
+                            }} 
+                            className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs font-medium text-text-primary outline-none focus:border-red-500/50 resize-none" 
+                            placeholder="Detaillierte Beschreibung..."
+                          />
+                        </div>
+
+                        {(selectedElement as DefectMarker).imageUrl && (
+                          <div>
+                            <label className="text-[10px] font-bold uppercase text-text-muted mb-1 block">Beweisfoto</label>
+                            <div className="relative rounded-xl overflow-hidden border border-border max-h-36 group">
+                              <img 
+                                src={sanitizeUrl((selectedElement as DefectMarker).imageUrl!)} 
+                                alt="Defect" 
+                                className="w-full h-32 object-cover" 
+                              />
+                              <a 
+                                href={sanitizeUrl((selectedElement as DefectMarker).imageUrl!)} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-bold transition-opacity"
+                              >
+                                Vollbild anzeigen ↗
+                              </a>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="pt-1">
+                          <button 
+                            type="button" 
+                            onClick={() => {
+                              navigate(`/project/${currentProjectId}/defects`);
+                            }} 
+                            className="w-full py-2.5 px-3 bg-accent-ai/10 text-accent-ai hover:bg-accent-ai/20 border border-accent-ai/30 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                          >
+                            <ExternalLink size={14} />
+                            Im Mängel-Modul öffnen
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     {selectedElement.type === 'image' && (
                       <>
                         <div>
@@ -2564,59 +2970,153 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       </div>
 
       {isMounted && defectPrompt && createPortal(
-        <div className="fixed inset-0 z-[99999] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-surface border-t sm:border border-border sm:rounded-2xl rounded-t-3xl p-6 w-full max-w-md shadow-2xl animate-in slide-in-from-bottom sm:zoom-in-95">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 flex items-center justify-center shrink-0 shadow-xs">
-                <ShieldAlert size={16} />
+        <div className="fixed inset-0 z-[99999] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+          <div className="bg-surface border-t sm:border border-border sm:rounded-2xl rounded-t-3xl p-5 sm:p-6 w-full max-w-lg shadow-2xl animate-in slide-in-from-bottom sm:zoom-in-95 max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div className="flex items-center justify-between mb-4 border-b border-border pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 flex items-center justify-center shrink-0 shadow-xs">
+                  <ShieldAlert size={18} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-text-primary tracking-tight">SIA 118 Mangel erfassen</h3>
+                  <p className="text-[11px] text-text-muted">Erstellt gleichzeitig einen Pin auf dem Plan & ein Ticket im Mängel-Modul</p>
+                </div>
               </div>
-              <h3 className="text-lg font-bold text-text-primary tracking-tight">{t('describe_defect')}</h3>
+              <button 
+                type="button" 
+                onClick={() => setDefectPrompt(null)} 
+                className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-white/5 transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
             </div>
+
             <form onSubmit={handleDefectSubmit}>
               <div className="space-y-4 mb-6">
                 <div>
-                  <label className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2 block">{t('describe_defect')}</label>
-                  <textarea 
-                    value={defectPrompt.element.description} 
-                    onChange={(e) => setDefectPrompt({ ...defectPrompt, element: { ...defectPrompt.element, description: e.target.value } })} 
-                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-text-primary focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/50 font-medium shadow-inner transition-all resize-none" 
-                    placeholder={language === 'de' ? 'z.B. Riss in der Wand' : 'e.g. Crack in wall'} 
-                    rows={3}
+                  <label className="text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5 block">
+                    Mangel-Titel / Kurzbeschrieb <span className="text-red-500">*</span>
+                  </label>
+                  <input 
+                    type="text"
+                    required
+                    value={defectPrompt.element.title || ''} 
+                    onChange={(e) => setDefectPrompt({ ...defectPrompt, element: { ...defectPrompt.element, title: e.target.value } })} 
+                    className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-text-primary text-sm font-semibold focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/50 shadow-inner transition-all" 
+                    placeholder={currentLang === 'de' ? 'z.B. Riss im Sichtbeton Achse B' : 'e.g. Crack in concrete wall axis B'} 
                     autoFocus 
                   />
                 </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5 block">
+                      Gewerk / Handwerker
+                    </label>
+                    <input 
+                      type="text"
+                      list="cad-modal-trades-list"
+                      value={defectPrompt.element.trade || 'Baumeister'} 
+                      onChange={(e) => setDefectPrompt({ ...defectPrompt, element: { ...defectPrompt.element, trade: e.target.value } })} 
+                      className="w-full bg-background border border-border rounded-xl px-3 py-2 text-text-primary text-xs font-medium focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/50" 
+                      placeholder="z.B. Baumeister"
+                    />
+                    <datalist id="cad-modal-trades-list">
+                      {SWISS_TRADES.map(tName => (
+                        <option key={tName} value={tName} />
+                      ))}
+                    </datalist>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5 block">
+                      Priorität
+                    </label>
+                    <select 
+                      value={defectPrompt.element.priority || 'High'} 
+                      onChange={(e) => setDefectPrompt({ ...defectPrompt, element: { ...defectPrompt.element, priority: e.target.value } })} 
+                      className="w-full bg-background border border-border rounded-xl px-3 py-2 text-text-primary text-xs font-bold focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/50 cursor-pointer"
+                    >
+                      <option value="Critical">🚨 {currentLang === 'de' ? 'Kritisch' : 'Critical'}</option>
+                      <option value="High">⚠️ {currentLang === 'de' ? 'Hoch' : 'High'}</option>
+                      <option value="Medium">⚡ {currentLang === 'de' ? 'Mittel' : 'Medium'}</option>
+                      <option value="Low">ℹ️ {currentLang === 'de' ? 'Niedrig' : 'Low'}</option>
+                    </select>
+                  </div>
+                </div>
+
                 <div>
-                   <label className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2 block">{language === 'de' ? 'Foto / Beweisbild (Optional)' : 'Photo / Evidence (Optional)'}</label>
-                   <label className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-xl p-4 cursor-pointer hover:bg-white/5 transition-colors bg-background group">
-                      {defectPrompt.preview ? (
-                         <div className="relative w-full h-32 rounded-lg overflow-hidden border border-border">
-                            <img src={sanitizeUrl(defectPrompt.preview)} className="w-full h-full object-cover" alt="Preview" />
-                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white font-bold text-xs">
-                               {language === 'de' ? 'Bild ändern' : 'Change Image'}
-                            </div>
-                         </div>
-                      ) : (
-                         <>
-                           <LucideCamera size={24} className="text-text-muted mb-2 group-hover:text-text-primary transition-colors" />
-                           <span className="text-xs text-text-muted font-medium group-hover:text-text-primary transition-colors text-center">
-                             {language === 'de' ? 'Bild hochladen oder aufnehmen' : 'Upload or take a photo'}
-                           </span>
-                         </>
-                      )}
-                      <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => {
-                         const f = e.target.files?.[0];
-                         if(f) {
-                            setDefectPrompt({...defectPrompt, file: f, preview: URL.createObjectURL(f)});
-                         }
-                      }} />
+                  <label className="text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5 block">
+                    Detaillierte Beschreibung
+                  </label>
+                  <textarea 
+                    value={defectPrompt.element.description || ''} 
+                    onChange={(e) => setDefectPrompt({ ...defectPrompt, element: { ...defectPrompt.element, description: e.target.value } })} 
+                    className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-text-primary text-xs font-medium focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/50 shadow-inner transition-all resize-none" 
+                    placeholder={currentLang === 'de' ? 'SIA 118 Rügefrist, genaue Lage oder Handlungsanweisung...' : 'Details about the defect and instructions...'} 
+                    rows={3}
+                  />
+                </div>
+
+                <div>
+                   <label className="text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5 block">
+                     {currentLang === 'de' ? 'Foto / Beweisbild (Optional)' : 'Photo / Evidence (Optional)'}
                    </label>
+                   {defectPrompt.preview ? (
+                      <div className="relative w-full h-36 rounded-xl overflow-hidden border border-border group bg-background">
+                         <img src={sanitizeUrl(defectPrompt.preview)} className="w-full h-full object-cover" alt="Preview" />
+                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-3 transition-opacity">
+                            <label className="px-3 py-1.5 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-lg text-white font-bold text-xs cursor-pointer transition-colors">
+                               {currentLang === 'de' ? 'Bild ändern' : 'Change Image'}
+                               <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => {
+                                  const f = e.target.files?.[0];
+                                  if(f) {
+                                     setDefectPrompt({...defectPrompt, file: f, preview: URL.createObjectURL(f)});
+                                  }
+                               }} />
+                            </label>
+                            <button 
+                              type="button" 
+                              onClick={() => setDefectPrompt({ ...defectPrompt, file: null, preview: null })} 
+                              className="px-3 py-1.5 bg-red-500/80 hover:bg-red-600 rounded-lg text-white font-bold text-xs transition-colors"
+                            >
+                              Entfernen
+                            </button>
+                         </div>
+                      </div>
+                   ) : (
+                      <label className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-xl p-5 cursor-pointer hover:bg-white/5 transition-colors bg-background group">
+                         <LucideCamera size={26} className="text-text-muted mb-1.5 group-hover:text-text-primary transition-colors" />
+                         <span className="text-xs text-text-muted font-medium group-hover:text-text-primary transition-colors text-center">
+                           {currentLang === 'de' ? 'Foto aufnehmen oder Bilddatei hochladen' : 'Take a photo or upload an image file'}
+                         </span>
+                         <span className="text-[10px] text-text-muted/70 mt-0.5">JPG, PNG, WebP bis 20MB</span>
+                         <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if(f) {
+                               setDefectPrompt({...defectPrompt, file: f, preview: URL.createObjectURL(f)});
+                            }
+                         }} />
+                      </label>
+                   )}
                 </div>
               </div>
-              <div className="flex justify-end gap-3">
-                <button type="button" onClick={() => setDefectPrompt(null)} className="h-9 px-4 text-xs font-bold text-text-muted hover:text-text-primary transition-colors cursor-pointer">{t('cancel')}</button>
-                <button type="submit" disabled={isSavingDefect} className="h-9 px-4 bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl text-xs font-bold hover:bg-red-500/20 transition-all shadow-xs flex items-center gap-2 disabled:opacity-50 cursor-pointer">
+
+              <div className="flex items-center justify-end gap-3 pt-2 border-t border-border">
+                <button 
+                  type="button" 
+                  onClick={() => setDefectPrompt(null)} 
+                  className="h-10 px-4 text-xs font-bold text-text-muted hover:text-text-primary transition-colors cursor-pointer"
+                >
+                  {t('cancel')}
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={isSavingDefect || !defectPrompt.element.title?.trim()} 
+                  className="h-10 px-5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-red-600/20 flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+                >
                    {isSavingDefect && <Loader2 size={14} className="animate-spin" />}
-                   {t('create_ticket')}
+                   <span>{currentLang === 'de' ? 'Mangel erfassen & Ticket anlegen' : 'Create Defect Ticket'}</span>
                 </button>
               </div>
             </form>

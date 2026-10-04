@@ -7,6 +7,43 @@
 
 ## 🏆 Erfolgsliste von heute (5. Oktober 2026)
 
+### 0.00000 CAD-Plan & Mängel-Modul: Behebung Mängelerfassung, Synchronisation (TanStack Query Cache), SIA-118 Teardrop-Pin & Mängel-Inspektor
+* **Problemstellung & Benutzer-Anforderung:**
+  * Bei der Erfassung eines Mangels im CAD-Plan-Editor funktionierte die Erfassung nicht vollständig (nur Kurzbeschreibung, kein Titel, kein Gewerk, keine Priorität, Beweisfotos wurden nicht in Supabase Storage geladen).
+  * Nach dem Erfassen im CAD-Plan erschien das Ticket im Modul «Mängel & Tickets» nicht (alle Spalten «To Do», «In Progress», «In Review», «Done» zeigten 0 Tickets).
+  * Das Mangel-Symbol / der Mangel-Punkt auf dem Plan wurde falsch dargestellt (nur flacher roter Kreis mit dezentriertem Ausrufezeichen statt präzisem Schweizer SIA-Architektur-Nadel-Pin).
+  * Bei Klick auf den Mangel-Pin zeigte das Eigenschaften-Panel nur generische Zeichenstile («Linienstärke», «Deckkraft») statt eines echten Mängel-Inspektors mit Titel, Status, Gewerk, Foto und Direktlink.
+* **Ursachenanalyse & Behebung:**
+  * **1. Synchronisation & TanStack Query Cache (`useDefectsQuery.ts` & `Defects.tsx`):**
+    * TanStack Query besass einen Standard-Cache von 2 Minuten (`staleTime: 1000 * 60 * 2`). Wurde der Mangel im Plan erfasst und das Mängel-Modul aufgerufen, lieferte React Query das zuvor gecachte leere Array zurück, da keine Cache-Invalidierung ausgelöst wurde.
+    * Status-Normalisierung erweitert: Status-Werte wie `'open'`, `'offen'`, `'todo'` etc. werden robust auf `'To Do'` normalisiert und fallen nie mehr durch das Spaltenraster.
+    * In `PlanEditorViewer.tsx` wird nach jedem Einfügen, Bearbeiten oder Löschen eines Mangels sofort `queryClient.invalidateQueries({ queryKey: [DEFECTS_QUERY_KEY] })` aufgerufen.
+    * In `Defects.tsx` wird beim Mounten und Projektwechsel die Abfrage mit `staleTime: 5000` und `refetchOnMount: 'always'` sofort aktualisiert.
+  * **2. Vollständige Mängel-Erfassung im CAD-Plan (`PlanEditorViewer.tsx`):**
+    * Erfassungs-Modal komplett überarbeitet: Erfasst nun zwingenden Titel/Kurzbeschrieb, Schweizer Gewerk/Handwerker (Baumeister, Gipser/Maler, Elektro, etc.), Priorität (Kritisch, Hoch, Mittel, Niedrig), SIA-118 Beschreibung sowie Foto-Beweisbild via Kamera/Datei.
+    * Beweisfotos werden direkt in den Supabase Storage-Bucket `defects` geladen und als öffentliche URL im Datensatz hinterlegt.
+    * Nach dem Erfassen wird der Pin mit `commitElements` in die Undo/Redo-History übernommen und automatisch im Datensatz des CAD-Plans (`cad_plans`) persistent abgespeichert.
+    * Bestehende Mängel des Projekts werden beim Laden des CAD-Plans automatisch aus der Supabase `defects`-Tabelle geladen und am exakten Planort visualisiert.
+  * **3. Schweizer SIA-Architektur Teardrop-Pin (exakte Koordinatenspitze):**
+    * Flacher roter Kreis durch einen hochpräzisen, nach unten spitz zulaufenden Vektor-Nadelpin ersetzt.
+    * Ankerpunkt: Solider schwarzer Koordinaten-Zielpunkt direkt am Bauteil `(0, 0)`.
+    * Pin-Kopf mit weissem Innenabzeichen und zentriertem Statussymbol (`dominantBaseline="central"`):
+      * Rot (`#ef4444`) für «To Do»
+      * Orange (`#f59e0b`) für «In Progress»
+      * Blau (`#3b82f6`) für «In Review»
+      * Grün (`#10b981`) mit weissem Häkchen `✓` für «Done»
+    * Schwebendes Titel-Badge über dem Pin zur schnellen Identifikation.
+    * Bei Selektion: Leuchtender Fokus-Puls-Ring.
+  * **4. Dedizierter Mängel-Inspektor im Eigenschaften-Panel:**
+    * Bei Klick auf einen Mangel-Pin erscheint nun die vollständige SIA-118 Inspektionskarte:
+      * Titel, Status-Dropdown, Priorität, Gewerk-Auswahl, Schadensbeschreibung, Beweisfoto-Vorschau mit Vollbild-Link.
+      * Änderungen synchronisieren sofort live in die Supabase-Datenbank und den CAD-Plan.
+      * Neuer Aktions-Button: «Im Mängel-Modul öffnen» führt per Klick direkt zum Ticket im Kanban-Board.
+* **Qualitätssicherung:**
+  * TypeScript `tsc --noEmit` fehlerfrei (0 Fehler).
+  * 12/12 Testsuiten grün (69/69 Unit-Tests erfolgreich).
+  * Vite Production Build erfolgreich in 14.42s abgeschlossen.
+
 ### 0.0000 CAD-Plan: Behebung der Rahmen-Überdimensionierung bei Bemassung & Schwarze Endpunkte (SIA-Standard)
 * **Problemstellung & Benutzer-Anforderung:**
   * Bei hoher Zoomstufe (z.B. 800%) schwoll der blaue Rahmen um das Distanz-Badge (z.B. «0.67 m») extrem an und verschluckte den weissen Hintergrund.

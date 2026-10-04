@@ -32,23 +32,23 @@ export const DEFECTS_QUERY_KEY = 'defects';
 export function normalizeDefectRow(d: any, fallbackUserId = ''): NormalizedDefect {
   const rawStatus = d.status || 'To Do';
   const lowerSt = String(rawStatus).toLowerCase().trim();
-  const normStatus =
-    (lowerSt === 'offen' || lowerSt === 'to do') ? 'To Do' :
-    (lowerSt === 'in arbeit' || lowerSt === 'in progress') ? 'In Progress' :
-    (lowerSt === 'in prüfung' || lowerSt === 'in review') ? 'In Review' :
-    (lowerSt === 'erledigt' || lowerSt === 'behoben' || lowerSt === 'done') ? 'Done' : rawStatus;
+  const normStatus: 'To Do' | 'In Progress' | 'In Review' | 'Done' =
+    (lowerSt === 'offen' || lowerSt === 'open' || lowerSt === 'to do' || lowerSt === 'todo' || lowerSt === 'backlog') ? 'To Do' :
+    (lowerSt === 'in arbeit' || lowerSt === 'in progress' || lowerSt === 'inprogress' || lowerSt === 'in_progress' || lowerSt === 'wip') ? 'In Progress' :
+    (lowerSt === 'in prüfung' || lowerSt === 'in pruefung' || lowerSt === 'in review' || lowerSt === 'inreview' || lowerSt === 'review' || lowerSt === 'abnahme' || lowerSt === 'zur abnahme') ? 'In Review' :
+    (lowerSt === 'erledigt' || lowerSt === 'behoben' || lowerSt === 'done' || lowerSt === 'closed' || lowerSt === 'resolved') ? 'Done' : 'To Do';
 
   const rawSev = d.severity || d.priority || 'Medium';
   const lowerSev = String(rawSev).toLowerCase().trim();
-  const normSev =
+  const normSev: 'Critical' | 'High' | 'Medium' | 'Low' =
     (lowerSev === 'kritisch' || lowerSev === 'critical') ? 'Critical' :
     (lowerSev === 'hoch' || lowerSev === 'high') ? 'High' :
     (lowerSev === 'mittel' || lowerSev === 'medium') ? 'Medium' :
-    (lowerSev === 'leicht' || lowerSev === 'low') ? 'Low' : rawSev;
+    (lowerSev === 'leicht' || lowerSev === 'low') ? 'Low' : 'Medium';
 
   return {
     id: d.id,
-    title: d.prompt || d.title || d.description?.substring(0, 30) || 'Mangel',
+    title: d.prompt || d.title || d.description?.substring(0, 40) || 'Mangel',
     status: normStatus,
     priority: normSev,
     assignee: d.assignee || '',
@@ -61,9 +61,9 @@ export function normalizeDefectRow(d: any, fallbackUserId = ''): NormalizedDefec
     companyId: d.company_id,
     projectId: d.project_id || d.projectId || '',
     dueDate: d.due_date || d.dueDate || null,
-    positionX: d.position_x ?? null,
-    positionY: d.position_y ?? null,
-    positionZ: d.position_z ?? null,
+    positionX: d.position_x ?? (d.position?.x ?? null),
+    positionY: d.position_y ?? (d.position?.y ?? null),
+    positionZ: d.position_z ?? (d.position?.z ?? null),
   };
 }
 
@@ -94,6 +94,8 @@ export function useDefectsQuery(companyId?: string | null, projectId?: string | 
       return (data || []).map((row) => normalizeDefectRow(row));
     },
     enabled: !!companyId,
+    staleTime: 1000 * 5, // 5 seconds fresh window for active punch lists
+    refetchOnMount: 'always',
   });
 
   useEffect(() => {
@@ -105,7 +107,7 @@ export function useDefectsQuery(companyId?: string | null, projectId?: string | 
         'postgres_changes',
         { event: '*', schema: 'public', table: 'defects' },
         () => {
-          queryClient.invalidateQueries({ queryKey: [DEFECTS_QUERY_KEY, companyId] });
+          queryClient.invalidateQueries({ queryKey: [DEFECTS_QUERY_KEY] });
         }
       )
       .subscribe();
@@ -116,7 +118,7 @@ export function useDefectsQuery(companyId?: string | null, projectId?: string | 
   }, [companyId, projectId, queryClient]);
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: [DEFECTS_QUERY_KEY, companyId] });
+    queryClient.invalidateQueries({ queryKey: [DEFECTS_QUERY_KEY] });
   };
 
   return {

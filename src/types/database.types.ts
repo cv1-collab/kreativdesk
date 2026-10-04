@@ -343,6 +343,10 @@ export interface Database {
           description: string | null;
           status: string | null;
           severity: string | null;
+          trade?: string | null;
+          location?: string | null;
+          due_date?: string | null;
+          image_url?: string | null;
           created_at: string | null;
         };
         Insert: {
@@ -357,6 +361,10 @@ export interface Database {
           description?: string | null;
           status?: string | null;
           severity?: string | null;
+          trade?: string | null;
+          location?: string | null;
+          due_date?: string | null;
+          image_url?: string | null;
           created_at?: string | null;
         };
         Update: {
@@ -371,6 +379,10 @@ export interface Database {
           description?: string | null;
           status?: string | null;
           severity?: string | null;
+          trade?: string | null;
+          location?: string | null;
+          due_date?: string | null;
+          image_url?: string | null;
           created_at?: string | null;
         };
         Relationships: [];

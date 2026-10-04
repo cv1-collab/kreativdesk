@@ -314,11 +314,17 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
   const wasDragged = useRef(false);
 
   // === MULTI-TENANT FILTERUNG MIT TANSTACK QUERY & REALTIME SYNC ===
-  const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+  const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
   const { defects: queryDefects, invalidateDefects } = useDefectsQuery(
     isDemo ? null : safeCompanyId,
     isDemo ? null : currentProjectId
   );
+
+  useEffect(() => {
+    if (!isDemo && safeCompanyId && currentProjectId) {
+      invalidateDefects();
+    }
+  }, [safeCompanyId, currentProjectId, isDemo]);
 
   useEffect(() => {
     if (isDemo) {
@@ -469,9 +475,14 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
           prompt: currentDefect.title || 'Mangel',
           description: currentDefect.description || '',
           status: currentDefect.status || 'To Do',
-          severity: currentDefect.priority || 'Medium'
+          severity: currentDefect.priority || 'Medium',
+          trade: currentDefect.trade || null,
+          location: currentDefect.location || null,
+          due_date: currentDefect.dueDate || null,
+          image_url: currentDefect.imageUrl || null
         }).eq('id', editingId);
         setDefects(prev => prev.map(d => d.id === editingId ? { ...d, ...currentDefect } as Defect : d));
+        invalidateDefects();
       } else { 
         const payload: any = { 
           project_id: currentProjectId, 
@@ -481,6 +492,10 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
           description: currentDefect.description || '',
           status: currentDefect.status || 'To Do',
           severity: currentDefect.priority || 'Medium',
+          trade: currentDefect.trade || null,
+          location: currentDefect.location || null,
+          due_date: currentDefect.dueDate || null,
+          image_url: currentDefect.imageUrl || null,
           created_at: new Date().toISOString()
         };
         const { data: created, error } = await supabase.from('defects').insert(payload).select().maybeSingle();
@@ -499,6 +514,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
           projectId: currentProjectId
         };
         setDefects(prev => [...prev, newDefectItem as Defect]);
+        invalidateDefects();
         try {
           await sendNotification({
             companyId: currentUser.companyId,
@@ -540,6 +556,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
 
     try { 
       await supabase.from('defects').delete().eq('id', id); 
+      invalidateDefects();
       const safeCompanyId = currentUser?.companyId || currentUser?.uid;
       if (safeCompanyId) {
         try {
