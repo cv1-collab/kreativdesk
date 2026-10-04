@@ -572,7 +572,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   const [calibrationLine, setCalibrationLine] = useState<{start: {x:number, y:number}, end: {x:number, y:number}} | null>(null);
   const [calibPaperDistMm, setCalibPaperDistMm] = useState<number>(0);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
-  const [showMobileRightPanel, setShowMobileRightPanel] = useState(false);
+  const [showRightPanel, setShowRightPanel] = useState(true);
   const exportMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -1759,7 +1759,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     <PremiumFeature>
     <div className="absolute inset-0 bg-background text-text-primary flex flex-col overflow-hidden">
       
-      <header className="min-h-14 sm:min-h-16 py-2 sm:py-2.5 border-b border-border bg-surface/95 backdrop-blur-xl flex flex-col sm:flex-row sm:items-center justify-between px-3 sm:px-6 shrink-0 z-30 shadow-sm gap-2.5 sm:gap-3 overflow-visible">
+      <header className="min-h-14 sm:min-h-16 py-2 sm:py-2.5 border-b border-border bg-surface/95 backdrop-blur-xl flex flex-col sm:flex-row sm:items-center justify-between px-3 sm:px-6 shrink-0 z-50 shadow-sm gap-2.5 sm:gap-3 overflow-visible">
         {/* MODUL TITEL & PLAN AUSWAHL */}
         <div className="flex items-center justify-between sm:justify-start gap-2.5 sm:gap-4 shrink-0 min-w-0 w-full sm:w-auto">
           <div className="flex items-center gap-2.5">
@@ -1951,9 +1951,20 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           {/* MODUL GUIDE */}
           <ModuleGuideButton moduleId="plans" compact className="h-9 px-3 rounded-xl text-xs flex items-center justify-center shrink-0" />
 
-          {/* MOBIL EBENEN-TOGGLE */}
-          <button onClick={() => setShowMobileRightPanel(!showMobileRightPanel)} className="md:hidden h-9 w-9 p-0 bg-surface border border-border rounded-xl text-text-primary text-xs font-bold flex items-center justify-center cursor-pointer shrink-0">
-            <Layers size={16}/>
+          {/* EBENEN TOGGLE (DESKTOP & MOBIL) */}
+          <button 
+            type="button"
+            onClick={() => setShowRightPanel(prev => !prev)} 
+            className={cn(
+              "h-9 px-3 bg-surface border rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0 transition-all",
+              showRightPanel 
+                ? "bg-accent-ai/15 text-accent-ai border-accent-ai/40 shadow-xs" 
+                : "text-text-muted hover:text-text-primary border-border hover:bg-white/5"
+            )}
+            title={showRightPanel ? (currentLang === 'de' ? 'Ebenen ausblenden' : 'Hide layers') : (currentLang === 'de' ? 'Ebenen einblenden' : 'Show layers')}
+          >
+            <Layers size={14}/>
+            <span className="hidden sm:inline">{t('layers')}</span>
           </button>
         </div>
       </header>
@@ -2067,13 +2078,16 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
         {/* EBENEN & PROPERTIES RECHTS */}
         {planImage && (
-          <aside className={cn("absolute right-2 sm:right-6 top-2 sm:top-6 bottom-2 sm:bottom-6 w-72 sm:w-80 flex-col gap-4 z-30 pointer-events-none", showMobileRightPanel ? "flex pointer-events-auto" : "hidden md:flex")}>
+          <aside className={cn("absolute right-2 sm:right-6 top-2 sm:top-6 bottom-2 sm:bottom-6 w-72 sm:w-80 flex-col gap-4 z-20 pointer-events-none transition-all duration-200", showRightPanel ? "flex pointer-events-auto" : "hidden")}>
             
             {/* LAYERS */}
             <div className="bg-surface/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-4 flex flex-col pointer-events-auto max-h-[40%] shrink-0">
               <div className="flex justify-between items-center mb-3 border-b border-border pb-2 shrink-0">
                 <span className="font-bold text-sm flex items-center gap-2"><Layers size={16}/> {t('layers')}</span>
-                <button onClick={handleAddLayer} className="p-1.5 bg-accent-ai/10 text-accent-ai hover:bg-accent-ai/20 rounded-lg transition-colors" title={t('add_layer')}><Plus size={14}/></button>
+                <div className="flex items-center gap-1">
+                  <button onClick={handleAddLayer} className="p-1.5 bg-accent-ai/10 text-accent-ai hover:bg-accent-ai/20 rounded-lg transition-colors cursor-pointer" title={t('add_layer')}><Plus size={14}/></button>
+                  <button onClick={() => setShowRightPanel(false)} className="p-1.5 hover:bg-white/10 rounded-lg text-text-muted hover:text-text-primary transition-colors cursor-pointer" title={currentLang === 'de' ? 'Ebenen schliessen' : 'Close layers'}><X size={14}/></button>
+                </div>
               </div>
               
               <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-1">

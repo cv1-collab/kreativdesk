@@ -7,6 +7,24 @@
 
 ## 🏆 Erfolgsliste von heute (4. Oktober 2026)
 
+### 0.000 CAD-Plan: Behebung des Z-Index-Konflikts (Export-Menü vs. Ebenen-Fenster) & Desktop/Mobile Ebenen-Toggle
+* **Problemstellung & Benutzer-Anforderung:**
+  * Im CAD-Plan-Editor überdeckte das schwebende Fenster für die Ebenen («Ebenen / Properties») das geöffnete Export-Menü («PDF Plan exportieren...»), sodass Optionen teilweise verdeckt und schwer anklickbar waren.
+  * Grund: Der `<header>` besass `z-30` und das schwebende `<aside>` im nachfolgenden Canvas-Viewport ebenfalls `z-30`. Nach standardmässiger CSS-Stacking-Reihenfolge wurde das im DOM spätere Element über das vorangehende gezeichnet. Zudem fehlte auf Desktop-Bildschirmen ein schneller Ein-/Ausblenden-Schalter für das Ebenen-Fenster.
+* **Lösung & Implementierung:**
+  * **Stacking-Order & Z-Index Trennung:**
+    * `<header>` von `z-30` auf `z-50` angehoben.
+    * Rechter Canvas-Panel `<aside>` von `z-30` auf `z-20` gesetzt.
+    * Das geöffnete Export-Menü (`z-[9999]`) liegt nun absolut zuverlässig über allen schwebenden Fenstern, Paletten und Werkzeugleisten des Viewports.
+  * **Universeller Ebenen-Toggle (Desktop & Mobil):**
+    * Neuer `[Ebenen]`-Button in der Topbar mit dynamischem Aktivitäts-Styling (`bg-accent-ai/15`, Randhervorhebung) und Tooltip zum schnellen Ein-/Ausblenden der rechten Palette.
+  * **Direkter Schliessen-Button:**
+    * Ein `X`-Button direkt im Header der Ebenen-Karte erlaubt das unkomplizierte Schliessen mit einem Klick für maximale freie Planansicht.
+* **Qualitätssicherung:**
+  * TypeScript `tsc --noEmit` fehlerfrei (0 Fehler).
+  * 12/12 Vitest Testsuiten grün (67/67 Tests bestanden).
+  * Vite Production Build erfolgreich (`npm run build`).
+
 ### 0.00 Vercel Speicherplatz-Bereinigung: Löschung aller 14 veralteten Deployments
 * **Problemstellung & Benutzer-Anforderung:**
   * Historische Deployments und alte Preview-/Produktions-Builds belegten unnötigen Speicherplatz im Vercel-Konto.
