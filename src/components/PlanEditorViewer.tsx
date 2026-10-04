@@ -7,7 +7,7 @@ import {
   Trash2, Settings, Layers, Hexagon, Check, LayoutTemplate, MoveHorizontal, Loader2,
   ZoomIn, ZoomOut, MousePointer2, Save, Download, ShieldAlert, Camera as LucideCamera,
   Eye, EyeOff, Lock, Unlock, Plus, SlidersHorizontal, ImagePlus, BringToFront, SendToBack, Type, PenTool, Ruler, X, ChevronDown, Map,
-  Crosshair, Undo2, Redo2, ExternalLink
+  Crosshair, Undo2, Redo2, ExternalLink, RotateCw
 } from 'lucide-react';
 import { cn, sanitizeUrl } from '../utils';
 import { useToast } from '../contexts/ToastContext';
@@ -154,7 +154,7 @@ export const SWISS_TRADES = [
   'Planung / Bauleitung'
 ];
 
-interface BaseElement { id: string; type: ToolType; x: number; y: number; layerId?: string; opacity?: number; }
+interface BaseElement { id: string; type: ToolType; x: number; y: number; layerId?: string; opacity?: number; rotation?: number; }
 interface DefectMarker extends BaseElement { 
   type: 'defect'; 
   title: string; 
@@ -171,7 +171,7 @@ interface TextMarkup extends BaseElement { type: 'text'; text: string; color: st
 interface FreehandLine extends BaseElement { type: 'pen'; points: {x: number, y: number}[]; color: string; thickness: number; }
 interface Measurement extends BaseElement { type: 'measure'; start: {x: number, y: number}; end: {x: number, y: number}; color: string; }
 interface PolygonMarkup extends BaseElement { type: 'polygon'; points: {x: number, y: number}[]; color: string; strokeColor: string; borderStyle: LineStyle; strokeWidth?: number; }
-interface RectMarkup extends BaseElement { type: 'rect'; w: number; h: number; color: string; strokeColor: string; borderStyle: LineStyle; strokeWidth?: number; }
+interface RectMarkup extends BaseElement { type: 'rect'; w: number; h: number; color: string; strokeColor: string; borderStyle: LineStyle; strokeWidth?: number; rotation?: number; }
 interface CircleMarkup extends BaseElement { type: 'circle'; r: number; color: string; strokeColor: string; borderStyle: LineStyle; strokeWidth?: number; }
 interface ScaleBarMarkup extends BaseElement { type: 'scalebar'; lengthMeters: number; color: string; thickness: number; textSize: number; }
 interface TitleBlockMarkup extends BaseElement { 
@@ -260,7 +260,12 @@ const CADPlanPDFDocument = ({ settings, docHeader, planImage, elements, layers, 
                    const left = Math.min(el.x, el.x + el.w) * SAFE_W; const top = Math.min(el.y, el.y + el.h) * SAFE_H;
                    const w = Math.abs(el.w) * SAFE_W; const h = Math.abs(el.h) * SAFE_H;
                    const thick = ((el.strokeWidth || 1.5) * 0.5 * MM_TO_PX) * SCALE_AVG;
-                   return <G key={el.id} opacity={totalOpacity}><Rect x={left} y={top} width={w} height={h} fill={el.color} fillOpacity={el.opacity || 1} stroke={el.strokeColor} strokeWidth={thick} strokeDasharray={getDashArray(el.borderStyle, thick * 1.5)} /></G>;
+                   const rot = el.rotation || 0;
+                   return (
+                     <G key={el.id} opacity={totalOpacity} {...(rot ? { transform: `rotate(${rot}, ${left + w / 2}, ${top + h / 2})` } : {})}>
+                       <Rect x={left} y={top} width={w} height={h} fill={el.color} fillOpacity={el.opacity || 1} stroke={el.strokeColor} strokeWidth={thick} strokeDasharray={getDashArray(el.borderStyle, thick * 1.5)} />
+                     </G>
+                   );
                 }
                 if (el.type === 'circle') {
                    const cx = el.x * SAFE_W; const cy = el.y * SAFE_H; const r = el.r * SAFE_W; 
@@ -588,6 +593,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   const [selectedElement, setSelectedElement] = useState<PlanElement | null>(null);
   const [draggingElementId, setDraggingElementId] = useState<string | null>(null);
   const [draggingVertex, setDraggingVertex] = useState<{elementId: string, vertexIndex: number} | null>(null);
+  const lastDragCoordsRef = useRef<{ nx: number; ny: number }>({ nx: 0, ny: 0 });
   
   const [isPdfStudioOpen, setIsPdfStudioOpen] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -1262,19 +1268,63 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
        setPan({ x: e.clientX - startPan.current.x, y: e.clientY - startPan.current.y });
     } else if (draggingElementId) {
        const { nx, ny } = getRelativeCoords(e.clientX, e.clientY);
-       setElements(prev => prev.map(el => {
-         if (el.id === draggingElementId) {
-           if (el.type === 'measure') {
-             const curMx = (el.start.x + el.end.x) / 2;
-             const curMy = (el.start.y + el.end.y) / 2;
-             const dx = nx - curMx;
-             const dy = ny - curMy;
-             return { ...el, start: { x: el.start.x + dx, y: el.start.y + dy }, end: { x: el.end.x + dx, y: el.end.y + dy } };
+       const dx = nx - lastDragCoordsRef.current.nx;
+       const dy = ny - lastDragCoordsRef.current.ny;
+       lastDragCoordsRef.current = { nx, ny };
+
+       if (dx !== 0 || dy !== 0) {
+         setElements(prev => prev.map(el => {
+           if (el.id === draggingElementId) {
+             let updated: PlanElement = el;
+             if (el.type === 'polygon' || el.type === 'pen') {
+               updated = {
+                 ...el,
+                 x: (el.x || 0) + dx,
+                 y: (el.y || 0) + dy,
+                 points: el.points.map(pt => ({ x: pt.x + dx, y: pt.y + dy }))
+               };
+             } else if (el.type === 'measure') {
+               updated = {
+                 ...el,
+                 start: { x: el.start.x + dx, y: el.start.y + dy },
+                 end: { x: el.end.x + dx, y: el.end.y + dy }
+               };
+             } else {
+               updated = {
+                 ...el,
+                 x: el.x + dx,
+                 y: el.y + dy
+               };
+             }
+             return updated;
            }
-           return { ...el, x: nx, y: ny };
-         }
-         return el;
-       }));
+           return el;
+         }));
+
+         setSelectedElement(prev => {
+           if (!prev || prev.id !== draggingElementId) return prev;
+           if (prev.type === 'polygon' || prev.type === 'pen') {
+             return {
+               ...prev,
+               x: (prev.x || 0) + dx,
+               y: (prev.y || 0) + dy,
+               points: prev.points.map(pt => ({ x: pt.x + dx, y: pt.y + dy }))
+             };
+           }
+           if (prev.type === 'measure') {
+             return {
+               ...prev,
+               start: { x: prev.start.x + dx, y: prev.start.y + dy },
+               end: { x: prev.end.x + dx, y: prev.end.y + dy }
+             };
+           }
+           return {
+             ...prev,
+             x: prev.x + dx,
+             y: prev.y + dy
+           };
+         });
+       }
     } else if (draggingVertex) {
        const { nx, ny } = getRelativeCoords(e.clientX, e.clientY);
        setElements(prev => prev.map(el => {
@@ -1291,6 +1341,20 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
          }
          return el;
        }));
+
+       setSelectedElement(prev => {
+         if (!prev || prev.id !== draggingVertex.elementId) return prev;
+         if (prev.type === 'polygon') {
+           const newPts = [...prev.points];
+           newPts[draggingVertex.vertexIndex] = { x: nx, y: ny };
+           return { ...prev, points: newPts };
+         }
+         if (prev.type === 'measure') {
+           if (draggingVertex.vertexIndex === 0) return { ...prev, start: { x: nx, y: ny } };
+           if (draggingVertex.vertexIndex === 1) return { ...prev, end: { x: nx, y: ny } };
+         }
+         return prev;
+       });
     }
   };
 
@@ -1319,6 +1383,8 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     elementsBeforeDragRef.current = elements;
     setDraggingElementId(el.id); 
     setSelectedElement(el); 
+    const coords = getRelativeCoords(e.clientX, e.clientY);
+    lastDragCoordsRef.current = coords;
   };
 
   const handleVertexPointerDown = (e: React.PointerEvent, elId: string, vIndex: number) => { 
@@ -1515,13 +1581,35 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
       if (el.type === 'rect') {
         const rx = Math.min(el.x, el.x + el.w) * internalW; const ry = Math.min(el.y, el.y + el.h) * internalH;
+        const rw = Math.abs(el.w) * internalW; const rh = Math.abs(el.h) * internalH;
         const rawThickness = (el as any).strokeWidth || 1.5;
         const strokeW = isPdf ? (rawThickness * 1.5) : (rawThickness * invScale);
         const strokeDash = getStrokeDasharray(el.borderStyle, strokeW);
+        const rot = el.rotation || 0;
+        const cx = rx + rw / 2;
+        const cy = ry + rh / 2;
         return (
-          <g key={el.id} style={{ opacity: totalOpacity }}>
-            <rect x={`${rx}px`} y={`${ry}px`} width={`${Math.abs(el.w) * internalW}px`} height={`${Math.abs(el.h) * internalH}px`} fill={el.color || '#3b82f6'} fillOpacity={el.opacity || 1} stroke={el.strokeColor || '#2563eb'} strokeWidth={strokeW} strokeDasharray={strokeDash}
-              style={{ cursor: activeTool === 'pan' ? 'move' : 'crosshair', pointerEvents: 'auto' }} onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, el); }}
+          <g 
+            key={el.id} 
+            style={{ opacity: totalOpacity }}
+            transform={rot ? `rotate(${rot} ${cx} ${cy})` : undefined}
+          >
+            <rect 
+              x={`${rx}px`} 
+              y={`${ry}px`} 
+              width={`${rw}px`} 
+              height={`${rh}px`} 
+              fill={el.color || '#3b82f6'} 
+              fillOpacity={el.opacity || 1} 
+              stroke={isSelected ? '#3b82f6' : (el.strokeColor || '#2563eb')} 
+              strokeWidth={isSelected ? Math.max(strokeW, 2 * invScale) : strokeW} 
+              strokeDasharray={strokeDash}
+              style={{ 
+                cursor: activeTool === 'pan' ? 'move' : 'crosshair', 
+                pointerEvents: 'auto',
+                filter: isSelected ? 'drop-shadow(0 0 6px rgba(59, 130, 246, 0.6))' : 'none'
+              }} 
+              onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, el); }}
             />
           </g>
         );
@@ -1547,11 +1635,22 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         const strokeDash = getStrokeDasharray(el.borderStyle, strokeW);
         return (
           <g key={el.id} style={{ opacity: totalOpacity }}>
-            <polygon points={pStr} fill={el.color || '#3b82f6'} fillOpacity={el.opacity || 1} stroke={el.strokeColor || '#2563eb'} strokeWidth={strokeW} strokeDasharray={strokeDash}
-              style={{ cursor: activeTool === 'pan' ? 'move' : 'crosshair', pointerEvents: 'auto' }} onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, el); }} 
+            <polygon 
+              points={pStr} 
+              fill={el.color || '#3b82f6'} 
+              fillOpacity={el.opacity || 1} 
+              stroke={isSelected ? '#3b82f6' : (el.strokeColor || '#2563eb')} 
+              strokeWidth={isSelected ? Math.max(strokeW, 2 * invScale) : strokeW} 
+              strokeDasharray={strokeDash}
+              style={{ 
+                cursor: activeTool === 'pan' ? 'move' : 'crosshair', 
+                pointerEvents: 'auto',
+                filter: isSelected ? 'drop-shadow(0 0 6px rgba(59, 130, 246, 0.5))' : 'none'
+              }} 
+              onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, el); }} 
             />
             {isSelected && !isPdf && el.points.map((pt, i) => (
-              <circle key={i} cx={`${pt.x * internalW}px`} cy={`${pt.y * internalH}px`} r={`${4 * invScale}px`} fill="white" stroke="#ef4444" strokeWidth={`${1.5 * invScale}px`}
+              <circle key={i} cx={`${pt.x * internalW}px`} cy={`${pt.y * internalH}px`} r={`${5 * invScale}px`} fill="white" stroke="#ef4444" strokeWidth={`${1.8 * invScale}px`}
                 style={{ cursor: 'crosshair', pointerEvents: 'auto' }} 
                 onPointerDown={(e) => handleVertexPointerDown(e, el.id, i)}
                 onDoubleClick={(e) => { e.stopPropagation(); handleRemoveVertex(el.id, i); }}
@@ -2079,10 +2178,10 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           </div>
         )}
 
-        {/* RECHTE BUTTONS (ZUSAMMENGEFÜHRT: ARBEIT, EXPORT & GUIDE) */}
+        {/* RECHTE BUTTONS (LOGISCH IN 4 FUNKTIONSGRUPPEN MIT TRENNLINIEN STRUKTURIERT) */}
         <div className="flex items-center gap-2 shrink-0 overflow-visible">
-          {/* PRIMÄRE ARBEITS-AKTIONEN: UPLOAD & SPEICHERN */}
-          <div className="flex items-center bg-background border border-border rounded-xl p-0.5 shadow-sm h-9 shrink-0">
+          {/* GRUPPE 1: PLAN-MANAGEMENT & SPEICHERN */}
+          <div className="flex items-center bg-background/90 border border-border rounded-xl p-0.5 shadow-xs h-9 shrink-0">
             <label 
               onClick={(e) => {
                 if (isDemoMode || currentProjectId === 'demo-1') {
@@ -2093,7 +2192,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
               }}
               title={t('upload_plan_tooltip')}
               className={cn(
-                "tour-plan-upload flex items-center gap-1.5 px-3 h-8 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold shadow-sm transition-all whitespace-nowrap shrink-0",
+                "tour-plan-upload flex items-center gap-1.5 px-3 h-8 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold shadow-xs transition-all whitespace-nowrap shrink-0",
                 (isDemoMode || currentProjectId === 'demo-1') ? "opacity-70 cursor-not-allowed" : "cursor-pointer"
               )}
             >
@@ -2114,7 +2213,9 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
             </button>
           </div>
 
-          {/* EXPORT & WEITERGABE DROPDOWN (PDF EXPORT + PITCH DECK FOLIE) */}
+          <div className="w-px h-5 bg-border/70 mx-0.5 shrink-0 hidden sm:block" />
+
+          {/* GRUPPE 2: EXPORT & WEITERGABE */}
           <div className="relative z-50 shrink-0" ref={exportMenuRef}>
             <button 
               type="button"
@@ -2124,7 +2225,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
               }}
               disabled={!planImage}
               className={cn(
-                "tour-plan-pdf flex items-center gap-1.5 px-3 h-9 rounded-xl text-xs font-bold border transition-all shadow-sm whitespace-nowrap cursor-pointer shrink-0",
+                "tour-plan-pdf flex items-center gap-1.5 px-3 h-9 rounded-xl text-xs font-bold border transition-all shadow-xs whitespace-nowrap cursor-pointer shrink-0",
                 exportMenuOpen 
                   ? "bg-accent-ai/15 text-accent-ai border-accent-ai/40" 
                   : "bg-surface hover:bg-white/5 text-text-primary border-border"
@@ -2204,24 +2305,36 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
             </AnimatePresence>
           </div>
 
-          {/* MODUL GUIDE */}
-          <ModuleGuideButton moduleId="plans" compact className="h-9 px-3 rounded-xl text-xs flex items-center justify-center shrink-0" />
+          <div className="w-px h-5 bg-border/70 mx-0.5 shrink-0 hidden sm:block" />
 
-          {/* EBENEN TOGGLE (DESKTOP & MOBIL) */}
+          {/* GRUPPE 3: ANSICHT / EBENEN- & EIGENSCHAFTEN-DOCK */}
           <button 
             type="button"
             onClick={() => setShowRightPanel(prev => !prev)} 
             className={cn(
-              "h-9 px-3 bg-surface border rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0 transition-all",
+              "h-9 px-3 border rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0 transition-all shadow-xs",
               showRightPanel 
-                ? "bg-accent-ai/15 text-accent-ai border-accent-ai/40 shadow-xs" 
-                : "text-text-muted hover:text-text-primary border-border hover:bg-white/5"
+                ? "bg-primary/15 text-primary border-primary/40 ring-1 ring-primary/20" 
+                : "bg-surface text-text-muted hover:text-text-primary border-border hover:bg-white/5"
             )}
-            title={showRightPanel ? (currentLang === 'de' ? 'Ebenen ausblenden' : 'Hide layers') : (currentLang === 'de' ? 'Ebenen einblenden' : 'Show layers')}
+            title={showRightPanel ? (currentLang === 'de' ? 'Ebenen & Eigenschaften ausblenden' : 'Hide layers & properties') : (currentLang === 'de' ? 'Ebenen & Eigenschaften einblenden' : 'Show layers & properties')}
           >
-            <Layers size={14}/>
+            <Layers size={14} className={showRightPanel ? "text-primary" : "text-text-muted"}/>
             <span className="hidden sm:inline">{t('layers')}</span>
+            {layers.length > 0 && (
+              <span className={cn(
+                "text-[10px] px-1.5 py-0.2 rounded-full font-bold",
+                showRightPanel ? "bg-primary text-white" : "bg-border text-text-muted"
+              )}>
+                {layers.length}
+              </span>
+            )}
           </button>
+
+          <div className="w-px h-5 bg-border/70 mx-0.5 shrink-0 hidden sm:block" />
+
+          {/* GRUPPE 4: HILFE & ANLEITUNG */}
+          <ModuleGuideButton moduleId="plans" compact className="h-9 px-3 rounded-xl text-xs flex items-center justify-center shrink-0" />
         </div>
       </header>
 
@@ -2329,6 +2442,23 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
              title={currentLang === 'de' ? 'Wiederholen (Cmd+Shift+Z)' : 'Redo (Cmd+Shift+Z)'}
            >
              <Redo2 size={16} className="sm:w-[17px] sm:h-[17px]" />
+           </button>
+
+           {/* TRENNLINIE */}
+           <div className="w-6 h-px bg-border/60 my-0.5 shrink-0" />
+
+           {/* EBENEN QUICK-TOGGLE */}
+           <button
+             onClick={() => setShowRightPanel(p => !p)}
+             className={cn(
+               "p-2 rounded-xl transition-all shrink-0 cursor-pointer",
+               showRightPanel 
+                 ? "bg-primary/20 text-primary shadow-xs" 
+                 : "text-text-muted hover:bg-white/5 hover:text-text-primary"
+             )}
+             title={showRightPanel ? (currentLang === 'de' ? 'Ebenen & Eigenschaften ausblenden' : 'Hide layers') : (currentLang === 'de' ? 'Ebenen & Eigenschaften einblenden' : 'Show layers')}
+           >
+             <Layers size={16} className="sm:w-[17px] sm:h-[17px]" />
            </button>
         </aside>
 
@@ -2572,6 +2702,83 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                              </select>
                            </div>
                         </div>
+
+                        {/* DREHUNG / AUSRICHTUNG (FÜR RECHTECKE) */}
+                        {selectedElement.type === 'rect' && (
+                          <div className="p-3 rounded-xl bg-background/60 border border-border/80 space-y-2">
+                            <div className="flex justify-between items-center">
+                              <label className="text-[10px] font-bold uppercase flex items-center gap-1.5 text-text-primary">
+                                <RotateCw size={12} className="text-primary" />
+                                Drehung / Ausrichtung
+                              </label>
+                              <div className="flex items-center gap-1">
+                                <input 
+                                  type="number" 
+                                  min="0" 
+                                  max="360" 
+                                  value={Math.round((selectedElement as any).rotation || 0)} 
+                                  onChange={e => {
+                                    const val = (Math.round(Number(e.target.value)) % 360 + 360) % 360;
+                                    updateElement({ ...selectedElement, rotation: val } as any);
+                                  }} 
+                                  className="w-14 bg-background border border-border rounded-lg px-2 py-1 text-xs font-bold text-right text-primary outline-none focus:border-primary/50" 
+                                />
+                                <span className="text-xs font-bold text-text-muted">°</span>
+                              </div>
+                            </div>
+
+                            <input 
+                              type="range" 
+                              min="0" 
+                              max="360" 
+                              step="1" 
+                              value={(selectedElement as any).rotation || 0} 
+                              onChange={e => updateElement({ ...selectedElement, rotation: Number(e.target.value) } as any)} 
+                              className="w-full accent-blue-500 cursor-pointer" 
+                            />
+
+                            <div className="grid grid-cols-5 gap-1 text-[10px] text-text-muted">
+                              {[0, 45, 90, 180, 270].map(deg => (
+                                <button
+                                  key={deg}
+                                  type="button"
+                                  className={cn(
+                                    "px-1 py-1 rounded-lg border text-[10px] font-bold transition-all text-center cursor-pointer",
+                                    Math.round((selectedElement as any).rotation || 0) === deg 
+                                      ? "border-primary text-primary bg-primary/10 shadow-xs" 
+                                      : "border-border bg-background hover:border-primary/50 text-text-muted"
+                                  )}
+                                  onClick={() => updateElement({ ...selectedElement, rotation: deg } as any)}
+                                >
+                                  {deg}°
+                                </button>
+                              ))}
+                            </div>
+
+                            <div className="flex items-center gap-2 pt-1">
+                              <button
+                                type="button"
+                                className="flex-1 py-1.5 px-2 bg-background border border-border hover:border-primary/50 hover:text-primary rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer text-text-primary"
+                                onClick={() => {
+                                  const cur = Math.round((selectedElement as any).rotation || 0);
+                                  const next = (cur + 90) % 360;
+                                  updateElement({ ...selectedElement, rotation: next } as any);
+                                }}
+                              >
+                                <RotateCw size={12} className="text-primary" />
+                                +90° Drehen
+                              </button>
+                              <button
+                                type="button"
+                                className="py-1.5 px-2.5 bg-background border border-border hover:border-border-hover rounded-lg text-xs font-medium text-text-muted hover:text-text-primary transition-colors cursor-pointer"
+                                onClick={() => updateElement({ ...selectedElement, rotation: 0 } as any)}
+                                title="Auf 0° zurücksetzen"
+                              >
+                                0° Reset
+                              </button>
+                            </div>
+                          </div>
+                        )}
                         <div>
                           <div className="flex justify-between items-center mb-1">
                             <label className="text-[10px] font-bold uppercase block">{t('line_thickness')} (Kontur)</label>
