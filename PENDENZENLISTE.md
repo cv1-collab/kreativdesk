@@ -7,6 +7,15 @@
 
 ## 🏆 Erfolgsliste von heute (4. Oktober 2026)
 
+### 0.00 Vercel Speicherplatz-Bereinigung: Löschung aller 14 veralteten Deployments
+* **Problemstellung & Benutzer-Anforderung:**
+  * Historische Deployments und alte Preview-/Produktions-Builds belegten unnötigen Speicherplatz im Vercel-Konto.
+* **Lösung & Durchführung:**
+  * Vollständige Abfrage aller Deployments über die Vercel CLI (`npx vercel ls`).
+  * Schutz des aktuellsten, aktiven Produktions-Deployments (`https://kreativ-desk-v2-0-m3ktdj43i-cv1-6952s-projects.vercel.app`), auf welches alle Domains (`kreativdesk.ch`, `www.kreativdesk.ch`, etc.) geroutet sind.
+  * Sukzessive, sichere Löschung aller 14 veralteten Deployments über die Vercel CLI (`npx vercel rm --yes`).
+  * **Ergebnis:** Vercel-Projekt auf genau 1 einziges, aktuelles Produktions-Deployment bereinigt — maximale Speicherplatzerhaltung und null Altlasten.
+
 ### 0.0 Whiteboard: Lückenloses Undo / Redo System (Cmd+Z / Cmd+Shift+Z, Floating Toolbar-Buttons & 30-Schritte-History)
 * **Problemstellung & Benutzer-Anforderung:**
   * Das interaktive Whiteboard ([Whiteboard.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/Whiteboard.tsx)) mit Stift, Radiergummi, geometrischen Formen, Notizzetteln, Text und Ebenen besass bisher keine Rückgängig-/Wiederholen-Funktion. Versehentlich gelöschte, verschobene oder gezeichnete Elemente konnten nicht rückgängig gemacht werden.
