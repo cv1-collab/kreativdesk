@@ -71,6 +71,8 @@ export function useFinancialQuery(companyId?: string | null, selectedYear = 'all
       };
     },
     enabled: !!companyId,
+    staleTime: 1000 * 5, // 5 seconds fresh window for active finance ledger
+    refetchOnMount: 'always',
   });
 
   // Setup selective Realtime sync to auto-invalidate cache on changes
@@ -81,16 +83,16 @@ export function useFinancialQuery(companyId?: string | null, selectedYear = 'all
       .channel(`financial_realtime_${companyId}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'transactions', filter: `company_id=eq.${companyId}` },
+        { event: '*', schema: 'public', table: 'transactions' },
         () => {
-          queryClient.invalidateQueries({ queryKey: [FINANCIAL_QUERY_KEY, companyId] });
+          queryClient.invalidateQueries({ queryKey: [FINANCIAL_QUERY_KEY] });
         }
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'time_entries', filter: `company_id=eq.${companyId}` },
+        { event: '*', schema: 'public', table: 'time_entries' },
         () => {
-          queryClient.invalidateQueries({ queryKey: [FINANCIAL_QUERY_KEY, companyId] });
+          queryClient.invalidateQueries({ queryKey: [FINANCIAL_QUERY_KEY] });
         }
       )
       .subscribe();
@@ -101,7 +103,7 @@ export function useFinancialQuery(companyId?: string | null, selectedYear = 'all
   }, [companyId, queryClient]);
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: [FINANCIAL_QUERY_KEY, companyId] });
+    queryClient.invalidateQueries({ queryKey: [FINANCIAL_QUERY_KEY] });
   };
 
   const data = query.data || { transactions: [], summary: calculateFinancialLedger([]) };

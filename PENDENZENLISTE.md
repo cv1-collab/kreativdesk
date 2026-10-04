@@ -7,6 +7,32 @@
 
 ## 🏆 Erfolgsliste von heute (5. Oktober 2026)
 
+### 0.000000 Tiefgründige Cross-Modul-Fehlersuche & Behebung: Datenraum, Finanzen, Baukamera & CAD/3D Synchronisation
+* **Problemstellung & Benutzer-Anforderung:**
+  * Wo existieren im System noch weitere Fehler, bei denen Module nicht korrekt miteinander verbunden sind, falsche Caches nutzen oder Daten nicht synchronisieren?
+* **Aufgedeckte & behobene Fehlerpunkte:**
+  * **1. Dokumenten- & Datenraum-Disconnect (Systemweiter TanStack Query Cache):**
+    * In Modulen wie CAD-Pläne, 3D-BIM, Dashboard, Kalender, Whiteboard und Rechnungs-Studio wurden exportierte PDF-Berichte zwar in `documents` gespeichert, aber der Query-Cache (`DOCUMENTS_QUERY_KEY`) wurde nie invalidiert. Da `useDocumentsQuery` eine Standard-`staleTime` von 2 Minuten besass und `Documents.tsx` keinen Mount-Hook hatte, blieben gespeicherte Dokumente in der Bauakte bis zu 2 Minuten unsichtbar.
+    * *Behebung:* In `useDocumentsQuery.ts` wurde `staleTime: 5000` und `refetchOnMount: 'always'` hinterlegt, und alle Speicher-Handler (`PlanEditorViewer.tsx`, `BIMViewer.tsx`, `Dashboard.tsx`, `Finance.tsx`, `InvoiceStudio.tsx`, `Calendar.tsx`, `Whiteboard.tsx`) invalidieren nach jedem Upload sofort `DOCUMENTS_QUERY_KEY`. `Documents.tsx` verfügt nun zudem über einen Mount-Effekt.
+  * **2. CAD-Plan «Geister-Pins» bei gelöschten Mängeln:**
+    * Wurde ein Mangel im Mängel-Modul gelöscht, war er zwar in Supabase gelöscht, verblieb jedoch im serialisierten `p.elements`-Array des CAD-Plans. Beim Laden des Plans wurde er nicht gefiltert, wodurch gelöschte Mängel als Geister-Pins dauerhaft sichtbar blieben.
+    * *Behebung:* In `PlanEditorViewer.tsx` werden beim Laden alle Elemente vom Typ `defect` gegen die tatsächlich in der Datenbank existierenden Projekt-Mängel abgeglichen; gelöschte Mängel werden automatisch aus den Plan-Elementen bereinigt.
+  * **3. 3D-BIM-Viewer <-> Mängel-Modul Synchronisation & UUID-Fix:**
+    * Beim Platzieren von 3D-Mängeln in `BIMViewer.tsx` wurde `project_id: projectId || 'global'` gesetzt (führt zu Postgres-UUID-Syntaxfehlern) und der `DEFECTS_QUERY_KEY` wurde nach dem Erstellen nicht invalidiert.
+    * *Behebung:* In `BIMViewer.tsx` wird `project_id` typsicher auf gültige Projekt-IDs oder `null` gesetzt, das Gewerk übergeben und `DEFECTS_QUERY_KEY` sofort invalidiert.
+  * **4. Baukamera (SiteMonitoring) Standort-Speicherfehler:**
+    * In `SiteMonitoring.tsx` wurde beim Speichern des Baustellen-Standorts die Spalte `description` der Tabelle `projects` statt `site_location` aktualisiert (und bei vorhandener Beschreibung gar nicht überschrieben).
+    * *Behebung:* Die SQL-Abfrage aktualisiert nun zielgerichtet `site_location: trimmedLoc`.
+  * **5. Finanzen & Transaktionen Cache-Invalidierung & CSV-Export:**
+    * In `Finance.tsx`, `InvoiceStudio.tsx` und `FinanceTab.tsx` wurden Transaktionen und Rechnungen ohne Invalidierung von `FINANCIAL_QUERY_KEY` geschrieben. Zudem nutzte der CSV-Export in `Finance.tsx` `d.createdAt` statt `d.created_at` und `d.title` statt `d.prompt`.
+    * *Behebung:* `useFinancialQuery.ts` auf 5s staleTime & mount-refetch umgestellt, alle Buchungs-Handler invalidieren `FINANCIAL_QUERY_KEY`, und der CSV-Export greift sauber auf snake_case- und title/prompt-Felder zu.
+  * **6. Projekte-Query Reaktivität:**
+    * In `useProjectsQuery.ts` (von `FinanceTab.tsx` genutzt) wurde `staleTime: 5000`, `refetchOnMount: 'always'` sowie ein Supabase-Realtime-Channel für die Tabelle `projects` integriert.
+* **Qualitätssicherung:**
+  * TypeScript `tsc --noEmit` fehlerfrei (0 Fehler).
+  * 12/12 Testsuiten grün (69/69 Unit-Tests bestanden).
+  * Vite & Server Production Build in 14.11s erfolgreich abgeschlossen.
+
 ### 0.00000 CAD-Plan & Mängel-Modul: Behebung Mängelerfassung, Synchronisation (TanStack Query Cache), SIA-118 Teardrop-Pin & Mängel-Inspektor
 * **Problemstellung & Benutzer-Anforderung:**
   * Bei der Erfassung eines Mangels im CAD-Plan-Editor funktionierte die Erfassung nicht vollständig (nur Kurzbeschreibung, kein Titel, kein Gewerk, keine Priorität, Beweisfotos wurden nicht in Supabase Storage geladen).

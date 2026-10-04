@@ -32,6 +32,10 @@ import { useProject } from '../contexts/ProjectContext';
 import { sendNotification } from '../lib/notifications'; 
 import { jsPDF } from 'jspdf';
 
+import { queryClient } from '../lib/queryClient';
+import { DEFECTS_QUERY_KEY } from '../hooks/queries/useDefectsQuery';
+import { DOCUMENTS_QUERY_KEY } from '../hooks/queries/useDocumentsQuery';
+
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
 import PremiumFeature from './PremiumFeature';
 import { deleteFileFromStorage } from '../utils/cloudStorageHelper';
@@ -655,12 +659,14 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
     if (currentUser) {
       try {
         const safeCompanyId = currentUser.companyId || (currentUser as any)?.company_id || currentUser.uid;
+        const safeProjectId = (projectId && projectId !== 'global') ? projectId : null;
         const payload: any = {
           prompt: desc || 'Neuer 3D Mangel',
           description: `Erfasst im 3D-Viewer (${activeProject?.name || 'Modell'}).`,
           status: 'To Do',
           severity: 'High',
-          project_id: projectId || 'global',
+          trade: 'Baumeister',
+          project_id: safeProjectId,
           company_id: safeCompanyId || null,
           owner_id: currentUser.uid || null,
           model_id: activeModelId,
@@ -676,6 +682,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
           setDefectPins(prev => prev.map(p => p.id === newPin.id ? { ...p, id: created.id } : p));
         }
 
+        queryClient.invalidateQueries({ queryKey: [DEFECTS_QUERY_KEY] });
         addToast(t('defect_saved'), 'success');
       } catch (err) { 
         console.error("3D Defect Error:", err);
@@ -945,6 +952,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
         date: new Date().toLocaleDateString('de-CH')
       });
 
+      queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
       addToast(t('saved_cloud'), 'success');
       setIsPdfStudioOpen(false);
     } catch (error) {

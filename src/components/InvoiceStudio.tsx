@@ -8,6 +8,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Trash2, X, Calculator, CheckSquare, Cloud, Send, FileSignature, FileText } from 'lucide-react';
 import { cn } from '../utils';
 import { supabase } from '../lib/supabase';
+import { queryClient } from '../lib/queryClient';
+import { DOCUMENTS_QUERY_KEY } from '../hooks/queries/useDocumentsQuery';
+import { FINANCIAL_QUERY_KEY } from '../hooks/queries/useFinancialQuery';
 import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 import { notifyNewDocument } from '../utils/documentNotificationHelper';
 import { getCompanyProfileConfig } from '../utils/companySettings';
@@ -283,6 +286,9 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
 
         await notifyNewDocument(safeCompanyId, fileName, type === 'invoice' ? 'Debitorenrechnung' : 'Offerte', targetProjectId || 'global');
         
+        queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
+        queryClient.invalidateQueries({ queryKey: [FINANCIAL_QUERY_KEY] });
+
         addToast('Erfolgreich im Datenraum & Finanzen gespeichert!', 'success');
         onClose();
       } catch (e) {

@@ -33,6 +33,9 @@ import InvoiceStudio from './InvoiceStudio';
 import UniversalPDFStudio from './UniversalPDFStudio';
 import AiBudgetImportModal from './AiBudgetImportModal';
 import ModuleGuideButton from './ModuleGuideButton';
+import { queryClient } from '../lib/queryClient';
+import { FINANCIAL_QUERY_KEY } from '../hooks/queries/useFinancialQuery';
+import { DOCUMENTS_QUERY_KEY } from '../hooks/queries/useDocumentsQuery';
 import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 import { notifyNewDocument } from '../utils/documentNotificationHelper';
 import { demoTemplates } from '../utils/demoTemplates';
@@ -1288,8 +1291,8 @@ export default function Finance() {
       });
 
       projectDefects.forEach((d: any) => {
-        const date = d.createdAt ? new Date(d.createdAt).toISOString().split('T')[0] : '';
-        const desc = (d.title || d.description || '').replace(/"/g, '""');
+        const date = (d.created_at || d.createdAt) ? new Date(d.created_at || d.createdAt).toISOString().split('T')[0] : '';
+        const desc = (d.prompt || d.title || d.description || '').replace(/"/g, '""');
         csv += `"Mängel","${date}","${desc}","${d.status || ''}"\n`;
       });
 
@@ -1317,6 +1320,7 @@ export default function Finance() {
         if (safeCompanyId) query = query.eq('company_id', safeCompanyId);
         await query;
         setTransactions(prev => prev.filter(tx => tx.id !== id));
+        queryClient.invalidateQueries({ queryKey: [FINANCIAL_QUERY_KEY] });
         addToast(t('booking_deleted'), 'success');
       }
       catch (error) { addToast(t('delete_error'), 'error'); }
@@ -1331,6 +1335,7 @@ export default function Finance() {
       if (safeCompanyId) query = query.eq('company_id', safeCompanyId);
       await query;
       setTransactions(prev => prev.map(tx => tx.id === id ? { ...tx, status: newStatus } : tx));
+      queryClient.invalidateQueries({ queryKey: [FINANCIAL_QUERY_KEY] });
       addToast(t('status_updated'), 'success');
     }
     catch (e) { addToast(t('update_error'), 'error'); }
@@ -1558,6 +1563,8 @@ export default function Finance() {
         receipt_urls: downloadUrl ? [downloadUrl] : []
       });
       await notifyNewDocument(safeCompanyId, documentName, category, safeProjectId);
+      queryClient.invalidateQueries({ queryKey: [FINANCIAL_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
       return true;
     } catch (error) { return false; }
   };
@@ -1581,6 +1588,7 @@ export default function Finance() {
       const downloadUrl = await uploadPdfBlobWithFallback(blob, fileName, safeCompanyId);
       const targetFolderId = await ensureFolderLocal("Finanzen", "projects");
       await supabase.from('documents').insert({ name: fileName, url: downloadUrl, file_url: downloadUrl, project_id: safeProjectId, folder_id: targetFolderId, category: 'projects', owner_id: currentUser.uid, company_id: safeCompanyId, uploaded_by: currentUser.uid, type: 'application/pdf', size: `${Math.round(blob.size / 1024)} KB`, is_folder: false, created_at: new Date().toISOString(), uploaded_at: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH') });
+      queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
       addToast('Erfolgreich exportiert', 'success');
       setIsPdfStudioOpen(false);
     } catch (e) { addToast('Fehler beim Speichern', 'error'); }
@@ -1633,6 +1641,8 @@ export default function Finance() {
         company_id: safeCompanyId,
         receipt_urls: uploadedUrls
       });
+
+      queryClient.invalidateQueries({ queryKey: [FINANCIAL_QUERY_KEY] });
 
       const newTx: Transaction = {
         id: `tx-${Date.now()}`,

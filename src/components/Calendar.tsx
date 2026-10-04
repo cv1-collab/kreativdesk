@@ -21,6 +21,8 @@ import { usePermissions } from '../hooks/usePermissions';
 
 // SUPABASE IMPORT
 import { supabase } from '../lib/supabase';
+import { queryClient } from '../lib/queryClient';
+import { DOCUMENTS_QUERY_KEY } from '../hooks/queries/useDocumentsQuery';
 import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 import { demoTemplates } from '../utils/demoTemplates';
 import { fetchSystemConfigJSON, saveSystemConfigJSON } from '../utils/configHelper';
@@ -1140,6 +1142,7 @@ export default function Calendar() {
         uploaded_at: new Date().toISOString(),
         date: new Date().toLocaleDateString('de-CH')
       });
+      queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
       addToast(t('pdf_saved'), 'success');
       setIsPdfStudioOpen(false);
     } catch (e) {

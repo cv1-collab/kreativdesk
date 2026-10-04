@@ -32,6 +32,8 @@ export function useDocumentsQuery(companyId?: string | null) {
       return data || [];
     },
     enabled: !!companyId,
+    staleTime: 1000 * 5, // 5 seconds fresh window for active data room workflows
+    refetchOnMount: 'always',
   });
 
   // Selective Realtime sync to auto-refresh on upload/move/rename
@@ -42,9 +44,9 @@ export function useDocumentsQuery(companyId?: string | null) {
       .channel(`documents_realtime_${companyId}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'documents', filter: `company_id=eq.${companyId}` },
+        { event: '*', schema: 'public', table: 'documents' },
         () => {
-          queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY, companyId] });
+          queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
         }
       )
       .subscribe();
@@ -55,7 +57,7 @@ export function useDocumentsQuery(companyId?: string | null) {
   }, [companyId, queryClient]);
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY, companyId] });
+    queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
   };
 
   return {

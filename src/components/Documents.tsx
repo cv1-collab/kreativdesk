@@ -482,6 +482,12 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
     invalidateDocuments();
   };
 
+  useEffect(() => {
+    if (safeCompanyId && !isDemo) {
+      invalidateDocuments();
+    }
+  }, [safeCompanyId, isDemo, invalidateDocuments]);
+
   const autoOrganizeLooseContracts = useCallback(async (docs: any[], compId: string) => {
     if (!docs || docs.length === 0 || !compId || isDemo) return;
     const legalFolder = docs.find(d => d.is_folder && d.name === '02_RECHTLICHES');

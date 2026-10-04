@@ -16,6 +16,8 @@ import { callGeminiAPI } from '../utils/geminiClient';
 import { fal } from "@fal-ai/client";
 
 import { supabase } from '../lib/supabase';
+import { queryClient } from '../lib/queryClient';
+import { DOCUMENTS_QUERY_KEY } from '../hooks/queries/useDocumentsQuery';
 import { safeStorage } from '../utils/safeStorage';
 
 fal.config({
@@ -2163,6 +2165,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
       await supabase.from('documents').insert({
         name: fileName, url: downloadUrl, file_url: downloadUrl, project_id: activeProject?.id || null, folder_id: targetFolderId, category: docCategory, owner_id: currentUser.uid, company_id: safeCompanyId, uploaded_by: currentUser.uid, type: 'application/pdf', size: formatBytes(blob.size), is_folder: false, created_at: new Date().toISOString(), uploaded_at: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH')
       });
+      queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
       addToast(t('saved_cloud'), 'success'); setIsPdfStudioOpen(false);
     } catch (error) { console.error(error); addToast('Fehler beim Speichern in der Cloud.', 'error'); }
   };
@@ -2211,6 +2214,8 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
             folder_id: targetFolderId || null, 
             category: 'projects'
           });
+
+          queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
 
           if (projectId && !isDemo) {
             await supabase.from('site_data').upsert({

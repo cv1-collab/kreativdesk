@@ -23,6 +23,7 @@ import { safeStorage } from '../utils/safeStorage';
 import { dummySvgPlan } from '../utils/cadDemoPlan';
 import { queryClient } from '../lib/queryClient';
 import { DEFECTS_QUERY_KEY } from '../hooks/queries/useDefectsQuery';
+import { DOCUMENTS_QUERY_KEY } from '../hooks/queries/useDocumentsQuery';
 
 // NATIVE PDF ENGINE IMPORTS
 import UniversalPDFStudio from './UniversalPDFStudio';
@@ -823,7 +824,15 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
             const bgImgEl = Array.isArray(p.elements) ? p.elements.find((e: any) => e?.id === 'bg-img' || e?.type === 'image') : null;
             const resolvedImage = p.plan_image || p.planImage || metaEl?.plan_image || bgImgEl?.url || (isDemoProject ? dummySvgPlan : null);
 
-            let mergedElements: PlanElement[] = (p.elements || []).filter((e: any) => e?.id !== '__plan_meta__');
+            const dbDefectIdSet = new Set(dbDefects.map(d => d.id));
+            let mergedElements: PlanElement[] = (p.elements || []).filter((e: any) => {
+              if (e?.id === '__plan_meta__') return false;
+              // Clean up ghost pins: if element is a defect pin, only keep it if it still exists in the database
+              if (e?.type === 'defect') {
+                return dbDefectIdSet.has(e.id);
+              }
+              return true;
+            });
 
             // Merge / sync defects from Supabase defects table
             dbDefects.forEach(dbDef => {
@@ -1893,6 +1902,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       });
 
       await notifyNewDocument(safeCompanyId, fileName, 'Plan-Export', currentProjectId);
+      queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
 
       addToast(t('save_to_data_room') + ' erfolgreich!', 'success');
       setIsPdfStudioOpen(false);

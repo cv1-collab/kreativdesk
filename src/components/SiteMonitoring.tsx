@@ -358,8 +358,8 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
       safeStorage.setItem(`project_location_${activeProject.id}`, trimmedLoc);
 
       const { error } = await supabase.from('projects').update({
-        description: activeProject.description ? activeProject.description : trimmedLoc
-      }).eq('id', activeProject.id);
+        site_location: trimmedLoc
+      } as any).eq('id', activeProject.id);
 
       if (typeof projectCtx?.fetchProjects === 'function') {
         projectCtx.fetchProjects();

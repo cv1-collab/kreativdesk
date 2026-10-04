@@ -14,6 +14,8 @@ import { cn } from '../utils';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { supabase } from '../lib/supabase';
+import { queryClient } from '../lib/queryClient';
+import { DOCUMENTS_QUERY_KEY } from '../hooks/queries/useDocumentsQuery';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
@@ -393,6 +395,7 @@ export default function Dashboard() {
         category: 'company', 
         date: new Date().toLocaleDateString('de-CH')
       });
+      queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
       addToast(t('saved_cloud'), 'success');
       setIsPdfStudioOpen(false);
     } catch (error) {
