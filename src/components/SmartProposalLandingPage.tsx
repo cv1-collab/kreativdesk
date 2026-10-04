@@ -4112,7 +4112,7 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
                 <div
                   key={idx}
                   className={cn(
-                    "p-3 rounded-2xl max-w-[85%] leading-relaxed",
+                    "p-3 rounded-2xl max-w-[85%] leading-relaxed whitespace-pre-wrap",
                     msg.role === 'user'
                       ? "ml-auto bg-blue-600 text-white rounded-tr-none font-medium shadow-xs"
                       : (isLight 

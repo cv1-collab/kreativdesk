@@ -585,3 +585,14 @@
 - [x] Vollständiges Vercel Production Deployment erfolgreich abgeschlossen (`https://www.kreativdesk.ch`).
 - [x] Customer Journey, Registrierung, 30 Tage Free Trial, Handwerker- & Partner-Lizenzen 100% verifiziert.
 - [x] Systemweiter Build (`tsc --noEmit && vite build && esbuild server.ts`) 100% fehlerfrei (0 Fehler, 53/53 Vitest grün).
+- [x] **KI Brief- & Dokumenten-Studio (`DocumentStudioModal.tsx`):**
+  - **Fehlerbehebung Mehrseitige Druckansicht:** Rohe HTML-Tags (`<p class="...">`, `<br>`, etc.) wurden in der Druckansicht fälschlicherweise als Textstring ausgegeben.
+  - Implementierung eines strukturierten Block-Parsers (`StudioBlock` für Überschriften, Aufzählungen, Paragrafen, Trennlinien, Abstände), der sauberes DIN-A4-Rendering ohne sichtbare HTML-Tags sicherstellt.
+  - Exakte Berechnung des Zeichenbudgets pro Seite auf Basis sichtbarer Zeichen (statt HTML-Quelltext).
+  - Gleiche Block-Architektur wird nun konsistent für Live-Blatt, mehrseitige Druckansicht und Universal PDF Studio Export verwendet.
+  - HTML-Entities (`&nbsp;`, `&amp;`) werden beim Text-Kopieren und .txt-Export automatisch in sauberen Klartext dekodiert.
+- [x] **Systemweiter Text- & Formatierungs-Audit (78 Komponenten):**
+  - Vollständiger Scan nach `innerHTML`, `contentEditable` und Text-Rendering-Methoden abgeschlossen.
+  - `SmartProposalLandingPage.tsx`: AI-Angebotsberater Chat mit `whitespace-pre-wrap` gehärtet (kein Text-Zusammenfallen).
+  - `Whiteboard.tsx`: KI-Audiozusammenfassungen und Transkripte mit `whitespace-pre-wrap` abgesichert.
+  - Alle übrigen Module (`InvoiceStudio`, `Defects`, `Calendar`, `AgendaTab`, `OpCostStudio`, `SystemHandbook`) nutzen typisierte Vektor-Engines und sind 100% frei von HTML-Leaks.

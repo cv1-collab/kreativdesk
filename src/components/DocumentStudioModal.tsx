@@ -279,46 +279,105 @@ function htmlToPlainText(html: string): string {
   text = text.replace(/\[(?:light|l)\]/gi, '').replace(/\[\/(?:light|l)\]/gi, '');
   text = text.replace(/\[(?:book|regular)\]/gi, '').replace(/\[\/(?:book|regular)\]/gi, '');
   text = text.replace(/\[color:[^\]]+\]/gi, '').replace(/\[\/color\]/gi, '');
+  text = text
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"');
   text = text.replace(/\n{3,}/g, '\n\n');
   return text.trim();
 }
 
+interface StudioBlock {
+  type: 'heading' | 'bullet' | 'paragraph' | 'divider' | 'spacer';
+  text: string;
+}
+
 // Helper: Extract structured blocks from HTML or text for PDF & Page generation
-function extractBlocksFromHtmlOrText(content: string): { type: string; text: string }[] {
+function extractBlocksFromHtmlOrText(content: string): StudioBlock[] {
   if (!content) return [];
   
+  // Normalize block tags to newlines while tagging headings, lists, and dividers
   const normalized = content
-    .replace(/<\/(p|div|h[1-6]|li)>/gi, '\n')
-    .replace(/<hr[^>]*>/gi, '\n---\n')
-    .replace(/<br\s*\/?>/gi, '\n');
+    .replace(/<hr[^>]*>/gi, '\n<hr-block>\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/gi, '\n<h-block>$1</h-block>\n')
+    .replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, '\n<li-block>$1</li-block>\n')
+    .replace(/<\/(p|div)>/gi, '\n')
+    .replace(/<(p|div)[^>]*>/gi, '');
 
   const lines = normalized.split('\n');
-  const blocks: { type: string; text: string }[] = [];
+  const blocks: StudioBlock[] = [];
 
   for (const rawLine of lines) {
     const trimmed = rawLine.trim();
     if (!trimmed) {
-      blocks.push({ type: 'spacer', text: '' });
+      if (blocks.length > 0 && blocks[blocks.length - 1].type !== 'spacer') {
+        blocks.push({ type: 'spacer', text: '' });
+      }
       continue;
     }
-    if (/^[-=_*]{3,}$/.test(trimmed)) {
+
+    if (trimmed === '<hr-block>' || /^[-=_*]{3,}$/.test(trimmed)) {
       blocks.push({ type: 'divider', text: '' });
       continue;
     }
-    const isHeading = /^<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/i.test(trimmed) || 
-                      /^(\d+\.|#+)\s+[A-ZÄÖÜ0-9]/.test(trimmed);
+
+    // Explicit Heading block from <h1-6>
+    if (trimmed.startsWith('<h-block>') && trimmed.endsWith('</h-block>')) {
+      const inner = trimmed.slice(9, -10).trim();
+      const cleanHeading = inner.replace(/<[^>]+>/g, '').replace(/^#+\s*/, '');
+      if (cleanHeading) {
+        blocks.push({ type: 'heading', text: cleanHeading });
+      }
+      continue;
+    }
+
+    // Explicit Bullet block from <li>
+    if (trimmed.startsWith('<li-block>') && trimmed.endsWith('</li-block>')) {
+      const inner = trimmed.slice(10, -11).trim();
+      const cleanBullet = inner.replace(/^[•\-*]\s+/, '');
+      if (cleanBullet) {
+        blocks.push({ type: 'bullet', text: cleanBullet });
+      }
+      continue;
+    }
+
+    // Check plain text heading or markdown heading
+    const plainText = trimmed.replace(/<[^>]+>/g, '').replace(/\[[^\]]+\]/g, '').trim();
+    if (!plainText) {
+      if (blocks.length > 0 && blocks[blocks.length - 1].type !== 'spacer') {
+        blocks.push({ type: 'spacer', text: '' });
+      }
+      continue;
+    }
+
+    const isHeading = /^(\d+\.|#+)\s+[A-ZÄÖÜ0-9]/.test(plainText) ||
+                      (/^[A-ZÄÖÜ0-9\s\-_&/()]{4,50}$/.test(plainText) && plainText === plainText.toUpperCase() && !plainText.includes(':'));
     if (isHeading) {
-      const cleanHeading = trimmed.replace(/<[^>]+>/g, '').replace(/^#+\s*/, '');
-      blocks.push({ type: 'heading', text: cleanHeading });
+      blocks.push({ type: 'heading', text: plainText.replace(/^#+\s*/, '') });
       continue;
     }
-    const isBullet = /^<li[^>]*>([\s\S]*?)<\/li>/i.test(trimmed) || /^[•\-*]\s+/.test(trimmed);
+
+    const isBullet = /^[•\-*]\s+/.test(plainText);
     if (isBullet) {
-      const cleanBullet = trimmed.replace(/<[^>]+>/g, '').replace(/^[•\-*]\s+/, '');
-      blocks.push({ type: 'bullet', text: cleanBullet });
+      const cleanBulletText = trimmed.replace(/<[^>]+>/g, '').replace(/^[•\-*]\s+/, '');
+      blocks.push({ type: 'bullet', text: cleanBulletText });
       continue;
     }
-    blocks.push({ type: 'paragraph', text: trimmed });
+
+    // Regular paragraph: strip any stray outer block tags, preserve inline tags
+    const cleanPara = trimmed
+      .replace(/^<(p|div)[^>]*>/i, '')
+      .replace(/<\/(p|div)>$/i, '');
+    
+    blocks.push({ type: 'paragraph', text: cleanPara });
+  }
+
+  // Remove trailing spacer
+  while (blocks.length > 0 && blocks[blocks.length - 1].type === 'spacer') {
+    blocks.pop();
   }
 
   return blocks;
@@ -408,7 +467,13 @@ const parseStyledTokens = (
         nodes.push(renderTokenNode(part, activeStyle, isPdf, `txt-${idx}`));
       }
     } else {
-      const cleanText = isPdf ? part.replace(/<[^>]+>/g, '') : part;
+      const cleanText = part
+        .replace(/<[^>]+>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"');
       nodes.push(renderTokenNode(cleanText, activeStyle, isPdf, `txt-${idx}`));
     }
   });
@@ -589,79 +654,78 @@ function DocumentStudioPDFDocument({
 function splitContentIntoPages(
   content: string, 
   showSignatures: boolean
-): { pageNumber: number; content: string; isFirst: boolean; isLast: boolean }[] {
-  if (!content.trim()) {
-    return [{ pageNumber: 1, content: '', isFirst: true, isLast: true }];
+): { pageNumber: number; content: string; isFirst: boolean; isLast: boolean; blocks: StudioBlock[] }[] {
+  const blocks = extractBlocksFromHtmlOrText(content || '');
+  if (blocks.length === 0) {
+    return [{ pageNumber: 1, content: '', isFirst: true, isLast: true, blocks: [] }];
   }
 
-  const lines = content.split('\n');
-  const paragraphs: string[] = [];
-  let currentPara: string[] = [];
+  // Page Capacities (measured in visible character weight)
+  const P1_MAX = 1450;
+  const P1_MAX_WITH_SIGS = 950;
+  const P_CONT_MAX = 2400;
+  const SIG_SPACE = 600;
 
-  for (const line of lines) {
-    const isHeading = /^(\d+\.|#+)\s+[A-ZÄÖÜ0-9]/.test(line.trim());
-    if (isHeading && currentPara.length > 0) {
-      paragraphs.push(currentPara.join('\n'));
-      currentPara = [line];
-    } else if (line.trim() === '' && currentPara.length > 0) {
-      paragraphs.push(currentPara.join('\n'));
-      currentPara = [];
-    } else {
-      currentPara.push(line);
-    }
-  }
-  if (currentPara.length > 0) {
-    paragraphs.push(currentPara.join('\n'));
-  }
+  const getBlockWeight = (b: StudioBlock) => {
+    if (b.type === 'spacer') return 30;
+    if (b.type === 'divider') return 40;
+    const visibleLength = b.text.replace(/<[^>]+>/g, '').replace(/\[[^\]]+\]/g, '').length;
+    if (b.type === 'heading') return visibleLength + 70;
+    if (b.type === 'bullet') return visibleLength + 25;
+    return visibleLength + 15;
+  };
 
-  // Page Capacities (characters)
-  const P1_MAX = 1500;
-  const P1_MAX_WITH_SIGS = 1000;
-  const P_CONT_MAX = 2500;
-  const SIG_SPACE = 650;
+  const totalWeight = blocks.reduce((sum, b) => sum + getBlockWeight(b), 0);
+  const singlePageCapacity = showSignatures ? P1_MAX_WITH_SIGS : P1_MAX;
 
-  if (content.length <= (showSignatures ? P1_MAX_WITH_SIGS : P1_MAX)) {
-    return [{ pageNumber: 1, content, isFirst: true, isLast: true }];
+  if (totalWeight <= singlePageCapacity) {
+    return [{
+      pageNumber: 1,
+      content: blocks.map(b => b.text).join('\n\n'),
+      blocks,
+      isFirst: true,
+      isLast: true
+    }];
   }
 
-  const rawPages: { paragraphs: string[]; isFirst: boolean }[] = [];
-  let currentPageParas: string[] = [];
+  const rawPages: { blocks: StudioBlock[]; isFirst: boolean }[] = [];
+  let currentPageBlocks: StudioBlock[] = [];
   let currentLen = 0;
   let isFirst = true;
 
-  for (let i = 0; i < paragraphs.length; i++) {
-    const para = paragraphs[i];
-    const paraLen = para.length + 30;
-    const maxCapacity = isFirst ? P1_MAX : P_CONT_MAX;
+  for (let i = 0; i < blocks.length; i++) {
+    const block = blocks[i];
+    const blockWeight = getBlockWeight(block);
+    const maxCapacity = isFirst ? (showSignatures ? P1_MAX_WITH_SIGS : P1_MAX) : P_CONT_MAX;
 
-    if (currentLen + paraLen > maxCapacity && currentPageParas.length > 0) {
+    if (currentLen + blockWeight > maxCapacity && currentPageBlocks.length > 0) {
       rawPages.push({
-        paragraphs: currentPageParas,
+        blocks: currentPageBlocks,
         isFirst
       });
-      currentPageParas = [para];
-      currentLen = paraLen;
+      currentPageBlocks = [block];
+      currentLen = blockWeight;
       isFirst = false;
     } else {
-      currentPageParas.push(para);
-      currentLen += paraLen;
+      currentPageBlocks.push(block);
+      currentLen += blockWeight;
     }
   }
 
-  if (currentPageParas.length > 0) {
-    if (showSignatures && currentLen + SIG_SPACE > (isFirst ? P1_MAX : P_CONT_MAX) && currentPageParas.length > 2) {
-      const splitPoint = Math.max(1, currentPageParas.length - 2);
+  if (currentPageBlocks.length > 0) {
+    if (showSignatures && currentLen + SIG_SPACE > (isFirst ? P1_MAX : P_CONT_MAX) && currentPageBlocks.length > 2) {
+      const splitPoint = Math.max(1, currentPageBlocks.length - 2);
       rawPages.push({
-        paragraphs: currentPageParas.slice(0, splitPoint),
+        blocks: currentPageBlocks.slice(0, splitPoint),
         isFirst
       });
       rawPages.push({
-        paragraphs: currentPageParas.slice(splitPoint),
+        blocks: currentPageBlocks.slice(splitPoint),
         isFirst: false
       });
     } else {
       rawPages.push({
-        paragraphs: currentPageParas,
+        blocks: currentPageBlocks,
         isFirst
       });
     }
@@ -669,7 +733,8 @@ function splitContentIntoPages(
 
   return rawPages.map((p, idx) => ({
     pageNumber: idx + 1,
-    content: p.paragraphs.join('\n\n'),
+    content: p.blocks.map(b => b.text).join('\n\n'),
+    blocks: p.blocks,
     isFirst: idx === 0,
     isLast: idx === rawPages.length - 1
   }));
@@ -680,50 +745,55 @@ const renderInlineFormatting = (text: string) => {
   return parseStyledTokens(text, false);
 };
 
+const renderFormattedBlocks = (
+  blocks: StudioBlock[], 
+  accentCol: string
+) => {
+  if (!blocks || blocks.length === 0) return null;
+
+  return (
+    <div className="space-y-1.5">
+      {blocks.map((block, idx) => {
+        if (block.type === 'spacer') {
+          return <div key={idx} className="h-3" />;
+        }
+        if (block.type === 'divider') {
+          return <hr key={idx} className="my-3.5 border-slate-300 dark:border-slate-700" />;
+        }
+        if (block.type === 'heading') {
+          return (
+            <div key={idx} className="mt-4 mb-2 pt-2 border-b border-slate-200/90 pb-1">
+              <h3 
+                className="text-xs md:text-sm font-bold uppercase tracking-wider text-slate-900"
+                style={{ color: accentCol && accentCol !== '#09090b' ? accentCol : undefined }}
+              >
+                {parseStyledTokens(block.text, false)}
+              </h3>
+            </div>
+          );
+        }
+        if (block.type === 'bullet') {
+          return (
+            <div key={idx} className="flex items-start gap-2 my-1 pl-2 text-xs md:text-sm leading-relaxed text-slate-800">
+              <span className="font-bold text-slate-900 mt-0.5 select-none">•</span>
+              <div className="flex-1">{parseStyledTokens(block.text, false)}</div>
+            </div>
+          );
+        }
+        return (
+          <p key={idx} className="my-1.5 text-xs md:text-sm leading-relaxed text-slate-800">
+            {parseStyledTokens(block.text, false)}
+          </p>
+        );
+      })}
+    </div>
+  );
+};
+
 const renderFormattedText = (text: string, accentCol: string) => {
   if (!text) return null;
-  const lines = text.split('\n');
-
-  return lines.map((line, idx) => {
-    const trimmed = line.trim();
-    if (!trimmed) {
-      return <div key={idx} className="h-2.5" />;
-    }
-
-    if (/^[-=_*]{3,}$/.test(trimmed)) {
-      return <hr key={idx} className="my-3 border-slate-300" />;
-    }
-
-    // Numbered headings (e.g. "1. VERTRAGSGEGENSTAND", "## ...")
-    const isMainHeading = /^(\d+\.|#+)\s+[A-ZÄÖÜ0-9\s\-_&/()]+$/.test(trimmed) || /^(\d+\.\s+[A-ZÄÖÜ])/.test(trimmed);
-    if (isMainHeading) {
-      return (
-        <div key={idx} className="mt-4 mb-1.5 pt-2 border-b border-slate-200/80 pb-0.5">
-          <h3 className="text-xs md:text-sm font-semibold uppercase tracking-wider text-slate-900">
-            {parseStyledTokens(trimmed.replace(/^#+\s*/, ''), false)}
-          </h3>
-        </div>
-      );
-    }
-
-    // Bullet points
-    const isBullet = /^[•\-*]\s+/.test(trimmed);
-    if (isBullet) {
-      const bulletContent = trimmed.replace(/^[•\-*]\s+/, '');
-      return (
-        <div key={idx} className="flex items-start gap-2 my-1 pl-1.5 text-xs leading-relaxed text-slate-800">
-          <span className="font-bold text-slate-900 mt-0.5">•</span>
-          <div>{parseStyledTokens(bulletContent, false)}</div>
-        </div>
-      );
-    }
-
-    return (
-      <p key={idx} className="my-1 text-xs leading-relaxed text-slate-800">
-        {parseStyledTokens(line, false)}
-      </p>
-    );
-  });
+  const blocks = extractBlocksFromHtmlOrText(text);
+  return renderFormattedBlocks(blocks, accentCol);
 };
 
 export default function DocumentStudioModal({
@@ -2173,7 +2243,7 @@ ${footerText}
 
                       {/* Rendered Text Content for this Page */}
                       <div className="text-xs md:text-sm leading-relaxed text-slate-800">
-                        {renderFormattedText(page.content, accentColor)}
+                        {renderFormattedBlocks(page.blocks || extractBlocksFromHtmlOrText(page.content), accentColor)}
                       </div>
                     </div>
 

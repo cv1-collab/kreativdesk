@@ -3342,7 +3342,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                           </div>
                           <h5 className="text-[10px] font-bold text-accent-ai uppercase tracking-widest">{t('ai_summary')}</h5>
                         </div>
-                        <p className="text-sm font-medium text-text-primary leading-relaxed">{note.aiSummary}</p>
+                        <p className="text-sm font-medium text-text-primary leading-relaxed whitespace-pre-wrap">{note.aiSummary}</p>
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5 mb-2">
@@ -3351,7 +3351,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                           </div>
                           <h5 className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{t('full_transcript')}</h5>
                         </div>
-                        <p className="text-xs text-text-muted leading-relaxed font-medium bg-surface p-3 rounded-lg border border-border/50">"{note.transcription}"</p>
+                        <p className="text-xs text-text-muted leading-relaxed font-medium bg-surface p-3 rounded-lg border border-border/50 whitespace-pre-wrap">"{note.transcription}"</p>
                       </div>
                     </div>
                   )}
