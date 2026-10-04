@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { downloadICSFile } from '../utils/icsGenerator';
 import { cn, sanitizeUrl } from '../utils';
-import { callGeminiAPI, callGeminiEmbedAPI } from '../utils/geminiClient';
+import { callGeminiAPI } from '../utils/geminiClient';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { checkStorageLimit, incrementStorage } from '../utils/storageGuard';

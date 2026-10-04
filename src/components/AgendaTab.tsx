@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useToast } from '../contexts/ToastContext';
+import { useQueryClient } from '@tanstack/react-query';
+import { DOCUMENTS_QUERY_KEY } from '../hooks/queries/useDocumentsQuery';
 import { supabase } from '../lib/supabase';
 import {
   Clock, Play, Pause, Square, Trash2, CalendarDays, Plus,
@@ -246,6 +248,7 @@ interface AgendaTabProps {
 
 export default function AgendaTab({ projects = [], companyUsers = [], companyProfile = {} }: AgendaTabProps) {
   const { currentUser } = useAuth();
+  const queryClient = useQueryClient();
   const { addToast } = useToast();
   const navigate = useNavigate();
   const { hasPermission } = usePermissions();
@@ -1157,7 +1160,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
       .eq('company_id', safeCompanyId)
       .maybeSingle();
     if (existing) return existing.id;
-    const { data: newF } = await supabase.from('documents').insert({ name: folderName, is_folder: true, category: 'company', owner_id: currentUser.uid, company_id: safeCompanyId, project_id: 'global', created_at: new Date().toISOString() }).select().maybeSingle();
+    const { data: newF } = await supabase.from('documents').insert({ name: folderName, is_folder: true, category: 'company', owner_id: currentUser.uid, company_id: safeCompanyId, project_id: null, created_at: new Date().toISOString() }).select().maybeSingle();
     return newF ? newF.id : 'root';
   };
 
@@ -1172,7 +1175,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         name: fileName,
         url: downloadUrl,
         file_url: downloadUrl,
-        project_id: 'global',
+        project_id: null,
         folder_id: targetFolderId,
         category: 'company',
         owner_id: currentUser.uid,
@@ -1182,6 +1185,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         is_folder: false,
         created_at: new Date().toISOString()
       });
+      queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
       addToast(t('pdf_exported'), 'success');
       setIsPdfStudioOpen(false);
     } catch (error) {

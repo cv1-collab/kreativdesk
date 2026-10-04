@@ -554,9 +554,11 @@ function isSafeExternalUrl(urlStr: string): boolean {
         config
       });
       
+      const generatedText = typeof response.text === 'function' ? (response as any).text() : (response.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || '');
+
       res.status(200).json({
-        text: response.text,
-        candidates: response.candidates
+        text: generatedText,
+        candidates: response.candidates ? JSON.parse(JSON.stringify(response.candidates)) : []
       });
     } catch (error: any) {
       console.error("AI Proxy Error:", error);
@@ -605,7 +607,11 @@ function isSafeExternalUrl(urlStr: string): boolean {
 
       const response = await ai.models.embedContent({ model, contents });
       
-      res.status(200).json({ embeddings: response.embeddings });
+      const firstValues = response.embeddings?.[0]?.values || [];
+      res.status(200).json({ 
+        embedding: firstValues,
+        embeddings: response.embeddings 
+      });
     } catch (error: any) {
       console.error("AI Embed Proxy Error:", error);
       res.status(500).json({ error: 'Server error during embedding', details: error.message });

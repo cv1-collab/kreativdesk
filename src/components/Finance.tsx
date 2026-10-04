@@ -1516,18 +1516,27 @@ export default function Finance() {
 
   const ensureFolderLocal = async (folderName: string, docCategory: string) => {
     const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
-    if (!currentUser || !safeCompanyId || !currentProjectId) return 'root';
-    const { data: existing } = await supabase
+    if (!currentUser || !safeCompanyId) return 'root';
+    const cleanProjectId = (currentProjectId && currentProjectId !== 'global') ? currentProjectId : null;
+
+    let query = supabase
       .from('documents')
       .select('id')
       .eq('company_id', safeCompanyId)
       .eq('name', folderName)
-      .eq('project_id', currentProjectId)
-      .maybeSingle();
+      .eq('is_folder', true);
+
+    if (cleanProjectId) {
+      query = query.eq('project_id', cleanProjectId);
+    } else {
+      query = query.is('project_id', null);
+    }
+
+    const { data: existing } = await query.maybeSingle();
     if (existing) return existing.id;
 
     const { data: newF } = await supabase.from('documents').insert({
-      name: folderName, is_folder: true, category: docCategory, owner_id: currentUser.uid, company_id: safeCompanyId, project_id: currentProjectId, created_at: new Date().toISOString()
+      name: folderName, is_folder: true, category: cleanProjectId ? docCategory : 'company', owner_id: currentUser.uid, company_id: safeCompanyId, project_id: cleanProjectId, created_at: new Date().toISOString()
     }).select().maybeSingle();
     return newF ? newF.id : 'root';
   };
@@ -1535,7 +1544,7 @@ export default function Finance() {
   const saveDocumentToCloud = async (fileData: any, category: string, defaultStatus: string = 'Offen') => {
     if (!currentUser) return false;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
-    const safeProjectId = currentProjectId || 'global';
+    const cleanProjectId = (currentProjectId && currentProjectId !== 'global') ? currentProjectId : null;
     try {
       let downloadUrl = fileData.url || '';
       if (fileData.file) {
@@ -1547,7 +1556,7 @@ export default function Finance() {
       const documentTotal = fileData.total !== undefined ? fileData.total : (fileData.amount || 0);
 
       await supabase.from('documents').insert({
-        name: documentName, size: fileData.size || '0 MB', type: 'application/pdf', url: downloadUrl, file_url: downloadUrl, folder_id: targetFolderId, is_folder: false, owner_id: currentUser.uid, company_id: safeCompanyId, project_id: safeProjectId, category: 'projects', uploaded_by: currentUser.uid, created_at: new Date().toISOString()
+        name: documentName, size: fileData.size || '0 MB', type: 'application/pdf', url: downloadUrl, file_url: downloadUrl, folder_id: targetFolderId, is_folder: false, owner_id: currentUser.uid, company_id: safeCompanyId, project_id: cleanProjectId, category: cleanProjectId ? 'projects' : 'company', uploaded_by: currentUser.uid, created_at: new Date().toISOString()
       });
       const displayCategory = category === 'Debitorenrechnung' ? t('invoice') : t('quote');
       await supabase.from('transactions').insert({
@@ -1559,10 +1568,10 @@ export default function Finance() {
         status: defaultStatus || 'Offen',
         owner_id: currentUser.uid,
         company_id: safeCompanyId,
-        project_id: safeProjectId,
+        project_id: cleanProjectId,
         receipt_urls: downloadUrl ? [downloadUrl] : []
       });
-      await notifyNewDocument(safeCompanyId, documentName, category, safeProjectId);
+      await notifyNewDocument(safeCompanyId, documentName, category, cleanProjectId || undefined);
       queryClient.invalidateQueries({ queryKey: [FINANCIAL_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
       return true;
@@ -1582,12 +1591,12 @@ export default function Finance() {
   const handleSavePdfToCloud = async (blob: Blob) => {
     if (!currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
-    const safeProjectId = currentProjectId || 'global';
+    const cleanProjectId = (currentProjectId && currentProjectId !== 'global') ? currentProjectId : null;
     try {
       const fileName = `Finanzbericht_${Date.now()}.pdf`;
       const downloadUrl = await uploadPdfBlobWithFallback(blob, fileName, safeCompanyId);
       const targetFolderId = await ensureFolderLocal("Finanzen", "projects");
-      await supabase.from('documents').insert({ name: fileName, url: downloadUrl, file_url: downloadUrl, project_id: safeProjectId, folder_id: targetFolderId, category: 'projects', owner_id: currentUser.uid, company_id: safeCompanyId, uploaded_by: currentUser.uid, type: 'application/pdf', size: `${Math.round(blob.size / 1024)} KB`, is_folder: false, created_at: new Date().toISOString(), uploaded_at: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH') });
+      await supabase.from('documents').insert({ name: fileName, url: downloadUrl, file_url: downloadUrl, project_id: cleanProjectId, folder_id: targetFolderId, category: cleanProjectId ? 'projects' : 'company', owner_id: currentUser.uid, company_id: safeCompanyId, uploaded_by: currentUser.uid, type: 'application/pdf', size: `${Math.round(blob.size / 1024)} KB`, is_folder: false, created_at: new Date().toISOString(), uploaded_at: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH') });
       queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
       addToast('Erfolgreich exportiert', 'success');
       setIsPdfStudioOpen(false);
@@ -1597,7 +1606,7 @@ export default function Finance() {
   const handleSaveReceiptPdfToCloud = async (blob: Blob) => {
     if (!currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
-    const safeProjectId = currentProjectId || 'global';
+    const cleanProjectId = (currentProjectId && currentProjectId !== 'global') ? currentProjectId : null;
     setIsSubmitting(true);
     try {
       const isExternal = receiptType === 'external_cost' || incomingData.type === 'external';
@@ -1636,7 +1645,7 @@ export default function Finance() {
         category: transactionCategory,
         amount: -Math.abs(Number(incomingData.amount) || 0),
         status: statusValue,
-        project_id: safeProjectId,
+        project_id: cleanProjectId,
         owner_id: currentUser.uid,
         company_id: safeCompanyId,
         receipt_urls: uploadedUrls
@@ -1652,7 +1661,7 @@ export default function Finance() {
         amount: -Math.abs(Number(incomingData.amount) || 0),
         status: statusValue,
         budgetPosId: incomingData.budgetPosId || '',
-        projectId: safeProjectId,
+        projectId: cleanProjectId || 'global',
         ownerId: currentUser.uid
       };
       setTransactions(prev => [newTx, ...prev]);

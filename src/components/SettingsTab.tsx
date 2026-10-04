@@ -540,7 +540,7 @@ export default function SettingsTab() {
         uploaded_by: ownerId,
         name: 'company_profile_config',
         category: 'company_settings',
-        project_id: 'global',
+        project_id: null,
         folder_id: 'root',
         is_folder: false,
         url: payloadStr,

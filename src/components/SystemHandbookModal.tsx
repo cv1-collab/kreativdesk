@@ -4,6 +4,8 @@ import SystemHandbookPDFDocument from './pdf/SystemHandbookPDFDocument';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import { useQueryClient } from '@tanstack/react-query';
+import { DOCUMENTS_QUERY_KEY } from '../hooks/queries/useDocumentsQuery';
 import { supabase } from '../lib/supabase';
 import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 import { BookOpen, Sparkles, CheckCircle2, Shield } from 'lucide-react';
@@ -21,6 +23,7 @@ export default function SystemHandbookModal({
 }: SystemHandbookModalProps) {
   const { language } = useLanguage();
   const { currentUser } = useAuth();
+  const queryClient = useQueryClient();
   const { addToast } = useToast();
 
   const isEn = (initialLanguage || language) === 'en';
@@ -39,7 +42,7 @@ export default function SystemHandbookModal({
 
   const handleSaveCloud = async (blob: Blob) => {
     try {
-      const safeCompanyId = currentUser?.companyId || currentUser?.uid || 'global';
+      const safeCompanyId = currentUser?.companyId || currentUser?.uid;
       const storageFileName = `${fileName}_${Date.now()}.pdf`;
       const publicUrl = await uploadPdfBlobWithFallback(blob, storageFileName, safeCompanyId);
 
@@ -66,11 +69,13 @@ export default function SystemHandbookModal({
         owner_id: currentUser?.uid,
         company_id: safeCompanyId,
         uploaded_by: currentUser?.uid,
-        project_id: 'global',
+        project_id: null,
         created_at: new Date().toISOString(),
         uploaded_at: new Date().toISOString(),
         date: new Date().toLocaleDateString(isEn ? 'en-US' : 'de-CH')
       });
+
+      queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
 
       addToast(
         isEn 

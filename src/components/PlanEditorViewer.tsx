@@ -1979,6 +1979,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
     if (!currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
+    const cleanProjectId = (currentProjectId && currentProjectId !== 'global') ? currentProjectId : null;
     try {
       const fileName = `PlanExport_${(planName || 'Unbenannt').replace(/\.[^/.]+$/, "")}_${Date.now()}.pdf`;
       const downloadUrl = await uploadPdfBlobWithFallback(blob, fileName, safeCompanyId);
@@ -1987,8 +1988,8 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         name: fileName,
         url: downloadUrl,
         file_url: downloadUrl,
-        project_id: currentProjectId,
-        category: currentProjectId === 'global' ? 'company' : 'projects', 
+        project_id: cleanProjectId,
+        category: cleanProjectId ? 'projects' : 'company', 
         owner_id: currentUser.uid,
         company_id: safeCompanyId,
         uploaded_by: currentUser.uid,
@@ -2000,7 +2001,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         date: new Date().toLocaleDateString('de-CH')
       });
 
-      await notifyNewDocument(safeCompanyId, fileName, 'Plan-Export', currentProjectId);
+      await notifyNewDocument(safeCompanyId, fileName, 'Plan-Export', cleanProjectId || undefined);
       queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
 
       addToast(t('save_to_data_room') + ' erfolgreich!', 'success');
@@ -2056,7 +2057,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           severity: newPin.priority || 'High',
           trade: newPin.trade || 'Baumeister',
           location: planName || 'CAD Grundriss',
-          project_id: currentProjectId || 'global',
+          project_id: (currentProjectId && currentProjectId !== 'global') ? currentProjectId : null,
           company_id: safeCompanyId || null,
           owner_id: currentUser.uid || null,
           position: { x: newPin.x, y: newPin.y, z: 0 },

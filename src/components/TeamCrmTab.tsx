@@ -5,6 +5,8 @@ import { jsPDF } from 'jspdf';
 import { useAuth } from '../contexts/AuthContext';
 import { useProject } from '../contexts/ProjectContext';
 import { useToast } from '../contexts/ToastContext';
+import { useQueryClient } from '@tanstack/react-query';
+import { DOCUMENTS_QUERY_KEY } from '../hooks/queries/useDocumentsQuery';
 import { 
   Users, Mail, Building, Phone, Shield, 
   Search, UserPlus, CheckCircle2, ShieldAlert,
@@ -127,6 +129,7 @@ const safeStr = (str: any, maxLen: number) => {
 
 export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) {
   const { currentUser } = useAuth();
+  const queryClient = useQueryClient();
   const { addToast } = useToast();
   const { fetchCompanyUsers, isDemoMode, projects = [], activeProjectId } = useProject() as any;
   const isDemo = isDemoMode || currentUser?.uid === 'demo-user-id';
@@ -1159,7 +1162,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
       .eq('company_id', safeCompanyId)
       .maybeSingle();
     if (existing) return existing.id;
-    const { data: newF } = await supabase.from('documents').insert({ name: folderName, is_folder: true, category: 'company', owner_id: currentUser.uid, company_id: safeCompanyId, project_id: 'global', created_at: new Date().toISOString() }).select().maybeSingle();
+    const { data: newF } = await supabase.from('documents').insert({ name: folderName, is_folder: true, category: 'company', owner_id: currentUser.uid, company_id: safeCompanyId, project_id: null, created_at: new Date().toISOString() }).select().maybeSingle();
     return newF ? newF.id : 'root';
   };
 
@@ -1177,11 +1180,12 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
       const targetFolderId = await ensureFolder("04_SALES");
 
       await supabase.from('documents').insert({
-        name: fileName, url: downloadUrl, project_id: 'global', folder_id: targetFolderId, category: 'company', 
+        name: fileName, url: downloadUrl, project_id: null, folder_id: targetFolderId, category: 'company', 
         owner_id: currentUser.uid, company_id: safeCompanyId, type: 'application/pdf', size: (pdfBlobOut.size / (1024 * 1024)).toFixed(2) + ' MB', 
         is_folder: false, created_at: new Date().toISOString()
       });
 
+      queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
       addToast(t('pdf_exported'), 'success'); setIsPrintModalOpen(false);
     } catch (error) { addToast(t('upload_failed'), 'error'); } finally { setIsUploadingToCloud(false); }
   };

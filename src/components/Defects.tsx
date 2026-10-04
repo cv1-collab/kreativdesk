@@ -13,9 +13,11 @@ import { useToast } from '../contexts/ToastContext';
 import { useProject, Defect } from '../contexts/ProjectContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { motion, AnimatePresence } from 'motion/react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { offlineSyncManager } from '../utils/offlineSyncManager';
 import { useDefectsQuery } from '../hooks/queries/useDefectsQuery';
+import { DOCUMENTS_QUERY_KEY } from '../hooks/queries/useDocumentsQuery';
 import QRCode from 'react-qr-code';
 
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
@@ -182,6 +184,7 @@ const DefectsPDFDocument = ({ settings, defects, projectHeader, t }: any) => (
 
 export default function Defects({ projectId: propProjectId }: { projectId?: string }) {
   const { currentUser } = useAuth();
+  const queryClient = useQueryClient();
   const { addToast } = useToast();
   const { projects, activeProjectId, isDemoMode, companyUsers } = useProject() as any;
   const { language, t: globalT } = useLanguage();
@@ -686,29 +689,35 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
       const downloadUrl = pubData.publicUrl;
       
       let targetFolderId = 'root';
-      if (currentProjectId) {
-        const { data: existingFolder } = await supabase
-          .from('documents')
-          .select('id')
-          .eq('company_id', safeCompanyId)
-          .eq('name', 'Mängel & Tickets')
-          .eq('project_id', currentProjectId)
-          .maybeSingle();
+      const cleanProjectId = (currentProjectId && currentProjectId !== 'global') ? currentProjectId : null;
+      let folderQuery = supabase
+        .from('documents')
+        .select('id')
+        .eq('company_id', safeCompanyId)
+        .eq('name', 'Mängel & Tickets')
+        .eq('is_folder', true);
 
-        if (existingFolder) {
-          targetFolderId = existingFolder.id;
-        } else {
-          const { data: newF } = await supabase.from('documents').insert({
-            name: 'Mängel & Tickets',
-            is_folder: true,
-            category: 'projects',
-            project_id: currentProjectId,
-            owner_id: currentUser.uid,
-            company_id: safeCompanyId,
-            created_at: new Date().toISOString()
-          }).select().maybeSingle();
-          if (newF) targetFolderId = newF.id;
-        }
+      if (cleanProjectId) {
+        folderQuery = folderQuery.eq('project_id', cleanProjectId);
+      } else {
+        folderQuery = folderQuery.is('project_id', null);
+      }
+
+      const { data: existingFolder } = await folderQuery.maybeSingle();
+
+      if (existingFolder) {
+        targetFolderId = existingFolder.id;
+      } else {
+        const { data: newF } = await supabase.from('documents').insert({
+          name: 'Mängel & Tickets',
+          is_folder: true,
+          category: cleanProjectId ? 'projects' : 'company',
+          project_id: cleanProjectId,
+          owner_id: currentUser.uid,
+          company_id: safeCompanyId,
+          created_at: new Date().toISOString()
+        }).select().maybeSingle();
+        if (newF) targetFolderId = newF.id;
       }
       
       await supabase.from('documents').insert({ 
@@ -723,10 +732,11 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
         created_at: new Date().toISOString(), 
         uploaded_at: new Date().toISOString(), 
         is_folder: false, 
-        project_id: currentProjectId || null, 
+        project_id: cleanProjectId, 
         folder_id: targetFolderId || null, 
-        category: 'projects'
+        category: cleanProjectId ? 'projects' : 'company'
       });
+      queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
       addToast(t('upload_success'), 'success');
       setIsPdfStudioOpen(false);
     } catch (e) {

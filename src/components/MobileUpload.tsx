@@ -146,7 +146,7 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
       try {
         await supabase.from('documents').insert({
           company_id: sessionId || 'global',
-          project_id: 'global',
+          project_id: null,
           name: payloadString,
           url: downloadUrl,
           file_url: downloadUrl,
@@ -241,7 +241,7 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
         try {
           await supabase.from('documents').insert({
             company_id: sessionId || 'global',
-            project_id: 'global',
+            project_id: null,
             name: `Baurapport_${rapportData.date}.json`,
             url: photos[0] || 'https://via.placeholder.com/300',
             file_url: photos[0] || 'https://via.placeholder.com/300',

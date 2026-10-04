@@ -13,6 +13,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useProject } from '../contexts/ProjectContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useToast } from '../contexts/ToastContext';
+import { useQueryClient } from '@tanstack/react-query';
+import { DOCUMENTS_QUERY_KEY } from '../hooks/queries/useDocumentsQuery';
 import { motion, AnimatePresence } from 'motion/react';
 import { callGeminiAPI } from '../utils/geminiClient';
 import { uploadPdfBlobWithFallback, uploadFileWithFallback } from '../utils/cloudStorageHelper';
@@ -266,6 +268,7 @@ const LeadsPDFDocument = ({ settings, docHeader, filteredLeads, t, currentLang }
 
 export default function LeadsTab() {
   const { currentUser } = useAuth();
+  const queryClient = useQueryClient();
   const { language, t: globalT } = useLanguage();
   const { addToast } = useToast();
   const { isDemoMode } = useProject() as any;
@@ -516,8 +519,8 @@ export default function LeadsTab() {
             .from('documents')
             .select('id')
             .eq('company_id', safeCompanyId)
-            .eq('project_id', 'global')
             .eq('name', '04_SALES')
+            .eq('is_folder', true)
             .maybeSingle();
           const targetFolderId = existingFolder ? existingFolder.id : 'root';
 
@@ -525,7 +528,7 @@ export default function LeadsTab() {
             name: safeFileName,
             url: photoUrl,
             file_url: photoUrl,
-            project_id: 'global',
+            project_id: null,
             folder_id: targetFolderId,
             category: 'company',
             owner_id: currentUser.uid,
@@ -536,6 +539,7 @@ export default function LeadsTab() {
             created_at: new Date().toISOString(),
             uploaded_at: new Date().toISOString()
           });
+          queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
         } catch (uploadErr) {
           console.warn("Card photo upload note:", uploadErr);
         }
@@ -705,16 +709,17 @@ export default function LeadsTab() {
         .from('documents')
         .select('id')
         .eq('company_id', safeCompanyId)
-        .eq('project_id', 'global')
         .eq('name', '04_SALES')
+        .eq('is_folder', true)
         .maybeSingle();
       const targetFolderId = existingFolder ? existingFolder.id : 'root';
       
       await supabase.from('documents').insert({
-        name: `Leads_Report_${new Date().toISOString().split('T')[0]}.pdf`, url: downloadUrl, project_id: 'global', folder_id: targetFolderId, 
+        name: `Leads_Report_${new Date().toISOString().split('T')[0]}.pdf`, url: downloadUrl, project_id: null, folder_id: targetFolderId, 
         category: 'company', owner_id: currentUser.uid, company_id: safeCompanyId, type: 'application/pdf', size: `${Math.round(blob.size / 1024)} KB`, 
         is_folder: false, created_at: new Date().toISOString(), uploaded_at: new Date().toISOString()
       });
+      queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
       addToast(t('pdf_exported'), 'success'); 
       setIsPdfStudioOpen(false);
     } catch (error) { 

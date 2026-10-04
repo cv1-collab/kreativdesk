@@ -30,7 +30,7 @@ export default async function handler(req: any, res: any) {
     // Server-seitige KI-Initialisierung (Zero-Trust)
     const ai = new GoogleGenAI({ apiKey });
 
-    // Wir nutzen standardmäßig das beste Embedding-Modell von Google
+    // Wir nutzen standardmässig das beste Embedding-Modell von Google
     const { model = 'text-embedding-004', contents } = req.body;
 
     // Texte in Vektoren umwandeln
@@ -45,7 +45,8 @@ export default async function handler(req: any, res: any) {
 
     // Saubere Rückgabe an den geminiClient.ts im Frontend
     res.status(200).json({
-      embedding: response.embeddings[0].values
+      embedding: response.embeddings[0].values,
+      embeddings: response.embeddings
     });
 
   } catch (error: any) {

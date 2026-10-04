@@ -9,6 +9,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useProject } from '../contexts/ProjectContext';
 import { useToast } from '../contexts/ToastContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useQueryClient } from '@tanstack/react-query';
+import { DOCUMENTS_QUERY_KEY } from '../hooks/queries/useDocumentsQuery';
 import { supabase } from '../lib/supabase';
 import { sendNotification } from '../lib/notifications';
 import { cn } from '../utils';
@@ -803,6 +805,7 @@ export default function DocumentStudioModal({
   initialContent
 }: DocumentStudioModalProps) {
   const { currentUser } = useAuth();
+  const queryClient = useQueryClient();
   const { activeProjectId, projects = [], isDemoMode } = useProject() as any;
   const activeProject = projects?.find((p: any) => p.id === activeProjectId);
   const { addToast } = useToast();
@@ -1102,9 +1105,10 @@ export default function DocumentStudioModal({
     if (!docContent || isSaving) return;
     setIsSaving(true);
     try {
-      const safeCompanyId = currentUser?.companyId || currentUser?.uid || 'global';
+      const safeCompanyId = currentUser?.companyId || currentUser?.uid;
       const isProjectScope = saveScope === 'project';
-      const targetProjectId = isProjectScope ? (selectedProjectId || activeProjectId || 'global') : 'global';
+      const rawProjectId = isProjectScope ? (selectedProjectId || activeProjectId) : null;
+      const targetProjectId = (rawProjectId && rawProjectId !== 'global') ? rawProjectId : null;
       const category = isProjectScope ? 'projects' : 'company';
       
       const cleanTitle = docTitle.trim() || 'KI-Vorlage (Vertrag)';
@@ -1130,7 +1134,7 @@ export default function DocumentStudioModal({
               name: folderName,
               is_folder: true,
               category: 'company',
-              project_id: 'global',
+              project_id: null,
               folder_id: 'root',
               owner_id: currentUser?.uid || '',
               company_id: safeCompanyId,
@@ -1199,6 +1203,7 @@ ${footerText}
       safeStorage.setItem('has_new_document', 'true');
       safeStorage.setItem('last_created_doc_title', docFileName);
       window.dispatchEvent(new CustomEvent('document_created', { detail: { title: docFileName, id: data?.id } }));
+      queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
 
       const chosenProjectObj = projects.find((p: any) => p.id === targetProjectId);
       const locationName = isProjectScope 
@@ -1229,9 +1234,10 @@ ${footerText}
       return;
     }
     try {
-      const safeCompanyId = currentUser?.companyId || currentUser?.uid || 'global';
+      const safeCompanyId = currentUser?.companyId || currentUser?.uid;
       const isProjectScope = saveScope === 'project';
-      const targetProjectId = isProjectScope ? (selectedProjectId || activeProjectId || 'global') : 'global';
+      const rawProjectId = isProjectScope ? (selectedProjectId || activeProjectId) : null;
+      const targetProjectId = (rawProjectId && rawProjectId !== 'global') ? rawProjectId : null;
       const category = isProjectScope ? 'projects' : 'company';
 
       let targetFolderId = 'root';
@@ -1254,7 +1260,7 @@ ${footerText}
               name: folderName,
               is_folder: true,
               category: 'company',
-              project_id: 'global',
+              project_id: null,
               folder_id: 'root',
               owner_id: currentUser?.uid || '',
               company_id: safeCompanyId,
@@ -1292,6 +1298,7 @@ ${footerText}
       safeStorage.setItem('has_new_document', 'true');
       safeStorage.setItem('last_created_doc_title', fileName);
       window.dispatchEvent(new CustomEvent('document_created', { detail: { title: fileName, id: data?.id } }));
+      queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
 
       const chosenProjectObj = projects.find((p: any) => p.id === targetProjectId);
       const locationName = isProjectScope 

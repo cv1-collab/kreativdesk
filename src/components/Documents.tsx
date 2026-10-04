@@ -7,7 +7,8 @@ import { useProject } from '../contexts/ProjectContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { supabase } from '../lib/supabase';
-import { useDocumentsQuery } from '../hooks/queries/useDocumentsQuery';
+import { useDocumentsQuery, DOCUMENTS_QUERY_KEY } from '../hooks/queries/useDocumentsQuery';
+import { useQueryClient } from '@tanstack/react-query';
 import { 
   FolderOpen, FolderPlus, Upload, Trash2, Download, FileText, 
   Building2, Briefcase, ChevronRight, Loader2, RefreshCw, Plus, Sparkles, Edit3, 
@@ -311,6 +312,7 @@ const COMPANY_FOLDER_PRESETS: Record<string, { label: string; desc: string; icon
 export default function Documents({ projectId: propProjectId }: { projectId?: string } = {}) {
   const { projectId: routeParamProjectId, id: routeProjectId } = useParams<{ projectId?: string; id?: string }>();
   const { currentUser } = useAuth();
+  const queryClient = useQueryClient();
   const { addToast } = useToast();
   const { projects = [], activeProjectId, isDemoMode } = useProject() as any;
   const { language, t: globalT } = useLanguage();
@@ -553,9 +555,10 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
     const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     try {
-      const targetProjId = activeTab === 'projects' 
-        ? (selectedProjectId || propProjectId || routeProjectId || activeProjectId || 'global') 
-        : 'global';
+      const rawProjId = activeTab === 'projects' 
+        ? (selectedProjectId || propProjectId || routeProjectId || activeProjectId) 
+        : null;
+      const targetProjId = (rawProjId && rawProjId !== 'global') ? rawProjId : null;
 
       await supabase.from('documents').insert({
         name: newFolderName.trim(),
@@ -571,6 +574,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
 
       setNewFolderName('');
       setIsCreatingFolder(false);
+      queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
       addToast('Ordner erstellt', 'success');
       fetchDocuments();
     } catch (err) {
@@ -598,9 +602,10 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
     setIsUploading(true);
     try {
       const fileUrl = await uploadFileWithFallback(file, file.name, safeCompanyId, 'documents');
-      const targetProjId = activeTab === 'projects' 
-        ? (selectedProjectId || propProjectId || routeProjectId || activeProjectId || 'global') 
-        : 'global';
+      const rawProjId = activeTab === 'projects' 
+        ? (selectedProjectId || propProjectId || routeProjectId || activeProjectId) 
+        : null;
+      const targetProjId = (rawProjId && rawProjId !== 'global') ? rawProjId : null;
 
       await supabase.from('documents').insert({
         name: file.name,
@@ -619,6 +624,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
         uploaded_at: new Date().toISOString()
       });
 
+      queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
       addToast('Datei erfolgreich hochgeladen', 'success');
       fetchDocuments();
     } catch (err) {
@@ -734,6 +740,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
 
       addToast("Gelöscht", "info");
       fetchDocuments();
+      queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
     } catch (err) {
       addToast(t('delete_failed'), "error");
     }

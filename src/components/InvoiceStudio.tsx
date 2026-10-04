@@ -238,7 +238,9 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
         let targetCategory = 'projects';
         const targetProjectId: string | null = activeProjectId;
 
-        if (targetProjectId === 'global') {
+        const cleanProjectId = (targetProjectId && targetProjectId !== 'global') ? targetProjectId : null;
+
+        if (!cleanProjectId) {
             targetCategory = 'company';
             const { data: existingFolder } = await supabase
               .from('documents')
@@ -251,7 +253,7 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
             if (existingFolder) {
                 targetFolderId = existingFolder.id;
             } else {
-                const { data: newF } = await supabase.from('documents').insert({ name: '01_FINANZEN', is_folder: true, category: 'company', project_id: 'global', folder_id: 'root', owner_id: currentUser.uid, company_id: safeCompanyId, created_at: new Date().toISOString() }).select().maybeSingle();
+                const { data: newF } = await supabase.from('documents').insert({ name: '01_FINANZEN', is_folder: true, category: 'company', project_id: null, folder_id: 'root', owner_id: currentUser.uid, company_id: safeCompanyId, created_at: new Date().toISOString() }).select().maybeSingle();
                 if (newF) targetFolderId = newF.id;
             }
         } 
@@ -265,7 +267,7 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
           is_folder: false, 
           owner_id: currentUser.uid, 
           company_id: safeCompanyId, 
-          project_id: targetProjectId, 
+          project_id: cleanProjectId, 
           folder_id: targetFolderId, 
           category: targetCategory, 
           uploaded_at: new Date().toISOString() 
@@ -280,11 +282,11 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
           status: type === 'invoice' ? 'Offen' : 'Draft', 
           owner_id: currentUser.uid, 
           company_id: safeCompanyId, 
-          project_id: targetProjectId, 
+          project_id: cleanProjectId, 
           receipt_urls: url ? [url] : [] 
         });
 
-        await notifyNewDocument(safeCompanyId, fileName, type === 'invoice' ? 'Debitorenrechnung' : 'Offerte', targetProjectId || 'global');
+        await notifyNewDocument(safeCompanyId, fileName, type === 'invoice' ? 'Debitorenrechnung' : 'Offerte', cleanProjectId || undefined);
         
         queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
         queryClient.invalidateQueries({ queryKey: [FINANCIAL_QUERY_KEY] });

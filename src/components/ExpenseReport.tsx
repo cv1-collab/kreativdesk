@@ -3,6 +3,9 @@ import { createPortal } from 'react-dom';
 import { useProject } from '../contexts/ProjectContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import { useQueryClient } from '@tanstack/react-query';
+import { DOCUMENTS_QUERY_KEY } from '../hooks/queries/useDocumentsQuery';
+import { FINANCIAL_QUERY_KEY } from '../hooks/queries/useFinancialQuery';
 
 import QRCode from 'react-qr-code';
 import { Receipt, Plus, Trash2, X, Loader2, Image as ImageIcon, Smartphone, Camera, FileText } from 'lucide-react';
@@ -94,6 +97,7 @@ interface ExpenseReportProps { onClose: () => void; onSave: () => void; initialC
 
 export default function ExpenseReport({ onClose, onSave, initialCurrency }: ExpenseReportProps) {
   const { currentUser } = useAuth();
+  const queryClient = useQueryClient();
   const { projects = [], companyUsers = [] } = useProject() as any;
   const { addToast } = useToast();
   const { language, t: globalT } = useLanguage();
@@ -325,6 +329,7 @@ export default function ExpenseReport({ onClose, onSave, initialCurrency }: Expe
       const finalPdfUrl = await uploadPdfBlobWithFallback(blob, fileName, safeCompanyId);
 
       let targetFolderId = 'root';
+      const cleanProjectId = (headerData.projectId && headerData.projectId !== 'global') ? headerData.projectId : null;
       const { data: existingFolder } = await supabase
         .from('documents')
         .select('id')
@@ -334,19 +339,22 @@ export default function ExpenseReport({ onClose, onSave, initialCurrency }: Expe
         .maybeSingle();
       if (existingFolder) { targetFolderId = existingFolder.id; } 
       else { 
-        const { data: newF } = await supabase.from('documents').insert({ name: '01_FINANZEN', is_folder: true, category: 'company', project_id: 'global', folder_id: 'root', owner_id: currentUser.uid, company_id: safeCompanyId, created_at: new Date().toISOString() }).select().maybeSingle(); 
+        const { data: newF } = await supabase.from('documents').insert({ name: '01_FINANZEN', is_folder: true, category: 'company', project_id: null, folder_id: 'root', owner_id: currentUser.uid, company_id: safeCompanyId, created_at: new Date().toISOString() }).select().maybeSingle(); 
         if (newF) targetFolderId = newF.id; 
       }
 
       await supabase.from('transactions').insert({ 
-        type: 'expense', amount: totalAmount, category: 'Spesen', description: `Spesenabrechnung (${positions.length} Positionen)`, date: headerData.date, status: 'Pending', project_id: headerData.projectId || 'global', owner_id: currentUser.uid, company_id: safeCompanyId, receipt_urls: [finalPdfUrl, ...receipts], created_at: new Date().toISOString() 
+        type: 'expense', amount: totalAmount, category: 'Spesen', description: `Spesenabrechnung (${positions.length} Positionen)`, date: headerData.date, status: 'Pending', project_id: cleanProjectId, owner_id: currentUser.uid, company_id: safeCompanyId, receipt_urls: [finalPdfUrl, ...receipts], created_at: new Date().toISOString() 
       });
 
       await supabase.from('documents').insert({ 
-        name: fileName, url: finalPdfUrl, file_url: finalPdfUrl, type: 'application/pdf', size: `${Math.round(blob.size / 1024)} KB`, is_folder: false, owner_id: currentUser.uid, company_id: safeCompanyId, project_id: 'global', folder_id: targetFolderId, category: 'company', uploaded_at: new Date().toISOString() 
+        name: fileName, url: finalPdfUrl, file_url: finalPdfUrl, type: 'application/pdf', size: `${Math.round(blob.size / 1024)} KB`, is_folder: false, owner_id: currentUser.uid, company_id: safeCompanyId, project_id: cleanProjectId, folder_id: targetFolderId, category: cleanProjectId ? 'projects' : 'company', uploaded_at: new Date().toISOString() 
       });
 
-      await notifyNewDocument(safeCompanyId, fileName, 'Spesen', headerData.projectId || 'global');
+      await notifyNewDocument(safeCompanyId, fileName, 'Spesen', cleanProjectId || undefined);
+
+      queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [FINANCIAL_QUERY_KEY] });
 
       addToast(t('ext_costs_booked'), "success"); 
       setIsPdfStudioOpen(false);

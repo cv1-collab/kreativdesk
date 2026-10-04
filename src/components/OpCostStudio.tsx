@@ -2,6 +2,9 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useProject } from '../contexts/ProjectContext';
+import { useQueryClient } from '@tanstack/react-query';
+import { DOCUMENTS_QUERY_KEY } from '../hooks/queries/useDocumentsQuery';
+import { FINANCIAL_QUERY_KEY } from '../hooks/queries/useFinancialQuery';
 import { supabase } from '../lib/supabase';
 
 import QRCode from 'react-qr-code';
@@ -213,6 +216,7 @@ const swissVatRates = [
 
 export default function OpCostStudio({ onClose }: { onClose: () => void }) {
   const { currentUser } = useAuth();
+  const queryClient = useQueryClient();
   const { addToast } = useToast();
   const { language } = useLanguage();
   const { projects = [] } = useProject() as any;
@@ -465,6 +469,7 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
       const finalPdfUrl = await uploadPdfBlobWithFallback(blob, fileName, safeCompanyId);
 
       let targetFolderId = 'root';
+      const cleanProjectId = (opCostData.projectId && opCostData.projectId !== 'global') ? opCostData.projectId : null;
       const { data: existingFolder } = await supabase
         .from('documents')
         .select('*')
@@ -478,7 +483,7 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
           name: '01_FINANZEN', 
           is_folder: true, 
           category: 'company', 
-          project_id: opCostData.projectId || 'global', 
+          project_id: null, 
           folder_id: 'root', 
           owner_id: currentUser.uid, 
           company_id: safeCompanyId, 
@@ -502,7 +507,7 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
         description: enrichedDescription, 
         date: opCostData.date, 
         status: opCostData.status, 
-        project_id: opCostData.projectId || 'global', 
+        project_id: cleanProjectId, 
         owner_id: currentUser.uid, 
         company_id: safeCompanyId, 
         receipt_urls: [finalPdfUrl, ...opCostReceipts], 
@@ -518,13 +523,16 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
         is_folder: false, 
         owner_id: currentUser.uid, 
         company_id: safeCompanyId, 
-        project_id: opCostData.projectId || 'global', 
+        project_id: cleanProjectId, 
         folder_id: targetFolderId, 
-        category: 'company', 
+        category: cleanProjectId ? 'projects' : 'company', 
         uploaded_at: new Date().toISOString() 
       });
 
-      await notifyNewDocument(safeCompanyId, fileName, 'operating_cost', opCostData.projectId || 'global');
+      await notifyNewDocument(safeCompanyId, fileName, 'operating_cost', cleanProjectId || undefined);
+
+      queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [FINANCIAL_QUERY_KEY] });
 
       addToast('Rechnung & Kreditorenposten erfolgreich verbucht!', "success"); 
       onClose();

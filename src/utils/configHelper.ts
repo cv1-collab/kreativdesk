@@ -47,7 +47,7 @@ export async function saveSystemConfigJSON(configKey: string, payload: any, comp
     } else {
       await supabase.from('documents').insert({
         company_id: companyId,
-        project_id: 'global',
+        project_id: null,
         owner_id: ownerId,
         uploaded_by: ownerId,
         category: 'system_config',

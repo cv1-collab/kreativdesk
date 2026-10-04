@@ -125,7 +125,7 @@ export async function ensureDefaultCompanyFolders(companyId: string, ownerId: st
         name: f.name,
         is_folder: true,
         category: f.category,
-        project_id: 'global',
+        project_id: null,
         folder_id: 'root',
         owner_id: ownerId,
         uploaded_by: ownerId,

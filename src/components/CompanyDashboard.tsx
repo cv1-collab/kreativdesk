@@ -9,6 +9,8 @@ import { usePermissions } from '../hooks/usePermissions';
 import { useSubscriptionLimits } from '../hooks/useSubscriptionLimits';
 import { logAuditAction } from '../utils/auditLogger';
 import { useToast } from '../contexts/ToastContext';
+import { useQueryClient } from '@tanstack/react-query';
+import { DOCUMENTS_QUERY_KEY } from '../hooks/queries/useDocumentsQuery';
 import NotificationCenter from './NotificationCenter';
 import { useTour } from '../contexts/TourContext';
 import ExpenseReport from './ExpenseReport';
@@ -110,6 +112,7 @@ function formatBytes(bytes: number) {
 
 export default function CompanyDashboard() {
   const { addToast } = useToast();
+  const queryClient = useQueryClient();
   const { theme = 'dark', toggleTheme = () => {} } = useTheme() || {};
   const { language, toggleLanguage, t: globalT } = useLanguage() as any;
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
@@ -687,10 +690,11 @@ export default function CompanyDashboard() {
     try {
       await supabase.from('documents').insert({
         name: newFolderName, is_folder: true, category: activeDocCategory === 'root' ? 'company' : activeDocCategory,
-        owner_id: currentUser.uid, company_id: safeCompanyId, project_id: 'global', created_at: new Date().toISOString()
+        owner_id: currentUser.uid, company_id: safeCompanyId, project_id: null, created_at: new Date().toISOString()
       });
       setNewFolderName('');
       setIsNewFolderModalOpen(false);
+      queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
       addToast(t('upload_success'), 'success');
     } catch (err) { addToast(t('folder_create_error'), 'error'); }
   };
@@ -711,12 +715,15 @@ export default function CompanyDashboard() {
       const docType = file.type || file.name.split('.').pop()?.toLowerCase() || 'unknown';
       const sizeText = formatBytes(file.size);
       
+      const cleanProjectId = (currentFolder as any)?.isProject ? currentFolder.id : null;
+
       await supabase.from('documents').insert({
         name: file.name, url: downloadUrl, file_url: downloadUrl, type: docType, size: sizeText,
         is_folder: false, folder_id: activeFolderId, category: currentFolder.category,
         owner_id: currentUser.uid, company_id: safeCompanyId, uploaded_by: currentUser.uid,
-        project_id: (currentFolder as any)?.isProject ? currentFolder.id : 'global', created_at: new Date().toISOString(), uploaded_at: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH')
+        project_id: cleanProjectId, created_at: new Date().toISOString(), uploaded_at: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH')
       });
+      queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
       addToast(t('upload_success'), 'success');
     } catch (err) { addToast(t('upload_failed'), 'error'); }
   };
@@ -738,6 +745,7 @@ export default function CompanyDashboard() {
       }
       await supabase.from('documents').delete().eq('id', id);
       if (activeFolderId === id) setActiveFolderId(null);
+      queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
       addToast(t('delete_completed'), 'success');
     } catch (err) { addToast(t('delete_error'), 'error'); }
   };
