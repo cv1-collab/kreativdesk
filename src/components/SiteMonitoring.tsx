@@ -264,7 +264,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
     }
     try {
       const safeCompanyId = currentUser?.companyId || (activeProject as any)?.company_id || null;
-      const safeProjectId = (currentProjectId && currentProjectId !== 'global') ? currentProjectId : (activeProject?.id || null);
+      const safeProjectId = (currentProjectId && currentProjectId !== 'global') ? currentProjectId : (activeProject?.id && activeProject.id !== 'global' ? activeProject.id : null);
 
       const { error } = await supabase.from('defects').insert({
         project_id: safeProjectId,

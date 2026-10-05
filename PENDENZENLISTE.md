@@ -7,6 +7,28 @@
 
 ## 🏆 Erfolgsliste von heute (5. Oktober 2026)
 
+### 0.0000000 Ganzheitlicher System-Audit: UUID-Sanitation ('global' -> null), TanStack-Query-Synchronisation in ProjectContext, Whiteboard/Calendar/Defects-Härtung & Gemini-2.5-Standardisierung
+* **Problemstellung & Benutzer-Anforderung:**
+  * Tiefe, systematische Analyse über alle Schichten: Wo existieren noch versteckte Fehler in Logik, Mechanik, Datenbankschemata, reaktiven Caches, AI-Proxies oder Mandantentrennung?
+* **Aufgedeckte & behobene Fehlerpunkte:**
+  * **1. Systemweite Beseitigung aller ungültigen UUID-Werte (`'global'` -> `null`):**
+    * Postgres verlangt für Spalten wie `documents.project_id`, `defects.project_id`, `transactions.project_id`, `site_data.project_id` und `audio_notes.project_id` ein echtes UUID-Format oder `NULL`. Wurde bisher der String-Wert `'global'` übergeben, warfen Datenbank-Inserts und -Updates Postgres-Syntaxfehler (`invalid input syntax for type uuid: "global"`).
+    * *Behebung:* In `Whiteboard.tsx` (`site_data`, `documents`, `audio_notes`), `Defects.tsx` (Mängelerfassung), `SiteMonitoring.tsx` (Eskalation Mängel-Ticket), `Calendar.tsx` (Autosave-Guard bei fehlender Projekt-ID), `DocumentStudioModal.tsx`, `CompanyDashboard.tsx`, `LeadsTab.tsx`, `MobileUpload.tsx`, `SystemHandbookModal.tsx`, `SettingsTab.tsx`, `configHelper.ts`, `OpCostStudio.tsx`, `PlanEditorViewer.tsx`, `Finance.tsx`, `Documents.tsx`, `ExpenseReport.tsx`, `InvoiceStudio.tsx` und `TeamCrmTab.tsx` wird `project_id` nun vor jeder Datenbankoperation mit `(projectId && projectId !== 'global') ? projectId : null` strikt bereinigt.
+  * **2. Sofortige Projekt-Reaktivität via TanStack Query (`ProjectContext.tsx`):**
+    * In `ProjectContext.tsx` führten `addProject`, `removeProject`, `renameProject`, `updateProjectStatus` und Postgres-Realtime-Ereignisse bisher nur lokale State-Updates und interne Fetches durch. Externe Abnehmer wie `FinanceTab.tsx`, die `useProjectsQuery` nutzen, wurden dadurch nicht benachrichtigt.
+    * *Behebung:* Direkte Integration von `queryClient.invalidateQueries({ queryKey: [PROJECTS_QUERY_KEY] })` in alle Projekt-Mutationsmethoden sowie den Realtime-Listener in `ProjectContext.tsx`. Sämtliche Module synchronisieren Projektänderungen nun augenblicklich und ohne manuellen Reload.
+  * **3. Härtung von Whiteboard & Kalender:**
+    * In `Whiteboard.tsx` wurden alle Speicherpfade (`handleSavePdfToCloud`, `handleSaveToCloud`, `handleSendToSlides`, Autosave-Drafts sowie Sprachnotizen in `audio_notes`) gegen ungültige Projekt-IDs abgesichert und mit `DOCUMENTS_QUERY_KEY`-Invalidierungen versehen.
+    * In `Calendar.tsx` wurde der Autosave-Guard erweitert (`!currentProjectId`), sodass niemals ungültige leere oder nullwertige IDs an `project_schedules` gesendet werden.
+  * **4. AI Concierge & Gemini-2.5-Harmonisierung:**
+    * In `AIConcierge.tsx` wurde die Ermittlung kritischer Mängel korrigiert (`d.severity === 'Critical' || d.priority === 'Critical'`), da das Datenbankschema die Spalte `severity` nutzt.
+    * Der System-Prompt des AI Concierges wurde um die strikte Einhaltung der Schweizer Rechtschreibung (ausschliesslich "ss", kein "ß") erweitert.
+    * In `server.ts` und `api/_handlers/embed.ts` wurde die Rückgabe harmonisiert: Beide Endpunkte liefern nun sowohl `embedding` als auch `embeddings`, passend zu `geminiClient.ts` und `ragService.ts`.
+* **Qualitätssicherung:**
+  * TypeScript: 0 Fehler (`tsc --noEmit` fehlerfrei).
+  * Unit-Tests: 12/12 Testsuiten grün (69/69 Unit-Tests bestanden).
+  * Schweizer Rechtschreibung: 100% konform (0 unerlaubte "ß").
+
 ### 0.000000 Tiefgründige Cross-Modul-Fehlersuche & Behebung: Datenraum, Finanzen, Baukamera & CAD/3D Synchronisation
 * **Problemstellung & Benutzer-Anforderung:**
   * Wo existieren im System noch weitere Fehler, bei denen Module nicht korrekt miteinander verbunden sind, falsche Caches nutzen oder Daten nicht synchronisieren?

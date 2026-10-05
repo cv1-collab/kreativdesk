@@ -939,7 +939,7 @@ export default function Calendar() {
   const autoSaveTimeout = useRef<NodeJS.Timeout | null>(null);
   useEffect(() => {
     const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
-    if (isDemoMode || isInitialLoad || !activeScheduleId || !safeCompanyId) return;
+    if (isDemoMode || isInitialLoad || !activeScheduleId || !safeCompanyId || !currentProjectId) return;
     if (autoSaveTimeout.current) clearTimeout(autoSaveTimeout.current);
     
     autoSaveTimeout.current = setTimeout(async () => {

@@ -107,7 +107,7 @@ export default function AIConcierge() {
           const defs = defects || [];
 
           const totalSpent = txs.filter((t: any) => t.amount < 0).reduce((sum: number, t: any) => sum + Math.abs(t.amount), 0);
-          const criticalDefects = defs.filter((d: any) => d.priority === 'Critical').length;
+          const criticalDefects = defs.filter((d: any) => (d.severity === 'Critical' || d.priority === 'Critical')).length;
           
           setProjectContext({ transactions: txs, defects: defs, totalSpent, criticalDefects });
         } catch (error) {
@@ -143,7 +143,8 @@ export default function AIConcierge() {
         systemInstruction: {
           role: 'system',
           parts: [{ text: `Du bist der Kreativ Desk AI Concierge. Du hilfst dem Nutzer. 
-Sprache des Nutzers: ${currentLang === 'de' ? 'Deutsch' : 'Englisch'}. Antworte IMMER in dieser Sprache.
+Sprache des Nutzers: ${currentLang === 'de' ? 'Deutsch (Schweiz)' : 'Englisch'}. Antworte IMMER in dieser Sprache.
+Verwende ausschliesslich Schweizer Rechtschreibung (immer "ss", niemals "ß").
 Kontext-Daten: ${JSON.stringify(chatContext)}
 
 WICHTIG: Wenn der Nutzer dich bittet, eine Aufgabe, einen Mangel oder ein Ticket zu erstellen, ANTWORTE ZUSÄTZLICH MIT EINEM JSON-BLOCK in exakt diesem Format am Ende deiner Antwort:

@@ -487,8 +487,9 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
         setDefects(prev => prev.map(d => d.id === editingId ? { ...d, ...currentDefect } as Defect : d));
         invalidateDefects();
       } else { 
+        const cleanProjectId = (currentProjectId && currentProjectId !== 'global') ? currentProjectId : null;
         const payload: any = { 
-          project_id: currentProjectId, 
+          project_id: cleanProjectId, 
           company_id: safeCompanyId || null,
           owner_id: currentUser.uid || null,
           prompt: currentDefect.title || 'Neuer Mangel',
@@ -514,7 +515,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
           location: currentDefect.location || '',
           dueDate: currentDefect.dueDate || new Date().toISOString().split('T')[0],
           imageUrl: currentDefect.imageUrl || '',
-          projectId: currentProjectId
+          projectId: cleanProjectId || 'global'
         };
         setDefects(prev => [...prev, newDefectItem as Defect]);
         invalidateDefects();

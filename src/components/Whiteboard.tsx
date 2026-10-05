@@ -672,11 +672,12 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
 
         // In Supabase site_data sichern, wenn ein echtes Projekt aktiv ist und keine Remote-Aktualisierung empfangen wird
         const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || activeProject?.company_id || null;
-        if (projectId && !isDemo && !isReceivingRemoteRef.current && currentUser && safeCompanyId) {
+        const cleanProjectId = (projectId && projectId !== 'global') ? projectId : null;
+        if (cleanProjectId && !isDemo && !isReceivingRemoteRef.current && currentUser && safeCompanyId) {
           await supabase.from('site_data').upsert({
-            id: `wb_${projectId}`,
+            id: `wb_${cleanProjectId}`,
             company_id: safeCompanyId,
-            project_id: projectId,
+            project_id: cleanProjectId,
             data: draftData
           });
         }
@@ -1878,12 +1879,13 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
         safeStorage.removeItem(key);
         safeStorage.removeItem('wb_draft_latest');
 
-        if (projectId && !isDemo && currentUser) {
+        const cleanProjectId = (projectId && projectId !== 'global') ? projectId : null;
+        if (cleanProjectId && !isDemo && currentUser) {
           const safeCompanyId = currentUser.companyId || (currentUser as any)?.company_id || null;
           await supabase.from('site_data').upsert({
-            id: `wb_${projectId}`,
+            id: `wb_${cleanProjectId}`,
             company_id: safeCompanyId,
-            project_id: projectId,
+            project_id: cleanProjectId,
             data: {
               layers: defaultLayers,
               activeLayerId: 'layer-1',
@@ -2195,7 +2197,8 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
           const downloadUrl = pubData.publicUrl;
           
           let targetFolderId = '';
-          if (projectId) {
+          const cleanProjectId = (projectId && projectId !== 'global') ? projectId : null;
+          if (cleanProjectId) {
             const { data: existingF } = await supabase.from('documents').select('id').eq('company_id', safeCompanyId).eq('name', `Projekt: ${activeProject?.name || 'Unbenannt'}`).eq('is_folder', true).maybeSingle();
             if (existingF) targetFolderId = existingF.id;
           }
@@ -2211,18 +2214,18 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
             created_at: new Date().toISOString(), 
             uploaded_at: new Date().toISOString(), 
             is_folder: false, 
-            project_id: projectId || null, 
+            project_id: cleanProjectId, 
             folder_id: targetFolderId || null, 
-            category: 'projects'
+            category: cleanProjectId ? 'projects' : 'company'
           });
 
           queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
 
-          if (projectId && !isDemo) {
+          if (cleanProjectId && !isDemo) {
             await supabase.from('site_data').upsert({
-              id: `wb_${projectId}`,
+              id: `wb_${cleanProjectId}`,
               company_id: safeCompanyId,
-              project_id: projectId,
+              project_id: cleanProjectId,
               data: {
                 layers,
                 activeLayerId,
@@ -2444,18 +2447,19 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                 audioData: base64Audio
               };
 
+              const safeAudioProjectId = (activeProjectId && activeProjectId !== 'global') ? activeProjectId : null;
               const newNoteRecord = {
                 id,
                 ...payload,
                 company_id: safeCompanyId,
-                project_id: activeProjectId || 'global',
+                project_id: safeAudioProjectId,
                 created_at: new Date().toISOString()
               };
 
               await supabase.from('audio_notes').insert({
                 id,
                 company_id: safeCompanyId,
-                project_id: activeProjectId || 'global',
+                project_id: safeAudioProjectId,
                 transcript: transcription,
                 audio_url: JSON.stringify(payload),
                 created_at: new Date().toISOString()

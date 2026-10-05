@@ -9,6 +9,8 @@ import { sendNotification } from '../lib/notifications';
 import { useProjectDefects, Defect } from '../hooks/useProjectDefects';
 import { useProjectTeam, CompanyUser, ProjectMember } from '../hooks/useProjectTeam';
 import { useProjectTimeEntries, TimeEntry } from '../hooks/useProjectTimeEntries';
+import { queryClient } from '../lib/queryClient';
+import { PROJECTS_QUERY_KEY } from '../hooks/queries/useProjectsQuery';
 
 export type { Defect, CompanyUser, ProjectMember, TimeEntry };
 
@@ -172,6 +174,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       .channel('schema-db-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, () => {
         fetchProjects();
+        queryClient.invalidateQueries({ queryKey: [PROJECTS_QUERY_KEY] });
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'company_users' }, () => {
         fetchCompanyUsers();
@@ -257,10 +260,12 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       } catch (e) {}
 
       await refreshAllData();
+      queryClient.invalidateQueries({ queryKey: [PROJECTS_QUERY_KEY] });
       return createdProj;
     }
 
     await refreshAllData();
+    queryClient.invalidateQueries({ queryKey: [PROJECTS_QUERY_KEY] });
   };
 
   const removeProject = async (id: string) => {
@@ -288,6 +293,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     }
 
     await fetchProjects();
+    queryClient.invalidateQueries({ queryKey: [PROJECTS_QUERY_KEY] });
   };
 
   const updateProjectStatus = async (id: string, status: string) => {
@@ -312,6 +318,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     }
 
     await fetchProjects();
+    queryClient.invalidateQueries({ queryKey: [PROJECTS_QUERY_KEY] });
   };
 
   const updateProject = async (id: string, updates: Partial<Project>) => {
@@ -364,6 +371,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     }
 
     await fetchProjects();
+    queryClient.invalidateQueries({ queryKey: [PROJECTS_QUERY_KEY] });
   };
 
   const renameProject = async (id: string, newName: string) => {
