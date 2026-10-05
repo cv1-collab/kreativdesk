@@ -589,7 +589,11 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
       return;
     }
     const file = e.target.files?.[0];
-    if (!file || !currentUser) return;
+    if (!file) return;
+    if (!currentUser) {
+      addToast('Bitte anmelden zum Hochladen von Dateien.', 'info');
+      return;
+    }
     
     // 100 MB File Size Guard
     const MAX_FILE_SIZE = 100 * 1024 * 1024;

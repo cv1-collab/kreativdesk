@@ -1091,10 +1091,10 @@ export default function PitchDeckStudio({
 
   const handleDirectVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>, target: 'slide' | 'hero', slideId?: string) => {
     const file = e.target.files?.[0];
-    if (!file || !currentUser) return;
-    const safeCompanyId = currentUser.companyId || currentUser.uid;
+    if (!file) return;
+    const safeCompanyId = currentUser?.companyId || currentUser?.uid || 'guest';
     setIsUploadingVideo(true);
-    addToast('Video wird hochgeladen...', 'info');
+    addToast('Video wird verarbeitet...', 'info');
 
     try {
       const fileExt = file.name.split('.').pop() || 'mp4';
@@ -4748,14 +4748,6 @@ export default function PitchDeckStudio({
                       disabled={isUploadingVideo}
                     >
                       {isUploadingVideo ? <Loader2 size={16} className="animate-spin text-purple-400" /> : <VideoIcon size={16} />}
-                      <input
-                        ref={videoInputRef}
-                        type="file"
-                        accept="video/mp4,video/webm,video/quicktime"
-                        onChange={(e) => handleDirectVideoUpload(e, 'slide', activeSlide.id)}
-                        className="hidden"
-                        disabled={isUploadingVideo}
-                      />
                     </button>
 
                     {/* STEMPEL & PRÜFVERMERKE FLYOUT */}
@@ -6243,6 +6235,17 @@ export default function PitchDeckStudio({
         accept="image/jpeg,image/png,image/webp,image/svg+xml"
         className="hidden"
         onChange={(e) => handleDirectSlideImageUpload(e, targetSlideForUpload || activeSlideId)}
+      />
+
+      {/* DEDICATED SLIDE DIRECT VIDEO UPLOAD INPUT */}
+      <input
+        type="file"
+        ref={videoInputRef}
+        id="pitch-slide-direct-video-input"
+        accept="video/mp4,video/webm,video/quicktime"
+        className="hidden"
+        disabled={isUploadingVideo}
+        onChange={(e) => handleDirectVideoUpload(e, 'slide', activeSlideId)}
       />
     </div>
     </PremiumFeature>

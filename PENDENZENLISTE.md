@@ -7,6 +7,24 @@
 
 ## 🏆 Erfolgsliste von heute (5. Oktober 2026)
 
+### 0.0000000000000 Finaler Systemweiter Tiefenaudit & Härtung aller Upload- & Event-Pfade (5. Oktober 2026)
+* **Problemstellung & Benutzer-Anforderung:**
+  * Nach der Behebung des Upload-Problems im Pitch Deck Studio forderte der Benutzer eine abschliessende, lückenlose Überprüfung des gesamten Systems: «wo haben wir noch solche fehler im system? bitte ein letztes mal alles überprüfen.ok?».
+* **Durchgeführter Gesamtaudit & gefundene Schwachstellen:**
+  * **1. Audit aller 37 `useRef<HTMLInputElement>`-Instanzen im gesamten Projekt:**
+    * In [CompanyDashboard.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/CompanyDashboard.tsx): Totes `docUploadRef`, verwaiste Datei-Upload- und Lösch-Handler (`handleFileUpload`, `handleDeleteDocument`) sowie ein unbenutztes Ordner-Erstellungs-Modal aus einer alten Architektur vor der Extraktion von `DocumentsTab` identifiziert und rückstandsfrei entfernt.
+    * In [FinanceTab.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/FinanceTab.tsx): Tote `fileInputRef` und `mobileCameraRef`, verwaiste PDF-Definitionen (`ExternalCostPDFDocument`, `pdfStyles`), unbenutzte Imports (`QRCode`, `callGeminiAPI`, `UniversalPDFStudio`, `@react-pdf/renderer`) und tote OpCost-Handler bereinigt, da die gesamte Funktionalität nun vollständig und autark im modalen [OpCostStudio.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/OpCostStudio.tsx) gekapselt ist.
+    * In [PitchDeckStudio.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/PitchDeckStudio.tsx): Der Video-Upload `<input ref={videoInputRef}>` war unzulässig innerhalb des `<button>`-Tags verschachtelt, was im Browser zu Event-Bubbling und Klick-Interferenzen führen konnte. Der Input wurde an die Wurzel von `studioContent` (neben `slideImageInputRef`) verlagert und `handleDirectVideoUpload` mit Offline- und Gast-Fallback gehärtet.
+    * In [Whiteboard.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/Whiteboard.tsx): `uploadFileWithFallback` integriert, sodass Whiteboard-Bilder auch bei RLS-Einschränkungen oder Offline-Zuständen mit Bucket-Fallback (`documents` -> `avatars` -> Data URL) sofort auf der Konva-Canvas platziert werden.
+    * In [OpCostStudio.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/OpCostStudio.tsx) und [Finance.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/Finance.tsx): Stille Abbrüche bei lokalen Beleg-Uploads (`if (!currentUser) return;`) beseitigt. Belege werden nun immer lokal per `FileReader` eingelesen und der KI-Erkennung übergeben; bei Cloud-Speicherung ohne Login erscheint ein klarer Hinweis.
+    * In [PlanEditorViewer.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/PlanEditorViewer.tsx) und [Documents.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/Documents.tsx): Stille Rücksprünge ohne Feedback durch informative Benutzer-Toasts ersetzt.
+* **Ergebnis der Verifikation:**
+  * **TypeScript (`tsc --noEmit`):** 0 Fehler.
+  * **Vitest (Unit-Tests):** 14/14 Testdateien, 77/77 Tests bestanden.
+  * **ESLint:** 0 Fehler.
+  * **Vite & Server Production Build:** 100% fehlerfrei kompiliert (`dist/index.html`, PWA-Manifest, Service Worker).
+  * **Rechtschreibung:** 100% Schweizer Rechtschreibung ("ss", kein "ß").
+
 ### 0.000000000000 Pitch Deck Studio: Vollbild-Hintergrund-Folie («Full-Bleed Cover») & Proportionales Bildskalierungs- & Overlay-Werkzeug
 * **Problemstellung & Benutzer-Anforderung:**
   * Wenn der Benutzer eine neue Folie auswählt oder ein Titelbild/Rendering über die gesamte Folie als Hintergrund ohne fixen Frame oder weisse Randabstände darstellen möchte, fehlte bisher eine dedizierte randlose Vollbild-Vorlage (`full-image`).

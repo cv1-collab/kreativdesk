@@ -436,7 +436,7 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
 
   const handleLocalImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    if (!files.length || !currentUser) return;
+    if (!files.length) return;
     for (const file of files) {
       const reader = new FileReader();
       reader.onloadend = async () => {
@@ -453,7 +453,10 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
   };
 
   const handleSaveToCloud = async (blob: Blob) => {
-    if (!currentUser || !currentUser.uid) return;
+    if (!currentUser || !currentUser.uid) {
+      addToast('Bitte anmelden, um Buchungen in der Cloud zu speichern.', 'info');
+      return;
+    }
     const safeCompanyId = currentUser.companyId || currentUser.uid;
     setIsSubmitting(true);
     try {

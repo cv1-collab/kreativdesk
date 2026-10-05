@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import {
   DollarSign, TrendingUp, Receipt, FileText,
@@ -7,24 +7,15 @@ import {
   Building, Landmark, PieChart, Briefcase, X, Smartphone, Image as ImageIcon, Camera,
   Calendar, Sparkles, Search, Filter, CheckSquare, Square, ExternalLink
 } from 'lucide-react';
-import QRCode from 'react-qr-code';
 import { cn, sanitizeUrl } from '../utils';
 import { supabase } from '../lib/supabase';
-import { callGeminiAPI } from '../utils/geminiClient';
 import { useLanguage } from '../contexts/LanguageContext';
 import { purgeAllDummyData } from '../services/seedService';
-import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
-import { notifyNewDocument } from '../utils/documentNotificationHelper';
 import { fetchSystemConfigJSON } from '../utils/configHelper';
 import { useFinancialQuery } from '../hooks/queries/useFinancialQuery';
 import { useProjectsQuery } from '../hooks/queries/useProjectsQuery';
 import { useQueryClient } from '@tanstack/react-query';
-import { DOCUMENTS_QUERY_KEY } from '../hooks/queries/useDocumentsQuery';
-
-// NATIVE PDF ENGINE IMPORTS
-import UniversalPDFStudio from './UniversalPDFStudio';
 import OpCostStudio from './OpCostStudio';
-import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
 import ModuleGuideButton from './ModuleGuideButton';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
@@ -54,46 +45,7 @@ const formatDateDisplay = (dateStr?: string) => {
 interface Transaction { id: string; type?: string; amount: number; client?: string; description: string; date: string; status: string; category?: string; createdAt?: string; receiptUrls?: string[]; url?: string; }
 interface FinanceTabProps { addToast: (msg: string, type: 'success' | 'error' | 'info') => void; setShowExpenseModal: (s: boolean) => void; setShowInvoiceModal: (s: boolean) => void; setShowQuoteModal: (s: boolean) => void; setNewFileAlerts?: any; }
 
-const pdfStyles = StyleSheet.create({
-  page: { padding: 40, fontFamily: 'Helvetica', fontSize: 10, color: '#374151', backgroundColor: '#ffffff' },
-  headerContainer: { flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 2, borderBottomColor: '#a855f7', paddingBottom: 10, marginBottom: 20 },
-  headerLeft: { flex: 1 }, title: { fontSize: 24, fontWeight: 'bold', color: '#a855f7', textTransform: 'uppercase', marginBottom: 8 }, subtitle: { fontSize: 12, fontWeight: 'bold', color: '#6b7280', textTransform: 'uppercase' },
-  metaRow: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 4 }, metaLabel: { fontSize: 9, color: '#6b7280', marginRight: 10 }, metaValue: { fontSize: 9, color: '#000000', fontWeight: 'bold', width: 80, textAlign: 'right' },
-  tableHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000', paddingBottom: 5, marginBottom: 5 }, tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', paddingVertical: 6, alignItems: 'flex-start' },
-  col1: { width: '30%', paddingTop: 1 }, col2: { width: '50%', paddingRight: 8 }, col3: { width: '20%', textAlign: 'right', paddingTop: 1 }, textBold: { fontWeight: 'bold', color: '#000' },
-  footer: { position: 'absolute', bottom: 30, left: 40, right: 40, flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 10 }, footerText: { fontSize: 8, color: '#9ca3af' },
-  receiptsTitle: { fontSize: 12, fontWeight: 'bold', color: '#a855f7', borderBottomWidth: 1, borderBottomColor: '#a855f7', paddingBottom: 5, marginBottom: 10, textTransform: 'uppercase', marginTop: 20 }, receiptsGrid: { flexDirection: 'row', flexWrap: 'wrap' },
-  receiptImage: { width: 200, height: 200, objectFit: 'contain', backgroundColor: '#f9fafb', border: '1px solid #d1d5db', padding: 5, marginRight: 10, marginBottom: 10 }
-});
 
-const ExternalCostPDFDocument = ({ settings, opCostData, opCostReceipts, formatCHF, t }: any) => (
-  <Document>
-    <Page size={settings.format} orientation={settings.orientation} style={pdfStyles.page}>
-      <View style={pdfStyles.headerContainer} fixed>
-        <View style={pdfStyles.headerLeft}><Text style={pdfStyles.title}>BUCHUNG</Text><Text style={pdfStyles.subtitle}>EXTERNER BELEG</Text></View>
-        <View>
-          <View style={pdfStyles.metaRow}><Text style={pdfStyles.metaLabel}>{t('invoice_date')}:</Text><Text style={pdfStyles.metaValue}>{new Date(opCostData.date).toLocaleDateString('de-CH')}</Text></View>
-          <View style={pdfStyles.metaRow}><Text style={pdfStyles.metaLabel}>{t('recorded_date')}:</Text><Text style={pdfStyles.metaValue}>{new Date().toLocaleDateString('de-CH')}</Text></View>
-        </View>
-      </View>
-      <View style={pdfStyles.tableHeader} fixed>
-        <Text style={[pdfStyles.col1, pdfStyles.textBold]}>{t('category')}</Text><Text style={[pdfStyles.col2, pdfStyles.textBold]}>{t('company_purpose')}</Text><Text style={[pdfStyles.col3, pdfStyles.textBold]}>{t('amount')} (CHF)</Text>
-      </View>
-      <View style={pdfStyles.tableRow} wrap={false}>
-        <View style={pdfStyles.col1}><Text style={{ backgroundColor: '#f3f4f6', color: '#4b5563', padding: 4, fontSize: 8, fontWeight: 'bold' }}>{opCostData.category}</Text></View>
-        <View style={pdfStyles.col2}><Text style={[pdfStyles.textBold, { lineHeight: 1.35 }]}>{opCostData.description || '-'}</Text></View>
-        <Text style={[pdfStyles.col3, pdfStyles.textBold, { color: '#a855f7' }]}>{formatCHF(Number(opCostData.amount))}</Text>
-      </View>
-      {opCostReceipts.length > 0 && (
-        <View style={{ marginTop: 20 }}>
-          <Text style={pdfStyles.receiptsTitle}>Original Beleg</Text>
-          <View style={pdfStyles.receiptsGrid}>{opCostReceipts.map((url: string, i: number) => <PDFImage key={i} src={url} style={pdfStyles.receiptImage} />)}</View>
-        </View>
-      )}
-      <View style={pdfStyles.footer} fixed><Text style={pdfStyles.footerText}>{settings.footerText}</Text><Text style={pdfStyles.footerText} render={({ pageNumber, totalPages }) => `Seite ${pageNumber} von ${totalPages}`} /></View>
-    </Page>
-  </Document>
-);
 
 export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoiceModal, setShowQuoteModal }: FinanceTabProps) {
   const { currentUser } = useAuth();
@@ -107,21 +59,6 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
   const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
 
   const [showOpCostModal, setShowOpCostModal] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isAnalyzingAI, setIsAnalyzingAI] = useState(false);
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
-
-  const [isPdfStudioOpen, setIsPdfStudioOpen] = useState(false);
-
-  const [opCostData, setOpCostData] = useState({ category: 'Fremdleistungen & Subunternehmer', description: '', amount: '', date: new Date().toISOString().split('T')[0] });
-  const [opCostReceipts, setOpCostReceipts] = useState<string[]>([]);
-
-  const [opCostSessionId] = useState(() => Math.random().toString(36).substring(2, 15));
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const mobileCameraRef = useRef<HTMLInputElement>(null);
-  const mobileUploadUrl = typeof window !== 'undefined' ? `${window.location.origin}/mobile-upload/extern/${opCostSessionId}` : '';
-
-  const opCategories = ['AHV / Sozialleistungen', 'Pensionskasse (BVG)', 'SUVA / Versicherungen', 'Steuern & MWST', 'Treuhand & Beratung', 'Miete & Infrastruktur', 'Software & Lizenzen', 'Fremdleistungen & Subunternehmer', 'Fahrzeuge & Mobilität', 'Marketing & Akquise'];
 
   const safeCompanyId = currentUser?.companyId || currentUser?.uid || '';
   const { transactions: queryTransactions, invalidateFinancial } = useFinancialQuery(safeCompanyId, selectedYear);
@@ -139,150 +76,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
     }
   }, [queryProjects]);
 
-  const applyAiData = (aiData: any) => {
-    const vendorName = aiData.vendor || aiData.merchant || aiData.company || aiData.description || '';
-    const rawAmount = aiData.total || aiData.amount || aiData.sum || '';
-    const cleanAmount = rawAmount ? String(rawAmount).replace(/[^0-9.,]/g, '').replace(',', '.') : '';
-    setOpCostData(prev => ({ 
-      ...prev, 
-      amount: cleanAmount || prev.amount, 
-      description: vendorName || prev.description, 
-      date: aiData.date || prev.date,
-      category: aiData.category && opCategories.includes(aiData.category) ? aiData.category : prev.category
-    }));
-  };
 
-  const processImageWithAI = async (base64Data: string | null, imageUrl: string | null, mimeType: string = 'image/jpeg') => {
-    setIsAnalyzingAI(true);
-    addToast(t('analyzing_ai'), 'info');
-    try {
-      let b64 = base64Data;
-      let effectiveMime = mimeType || 'image/jpeg';
-      if (!b64 && imageUrl) {
-        try {
-          const res = await fetch(imageUrl);
-          const blob = await res.blob();
-          effectiveMime = blob.type || 'image/jpeg';
-          const reader = new FileReader();
-          b64 = await new Promise((resolve) => {
-            reader.onloadend = () => {
-              const resStr = (reader.result as string) || '';
-              resolve(resStr.split(',')[1] || null);
-            };
-            reader.readAsDataURL(blob);
-          });
-        } catch (fetchErr) {
-          console.warn("Could not convert imageUrl to base64:", fetchErr);
-        }
-      }
-      if (!b64) throw new Error("No image data");
-
-      const prompt = `Analysiere diese externe Rechnung oder diesen Kostenbeleg. Extrahiere die Daten als striktes JSON-Objekt mit exakt folgenden Keys:
-{"vendor": string, "amount": number, "date": "YYYY-MM-DD", "category": string}
-Kategorie-Optionen: AHV / Sozialleistungen, Pensionskasse (BVG), SUVA / Versicherungen, Steuern & MWST, Treuhand & Beratung, Miete & Infrastruktur, Software & Lizenzen, Fremdleistungen & Subunternehmer, Fahrzeuge & Mobilität, Marketing & Akquise.
-Verwende Schweizer Rechtschreibung (immer "ss", niemals "ß").
-Antworte AUSSCHLIESSLICH mit dem JSON-Code ohne Markdown-Formatierung.`;
-
-      const response = await callGeminiAPI('gemini-2.5-flash', [
-        { inlineData: { data: b64, mimeType: effectiveMime } },
-        { text: prompt }
-      ]);
-
-      let text = typeof response === 'string' ? response : (response?.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || '{}');
-      text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-      const match = text.match(/\{[\s\S]*\}/);
-      if (match) {
-        const aiData = JSON.parse(match[0]);
-        applyAiData(aiData);
-        addToast(t('receipt_live_received'), 'success');
-      } else {
-        addToast(t('ai_failed'), 'error');
-      }
-    } catch (error) { 
-      console.error("AI receipt error:", error);
-      addToast(t('ai_failed'), 'error'); 
-    } finally { 
-      setIsAnalyzingAI(false); 
-    }
-  };
-
-  const handleMobileCameraScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsAnalyzingAI(true);
-    try {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        if (reader.result) {
-          const base64String = reader.result as string;
-          setOpCostReceipts(prev => [...prev, base64String]);
-          const base64Data = base64String.split(',')[1];
-          await processImageWithAI(base64Data, null, file.type || 'image/jpeg');
-        }
-      };
-      reader.readAsDataURL(file);
-    } catch (error) {
-      addToast('Upload Fehler', 'error');
-    } finally {
-      if (mobileCameraRef.current) mobileCameraRef.current.value = '';
-    }
-  };
-
-  const processImageWithAIRef = useRef(processImageWithAI);
-  processImageWithAIRef.current = processImageWithAI;
-  const addToastRef = useRef(addToast);
-  addToastRef.current = addToast;
-
-  // Realtime & Polling listener for Smartphone Live Scan (QR Code)
-  useEffect(() => {
-    if (!showOpCostModal || !opCostSessionId) return;
-    let isMounted = true;
-
-    const channel = supabase.channel(`mobile_upload_${opCostSessionId}`)
-      .on('broadcast', { event: 'receipt_uploaded' }, async (payload: any) => {
-        if (!isMounted) return;
-        const data = payload?.payload;
-        if (data?.url) {
-          setOpCostReceipts(prev => prev.includes(data.url) ? prev : [...prev, data.url]);
-          await processImageWithAIRef.current(null, data.url, data.type || 'image/jpeg');
-          addToastRef.current('Beleg vom Smartphone empfangen & analysiert!', 'success');
-        }
-      })
-      .subscribe();
-
-    const pollInterval = setInterval(async () => {
-      if (!isMounted) return;
-      try {
-        const { data: docs } = await supabase
-          .from('documents')
-          .select('*')
-          .eq('company_id', opCostSessionId)
-          .order('created_at', { ascending: false })
-          .limit(1);
-
-        if (docs && docs.length > 0) {
-          const doc = docs[0];
-          const docUrl = doc.url || doc.file_url;
-          if (docUrl) {
-            setOpCostReceipts(prev => {
-              if (prev.includes(docUrl)) return prev;
-              processImageWithAIRef.current(null, docUrl, doc.type || 'image/jpeg');
-              addToastRef.current('Beleg vom Smartphone empfangen & analysiert!', 'success');
-              return [...prev, docUrl];
-            });
-          }
-        }
-      } catch (err) {
-        // quiet poll
-      }
-    }, 3000);
-
-    return () => {
-      isMounted = false;
-      clearInterval(pollInterval);
-      supabase.removeChannel(channel);
-    };
-  }, [showOpCostModal, opCostSessionId]);
 
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     try {
@@ -308,67 +102,7 @@ Antworte AUSSCHLIESSLICH mit dem JSON-Code ohne Markdown-Formatierung.`;
     }
   };
 
-  const handleLocalImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    setIsUploadingImage(true);
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        if (reader.result) {
-          const base64String = reader.result as string; setOpCostReceipts(prev => [...prev, base64String]);
-          const base64Data = base64String.split(',')[1]; await processImageWithAI(base64Data, null, file.type);
-        }
-      };
-      reader.readAsDataURL(file);
-    }
-    setIsUploadingImage(false);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  const handleSaveToCloud = async (blob: Blob) => {
-    if (!currentUser || !currentUser.uid) return;
-    const safeCompanyId = currentUser.companyId || currentUser.uid;
-    setIsSubmitting(true);
-
-    try {
-      const fileName = `Buchung_${opCostData.category.replace(/\s/g, '_')}_${Date.now()}.pdf`;
-      const finalPdfUrl = await uploadPdfBlobWithFallback(blob, fileName, safeCompanyId);
-
-      let targetFolderId = 'root';
-      const { data: existingFolder } = await supabase
-        .from('documents')
-        .select('*')
-        .eq('company_id', safeCompanyId)
-        .eq('name', '01_FINANZEN')
-        .maybeSingle();
-
-      if (existingFolder) {
-        targetFolderId = existingFolder.id;
-      } else {
-        const { data: newF } = await supabase.from('documents').insert({
-          name: '01_FINANZEN', is_folder: true, category: 'company', project_id: null, folder_id: 'root', owner_id: currentUser.uid, company_id: safeCompanyId, created_at: new Date().toISOString()
-        }).select().maybeSingle();
-        if (newF) targetFolderId = newF.id;
-      }
-
-      await supabase.from('transactions').insert({
-        type: 'operating_cost', amount: Number(opCostData.amount), category: opCostData.category, description: opCostData.description || opCostData.category, date: opCostData.date, status: 'Pending', project_id: null, owner_id: currentUser.uid, company_id: safeCompanyId, receipt_urls: [finalPdfUrl, ...opCostReceipts], created_at: new Date().toISOString()
-      });
-
-      await supabase.from('documents').insert({
-        name: fileName, url: finalPdfUrl, file_url: finalPdfUrl, type: 'application/pdf', size: `${Math.round(blob.size / 1024)} KB`, is_folder: false, owner_id: currentUser.uid, company_id: safeCompanyId, project_id: null, folder_id: targetFolderId, category: 'company', uploaded_at: new Date().toISOString()
-      });
-
-      await notifyNewDocument(safeCompanyId, fileName, 'operating_cost', undefined);
-
-      queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
-      invalidateFinancial();
-      addToast(t('ext_costs_booked'), "success"); setIsPdfStudioOpen(false); setShowOpCostModal(false); setOpCostReceipts([]); setOpCostData({ category: 'Fremdleistungen & Subunternehmer', description: '', amount: '', date: new Date().toISOString().split('T')[0] });
-    } catch (error) { addToast(t('save_error'), "error"); } finally { setIsSubmitting(false); }
-  };
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');

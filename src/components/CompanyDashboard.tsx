@@ -228,15 +228,7 @@ export default function CompanyDashboard() {
   const canSeeFinances = hasPermission('canViewFinance');
   const canManageSettings = hasPermission('canManageCompany');
   const canCreateProjects = hasPermission('canCreateProject');
-  
-  const [activeDocCategory, setActiveDocCategory] = useState<'root' | 'company' | 'projects'>('root');
-  const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [allDocuments, setAllDocuments] = useState<any[]>([]);
-  
-  const [isNewFolderModalOpen, setIsNewFolderModalOpen] = useState(false);
-  const [newFolderName, setNewFolderName] = useState('');
-  const [previewFile, setPreviewFile] = useState<any>(null); 
-  const docUploadRef = useRef<HTMLInputElement>(null);
   
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [usedStorageMB, setUsedStorageMB] = useState(0);
@@ -458,24 +450,6 @@ export default function CompanyDashboard() {
   const safeCompanyUsers = Array.isArray(companyUsers) ? companyUsers : [];
   const safeLeads = Array.isArray(collectedLeads) ? collectedLeads : [];
 
-  const dbFolders = safeAllDocs.filter(d => d.isFolder);
-  const dbFiles = safeAllDocs.filter(d => !d.isFolder);
-
-  const documentFoldersState = [
-    ...dbFolders.filter(f => f.category === 'company').map(f => {
-      const isFin = f.id.includes('_fin') || f.name.includes('FINANZ') || f.name.includes('FINANCE');
-      const isHR = f.id.includes('_hr') || f.name.includes('_HR');
-      if (!canSeeFinances && (isFin || isHR)) return null;
-      return {
-        id: f.id, name: f.name, isDbNode: true, category: 'company', isSystem: f.isSystem,
-        icon: FolderOpen, color: 'text-zinc-400', bg: 'bg-white/5', border: 'border-white/10', desc: t('folder')
-      };
-    }).filter(Boolean),
-    ...safeProjects.map((p: any) => ({ id: p.id, name: p.name, icon: Briefcase, color: 'text-emerald-500', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', desc: p.status === 'active' ? t('active') : t('archived'), isDbNode: true, category: 'projects', isProject: true }))
-  ];
-
-  const currentFolder = documentFoldersState.find((f: any) => f?.id === activeFolderId);
-  const currentFiles = dbFiles.filter(f => f.folderId === activeFolderId || f.parentId === activeFolderId);
 
   useEffect(() => {
     let mb = 0;
@@ -681,73 +655,6 @@ export default function CompanyDashboard() {
       console.error(err);
       addToast(t('delete_error'), 'error'); 
     }
-  };
-
-  const handleCreateFolder = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentUser || !currentUser.uid || !newFolderName) return;
-    const safeCompanyId = currentUser.companyId || currentUser.uid;
-    try {
-      await supabase.from('documents').insert({
-        name: newFolderName, is_folder: true, category: activeDocCategory === 'root' ? 'company' : activeDocCategory,
-        owner_id: currentUser.uid, company_id: safeCompanyId, project_id: null, created_at: new Date().toISOString()
-      });
-      setNewFolderName('');
-      setIsNewFolderModalOpen(false);
-      queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
-      addToast(t('upload_success'), 'success');
-    } catch (err) { addToast(t('folder_create_error'), 'error'); }
-  };
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !currentUser || !currentUser.uid || !activeFolderId) return;
-    const safeCompanyId = currentUser.companyId || currentUser.uid;
-    if (!currentFolder) return addToast("Fehler: Bitte einen Ordner auswählen.", 'error');
-
-    addToast(`Upload: ${file.name}...`, 'info');
-    try {
-      const fileName = `${safeCompanyId}/documents/${currentUser.uid}/${Date.now()}_${file.name}`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(fileName, file, { upsert: true });
-      if (upErr) throw upErr;
-      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(fileName);
-      const downloadUrl = pubData.publicUrl;
-      const docType = file.type || file.name.split('.').pop()?.toLowerCase() || 'unknown';
-      const sizeText = formatBytes(file.size);
-      
-      const cleanProjectId = (currentFolder as any)?.isProject ? currentFolder.id : null;
-
-      await supabase.from('documents').insert({
-        name: file.name, url: downloadUrl, file_url: downloadUrl, type: docType, size: sizeText,
-        is_folder: false, folder_id: activeFolderId, category: currentFolder.category,
-        owner_id: currentUser.uid, company_id: safeCompanyId, uploaded_by: currentUser.uid,
-        project_id: cleanProjectId, created_at: new Date().toISOString(), uploaded_at: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH')
-      });
-      queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
-      addToast(t('upload_success'), 'success');
-    } catch (err) { addToast(t('upload_failed'), 'error'); }
-  };
-
-  const handleDeleteDocument = async (id: string, isFolder: boolean) => {
-    if (!window.confirm(t('confirm_delete'))) return;
-    try {
-      const docToDelete = allDocuments.find(d => d.id === id);
-      if (!isFolder && (docToDelete?.url || docToDelete?.file_url)) {
-        await deleteFileFromStorage(docToDelete.file_url || docToDelete.url);
-      } else if (isFolder) {
-        const subDocs = allDocuments.filter(d => d.folder_id === id);
-        for (const sub of subDocs) {
-          if (sub.url || sub.file_url) {
-            await deleteFileFromStorage(sub.file_url || sub.url);
-          }
-        }
-        await supabase.from('documents').delete().eq('folder_id', id);
-      }
-      await supabase.from('documents').delete().eq('id', id);
-      if (activeFolderId === id) setActiveFolderId(null);
-      queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
-      addToast(t('delete_completed'), 'success');
-    } catch (err) { addToast(t('delete_error'), 'error'); }
   };
 
   useEffect(() => {
@@ -1224,35 +1131,6 @@ export default function CompanyDashboard() {
         document.body
       )}
 
-      {/* CREATE FOLDER MODAL */}
-      {isMounted && isNewFolderModalOpen && createPortal(
-        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-0 md:p-4 bg-black/80 backdrop-blur-sm" onClick={() => setIsNewFolderModalOpen(false)}>
-          <div className="bg-surface border-t md:border border-border/50 md:rounded-2xl w-full max-w-sm shadow-2xl flex flex-col h-[100dvh] md:h-auto animate-in slide-in-from-bottom md:zoom-in-95 mt-auto md:mt-0" onClick={e => e.stopPropagation()}>
-             <div className="p-4 md:p-6 border-b border-border/50 flex items-center justify-between bg-surface/90 backdrop-blur-md shrink-0">
-               <div className="flex items-center gap-2.5">
-                 <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
-                   <FolderOpen size={16} />
-                 </div>
-                 <h3 className="font-bold text-text-primary text-base sm:text-lg">{t('create_folder')}</h3>
-               </div>
-               <button onClick={() => setIsNewFolderModalOpen(false)} className="h-8 w-8 flex items-center justify-center text-text-muted hover:text-text-primary bg-background border border-border/50 rounded-lg cursor-pointer transition-colors shadow-xs"><X size={16}/></button>
-             </div>
-             <form id="new-folder-form" onSubmit={handleCreateFolder} className="p-4 md:p-6 space-y-5 flex-1 overflow-y-auto bg-background/50">
-               <div className="space-y-2">
-                 <label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('folder_name')} *</label>
-                 <input type="text" required value={newFolderName} onChange={e => setNewFolderName(e.target.value)} className="w-full bg-surface border border-border/50 rounded-lg px-4 py-3 text-sm focus:border-accent-ai outline-none font-bold text-text-primary shadow-sm" autoFocus />
-               </div>
-             </form>
-             <div className="p-4 md:p-6 flex flex-col sm:flex-row justify-end gap-3 border-t border-border/50 bg-surface/90 shrink-0 pb-8 sm:pb-6">
-               <button type="button" onClick={() => setIsNewFolderModalOpen(false)} className="w-full sm:w-auto h-9 px-5 text-xs font-bold text-text-muted hover:text-text-primary border border-border/50 rounded-xl transition-colors cursor-pointer shadow-xs">{t('cancel')}</button>
-               <button type="submit" form="new-folder-form" disabled={!newFolderName} className="w-full sm:w-auto h-9 px-6 bg-accent-ai text-white rounded-xl text-xs font-bold shadow-md hover:bg-accent-ai/90 transition-all flex justify-center items-center gap-2 disabled:opacity-50 cursor-pointer shadow-xs">
-                  <Plus size={15}/> {t('create_folder')}
-               </button>
-             </div>
-          </div>
-        </div>,
-        document.body
-      )}
 
       {/* MODALE POPUPS */}
       {isMounted && showOnboarding && currentUser && userRole !== 'super_admin' && createPortal(

@@ -1482,7 +1482,7 @@ export default function Finance() {
   };
 
   const processReceiptFiles = async (filesList: File[]) => {
-    if (!filesList.length || !currentUser) return;
+    if (!filesList.length) return;
     for (const file of filesList) {
       const reader = new FileReader();
       reader.onloadend = async () => {

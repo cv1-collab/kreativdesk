@@ -19,6 +19,7 @@ import { supabase } from '../lib/supabase';
 import { queryClient } from '../lib/queryClient';
 import { DOCUMENTS_QUERY_KEY } from '../hooks/queries/useDocumentsQuery';
 import { safeStorage } from '../utils/safeStorage';
+import { uploadFileWithFallback } from '../utils/cloudStorageHelper';
 
 fal.config({
   proxyUrl: "/api/fal/proxy",
@@ -1423,21 +1424,16 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
       return;
     }
     const file = e.target.files?.[0];
-    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
-    if (!file || !currentUser || !safeCompanyId) return;
+    if (!file) return;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid || 'global';
 
     setIsUploadingMedia(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const filePath = `${safeCompanyId}/whiteboardBackgrounds/${currentUser.uid}/${Date.now()}.${fileExt}`;
-      const { error: uploadErr } = await supabase.storage.from('documents').upload(filePath, file, { upsert: true });
-      let downloadUrl = '';
-      if (!uploadErr) {
-        const { data: urlData } = supabase.storage.from('documents').getPublicUrl(filePath);
-        downloadUrl = urlData.publicUrl;
-      }
+      const downloadUrl = await uploadFileWithFallback(file, file.name, safeCompanyId, 'whiteboardBackgrounds');
       if (downloadUrl) {
         addImageToCanvas(downloadUrl, file.name.replace(/\.[^/.]+$/, ""));
+      } else {
+        addToast('Fehler beim Einfügen des Bildes.', 'error');
       }
     } catch (error) {
       console.error("Error uploading image:", error);

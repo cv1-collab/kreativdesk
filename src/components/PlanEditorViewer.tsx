@@ -674,7 +674,10 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   };
 
   const handleSaveSnapshotToPitchDeck = async () => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      addToast('Bitte anmelden, um CAD-Folien im Pitch Deck zu speichern', 'info');
+      return;
+    }
     addToast('Speichere CAD-Folie im Pitch Deck...', 'info');
 
     try {
@@ -1977,7 +1980,10 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       return;
     }
 
-    if (!currentUser) return;
+    if (!currentUser) {
+      addToast('Bitte anmelden, um Plan-Exporte zu speichern', 'info');
+      return;
+    }
     const safeCompanyId = currentUser.companyId || currentUser.uid;
     const cleanProjectId = (currentProjectId && currentProjectId !== 'global') ? currentProjectId : null;
     try {
