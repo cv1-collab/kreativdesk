@@ -33,6 +33,18 @@
     * Neue Unit-Test-Suite [pitchDeckFullImageLayout.test.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/tests/unit/pitchDeckFullImageLayout.test.ts) verifiziert die verlustfreie Speicherung aller Skalierungs- und Layout-Attribute in der Supabase-Datenbank (77/77 Tests bestanden).
     * Playwright E2E-Suite [pitch_deck_studio.spec.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/e2e/pitch_deck_studio.spec.ts) erfolgreich bestanden.
     * 0 TypeScript-Fehler (`tsc --noEmit`), 0 ESLint-Fehler, Production Build 100% fehlerfrei.
+  * **6. Härtung des Bild-Uploads, Event-Trigger & Browser-Diagnose:**
+    * *Ursache inaktiver Button:* 
+      1. Der Datei-Upload-Ref `slideImageInputRef` war im mobilen/seitlichen Editor-Tab unvollständig an den DOM gebunden, wodurch das direkte Klicken ohne Reaktion blieb.
+      2. Im Canvas-Editor lag die unsichtbare Texteingabe-Ebene auf gleicher z-Ebene (`z-20`) wie die Dropzone und fing Klick-Events auf den Upload-Button ab.
+      3. Die Upload-Funktion brach ab, wenn `currentUser` temporär nicht sofort geladen war.
+    * *Behebung:*
+      1. Zentraler, dedizierter `<input type="file" ref={slideImageInputRef}>`-Knoten fest im DOM verankert; alle Buttons (Dropzone, Flyout, Mobile-Tab, Toolbar) nutzen nun die einheitliche Steuerungsfunktion `triggerSlideImageUpload`.
+      2. Dropzone auf `z-30 pointer-events-auto` angehoben; Text-Container wird bei leerem Bildzustand auf `z-10 pointer-events-none` gesetzt, sodass der Upload-Button 100% zuverlässig klickbar ist.
+      3. `uploadFileWithFallback` integriert (dreistufige Kaskade: Supabase `documents` -> `avatars` -> Base64 Data URL), funktioniert auch ohne vorherigen Login, im Demo- oder Gast-Modus unterbrechungsfrei.
+    * *Konsolen-Diagnose (`__cf_bm` & WebAssembly Source-Map):*
+      1. `__cf_bm`: Informative Third-Party-Cookie-Warnung moderner Browser bei WebSocket-Handshakes gegen Cloudflare/Supabase; der WebSocket-Stream selbst läuft stabil und unbeeinträchtigt.
+      2. `wasm:... Source-Map-Adresse: null`: Firefox-spezifische DevTools-Warnung beim Laden interner WebAssembly-Binaries (PDF-Engine). In `vite.config.ts` wurde `sourcemap: false` im Production-Build explizit verankert.
 
 ### 0.00000000000 Finaler System-Tiefenaudit, Modul-Interkommunikation & 0-Fehler-Zertifizierung
 * **Problemstellung & Benutzer-Anforderung:**

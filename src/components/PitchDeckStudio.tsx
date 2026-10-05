@@ -24,7 +24,7 @@ import autoTable from 'jspdf-autotable';
 import { cn, sanitizeUrl, copyToClipboard } from '../utils';
 import { demoTemplates } from '../utils/demoTemplates';
 import { callGeminiAPI } from '../utils/geminiClient';
-import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
+import { uploadPdfBlobWithFallback, uploadFileWithFallback } from '../utils/cloudStorageHelper';
 import { notifyNewDocument } from '../utils/documentNotificationHelper';
 import { saveSmartProposal, SmartProposal, ProposalConfigOption } from '../services/proposalService';
 import { fetchSystemConfigJSON } from '../utils/configHelper';
@@ -326,6 +326,16 @@ export default function PitchDeckStudio({
   const [showImageToolsFlyout, setShowImageToolsFlyout] = useState(false);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const slideImageInputRef = useRef<HTMLInputElement>(null);
+  const [targetSlideForUpload, setTargetSlideForUpload] = useState<string | null>(null);
+
+  const triggerSlideImageUpload = (slideId?: string) => {
+    const sId = slideId || activeSlideId || (activeSlide ? activeSlide.id : null);
+    setTargetSlideForUpload(sId);
+    if (slideImageInputRef.current) {
+      slideImageInputRef.current.value = '';
+      slideImageInputRef.current.click();
+    }
+  };
 
   // SMART PROPOSAL & LANDINGPAGE STATES
   const [isLandingPageModalOpen, setIsLandingPageModalOpen] = useState(initialOpenPublishModal);
@@ -1137,47 +1147,44 @@ export default function PitchDeckStudio({
 
   const handleDirectSlideImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, slideId?: string) => {
     const file = e.target.files?.[0];
-    if (!file || !currentUser) return;
-    const safeCompanyId = currentUser.companyId || (currentUser as any)?.company_id || currentUser.uid;
+    if (!file) return;
+
+    const targetSlideId = slideId || targetSlideForUpload || activeSlideId || (activeSlide ? activeSlide.id : null);
+    if (!targetSlideId) {
+      addToast('Keine Folie ausgewählt', 'info');
+      return;
+    }
+
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid || 'guest';
     setIsUploadingImage(true);
     addToast('Bild wird hochgeladen...', 'info');
 
     try {
-      const fileExt = file.name.split('.').pop() || 'png';
-      const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-      const filePath = `${safeCompanyId}/slides/${Date.now()}_${safeName}`;
-      const { error: uploadErr } = await supabase.storage.from('documents').upload(filePath, file, { upsert: true });
-      let downloadUrl = '';
-      if (!uploadErr) {
-        const { data: urlData } = supabase.storage.from('documents').getPublicUrl(filePath);
-        downloadUrl = urlData?.publicUrl || '';
-      }
+      const downloadUrl = await uploadFileWithFallback(file, file.name, safeCompanyId, 'slides');
 
       if (!downloadUrl) {
-        downloadUrl = URL.createObjectURL(file);
+        throw new Error('Upload ergab keine Bild-URL');
       }
 
-      const targetSlideId = slideId || activeSlideId;
-      if (targetSlideId) {
-        setSlides(prev => prev.map(s => s.id === targetSlideId ? { ...s, imageUrl: downloadUrl } : s));
-        const slideToUpdate = slides.find(s => s.id === targetSlideId);
-        if (slideToUpdate) {
-          const serialized = serializeSlideForDb({ ...slideToUpdate, imageUrl: downloadUrl });
-          await supabase.from('slides').update(serialized).eq('id', targetSlideId);
-        }
-        addToast('Bild erfolgreich hinterlegt!', 'success');
+      setSlides(prev => prev.map(s => s.id === targetSlideId ? { ...s, imageUrl: downloadUrl } : s));
+      const slideToUpdate = slides.find(s => s.id === targetSlideId);
+      if (slideToUpdate && currentUser?.uid) {
+        const serialized = serializeSlideForDb({ ...slideToUpdate, imageUrl: downloadUrl });
+        await supabase.from('slides').update(serialized).eq('id', targetSlideId);
       }
+      addToast('Bild erfolgreich hinterlegt!', 'success');
     } catch (err) {
-      console.error('Slide image upload failed:', err);
-      const fallbackUrl = URL.createObjectURL(file);
-      const targetSlideId = slideId || activeSlideId;
-      if (targetSlideId) {
+      console.error('Slide image upload fallback:', err);
+      try {
+        const fallbackUrl = URL.createObjectURL(file);
         setSlides(prev => prev.map(s => s.id === targetSlideId ? { ...s, imageUrl: fallbackUrl } : s));
+        addToast('Bild lokal hinterlegt', 'info');
+      } catch (e2) {
+        addToast('Upload fehlgeschlagen', 'error');
       }
-      addToast('Bild lokal hinterlegt', 'info');
     } finally {
       setIsUploadingImage(false);
-      e.target.value = '';
+      if (e.target) e.target.value = '';
     }
   };
 
@@ -2875,18 +2882,26 @@ export default function PitchDeckStudio({
 
           {/* EMPTY STATE / DROPZONE IF NO IMAGE */}
           {!sanitizeUrl(slide.imageUrl) && !isPreviewMode && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-black/20 dark:bg-black/40 border-2 border-dashed border-purple-500/40 rounded-2xl m-6 backdrop-blur-xs z-20">
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-black/40 dark:bg-black/60 border-2 border-dashed border-purple-500/50 rounded-2xl m-6 backdrop-blur-sm z-30 pointer-events-auto shadow-2xl">
               <div className="w-16 h-16 rounded-2xl bg-purple-500/20 border border-purple-500/40 text-purple-400 flex items-center justify-center mb-3 shadow-lg">
                 <ImagePlus size={32} />
               </div>
               <h3 className="text-base font-bold mb-1 text-white">Vollbild-Cover / Hintergrundbild</h3>
               <p className="text-xs text-zinc-300 mb-4 max-w-sm text-center">Lade ein Bild hoch oder wähle ein Rendering aus dem Projekt, um es als randloses Vollbild zu verwenden.</p>
               <div className="flex items-center gap-3">
-                <label className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shadow-lg transition-all hover:scale-105 active:scale-95">
-                  <Upload size={14} /> <span>Bild hochladen</span>
-                  <input type="file" accept="image/jpeg,image/png,image/webp,image/svg+xml" onChange={(e) => handleDirectSlideImageUpload(e, slide.id)} className="hidden" />
-                </label>
-                <button type="button" onClick={() => openMediaPicker('render', t('choose_image'), 'slide', { slideId: slide.id })} className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold flex items-center gap-2 border border-white/20 transition-all cursor-pointer">
+                <button
+                  type="button"
+                  id="btn-upload-fullbleed-dropzone"
+                  onClick={(e) => { e.stopPropagation(); triggerSlideImageUpload(slide.id); }}
+                  className="px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shadow-lg transition-all hover:scale-105 active:scale-95"
+                >
+                  {isUploadingImage ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />} <span>Bild hochladen</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); openMediaPicker('render', t('choose_image'), 'slide', { slideId: slide.id }); }}
+                  className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold flex items-center gap-2 border border-white/20 transition-all cursor-pointer"
+                >
                   <ImageIcon size={14} /> <span>Aus Projekt wählen</span>
                 </button>
               </div>
@@ -2904,10 +2919,14 @@ export default function PitchDeckStudio({
               >
                 <Sliders size={13} /> <span>Bild anpassen</span>
               </button>
-              <label className="px-2 py-1 rounded-lg text-xs font-semibold text-white/90 hover:bg-white/10 flex items-center gap-1.5 cursor-pointer transition-colors" title="Neues Bild hochladen">
+              <button
+                type="button"
+                title="Neues Bild hochladen"
+                onClick={() => triggerSlideImageUpload(slide.id)}
+                className="px-2 py-1 rounded-lg text-xs font-semibold text-white/90 hover:bg-white/10 flex items-center gap-1.5 cursor-pointer transition-colors"
+              >
                 <Upload size={13} /> <span>Wechseln</span>
-                <input type="file" accept="image/jpeg,image/png,image/webp,image/svg+xml" onChange={(e) => handleDirectSlideImageUpload(e, slide.id)} className="hidden" />
-              </label>
+              </button>
               <button
                 type="button"
                 title="Aus Projekt wählen"
@@ -2942,7 +2961,8 @@ export default function PitchDeckStudio({
 
           {/* MAIN CONTENT AREA */}
           <div className={cn(
-            "relative z-20 flex-1 flex flex-col justify-end pb-4 pt-10",
+            "relative flex-1 flex flex-col justify-end pb-4 pt-10",
+            !sanitizeUrl(slide.imageUrl) && !isPreviewMode ? "z-10 pointer-events-none" : "z-20",
             textPosition === 'center' ? "items-center text-center justify-center" : "items-start text-left"
           )}>
             {!isPreviewMode && !isMobile ? (
@@ -3964,10 +3984,10 @@ export default function PitchDeckStudio({
                        <div className="grid grid-cols-2 gap-2">
                          <button
                            type="button"
-                           onClick={() => slideImageInputRef.current?.click()}
+                           onClick={() => triggerSlideImageUpload(activeSlide.id)}
                            className="py-3 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 rounded-xl font-bold text-xs flex justify-center items-center gap-1.5 border border-blue-500/30 active:scale-95 transition-transform"
                          >
-                           <Upload size={14} /> Direkt hochladen
+                           {isUploadingImage ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />} Direkt hochladen
                          </button>
                          <button
                            type="button"
@@ -4537,11 +4557,14 @@ export default function PitchDeckStudio({
 
                               {/* BILD HOCHLADEN & AUSWÄHLEN */}
                               <div className="grid grid-cols-2 gap-1.5">
-                                <label className="px-2.5 py-2 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer">
+                                <button
+                                  type="button"
+                                  onClick={() => triggerSlideImageUpload(activeSlide.id)}
+                                  className="px-2.5 py-2 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                                >
                                   {isUploadingImage ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
                                   <span>{t('upload_image') || 'Hochladen'}</span>
-                                  <input type="file" accept="image/jpeg,image/png,image/webp,image/svg+xml" onChange={(e) => handleDirectSlideImageUpload(e, activeSlide.id)} className="hidden" />
-                                </label>
+                                </button>
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -6211,6 +6234,16 @@ export default function PitchDeckStudio({
           </motion.div>
         </div>
       )}
+
+      {/* DEDICATED SLIDE DIRECT IMAGE UPLOAD INPUT */}
+      <input
+        type="file"
+        ref={slideImageInputRef}
+        id="pitch-slide-direct-image-input"
+        accept="image/jpeg,image/png,image/webp,image/svg+xml"
+        className="hidden"
+        onChange={(e) => handleDirectSlideImageUpload(e, targetSlideForUpload || activeSlideId)}
+      />
     </div>
     </PremiumFeature>
   );

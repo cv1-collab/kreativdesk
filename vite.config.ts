@@ -111,6 +111,7 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       target: 'esnext',
+      sourcemap: false,
       minify: false,
       commonjsOptions: {
         transformMixedEsModules: true,
