@@ -35,6 +35,7 @@ export const notifyNewDocument = async (
   try {
     safeStorage.setItem('has_new_document', 'true');
     if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('document_created', { detail: { docName, category, companyId } }));
       window.dispatchEvent(new CustomEvent('doc_created', { detail: { docName, category, companyId } }));
     }
   } catch (err) {

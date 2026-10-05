@@ -1884,7 +1884,7 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
       const ogDesc = document.querySelector('meta[property="og:description"]');
       if (ogDesc) ogDesc.setAttribute('content', `Offizielles interaktives Angebot für ${proposal.clientCompany || proposal.clientName || 'Kunde'} • Kreativ Desk`);
       const ogImg = document.querySelector('meta[property="og:image"]');
-      if (ogImg) ogImg.setAttribute('content', proposal.heroImageUrl || '/interactv/renders/interactv_luxury_station_hero.jpg');
+      if (ogImg) ogImg.setAttribute('content', proposal.heroImageUrl || '/demo-assets/bau_pitch_render.jpg');
     }
   }, [proposal, proposalLang, getTranslatedProposalTitle]);
 
@@ -2294,7 +2294,7 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
       title: getTranslatedProposalTitle(proposal.title) || 'Projektangebot',
       content: getTranslatedIntroText(proposal.introText) || 'Exklusives Angebot und massgeschneidertes Projektkonzept.',
       layout: 'split',
-      imageUrl: proposal.heroImageUrl || '/interactv/renders/interactv_luxury_station_hero.jpg'
+      imageUrl: proposal.heroImageUrl || '/demo-assets/bau_pitch_render.jpg'
     },
     {
       id: 'slide-options',

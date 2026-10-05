@@ -23,6 +23,10 @@
   * **5. E2E Test-Härtung (`pitch_deck_studio.spec.ts` & `PitchDeckStudio.tsx`):**
     * Stempel-Button in `PitchDeckStudio.tsx` mit `id="btn-pitch-stamp"` und `aria-label="Stempel"` versehen, sodass Barrierefreiheit und automatisierte E2E-Selektoren 100% zuverlässig greifen.
     * Playwright E2E-Suite `pitch_deck_studio.spec.ts` bestand alle Prüfungen (14.3s).
+  * **6. Dokumenten-Event-Synchronisation (`documentNotificationHelper.ts`):**
+    * In `documentNotificationHelper.ts` wurde bisher `doc_created` gedispatcht, während `Layout.tsx` und `CompanyDashboard.tsx` auf `document_created` hörten. Nun werden beide Events gefeuert, sodass Dokument-Badges im Workspace sofort aufleuchten.
+  * **7. Bereinigung toter Asset-Referenzen (`SmartProposalLandingPage.tsx`):**
+    * In `SmartProposalLandingPage.tsx` wurde der veraltete Pfad `/interactv/renders/interactv_luxury_station_hero.jpg` durch das existierende 4K-Asset `/demo-assets/bau_pitch_render.jpg` ersetzt (100% aller 26 referenzierten statischen Assets physisch verifiziert).
 * **Vollständige Qualitätssicherung & Ergebnisse:**
   * **TypeScript (`tsc --noEmit`):** 0 Fehler über das gesamte Projekt.
   * **ESLint (`npm run lint`):** 0 Fehler.
