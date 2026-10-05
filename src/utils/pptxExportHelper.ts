@@ -606,6 +606,62 @@ export async function exportDeckToPptx(
         valign: 'middle',
         fontFace
       });
+    } else if (layout === 'full-image') {
+      // Full Bleed Image Cover / Background Slide
+      if (embeddedImgBase64) {
+        try {
+          pptxSlide.addImage({
+            data: embeddedImgBase64,
+            x: 0,
+            y: 0,
+            w: 13.333,
+            h: 7.5,
+            sizing: { type: s.dataPayload?.imageFit === 'contain' ? 'contain' : 'cover', w: 13.333, h: 7.5 }
+          });
+
+          const overlayOpacity = s.dataPayload?.overlayOpacity ?? 40;
+          if (overlayOpacity > 0) {
+            pptxSlide.addShape(pptx.ShapeType.rect, {
+              x: 0,
+              y: 0,
+              w: 13.333,
+              h: 7.5,
+              fill: { color: '000000', transparency: Math.max(0, Math.min(100, 100 - overlayOpacity)) }
+            });
+          }
+        } catch (e) {
+          console.warn("Could not embed full-image slide background:", e);
+        }
+      }
+
+      if (s.title) {
+        pptxSlide.addText(s.title, {
+          x: 1.0,
+          y: s.dataPayload?.textPosition === 'center' ? 2.5 : 4.5,
+          w: 11.333,
+          h: 1.5,
+          fontSize: Math.min(s.titleFontSize || 36, 42),
+          bold: true,
+          color: 'FFFFFF',
+          align: s.dataPayload?.textPosition === 'center' ? 'center' : 'left',
+          valign: 'middle',
+          fontFace
+        });
+      }
+
+      if (s.content && !s.content.startsWith('{')) {
+        pptxSlide.addText(s.content, {
+          x: 1.0,
+          y: s.dataPayload?.textPosition === 'center' ? 4.2 : 6.0,
+          w: 11.333,
+          h: 1.0,
+          fontSize: Math.min(s.fontSize || 18, 22),
+          color: 'F1F5F9',
+          align: s.dataPayload?.textPosition === 'center' ? 'center' : 'left',
+          valign: 'top',
+          fontFace
+        });
+      }
     } else if (layout === 'image-focus') {
       // Full Width Image Slide
       pptxSlide.addText(s.title || '', {

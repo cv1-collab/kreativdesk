@@ -1,11 +1,38 @@
 # Kreativ Desk & interacTV — Status, Erfolge & Pendenzen
 
 **Datum:** 5. Oktober 2026  
-**Status:** 🟢 Alle Prüfungen grün (Playwright E2E 56/56 bestanden in 17 Test-Suiten, Vitest 75/75 grün in 13 Test-Dateien, TypeScript 0 Fehler `tsc --noEmit`, ESLint 0 Fehler, Production Build 100% fehlerfrei, 100% Schweizer Rechtschreibung), alle Module und Tools synchronisiert und live geschaltet (`https://www.kreativdesk.ch`).
+**Status:** 🟢 Alle Prüfungen grün (Playwright E2E 56/56 bestanden in 17 Test-Suiten, Vitest 77/77 grün in 14 Test-Dateien, TypeScript 0 Fehler `tsc --noEmit`, ESLint 0 Fehler, Production Build 100% fehlerfrei, 100% Schweizer Rechtschreibung), alle Module und Tools synchronisiert und live geschaltet (`https://www.kreativdesk.ch`).
 
 ---
 
 ## 🏆 Erfolgsliste von heute (5. Oktober 2026)
+
+### 0.000000000000 Pitch Deck Studio: Vollbild-Hintergrund-Folie («Full-Bleed Cover») & Proportionales Bildskalierungs- & Overlay-Werkzeug
+* **Problemstellung & Benutzer-Anforderung:**
+  * Wenn der Benutzer eine neue Folie auswählt oder ein Titelbild/Rendering über die gesamte Folie als Hintergrund ohne fixen Frame oder weisse Randabstände darstellen möchte, fehlte bisher eine dedizierte randlose Vollbild-Vorlage (`full-image`).
+  * Zudem wünschte der Benutzer ein interaktives Werkzeug, um Bilder direkt auf die Folie hochzuladen, proportional stufenlos zu skalieren/zoomen (50%–200%), zwischen «Ausfüllend (Cover)» und «Vollständig (Contain)» umzuschalten, die Bildausrichtung anzupassen sowie den Kontrast-Schleier (Dunkel-Overlay) einzustellen.
+* **Umgesetzte Architektur & Lösungen:**
+  * **1. Neues Folien-Layout `full-image` («Vollbild-Cover»):**
+    * In [pitchDeckHelpers.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/utils/pitchDeckHelpers.ts), [PitchDeck.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/PitchDeck.tsx) und [PitchDeckStudio.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/PitchDeckStudio.tsx) als offizieller Typ in `Slide['layout']` verankert.
+    * Beim Hinzufügen einer neuen Folie steht nun sowohl im Desktop- als auch im mobilen Menü die Vorlage **«Vollbild-Cover (Hintergrund)»** bereit.
+  * **2. Interaktives Bild- & Skalierungs-Werkzeug («Bild-Inspector» Flyout):**
+    * In der CAD-Toolbar des Pitch Deck Studios wurde ein eigener Schnellzugriff-Button **«Bild & Skalierung»** mit Flyout-Inspector integriert:
+      * **Direkt-Upload:** Sofortige Auswahl lokaler Bilddateien (JPG, PNG, WebP) mit automatischem Supabase Storage Upload.
+      * **Projekt-Mediathek:** Verknüpfung mit Projekt-Renderings und Medien.
+      * **Einpassung:** Umschalter zwischen *Ausfüllend (Cover, randlos)* und *Ganzes Bild (Contain)*.
+      * **Proportionale Skalierung:** Stufenloser Zoom-Schieberegler von 50% bis 200% mit Schnellwahl-Tasten (75%, 100%, 125%, 150%).
+      * **Bildfokus / Ausrichtung:** Oben (Top), Mitte (Center), Unten (Bottom).
+      * **Kontrast-Overlay (Abdunkelung):** Stufenloser Regler von 0% bis 90% zur Garantie optimaler Lesbarkeit weisser Titel- und Untertitel-Typografie auf beliebigen Foto- und Rendering-Hintergründen.
+      * **Textposition:** Umschaltbar zwischen Unten-Links und Bildmitte.
+  * **3. Nahtlose Export-Unterstützung (PDF & PowerPoint):**
+    * **PDF-Export (jsPDF):** `full-image`-Folien werden randlos über die gesamten Seitenmasse (0, 0, pw, ph) gerendert, inklusive präzise berechnetem halbtransparentem Kontrast-Rechteck und weisser Vektor-Typografie mit weichem Schatten.
+    * **PowerPoint-Export (`pptxExportHelper.ts`):** 16:9 Cinema Full-Bleed (`w: 13.333, h: 7.5`, `x: 0, y: 0`), korrekter `sizing`-Modus, abgedunkeltes Kontrast-Rechteck und gestochen scharfe Textboxen.
+  * **4. Vollbild-Präsentationsansicht (`PitchDeck.tsx`):**
+    * Die Kunden- und Präsentationsansicht rendert `full-image`-Folien mit hardwarebeschleunigter Skalierung (`transform: scale(...)`), `object-position`, dynamischem Kontrast-Schleier und hochkontrastigem Glasmorphismus-Footer.
+  * **5. Qualitätssicherung & Unit-Testing:**
+    * Neue Unit-Test-Suite [pitchDeckFullImageLayout.test.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/tests/unit/pitchDeckFullImageLayout.test.ts) verifiziert die verlustfreie Speicherung aller Skalierungs- und Layout-Attribute in der Supabase-Datenbank (77/77 Tests bestanden).
+    * Playwright E2E-Suite [pitch_deck_studio.spec.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/e2e/pitch_deck_studio.spec.ts) erfolgreich bestanden.
+    * 0 TypeScript-Fehler (`tsc --noEmit`), 0 ESLint-Fehler, Production Build 100% fehlerfrei.
 
 ### 0.00000000000 Finaler System-Tiefenaudit, Modul-Interkommunikation & 0-Fehler-Zertifizierung
 * **Problemstellung & Benutzer-Anforderung:**

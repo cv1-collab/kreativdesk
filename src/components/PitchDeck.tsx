@@ -25,7 +25,7 @@ interface Slide {
   order_index: number; 
   ownerId: string; 
   projectId?: string; 
-  layout?: 'title-only' | 'split' | 'image-focus' | 'video-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid' | 'chart-donut' | 'table-of-contents'; 
+  layout?: 'title-only' | 'split' | 'image-focus' | 'video-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid' | 'chart-donut' | 'table-of-contents' | 'full-image'; 
   fontSize?: number; 
   titleFontSize?: number;
   dataPayload?: any; 
@@ -341,6 +341,86 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
     const isDarkTheme = ['photography', 'scenography', 'cyberpunk'].includes(deckSettings.themeStyle);
     const tc = isDarkTheme ? "text-white" : "text-black";
     
+    if (slide.layout === 'full-image') {
+      const imageFit = slide.dataPayload?.imageFit || 'cover';
+      const imageScale = (slide.dataPayload?.imageScale || 100) / 100;
+      const imagePosition = slide.dataPayload?.imagePosition || 'center';
+      const overlayOpacity = ((slide.dataPayload?.overlayOpacity ?? 40) / 100);
+      const textPosition = slide.dataPayload?.textPosition || 'bottom-left';
+      return (
+        <div className={cn("w-full h-full flex flex-col justify-between p-8 md:p-14 relative overflow-hidden", getThemeClasses())} style={deckSettings.themeStyle === 'scenography' || deckSettings.themeStyle === 'cyberpunk' ? { borderLeftColor: deckSettings.themeColor } : undefined}>
+          {/* FULL BLEED BACKGROUND */}
+          <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
+            {sanitizeUrl(slide.imageUrl) && (
+              <img
+                src={sanitizeUrl(slide.imageUrl)}
+                alt={slide.title || 'Slide Background'}
+                style={{
+                  objectFit: imageFit as any,
+                  transform: `scale(${imageScale})`,
+                  objectPosition: imagePosition
+                }}
+                className="w-full h-full"
+              />
+            )}
+            <div
+              className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20"
+              style={{ backgroundColor: `rgba(0,0,0,${overlayOpacity})` }}
+            />
+          </div>
+
+          {/* TOP BAR / BADGE */}
+          <div className="relative z-10 flex justify-between items-center">
+            {slide.stamp ? (
+              <div className="px-4 py-1.5 rounded-lg border-2 font-black text-xs uppercase tracking-widest pointer-events-none shadow-xl rotate-[-3deg]" style={{
+                borderColor: slide.stamp === 'VERTRAULICH' ? '#ef4444' : slide.stamp === 'GENEHMIGT' ? '#10b981' : slide.stamp === 'IN PRÜFUNG' ? '#f59e0b' : '#3b82f6',
+                color: '#ffffff',
+                backgroundColor: 'rgba(0,0,0,0.6)'
+              }}>
+                [ {slide.stamp} ]
+              </div>
+            ) : <div />}
+          </div>
+
+          {/* MAIN TITLE & CONTENT */}
+          <div className={cn(
+            "relative z-10 flex-1 flex flex-col justify-end pb-8",
+            textPosition === 'center' ? "items-center text-center justify-center" : "items-start text-left"
+          )}>
+            <h1
+              style={{ fontSize: `${slide.titleFontSize || 54}px` }}
+              className={cn(
+                "font-black text-white drop-shadow-[0_2px_14px_rgba(0,0,0,0.9)] leading-tight max-w-4xl",
+                textPosition === 'center' ? "text-center mx-auto" : ""
+              )}
+            >
+              {slide.title}
+            </h1>
+            {slide.content && (
+              <p
+                style={{ fontSize: `${slide.fontSize || 22}px` }}
+                className={cn(
+                  "mt-4 text-white/90 drop-shadow-[0_1px_8px_rgba(0,0,0,0.9)] font-medium leading-relaxed max-w-3xl whitespace-pre-wrap",
+                  textPosition === 'center' ? "text-center mx-auto" : ""
+                )}
+              >
+                {slide.content}
+              </p>
+            )}
+          </div>
+
+          {/* FOOTER */}
+          <div className="h-[8%] flex flex-row items-end justify-between border-t border-white/20 pb-2 z-10 shrink-0">
+            <span className="text-[10px] uppercase font-bold tracking-widest text-white/80 drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">{deckSettings.footerText}</span>
+            <div className="flex items-center gap-4">
+              {!!sanitizeUrl(deckSettings.logoUrl) && <img src={sanitizeUrl(deckSettings.logoUrl)} alt="Logo" className="h-6 object-contain opacity-90 drop-shadow pointer-events-none" />}
+              <span className="text-[10px] font-sans font-bold tracking-widest text-white/80 drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">{slides.findIndex(s=>s.id===slide.id) + 1} / {slides.length}</span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className={cn("w-full h-full flex flex-col p-12 relative overflow-hidden", getThemeClasses())} style={deckSettings.themeStyle === 'scenography' || deckSettings.themeStyle === 'cyberpunk' ? { borderLeftColor: deckSettings.themeColor } : undefined}>
         {deckSettings.themeStyle === 'scenography' && <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full blur-[120px] opacity-20 pointer-events-none" style={{ backgroundColor: deckSettings.themeColor, transform: 'translate(30%, -30%)' }}></div>}

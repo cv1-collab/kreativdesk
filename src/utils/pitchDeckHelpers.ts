@@ -8,7 +8,7 @@ export interface Slide {
   ownerId: string; 
   companyId?: string; 
   projectId?: string; 
-  layout?: 'title-only' | 'split' | 'image-focus' | 'video-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid' | 'chart-donut' | 'table-of-contents' | 'budget-comparison'; 
+  layout?: 'title-only' | 'split' | 'image-focus' | 'video-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid' | 'chart-donut' | 'table-of-contents' | 'budget-comparison' | 'full-image'; 
   fontSize?: number; 
   titleFontSize?: number;
   dataPayload?: any; 

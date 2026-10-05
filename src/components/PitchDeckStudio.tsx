@@ -49,7 +49,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     import_cad: 'Import CAD Plans', import_bim: 'Import 3D BIM', import_renderings: 'Import Renderings',
     import_defects: 'Import Defects & Tickets', import_whiteboard: 'Import Whiteboard Sketches', slides_count: 'Slides',
     standard_layouts: 'Standard Layouts', title_slide: 'Title Slide', text_and_image: 'Text & Image',
-    image_slide: 'Image Focus', text_block: 'Text Only', slide: 'Slide', preview_active: 'Preview Active',
+    image_slide: 'Image Focus', full_image_slide: 'Full-Bleed Cover', image_tools: 'Image & Scaling', upload_image: 'Upload Image', text_block: 'Text Only', slide: 'Slide', preview_active: 'Preview Active',
     editor_mode: 'Editor Mode', typo_size: 'Font Size', export_pdf_native: 'PDF Export',
     no_slide_selected: 'No slide selected.', select_project: 'Please select a project first.',
     budget_imported: 'Budget imported!', team_imported: 'Team imported!', roadmap_imported: 'Calendar imported!',
@@ -117,7 +117,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     import_cad: 'CAD & Pläne', import_bim: '3D BIM Modelle', import_renderings: '3D Renderings',
     import_defects: 'Mängel & Tickets', import_whiteboard: 'Whiteboard Skizzen', slides_count: 'Folien',
     standard_layouts: 'Standard Layouts', title_slide: 'Titel-Folie', text_and_image: 'Text & Bild',
-    image_slide: 'Bild-Fokus', text_block: 'Nur Text', slide: 'Folie', preview_active: 'Vorschau Aktiv',
+    image_slide: 'Bild-Fokus', full_image_slide: 'Vollbild-Cover', image_tools: 'Bild & Skalierung', upload_image: 'Bild hochladen', text_block: 'Nur Text', slide: 'Folie', preview_active: 'Vorschau Aktiv',
     editor_mode: 'Editor Modus', typo_size: 'Schriftgrösse', export_pdf_native: 'PDF Export',
     no_slide_selected: 'Keine Folie ausgewählt.', select_project: 'Bitte wähle zuerst ein Projekt.',
     budget_imported: 'Budget importiert!', team_imported: 'Team importiert!', roadmap_imported: 'Terminplan importiert!',
@@ -323,7 +323,9 @@ export default function PitchDeckStudio({
   const [showInsertMenu, setShowInsertMenu] = useState(false);
   const [showTypoFlyout, setShowTypoFlyout] = useState(false);
   const [showStampFlyout, setShowStampFlyout] = useState(false);
+  const [showImageToolsFlyout, setShowImageToolsFlyout] = useState(false);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const slideImageInputRef = useRef<HTMLInputElement>(null);
 
   // SMART PROPOSAL & LANDINGPAGE STATES
   const [isLandingPageModalOpen, setIsLandingPageModalOpen] = useState(initialOpenPublishModal);
@@ -1133,6 +1135,59 @@ export default function PitchDeckStudio({
     }
   };
 
+  const handleDirectSlideImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, slideId?: string) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentUser) return;
+    const safeCompanyId = currentUser.companyId || (currentUser as any)?.company_id || currentUser.uid;
+    setIsUploadingImage(true);
+    addToast('Bild wird hochgeladen...', 'info');
+
+    try {
+      const fileExt = file.name.split('.').pop() || 'png';
+      const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const filePath = `${safeCompanyId}/slides/${Date.now()}_${safeName}`;
+      const { error: uploadErr } = await supabase.storage.from('documents').upload(filePath, file, { upsert: true });
+      let downloadUrl = '';
+      if (!uploadErr) {
+        const { data: urlData } = supabase.storage.from('documents').getPublicUrl(filePath);
+        downloadUrl = urlData?.publicUrl || '';
+      }
+
+      if (!downloadUrl) {
+        downloadUrl = URL.createObjectURL(file);
+      }
+
+      const targetSlideId = slideId || activeSlideId;
+      if (targetSlideId) {
+        setSlides(prev => prev.map(s => s.id === targetSlideId ? { ...s, imageUrl: downloadUrl } : s));
+        const slideToUpdate = slides.find(s => s.id === targetSlideId);
+        if (slideToUpdate) {
+          const serialized = serializeSlideForDb({ ...slideToUpdate, imageUrl: downloadUrl });
+          await supabase.from('slides').update(serialized).eq('id', targetSlideId);
+        }
+        addToast('Bild erfolgreich hinterlegt!', 'success');
+      }
+    } catch (err) {
+      console.error('Slide image upload failed:', err);
+      const fallbackUrl = URL.createObjectURL(file);
+      const targetSlideId = slideId || activeSlideId;
+      if (targetSlideId) {
+        setSlides(prev => prev.map(s => s.id === targetSlideId ? { ...s, imageUrl: fallbackUrl } : s));
+      }
+      addToast('Bild lokal hinterlegt', 'info');
+    } finally {
+      setIsUploadingImage(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleUpdateImageSettings = (key: string, value: any) => {
+    if (!activeSlide) return;
+    const currentPayload = activeSlide.dataPayload || {};
+    const updatedPayload = { ...currentPayload, [key]: value };
+    updateSlidePayload(activeSlide.id, updatedPayload);
+  };
+
   const handleDirectMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>, mediaType: 'video' | 'image' | 'pdf' | 'website') => {
     const file = e.target.files?.[0];
     if (!file || !currentUser) return;
@@ -1435,6 +1490,44 @@ export default function PitchDeckStudio({
           const cLines = docPdf.splitTextToSize(slide.content, pw - 60);
           docPdf.text(cLines, pw / 2, ph / 2 + 12, { align: 'center' });
         }
+      } else if (slide.layout === 'full-image') {
+        if (slide.imageUrl) {
+          await addSafeImage(slide.imageUrl, 0, 0, pw, ph, false);
+          const overlayOpacity = ((slide.dataPayload?.overlayOpacity ?? 40) / 100);
+          if (overlayOpacity > 0) {
+            try {
+              docPdf.saveGraphicsState();
+              (docPdf as any).setGState?.(new (docPdf as any).GState({ opacity: Math.min(0.85, overlayOpacity) }));
+              docPdf.setFillColor(0, 0, 0);
+              docPdf.rect(0, 0, pw, ph, 'F');
+              docPdf.restoreGraphicsState();
+            } catch {}
+          }
+        }
+        const textPos = slide.dataPayload?.textPosition || 'bottom-left';
+        docPdf.setFont(pdfFont, "bold");
+        docPdf.setFontSize(slide.titleFontSize ? Math.round(slide.titleFontSize * 0.8) : 32);
+        docPdf.setTextColor(255, 255, 255);
+        if (textPos === 'center') {
+          const tw = docPdf.getTextWidth(slide.title || '');
+          docPdf.text(slide.title || '', (pw - tw) / 2, ph / 2 - 5);
+          if (slide.content && slide.content !== t('type_text_here')) {
+            docPdf.setFont(pdfFont, "normal");
+            docPdf.setFontSize(slide.fontSize || 16);
+            docPdf.setTextColor(240, 240, 240);
+            const cLines = docPdf.splitTextToSize(slide.content, pw - 60);
+            docPdf.text(cLines, pw / 2, ph / 2 + 14, { align: 'center' });
+          }
+        } else {
+          docPdf.text(slide.title || '', 20, ph - 38);
+          if (slide.content && slide.content !== t('type_text_here')) {
+            docPdf.setFont(pdfFont, "normal");
+            docPdf.setFontSize(slide.fontSize || 16);
+            docPdf.setTextColor(240, 240, 240);
+            const cLines = docPdf.splitTextToSize(slide.content, pw - 40);
+            docPdf.text(cLines, 20, ph - 24);
+          }
+        }
       } else { 
         docPdf.setFontSize(slide.titleFontSize ? Math.round(slide.titleFontSize * 0.7) : 26); 
         const maxTitleW = (themeStyle === 'neo-brutalism' || themeStyle === 'swiss') ? pw - 60 : pw - 30;
@@ -1454,7 +1547,10 @@ export default function PitchDeckStudio({
       docPdf.setTextColor(isDarkTheme ? 220 : 50);
       const cy = 36;
       
-      if (slide.layout === 'text-only') { 
+      if (slide.layout === 'full-image') {
+        // Full bleed background already drawn
+      }
+      else if (slide.layout === 'text-only') { 
         const lns = docPdf.splitTextToSize(slide.content || '', pw - 30); docPdf.text(lns, 15, cy); 
       }
       else if (slide.layout === 'split' && slide.imageUrl) { 
@@ -1800,10 +1896,12 @@ export default function PitchDeckStudio({
     if (!currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
     const newId = `slide-${Date.now()}`;
+    const initialPayload = dataPayload || (layout === 'full-image' ? { imageFit: 'cover', imageScale: 100, overlayOpacity: 40, imagePosition: 'center', textPosition: 'bottom-left' } : null);
+    const initialContent = layout === 'full-image' ? '' : t('type_text_here');
     const newSlide: Slide = {
-      id: newId, title, content: t('type_text_here'), order_index: slides.length, 
+      id: newId, title, content: initialContent, order_index: slides.length, 
       ownerId: currentUser.uid, companyId: safeCompanyId, projectId: targetId, 
-      layout, fontSize: 18, titleFontSize: 36, dataPayload, ...(imageUrl && { imageUrl }), ...(videoUrl && { videoUrl }), notes: '',
+      layout, fontSize: 18, titleFontSize: layout === 'full-image' ? 44 : 36, dataPayload: initialPayload, ...(imageUrl && { imageUrl }), ...(videoUrl && { videoUrl }), notes: '',
       agendaItems: dataPayload?.agendaItems || undefined
     };
     try {
@@ -2624,6 +2722,18 @@ export default function PitchDeckStudio({
            addToast('Foto aktualisiert!', 'success');
          }
        }
+    } else if (mediaPickerType?.action === 'slide' && (mediaPickerType.meta?.slideId || activeSlideId)) {
+       const targetId = mediaPickerType.meta?.slideId || activeSlideId;
+       const selectedMedia = availableMedia.find(m => m.id === selectedMediaIds[0]);
+       if (selectedMedia && targetId) {
+         setSlides(prev => prev.map(s => s.id === targetId ? { ...s, imageUrl: selectedMedia.url } : s));
+         const slideToUpdate = slides.find(s => s.id === targetId);
+         if (slideToUpdate) {
+           const serialized = serializeSlideForDb({ ...slideToUpdate, imageUrl: selectedMedia.url });
+           supabase.from('slides').update(serialized).eq('id', targetId).then();
+         }
+         addToast('Bild aktualisiert!', 'success');
+       }
     } else {
        const toAdd = availableMedia.filter(m => selectedMediaIds.includes(m.id));
        for (const media of toAdd) { await handleAddSlide('image-focus', media.name.split('.')[0], null, media.url); }
@@ -2721,8 +2831,190 @@ export default function PitchDeckStudio({
     const displayTitle = activeSlide?.id === slide.id ? localTitle || slide.title : slide.title;
     const displayContent = activeSlide?.id === slide.id ? localContent || slide.content : slide.content;
 
-    const titleFs = slide.titleFontSize || (slide.layout === 'title-only' ? 48 : 32);
+    const titleFs = slide.titleFontSize || (slide.layout === 'title-only' || slide.layout === 'full-image' ? 48 : 32);
     const contentFs = slide.fontSize || 18;
+
+    if (slide.layout === 'full-image') {
+      const imageFit = slide.dataPayload?.imageFit || 'cover';
+      const imageScale = (slide.dataPayload?.imageScale || 100) / 100;
+      const imagePosition = slide.dataPayload?.imagePosition || 'center';
+      const overlayOpacity = ((slide.dataPayload?.overlayOpacity ?? 40) / 100);
+      const textPosition = slide.dataPayload?.textPosition || 'bottom-left';
+
+      return (
+        <div 
+          className={cn("w-full h-full flex flex-col justify-between p-8 md:p-12 relative overflow-hidden group/fullbleed", getThemeClasses())} 
+          style={deckSettings.themeStyle === 'scenography' || deckSettings.themeStyle === 'cyberpunk' ? { borderLeftColor: deckSettings.themeColor } : undefined}
+        >
+          {/* THEME DECORATIONS */}
+          {deckSettings.themeStyle === 'scenography' && <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full blur-[140px] opacity-25 pointer-events-none" style={{ backgroundColor: deckSettings.themeColor, transform: 'translate(30%, -30%)' }}></div>}
+          {deckSettings.themeStyle === 'cyberpunk' && <div className="absolute top-0 left-0 w-full h-[2px] opacity-70 shadow-[0_0_20px_2px_currentColor] pointer-events-none" style={{ color: deckSettings.themeColor, backgroundColor: deckSettings.themeColor }}></div>}
+          {deckSettings.themeStyle === 'glassmorphism' && <div className="absolute -bottom-20 -left-20 w-[600px] h-[600px] rounded-full blur-[120px] opacity-25 pointer-events-none" style={{ backgroundColor: deckSettings.themeColor }}></div>}
+
+          {/* FULL BLEED BACKGROUND IMAGE */}
+          <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
+            {sanitizeUrl(slide.imageUrl) ? (
+              <img
+                src={sanitizeUrl(slide.imageUrl)}
+                alt="Background"
+                style={{
+                  objectFit: imageFit as any,
+                  transform: `scale(${imageScale})`,
+                  objectPosition: imagePosition
+                }}
+                className="w-full h-full transition-transform duration-300 pointer-events-none"
+              />
+            ) : null}
+            {sanitizeUrl(slide.imageUrl) && (
+              <div
+                className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20 pointer-events-none"
+                style={{ backgroundColor: `rgba(0,0,0,${overlayOpacity})` }}
+              />
+            )}
+          </div>
+
+          {/* EMPTY STATE / DROPZONE IF NO IMAGE */}
+          {!sanitizeUrl(slide.imageUrl) && !isPreviewMode && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-black/20 dark:bg-black/40 border-2 border-dashed border-purple-500/40 rounded-2xl m-6 backdrop-blur-xs z-20">
+              <div className="w-16 h-16 rounded-2xl bg-purple-500/20 border border-purple-500/40 text-purple-400 flex items-center justify-center mb-3 shadow-lg">
+                <ImagePlus size={32} />
+              </div>
+              <h3 className="text-base font-bold mb-1 text-white">Vollbild-Cover / Hintergrundbild</h3>
+              <p className="text-xs text-zinc-300 mb-4 max-w-sm text-center">Lade ein Bild hoch oder wähle ein Rendering aus dem Projekt, um es als randloses Vollbild zu verwenden.</p>
+              <div className="flex items-center gap-3">
+                <label className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shadow-lg transition-all hover:scale-105 active:scale-95">
+                  <Upload size={14} /> <span>Bild hochladen</span>
+                  <input type="file" accept="image/jpeg,image/png,image/webp,image/svg+xml" onChange={(e) => handleDirectSlideImageUpload(e, slide.id)} className="hidden" />
+                </label>
+                <button type="button" onClick={() => openMediaPicker('render', t('choose_image'), 'slide', { slideId: slide.id })} className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold flex items-center gap-2 border border-white/20 transition-all cursor-pointer">
+                  <ImageIcon size={14} /> <span>Aus Projekt wählen</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* FLOATING ACTION BAR FOR BACKGROUND IMAGE */}
+          {sanitizeUrl(slide.imageUrl) && !isPreviewMode && (
+            <div className="absolute top-4 left-4 z-30 flex items-center gap-2 bg-black/80 backdrop-blur-md border border-white/20 p-1.5 rounded-xl shadow-2xl opacity-90 hover:opacity-100 transition-opacity">
+              <button
+                type="button"
+                title="Bild-Werkzeuge (Zoom, Skalierung, Overlay)"
+                onClick={() => { setShowImageToolsFlyout(true); setShowTypoFlyout(false); setShowStampFlyout(false); }}
+                className="px-2.5 py-1 rounded-lg text-xs font-bold text-white bg-purple-600 hover:bg-purple-500 flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+              >
+                <Sliders size={13} /> <span>Bild anpassen</span>
+              </button>
+              <label className="px-2 py-1 rounded-lg text-xs font-semibold text-white/90 hover:bg-white/10 flex items-center gap-1.5 cursor-pointer transition-colors" title="Neues Bild hochladen">
+                <Upload size={13} /> <span>Wechseln</span>
+                <input type="file" accept="image/jpeg,image/png,image/webp,image/svg+xml" onChange={(e) => handleDirectSlideImageUpload(e, slide.id)} className="hidden" />
+              </label>
+              <button
+                type="button"
+                title="Aus Projekt wählen"
+                onClick={() => openMediaPicker('render', t('choose_image'), 'slide', { slideId: slide.id })}
+                className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <ImageIcon size={14} />
+              </button>
+              <button
+                type="button"
+                title="Hintergrundbild entfernen"
+                onClick={() => { upc('imageUrl', ''); setSlides(prev => prev.map(s => s.id === slide.id ? { ...s, imageUrl: '' } : s)); }}
+                className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-colors cursor-pointer"
+              >
+                <Trash2 size={13} />
+              </button>
+            </div>
+          )}
+
+          {/* TOP RIGHT BADGE / STEMPEL */}
+          <div className="relative z-20 flex justify-end items-start h-8">
+            {slide.stamp && (
+              <div className="px-4 py-1.5 rounded-lg border-2 font-black text-xs uppercase tracking-widest pointer-events-none shadow-xl rotate-[-3deg]" style={{
+                borderColor: slide.stamp === 'VERTRAULICH' ? '#ef4444' : slide.stamp === 'GENEHMIGT' ? '#10b981' : slide.stamp === 'IN PRÜFUNG' ? '#f59e0b' : '#3b82f6',
+                color: '#ffffff',
+                backgroundColor: 'rgba(0,0,0,0.6)'
+              }}>
+                [ {slide.stamp} ]
+              </div>
+            )}
+          </div>
+
+          {/* MAIN CONTENT AREA */}
+          <div className={cn(
+            "relative z-20 flex-1 flex flex-col justify-end pb-4 pt-10",
+            textPosition === 'center' ? "items-center text-center justify-center" : "items-start text-left"
+          )}>
+            {!isPreviewMode && !isMobile ? (
+              <input
+                type="text"
+                value={displayTitle}
+                onChange={(e) => handleLocalUpdate('title', e.target.value)}
+                style={{ fontSize: `${titleFs}px` }}
+                placeholder="Titel der Folie..."
+                className={cn(
+                  "bg-transparent outline-none w-full font-black text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)] border-b border-transparent focus:border-purple-400 transition-colors leading-tight",
+                  textPosition === 'center' ? "text-center" : ""
+                )}
+              />
+            ) : (
+              <h2
+                style={{ fontSize: `${titleFs}px` }}
+                className={cn(
+                  "w-full font-black text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)] truncate leading-tight",
+                  textPosition === 'center' ? "text-center" : ""
+                )}
+              >
+                {displayTitle}
+              </h2>
+            )}
+
+            {!isPreviewMode && !isMobile ? (
+              <textarea
+                value={displayContent}
+                onChange={(e) => handleLocalUpdate('content', e.target.value)}
+                style={{ fontSize: `${contentFs}px` }}
+                placeholder="Untertitel oder Kurzbeschreibung hier eingeben..."
+                rows={2}
+                className={cn(
+                  "w-full mt-2 bg-transparent outline-none text-white/95 drop-shadow-[0_1px_8px_rgba(0,0,0,0.9)] resize-none border-b border-transparent focus:border-purple-400 transition-colors leading-relaxed",
+                  textPosition === 'center' ? "text-center max-w-2xl mx-auto" : "max-w-3xl"
+                )}
+              />
+            ) : (
+              displayContent && (
+                <p
+                  style={{ fontSize: `${contentFs}px` }}
+                  className={cn(
+                    "mt-2 text-white/95 drop-shadow-[0_1px_8px_rgba(0,0,0,0.9)] leading-relaxed whitespace-pre-wrap",
+                    textPosition === 'center' ? "text-center max-w-2xl mx-auto" : "max-w-3xl line-clamp-3"
+                  )}
+                >
+                  {displayContent}
+                </p>
+              )
+            )}
+          </div>
+
+          {/* FOOTER */}
+          <div className="h-[8%] flex flex-row items-end justify-between border-t border-white/20 pb-2 z-20 shrink-0">
+            <span className="text-[8px] lg:text-[10px] uppercase font-bold tracking-widest text-white/80 drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
+              {!isMobile && !isPreviewMode ? (
+                <input type="text" value={deckSettings.footerText} onChange={e => updateDeckSettings({ footerText: e.target.value })} className="bg-transparent outline-none w-64 text-white/80" placeholder="Footer Text" />
+              ) : (
+                <span>{deckSettings.footerText}</span>
+              )}
+            </span>
+            <div className="flex items-center gap-3">
+              {!!sanitizeUrl(deckSettings.logoUrl) && <img src={sanitizeUrl(deckSettings.logoUrl)} alt="Logo" className="h-4 lg:h-6 object-contain opacity-90 drop-shadow pointer-events-none" />}
+              <span className="text-[8px] lg:text-[10px] uppercase font-sans font-bold tracking-widest text-white/80 drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
+                {slides.findIndex(s => s.id === slide.id) + 1} / {slides.length}
+              </span>
+            </div>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className={cn("w-full h-full flex flex-col p-8 md:p-12 relative overflow-hidden", getThemeClasses())} style={deckSettings.themeStyle === 'scenography' || deckSettings.themeStyle === 'cyberpunk' ? { borderLeftColor: deckSettings.themeColor } : undefined}>
@@ -3598,6 +3890,7 @@ export default function PitchDeckStudio({
                    <AnimatePresence>
                      {showAddMenu && (
                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden flex flex-col gap-2 mt-2">
+                         <button type="button" onClick={() => handleAddSlide('full-image', t('full_image_slide'))} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-purple-500/40 text-purple-400 hover:bg-surface-hover flex items-center gap-3"><Maximize2 size={16}/> {t('full_image_slide')} (Hintergrund)</button>
                          <button type="button" onClick={() => handleAddSlide('title-only', t('new_vision'))} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-border hover:bg-surface-hover flex items-center gap-3"><Type size={16}/> {t('title_slide')}</button>
                          <button type="button" onClick={() => handleAddSlide('split', t('new_topic'))} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-border hover:bg-surface-hover flex items-center gap-3"><Columns size={16}/> {t('text_and_image')}</button>
                          <button type="button" onClick={() => handleAddSlide('image-focus', t('image_slide'))} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-border hover:bg-surface-hover flex items-center gap-3"><ImageIcon size={16}/> {t('image_slide')}</button>
@@ -3663,10 +3956,37 @@ export default function PitchDeckStudio({
                     <textarea value={localNotes} onChange={e => handleLocalUpdate('notes', e.target.value)} placeholder="Stichpunkte für deinen Vortrag eingeben..." className="w-full h-28 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3 text-xs text-text-primary resize-none custom-scrollbar outline-none focus:border-amber-500" />
                  </div>
                  
-                 {(activeSlide.layout === 'split' || activeSlide.layout === 'image-focus') && (
-                    <button type="button" onClick={() => openMediaPicker('render', t('choose_image'), 'slide')} className="w-full py-4 bg-blue-500/20 text-blue-400 rounded-xl font-bold flex justify-center items-center gap-2 border border-blue-500/30 active:scale-95 transition-transform">
-                      <ImageIcon size={18}/> {t('choose_image')}
-                    </button>
+                 {(activeSlide.layout === 'split' || activeSlide.layout === 'image-focus' || activeSlide.layout === 'full-image') && (
+                    <div className="space-y-2 pt-2">
+                       <label className="text-xs font-bold text-blue-400 uppercase flex items-center gap-1.5">
+                         <ImageIcon size={14} /> {activeSlide.layout === 'full-image' ? 'Hintergrundbild' : t('choose_image')}
+                       </label>
+                       <div className="grid grid-cols-2 gap-2">
+                         <button
+                           type="button"
+                           onClick={() => slideImageInputRef.current?.click()}
+                           className="py-3 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 rounded-xl font-bold text-xs flex justify-center items-center gap-1.5 border border-blue-500/30 active:scale-95 transition-transform"
+                         >
+                           <Upload size={14} /> Direkt hochladen
+                         </button>
+                         <button
+                           type="button"
+                           onClick={() => openMediaPicker('render', t('choose_image'), 'slide')}
+                           className="py-3 bg-surface text-text-primary hover:bg-surface-hover rounded-xl font-bold text-xs flex justify-center items-center gap-1.5 border border-border active:scale-95 transition-transform"
+                         >
+                           <ImageIcon size={14} /> Galerie
+                         </button>
+                       </div>
+                       {activeSlide.layout === 'full-image' && (
+                         <button
+                           type="button"
+                           onClick={() => setShowImageToolsFlyout(prev => !prev)}
+                           className="w-full py-2.5 bg-purple-500/15 text-purple-400 hover:bg-purple-500/25 rounded-xl font-bold text-xs flex justify-center items-center gap-2 border border-purple-500/30 active:scale-95 transition-transform"
+                         >
+                           <Sliders size={14} /> Bild & Skalierung anpassen
+                         </button>
+                       )}
+                    </div>
                  )}
               </div>
             )}
@@ -3892,8 +4212,9 @@ export default function PitchDeckStudio({
               </div>
               <AnimatePresence>
                 {showAddMenu && (
-                  <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="absolute top-14 right-4 w-52 bg-surface border border-border rounded-xl shadow-2xl z-[60] overflow-hidden py-1.5">
+                  <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="absolute top-14 right-4 w-56 bg-surface border border-border rounded-xl shadow-2xl z-[60] overflow-hidden py-1.5">
                     <div className="px-3 py-1 text-[9px] font-bold text-text-muted uppercase tracking-widest">{t('standard_layouts')}</div>
+                    <button type="button" onClick={() => { handleAddSlide('full-image', t('full_image_slide')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-purple-400 hover:bg-purple-500/10 flex items-center gap-2"><Maximize2 size={14} className="text-purple-400"/> {t('full_image_slide')} (Hintergrund)</button>
                     <button type="button" onClick={() => { handleAddSlide('title-only', t('new_vision')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><Type size={14}/> {t('title_slide')}</button>
                     <button type="button" onClick={() => { handleAddSlide('split', t('new_topic')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><Columns size={14}/> {t('text_and_image')}</button>
                     <button type="button" onClick={() => { handleAddSlide('image-focus', t('image_slide')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><ImageIcon size={14}/> {t('image_slide')}</button>
@@ -4080,8 +4401,9 @@ export default function PitchDeckStudio({
                 
                 {activeSlide && (
                   <>
-                    {/* 6 FOLIEN-LAYOUTS */}
+                    {/* 7 FOLIEN-LAYOUTS */}
                     {[
+                      { id: 'full-image', icon: Maximize2, title: 'Vollbild-Cover / Hintergrund' },
                       { id: 'title-only', icon: Type, title: 'Titel-Folie' },
                       { id: 'split', icon: Columns, title: 'Text & Bild' },
                       { id: 'image-focus', icon: ImageIcon, title: 'Bild-Fokus' },
@@ -4168,15 +4490,231 @@ export default function PitchDeckStudio({
 
                     <div className="w-6 h-px bg-border my-1" />
 
-                    {/* BILD EINFÜGEN */}
-                    <button
-                      type="button"
-                      title={t('choose_image')}
-                      onClick={() => openMediaPicker('render', t('choose_image'), 'slide')}
-                      className="p-2 rounded-xl transition-all cursor-pointer text-text-muted hover:bg-white/5 hover:text-text-primary shrink-0"
-                    >
-                      <ImagePlus size={16} />
-                    </button>
+                    {/* BILD & SKALIERUNG FLYOUT */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        id="btn-pitch-image-tools"
+                        title={t('image_tools') || 'Bild & Skalierung'}
+                        onClick={() => {
+                          setShowImageToolsFlyout(!showImageToolsFlyout);
+                          setShowTypoFlyout(false);
+                          setShowStampFlyout(false);
+                        }}
+                        className={cn(
+                          "p-2 rounded-xl transition-all cursor-pointer relative shrink-0",
+                          showImageToolsFlyout || (activeSlide.imageUrl && activeSlide.layout === 'full-image')
+                            ? "bg-purple-600 text-white shadow-md shadow-purple-500/25"
+                            : "text-text-muted hover:bg-white/5 hover:text-text-primary"
+                        )}
+                      >
+                        <ImagePlus size={16} />
+                        {activeSlide.imageUrl && (
+                          <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-surface" />
+                        )}
+                      </button>
+
+                      {/* BILD & SKALIERUNG FLYOUT PANEL */}
+                      <AnimatePresence>
+                        {showImageToolsFlyout && (
+                          <>
+                            <div className="fixed inset-0 z-[100]" onClick={() => setShowImageToolsFlyout(false)} />
+                            <motion.div
+                              initial={{ opacity: 0, x: -8, scale: 0.95 }}
+                              animate={{ opacity: 1, x: 0, scale: 1 }}
+                              exit={{ opacity: 0, x: -8, scale: 0.95 }}
+                              className="absolute left-14 top-0 bg-surface/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-3.5 z-[101] w-72 flex flex-col gap-3 text-left"
+                            >
+                              <div className="flex items-center justify-between border-b border-border pb-1.5">
+                                <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5">
+                                  <ImageIcon size={12} className="text-purple-400" />
+                                  <span>{t('image_tools') || 'Bild & Skalierung'}</span>
+                                </div>
+                                {activeSlide.imageUrl && (
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">Aktiv</span>
+                                )}
+                              </div>
+
+                              {/* BILD HOCHLADEN & AUSWÄHLEN */}
+                              <div className="grid grid-cols-2 gap-1.5">
+                                <label className="px-2.5 py-2 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer">
+                                  {isUploadingImage ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+                                  <span>{t('upload_image') || 'Hochladen'}</span>
+                                  <input type="file" accept="image/jpeg,image/png,image/webp,image/svg+xml" onChange={(e) => handleDirectSlideImageUpload(e, activeSlide.id)} className="hidden" />
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    openMediaPicker('render', t('choose_image'), 'slide', { slideId: activeSlide.id });
+                                    setShowImageToolsFlyout(false);
+                                  }}
+                                  className="px-2.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-text-primary border border-border text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                                >
+                                  <ImageIcon size={13} />
+                                  <span>Projekt-Medien</span>
+                                </button>
+                              </div>
+
+                              {/* EINPASSUNG: COVER VS CONTAIN */}
+                              <div className="space-y-1">
+                                <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block">Einpassung (Fit)</span>
+                                <div className="grid grid-cols-2 gap-1 bg-background border border-border rounded-xl p-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateImageSettings('imageFit', 'cover')}
+                                    className={cn(
+                                      "py-1 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer text-center",
+                                      (activeSlide.dataPayload?.imageFit || 'cover') === 'cover'
+                                        ? "bg-purple-600 text-white shadow-sm"
+                                        : "text-text-muted hover:text-text-primary"
+                                    )}
+                                  >
+                                    Füllend (Cover)
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateImageSettings('imageFit', 'contain')}
+                                    className={cn(
+                                      "py-1 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer text-center",
+                                      activeSlide.dataPayload?.imageFit === 'contain'
+                                        ? "bg-purple-600 text-white shadow-sm"
+                                        : "text-text-muted hover:text-text-primary"
+                                    )}
+                                  >
+                                    Einpassen (Fit)
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* PROPORTIONALE SKALIERUNG (ZOOM) */}
+                              <div className="space-y-1">
+                                <div className="flex justify-between items-center text-[10px] font-bold text-text-muted uppercase">
+                                  <span>Skalierung / Zoom</span>
+                                  <span className="text-purple-400 font-mono">{activeSlide.dataPayload?.imageScale || 100}%</span>
+                                </div>
+                                <input
+                                  type="range"
+                                  min={50}
+                                  max={200}
+                                  step={5}
+                                  value={activeSlide.dataPayload?.imageScale || 100}
+                                  onChange={(e) => handleUpdateImageSettings('imageScale', Number(e.target.value))}
+                                  className="w-full accent-purple-500 cursor-pointer"
+                                />
+                                <div className="grid grid-cols-4 gap-1 pt-0.5">
+                                  {[75, 100, 125, 150].map((sc) => (
+                                    <button
+                                      key={sc}
+                                      type="button"
+                                      onClick={() => handleUpdateImageSettings('imageScale', sc)}
+                                      className={cn(
+                                        "py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer",
+                                        (activeSlide.dataPayload?.imageScale || 100) === sc
+                                          ? "bg-purple-500/20 text-purple-300 border-purple-500/40"
+                                          : "bg-background border-border text-text-muted hover:text-text-primary"
+                                      )}
+                                    >
+                                      {sc}%
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* BILDFOKUS / POSITION */}
+                              <div className="space-y-1">
+                                <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block">Bild-Ausrichtung</span>
+                                <div className="grid grid-cols-3 gap-1 bg-background border border-border rounded-xl p-1 text-[11px] font-bold">
+                                  {[
+                                    { id: 'top', label: 'Oben' },
+                                    { id: 'center', label: 'Mitte' },
+                                    { id: 'bottom', label: 'Unten' }
+                                  ].map((pos) => (
+                                    <button
+                                      key={pos.id}
+                                      type="button"
+                                      onClick={() => handleUpdateImageSettings('imagePosition', pos.id)}
+                                      className={cn(
+                                        "py-1 rounded-lg transition-all cursor-pointer text-center",
+                                        (activeSlide.dataPayload?.imagePosition || 'center') === pos.id
+                                          ? "bg-purple-600 text-white shadow-sm"
+                                          : "text-text-muted hover:text-text-primary"
+                                      )}
+                                    >
+                                      {pos.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* ABDUNKLUNG / KONTRAST-OVERLAY */}
+                              <div className="space-y-1">
+                                <div className="flex justify-between items-center text-[10px] font-bold text-text-muted uppercase">
+                                  <span>Abdunklung (Lesbarkeit)</span>
+                                  <span className="text-purple-400 font-mono">{activeSlide.dataPayload?.overlayOpacity ?? 40}%</span>
+                                </div>
+                                <input
+                                  type="range"
+                                  min={0}
+                                  max={90}
+                                  step={5}
+                                  value={activeSlide.dataPayload?.overlayOpacity ?? 40}
+                                  onChange={(e) => handleUpdateImageSettings('overlayOpacity', Number(e.target.value))}
+                                  className="w-full accent-purple-500 cursor-pointer"
+                                />
+                              </div>
+
+                              {/* TEXT-POSITION (WENN VOLLBILD) */}
+                              {activeSlide.layout === 'full-image' && (
+                                <div className="space-y-1 border-t border-border pt-2">
+                                  <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block">Text-Platzierung</span>
+                                  <div className="grid grid-cols-2 gap-1 bg-background border border-border rounded-xl p-1 text-[11px] font-bold">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleUpdateImageSettings('textPosition', 'bottom-left')}
+                                      className={cn(
+                                        "py-1 rounded-lg transition-all cursor-pointer text-center",
+                                        (activeSlide.dataPayload?.textPosition || 'bottom-left') === 'bottom-left'
+                                          ? "bg-purple-600 text-white shadow-sm"
+                                          : "text-text-muted hover:text-text-primary"
+                                      )}
+                                    >
+                                      Unten Links
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleUpdateImageSettings('textPosition', 'center')}
+                                      className={cn(
+                                        "py-1 rounded-lg transition-all cursor-pointer text-center",
+                                        activeSlide.dataPayload?.textPosition === 'center'
+                                          ? "bg-purple-600 text-white shadow-sm"
+                                          : "text-text-muted hover:text-text-primary"
+                                      )}
+                                    >
+                                      Zentriert
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* BILD ENTFERNEN */}
+                              {activeSlide.imageUrl && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    upc('imageUrl', '');
+                                    setSlides(prev => prev.map(s => s.id === activeSlide.id ? { ...s, imageUrl: '' } : s));
+                                    setShowImageToolsFlyout(false);
+                                  }}
+                                  className="w-full py-1.5 text-xs font-bold text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors border border-red-500/20 mt-1 cursor-pointer flex items-center justify-center gap-1.5"
+                                >
+                                  <Trash2 size={12} /> <span>Hintergrundbild entfernen</span>
+                                </button>
+                              )}
+                            </motion.div>
+                          </>
+                        )}
+                      </AnimatePresence>
+                    </div>
 
                     {/* VIDEO HOCHLADEN */}
                     <button
