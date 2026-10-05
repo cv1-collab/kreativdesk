@@ -831,7 +831,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
             const resolvedImage = p.plan_image || p.planImage || metaEl?.plan_image || bgImgEl?.url || (isDemoProject ? dummySvgPlan : null);
 
             const dbDefectIdSet = new Set(dbDefects.map(d => d.id));
-            let mergedElements: PlanElement[] = (p.elements || []).filter((e: any) => {
+            const mergedElements: PlanElement[] = (p.elements || []).filter((e: any) => {
               if (e?.id === '__plan_meta__') return false;
               // Clean up ghost pins: if element is a defect pin, only keep it if it still exists in the database
               if (e?.type === 'defect') {

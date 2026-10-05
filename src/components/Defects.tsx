@@ -327,7 +327,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
     if (!isDemo && safeCompanyId && currentProjectId) {
       invalidateDefects();
     }
-  }, [safeCompanyId, currentProjectId, isDemo]);
+  }, [safeCompanyId, currentProjectId, isDemo, invalidateDefects]);
 
   useEffect(() => {
     if (isDemo) {

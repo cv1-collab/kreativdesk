@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
 import type { Tables, TablesInsert, TablesUpdate } from '../../types/database.types';
@@ -117,9 +117,9 @@ export function useDefectsQuery(companyId?: string | null, projectId?: string | 
     };
   }, [companyId, projectId, queryClient]);
 
-  const invalidate = () => {
+  const invalidate = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: [DEFECTS_QUERY_KEY] });
-  };
+  }, [queryClient]);
 
   return {
     ...query,

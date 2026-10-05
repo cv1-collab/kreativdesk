@@ -359,9 +359,17 @@ export async function acceptProposalByClient(
   acceptanceData: { name: string; email: string; signatureNote?: string; selectedOptionIds: string[]; finalPrice: number }
 ): Promise<boolean> {
   const now = new Date().toISOString();
+  const all = safeStorage.getItem<SmartProposal[]>(STORAGE_KEY, []);
+  const item = all.find(p => p.id === proposalId);
 
   try {
     if (supabase) {
+      const { data: propRow } = await supabase
+        .from('smart_proposals')
+        .select('company_id, title, project_id')
+        .eq('id', proposalId)
+        .maybeSingle();
+
       await supabase
         .from('smart_proposals')
         .update({
@@ -371,13 +379,26 @@ export async function acceptProposalByClient(
           updated_at: now
         })
         .eq('id', proposalId);
+
+      const targetCompanyId = propRow?.company_id || item?.companyId;
+      if (targetCompanyId) {
+        const priceText = typeof acceptanceData.finalPrice === 'number'
+          ? ` (CHF ${acceptanceData.finalPrice.toLocaleString('de-CH')})`
+          : '';
+        await supabase.from('notifications').insert({
+          company_id: targetCompanyId,
+          title: 'Offerte digital angenommen',
+          message: `${acceptanceData.name} hat die Offerte «${propRow?.title || item?.title || 'Offerte'}»${priceText} digital unterzeichnet.`,
+          type: 'proposal_accepted',
+          read: false,
+          created_at: now
+        });
+      }
     }
   } catch (e) {
     console.warn('Supabase accept error:', e);
   }
 
-  const all = safeStorage.getItem<SmartProposal[]>(STORAGE_KEY, []);
-  const item = all.find(p => p.id === proposalId);
   if (item) {
     item.status = 'accepted';
     item.acceptedAt = now;

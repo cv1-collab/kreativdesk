@@ -53,8 +53,7 @@ test.describe('Pitch Deck Studio - Complete E2E Suite', () => {
     }
     console.log('✅ Slide Transition Effects (Fade, Slide, Zoom) verified successfully!');
 
-    // 5. Test Stempel button & popover
-    const stempelButton = page.locator('button:has-text("Einfügen"), #btn-pitch-stamp, button:has-text("Stempel"), button:has-text("VERTRAULICH"), button:has-text("GENEHMIGT"), button:has-text("ENTWURF")').first();
+    const stempelButton = page.locator('#btn-pitch-stamp, button[title="Stempel"], button[aria-label="Stempel"]').first();
     await expect(stempelButton).toBeVisible({ timeout: 25000 });
     await stempelButton.click();
     await page.waitForTimeout(500);

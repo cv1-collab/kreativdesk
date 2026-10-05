@@ -4201,6 +4201,8 @@ export default function PitchDeckStudio({
                     <div className="relative">
                       <button
                         type="button"
+                        id="btn-pitch-stamp"
+                        aria-label="Stempel"
                         title={t('stamp_label')}
                         onClick={() => {
                           setShowStampFlyout(!showStampFlyout);

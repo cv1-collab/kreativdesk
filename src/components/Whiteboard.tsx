@@ -1265,6 +1265,11 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
     }
   };
 
+  const addImageToCanvasRef = useRef(addImageToCanvas);
+  addImageToCanvasRef.current = addImageToCanvas;
+  const addToastRef = useRef(addToast);
+  addToastRef.current = addToast;
+
   // Clipboard Paste Image Handler (Cmd+V / Ctrl+V)
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
@@ -1282,11 +1287,11 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
             reader.onload = (ev) => {
               const dataUrl = ev.target?.result as string;
               if (dataUrl) {
-                addImageToCanvas(dataUrl, `Screenshot_${new Date().toLocaleTimeString('de-CH')}`);
+                addImageToCanvasRef.current(dataUrl, `Screenshot_${new Date().toLocaleTimeString('de-CH')}`);
               }
             };
             reader.readAsDataURL(blob);
-            addToast('Bild aus Zwischenablage eingefügt!', 'success');
+            addToastRef.current('Bild aus Zwischenablage eingefügt!', 'success');
           }
           break;
         }
@@ -1294,7 +1299,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
     };
     window.addEventListener('paste', handlePaste);
     return () => window.removeEventListener('paste', handlePaste);
-  }, [layers, activeLayerId]);
+  }, []);
 
   useEffect(() => { wbCache = { layers, activeLayerId, bgImageSrc, bgImagePos, stageScale, stagePos, activeColor }; }, [layers, activeLayerId, bgImageSrc, bgImagePos, stageScale, stagePos, activeColor]);
 
