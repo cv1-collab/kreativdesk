@@ -1140,6 +1140,7 @@ export default function ProductTour() {
         disableScrolling: false, // Allow smooth scrolling to keep target in view
         disableScrollParentFix: true,
         isFixed: false,
+        zIndex: 250000, // ✅ Ensure Joyride floats over all full-screen modals (PitchDeckStudio z-[100000])
         floatingOptions: {
           strategy: 'fixed',
           hideArrow: isCenter,
@@ -1225,6 +1226,7 @@ export default function ProductTour() {
         options: {
           skipBeacon: true,
           overlayClickAction: 'close',
+          zIndex: 250000,
         },
         locale: {
           back: isGerman ? 'Zurück' : 'Back',

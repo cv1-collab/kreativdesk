@@ -126,6 +126,24 @@
   * Die aktiven Produktions-Deployments und Domains (`https://www.kreativdesk.ch`, `kreativdesk.ch`, `kreativ-desk-v2-0.vercel.app` auf `dpl_AnXDwXRkFEVmRK2Y7ivr6WwgMcGo` sowie der Git-Main-Branch-Alias auf `dpl_2tkNCGiupoaCccjJuMk1CgiEANmK`) blieben 100% unberührt und aktiv.
   * Das Vercel-Projekt ist nun vollständig aufgeräumt (2 aktive Deployments verbleibend).
 
+### 0.0000000000 Pitch Deck Studio Modul-Guide Z-Index & Sichtbarkeits-Reparatur (React-Joyride v3)
+* **Problemstellung & Benutzer-Anforderung:**
+  * Beim Klick auf «Modul-Guide» in der Deck Engine (Pitch Deck Studio) wurde die Hilfe scheinbar nicht aktiviert und es erschien kein Hilfefenster auf dem Bildschirm.
+* **Aufgedeckte Ursachen & Behebung:**
+  * **1. Z-Index-Kollision in React-Joyride v3 (`ProductTour.tsx`, `index.css`):**
+    * *Ursache:* React-Joyride v3 liest den Z-Index nicht mehr aus `styles.options.zIndex` (React-Joyride v2 Syntax), sondern erwartet ihn direkt auf jedem einzelnen `step.zIndex` bzw. `options.zIndex`. Mangels dieser Props fiel React-Joyride auf den Standard-Z-Index `100` für das Overlay und `101` für den Floater (`.react-joyride__floater`) zurück. Da `PitchDeckStudio` ein fixiertes Vollbild-Modal mit `z-[100000]` ist, wurde die gesamte Hilfetour unsichtbar hinter dem Pitch Deck Studio gerendert.
+    * *Behebung:*
+      * In `ProductTour.tsx` wird `zIndex: 250000` nun explizit auf jedem einzelnen Step in `validSteps` sowie in den globalen Joyride-`options` übergeben.
+      * In `src/index.css` wurden die Klassen `#react-joyride-portal`, `.react-joyride__overlay` (`z-index: 250000 !important`) und `.react-joyride__floater` (`z-index: 250001 !important`) verankert. Dadurch schweben die Hilfeschritte über allen Vollbild-Modalfenstern.
+  * **2. Automatisierte End-to-End Test-Verifikation (`e2e/pitch_deck_modul_guide.spec.ts`):**
+    * E2E-Playwright-Test geschrieben, der das Öffnen des Pitch Deck Studios, das Anklicken des «Modul-Guide»-Buttons und alle 3 Schritte («Deck Studio & Master-Vorlagen», «16:9 Cinema-Präsentation», «Kunden-Landingpage & Dual-Export») bis zum sauberen Schliessen lückenlos validiert.
+* **Qualitätssicherung & Testergebnisse:**
+  * **TypeScript (`tsc --noEmit`):** 0 Fehler.
+  * **Vitest Unit-Tests (`npm run test`):** 14/14 Testsuiten, 77/77 Tests grün (100%).
+  * **Playwright E2E:** 100% grün (inklusive neuem `e2e/pitch_deck_modul_guide.spec.ts`).
+  * **Vite & Node Production Build (`npm run build`):** 100% fehlerfrei kompiliert (13.72s).
+  * **Schweizer Rechtschreibung:** 100% konform (0 "ß").
+
 ### 0.000000000 Pitch Deck Studio Guide-Modul & Offerten-Landingpage Mehrsprachigkeit des Titels (DE/FR/EN)
 * **Problemstellung & Benutzer-Anforderung:**
   * 1. Im Pitch Deck Studio («DECK ENGINE») fehlte das interaktive «Modul-Guide»-Hilfemodul, während es in allen anderen Modulen vorhanden war.

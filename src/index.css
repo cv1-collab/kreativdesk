@@ -132,6 +132,14 @@ body {
 }
 
 /* Joyride Product Tour Tooltip & Red Pulsating Beacon */
+#react-joyride-portal,
+.react-joyride__overlay {
+  z-index: 250000 !important;
+}
+.react-joyride__floater {
+  z-index: 250001 !important;
+}
+
 .dark .react-joyride__tooltip {
   background-color: #0f172a !important;
   color: #ffffff !important;

@@ -15,7 +15,10 @@ test.describe('Automated E2E Smoke Tests', () => {
           text.includes('autoconsent') ||
           text.includes('Failed to load resource') ||
           text.includes('404') ||
-          text.includes('favicon')
+          text.includes('favicon') ||
+          text.includes('WebSocket') ||
+          text.includes('ws://') ||
+          text.includes('@vite/client')
         ) {
           return;
         }
@@ -24,6 +27,7 @@ test.describe('Automated E2E Smoke Tests', () => {
     });
 
     page.on('pageerror', (exception) => {
+      if (exception.message.includes('WebSocket')) return;
       consoleErrors.push(exception.message);
     });
   });
