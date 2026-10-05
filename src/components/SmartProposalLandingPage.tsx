@@ -3242,8 +3242,49 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
                     </div>
                   )}
 
+                  {/* Full Bleed Image Cover Layout */}
+                  {activeDeckSlide.layout === 'full-image' && (
+                    <div className="w-full h-full min-h-[360px] md:min-h-[420px] rounded-2xl overflow-hidden relative group/img flex flex-col justify-end p-6 md:p-10 select-none shadow-2xl">
+                      {activeDeckSlide.imageUrl && (
+                        <img
+                          src={activeDeckSlide.imageUrl}
+                          alt={getTranslatedSlideTitle(activeDeckSlide.title)}
+                          style={{
+                            objectFit: (activeDeckSlide.dataPayload?.imageFit || 'cover') as any,
+                            transform: `scale(${(activeDeckSlide.dataPayload?.imageScale || 100) / 100})`,
+                            objectPosition: activeDeckSlide.dataPayload?.imagePosition || 'center'
+                          }}
+                          className="absolute inset-0 w-full h-full pointer-events-none"
+                        />
+                      )}
+                      {activeDeckSlide.imageUrl && ((activeDeckSlide.dataPayload?.overlayOpacity ?? 40) > 0) && (
+                        <div
+                          className="absolute inset-0 pointer-events-none transition-all duration-300"
+                          style={{
+                            background: (activeDeckSlide.dataPayload?.overlayStyle === 'solid')
+                              ? `rgba(0,0,0,${(activeDeckSlide.dataPayload?.overlayOpacity ?? 40) / 100})`
+                              : `linear-gradient(to top, rgba(0,0,0,${Math.min(0.92, ((activeDeckSlide.dataPayload?.overlayOpacity ?? 40) / 100) * 1.6)}) 0%, rgba(0,0,0,${((activeDeckSlide.dataPayload?.overlayOpacity ?? 40) / 100) * 0.75}) 45%, rgba(0,0,0,${((activeDeckSlide.dataPayload?.overlayOpacity ?? 40) / 100) * 0.2}) 100%)`
+                          }}
+                        />
+                      )}
+                      <div className={cn(
+                        "relative z-10 space-y-2",
+                        activeDeckSlide.dataPayload?.textPosition === 'center' ? "text-center mx-auto" : "text-left"
+                      )}>
+                        <h3 className="text-2xl sm:text-4xl font-black text-white drop-shadow-md">
+                          {getTranslatedSlideTitle(activeDeckSlide.title)}
+                        </h3>
+                        {activeDeckSlide.content && (
+                          <p className="text-sm sm:text-base text-zinc-200 max-w-xl drop-shadow leading-relaxed">
+                            {getTranslatedSlideContent(activeDeckSlide.content)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Fallback Layout */}
-                  {activeDeckSlide.layout !== 'split' && activeDeckSlide.layout !== 'video-focus' && activeDeckSlide.layout !== 'data-budget' && activeDeckSlide.layout !== 'team-grid' && activeDeckSlide.layout !== 'image-focus' && activeDeckSlide.layout !== 'before-after' && activeDeckSlide.layout !== 'chart-donut' && (
+                  {activeDeckSlide.layout !== 'split' && activeDeckSlide.layout !== 'video-focus' && activeDeckSlide.layout !== 'data-budget' && activeDeckSlide.layout !== 'team-grid' && activeDeckSlide.layout !== 'image-focus' && activeDeckSlide.layout !== 'before-after' && activeDeckSlide.layout !== 'chart-donut' && activeDeckSlide.layout !== 'full-image' && (
                     <div className="text-center space-y-4 max-w-2xl mx-auto">
                       <h3 className={cn("text-3xl font-extrabold", isLight ? "text-slate-900" : "text-white")}>{getTranslatedSlideTitle(activeDeckSlide.title)}</h3>
                       <p className={cn("text-base leading-relaxed whitespace-pre-wrap", isLight ? "text-slate-700" : "text-zinc-300")}>{getTranslatedSlideContent(activeDeckSlide.content)}</p>

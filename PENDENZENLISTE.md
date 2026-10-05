@@ -25,6 +25,31 @@
   * **Vite & Server Production Build:** 100% fehlerfrei kompiliert (`dist/index.html`, PWA-Manifest, Service Worker).
   * **Rechtschreibung:** 100% Schweizer Rechtschreibung ("ss", kein "ß").
 
+### 0.0000000000000 Pitch Deck Studio: Behebung Flyout-Abschneidung («Bild & Skalierung») & 1:1 WYSIWYG-Lasur (Kontrast-Overlay)
+* **Problemstellung & Benutzer-Meldung:**
+  1. *Abgeschnittenes Einstellungsfenster:* Beim Klick auf «Bild & Skalierung» (oder «Bild anpassen») wurde das Flyout-Menü am unteren Bildschirmrand abgeschnitten. Die wichtigen Bedienelemente für Abdunklung, Text-Platzierung und Hintergrundbild-Entfernung waren ausserhalb des Viewports verborgen.
+  2. *Schwarze Lasur auf dem Titelbild vs. PDF ohne Lasur:* Auf dem Editor-Bildschirm lag eine permanente, nicht entfernbare schwarze Lasur/Verlauf über dem Bild, während im generierten PDF das Titelbild völlig ohne Lasur (roh/hell) gedruckt wurde. Der Benutzer fragte: «Wieso haben wir das und wie besser einstellen?»
+* **Ursachenanalyse:**
+  1. *Flyout-Positionierung:* Das Flyout nutzte `absolute left-14 top-0`. Da der Button in der unteren Hälfte der CAD-Toolbar liegt, schob `top-0` das ~480px hohe Menü nach unten aus dem Browserfenster heraus, ohne `max-height` oder Scrollbar.
+  2. *Permanenter DOM-Verlauf vs. jsPDF:* Im Web-Editor war die Tailwind-Klasse `bg-gradient-to-t from-black/85 via-black/40 to-black/20` statisch in den DOM eingebrannt. Selbst bei 0% Abdunklung blieb der schwarze Verlauf zu 85% sichtbar. Beim PDF-Export (jsPDF) werden jedoch keine CSS-Klassen interpretiert; dort wurde nur ein unpassendes Rechteck gezeichnet, welches im Vorschau-Viewer nicht mit dem Bildschirm übereinstimmte.
+* **Umgesetzte Lösungen:**
+  1. *Flyout-Geometrie & Responsive Viewport:*
+     * Verankerung auf `bottom-[-20px]` mit `w-80` und `max-h-[min(580px,calc(100vh-120px))] overflow-y-auto custom-scrollbar`. Das Fenster wächst nun nach oben und passt sich jedem Bildschirm und jeder Fenstergrösse an.
+     * Auch das Stempel-Flyout wurde identisch gegen Abschneiden am unteren Rand gesichert.
+  2. *Vollständige Kontrolle über die Lasur (Abdunklung / Kontrast):*
+     * Bei `0% (Aus / Keine Lasur)`: Die Lasur wird vollständig deaktiviert (`overlayOpacity === 0`). Das Originalbild erstrahlt 100% unverfälscht, brillant und ohne schwarzen Schleier.
+     * 4 Schnellwahl-Tasten integriert: `[0% Aus]`, `[25% Dezent]`, `[45% Std]`, `[70% Stark]`.
+     * Neue Auswahl «Lasur-Art»:
+       * **«Verlauf unten» (Empfohlen):** Dunkelt nur den unteren Bereich ab, wo der weisse Titel und Untertitel stehen. Die Architektur darüber bleibt hell, sonnig und kontrastreich.
+       * **«Gleichmässig»:** Dunkelt das gesamte Bild homogen ab.
+  3. *1:1 WYSIWYG-Druck ins PDF:*
+     * In `generatePdfBlob` ([PitchDeckStudio.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/PitchDeckStudio.tsx)) wurde die Hilfsfunktion `generateGradientOverlayPng` implementiert. Sie erzeugt einen hochauflösenden, transparenten Alpha-Gradienten als PNG und bettet ihn exakt deckungsgleich im PDF ein.
+     * Ist 0% gewählt, wird auch im PDF keine Lasur gedruckt. Ist ein Verlauf gewählt, druckt das PDF exakt denselben weichen Verlauf wie auf dem Bildschirm.
+  4. *Synchronisation in Präsentations- und Angebotsansichten:*
+     * [PitchDeck.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/PitchDeck.tsx) und [SmartProposalLandingPage.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/SmartProposalLandingPage.tsx) auf dieselbe dynamische Lasur-Logik umgestellt.
+  5. *Testabdeckung:*
+     * Unit-Tests in [pitchDeckFullImageLayout.test.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/tests/unit/pitchDeckFullImageLayout.test.ts) um `overlayStyle` erweitert (77/77 Tests grün, `tsc --noEmit` fehlerfrei).
+
 ### 0.000000000000 Pitch Deck Studio: Vollbild-Hintergrund-Folie («Full-Bleed Cover») & Proportionales Bildskalierungs- & Overlay-Werkzeug
 * **Problemstellung & Benutzer-Anforderung:**
   * Wenn der Benutzer eine neue Folie auswählt oder ein Titelbild/Rendering über die gesamte Folie als Hintergrund ohne fixen Frame oder weisse Randabstände darstellen möchte, fehlte bisher eine dedizierte randlose Vollbild-Vorlage (`full-image`).

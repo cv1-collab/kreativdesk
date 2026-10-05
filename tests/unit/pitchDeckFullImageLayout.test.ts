@@ -16,6 +16,7 @@ describe('Pitch Deck Full-Image Background & Scaling Helper', () => {
         imageScale: 1.15,
         imagePosition: 'center',
         overlayOpacity: 0.35,
+        overlayStyle: 'gradient',
         textPosition: 'bottom-left'
       }
     };
@@ -34,6 +35,7 @@ describe('Pitch Deck Full-Image Background & Scaling Helper', () => {
     expect(envelope.dataPayload.imageScale).toBe(1.15);
     expect(envelope.dataPayload.imagePosition).toBe('center');
     expect(envelope.dataPayload.overlayOpacity).toBe(0.35);
+    expect(envelope.dataPayload.overlayStyle).toBe('gradient');
     expect(envelope.dataPayload.textPosition).toBe('bottom-left');
   });
 
@@ -51,6 +53,7 @@ describe('Pitch Deck Full-Image Background & Scaling Helper', () => {
           imageScale: 0.9,
           imagePosition: 'top',
           overlayOpacity: 0.5,
+          overlayStyle: 'solid',
           textPosition: 'center'
         },
         fontSize: 20,
@@ -69,6 +72,7 @@ describe('Pitch Deck Full-Image Background & Scaling Helper', () => {
     expect(deserialized.dataPayload.imageScale).toBe(0.9);
     expect(deserialized.dataPayload.imagePosition).toBe('top');
     expect(deserialized.dataPayload.overlayOpacity).toBe(0.5);
+    expect(deserialized.dataPayload.overlayStyle).toBe('solid');
     expect(deserialized.dataPayload.textPosition).toBe('center');
     expect(deserialized.fontSize).toBe(20);
     expect(deserialized.titleFontSize).toBe(44);

@@ -1253,6 +1253,29 @@ export default function PitchDeckStudio({
     }
   };
 
+  const generateGradientOverlayPng = (overlayOpacity: number): string | null => {
+    if (overlayOpacity <= 0 || typeof document === 'undefined') return null;
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 320;
+      canvas.height = 180;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return null;
+      const bottomAlpha = Math.min(0.92, overlayOpacity * 1.6);
+      const midAlpha = overlayOpacity * 0.75;
+      const topAlpha = overlayOpacity * 0.2;
+      const grad = ctx.createLinearGradient(0, canvas.height, 0, 0);
+      grad.addColorStop(0, `rgba(0, 0, 0, ${bottomAlpha})`);
+      grad.addColorStop(0.45, `rgba(0, 0, 0, ${midAlpha})`);
+      grad.addColorStop(1, `rgba(0, 0, 0, ${topAlpha})`);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL('image/png');
+    } catch {
+      return null;
+    }
+  };
+
   const generatePdfBlob = useCallback(async (): Promise<Blob> => {
     const docPdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [297, 167] });
     const pw = docPdf.internal.pageSize.getWidth();
@@ -1501,14 +1524,30 @@ export default function PitchDeckStudio({
         if (slide.imageUrl) {
           await addSafeImage(slide.imageUrl, 0, 0, pw, ph, false);
           const overlayOpacity = ((slide.dataPayload?.overlayOpacity ?? 40) / 100);
+          const overlayStyle = slide.dataPayload?.overlayStyle || 'gradient';
           if (overlayOpacity > 0) {
             try {
-              docPdf.saveGraphicsState();
-              (docPdf as any).setGState?.(new (docPdf as any).GState({ opacity: Math.min(0.85, overlayOpacity) }));
-              docPdf.setFillColor(0, 0, 0);
-              docPdf.rect(0, 0, pw, ph, 'F');
-              docPdf.restoreGraphicsState();
-            } catch {}
+              if (overlayStyle === 'solid') {
+                docPdf.saveGraphicsState();
+                (docPdf as any).setGState?.(new (docPdf as any).GState({ opacity: Math.min(0.9, overlayOpacity) }));
+                docPdf.setFillColor(0, 0, 0);
+                docPdf.rect(0, 0, pw, ph, 'F');
+                docPdf.restoreGraphicsState();
+              } else {
+                const gradPng = generateGradientOverlayPng(overlayOpacity);
+                if (gradPng) {
+                  docPdf.addImage(gradPng, 'PNG', 0, 0, pw, ph, '', 'FAST');
+                } else {
+                  docPdf.saveGraphicsState();
+                  (docPdf as any).setGState?.(new (docPdf as any).GState({ opacity: Math.min(0.85, overlayOpacity) }));
+                  docPdf.setFillColor(0, 0, 0);
+                  docPdf.rect(0, 0, pw, ph, 'F');
+                  docPdf.restoreGraphicsState();
+                }
+              }
+            } catch (err) {
+              console.warn("Could not apply PDF full-image overlay:", err);
+            }
           }
         }
         const textPos = slide.dataPayload?.textPosition || 'bottom-left';
@@ -2846,6 +2885,7 @@ export default function PitchDeckStudio({
       const imageScale = (slide.dataPayload?.imageScale || 100) / 100;
       const imagePosition = slide.dataPayload?.imagePosition || 'center';
       const overlayOpacity = ((slide.dataPayload?.overlayOpacity ?? 40) / 100);
+      const overlayStyle = slide.dataPayload?.overlayStyle || 'gradient';
       const textPosition = slide.dataPayload?.textPosition || 'bottom-left';
 
       return (
@@ -2872,10 +2912,14 @@ export default function PitchDeckStudio({
                 className="w-full h-full transition-transform duration-300 pointer-events-none"
               />
             ) : null}
-            {sanitizeUrl(slide.imageUrl) && (
+            {sanitizeUrl(slide.imageUrl) && overlayOpacity > 0 && (
               <div
-                className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20 pointer-events-none"
-                style={{ backgroundColor: `rgba(0,0,0,${overlayOpacity})` }}
+                className="absolute inset-0 pointer-events-none transition-all duration-300"
+                style={{
+                  background: overlayStyle === 'solid'
+                    ? `rgba(0,0,0,${overlayOpacity})`
+                    : `linear-gradient(to top, rgba(0,0,0,${Math.min(0.92, overlayOpacity * 1.6)}) 0%, rgba(0,0,0,${overlayOpacity * 0.75}) 45%, rgba(0,0,0,${overlayOpacity * 0.2}) 100%)`
+                }}
               />
             )}
           </div>
@@ -4543,7 +4587,7 @@ export default function PitchDeckStudio({
                               initial={{ opacity: 0, x: -8, scale: 0.95 }}
                               animate={{ opacity: 1, x: 0, scale: 1 }}
                               exit={{ opacity: 0, x: -8, scale: 0.95 }}
-                              className="absolute left-14 top-0 bg-surface/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-3.5 z-[101] w-72 flex flex-col gap-3 text-left"
+                              className="absolute left-14 bottom-[-16px] sm:bottom-[-20px] bg-surface/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-3.5 z-[101] w-80 max-h-[min(580px,calc(100vh-120px))] overflow-y-auto custom-scrollbar flex flex-col gap-3 text-left"
                             >
                               <div className="flex items-center justify-between border-b border-border pb-1.5">
                                 <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5">
@@ -4669,11 +4713,13 @@ export default function PitchDeckStudio({
                                 </div>
                               </div>
 
-                              {/* ABDUNKLUNG / KONTRAST-OVERLAY */}
-                              <div className="space-y-1">
+                              {/* ABDUNKLUNG / KONTRAST-OVERLAY (LASUR) */}
+                              <div className="space-y-1.5 border-t border-border/70 pt-2">
                                 <div className="flex justify-between items-center text-[10px] font-bold text-text-muted uppercase">
-                                  <span>Abdunklung (Lesbarkeit)</span>
-                                  <span className="text-purple-400 font-mono">{activeSlide.dataPayload?.overlayOpacity ?? 40}%</span>
+                                  <span>Abdunklung / Lasur</span>
+                                  <span className="text-purple-400 font-mono">
+                                    {(activeSlide.dataPayload?.overlayOpacity ?? 40) === 0 ? '0% (Aus / Original)' : `${activeSlide.dataPayload?.overlayOpacity ?? 40}%`}
+                                  </span>
                                 </div>
                                 <input
                                   type="range"
@@ -4684,6 +4730,62 @@ export default function PitchDeckStudio({
                                   onChange={(e) => handleUpdateImageSettings('overlayOpacity', Number(e.target.value))}
                                   className="w-full accent-purple-500 cursor-pointer"
                                 />
+                                {/* QUICK PRESETS */}
+                                <div className="grid grid-cols-4 gap-1">
+                                  {[
+                                    { val: 0, label: '0% Aus' },
+                                    { val: 25, label: '25% Dezent' },
+                                    { val: 45, label: '45% Std' },
+                                    { val: 70, label: '70% Stark' }
+                                  ].map((p) => (
+                                    <button
+                                      key={p.val}
+                                      type="button"
+                                      onClick={() => handleUpdateImageSettings('overlayOpacity', p.val)}
+                                      className={cn(
+                                        "py-1 rounded text-[9px] font-bold border transition-colors cursor-pointer text-center",
+                                        (activeSlide.dataPayload?.overlayOpacity ?? 40) === p.val
+                                          ? "bg-purple-500/20 text-purple-300 border-purple-500/40"
+                                          : "bg-background border-border text-text-muted hover:text-text-primary"
+                                      )}
+                                    >
+                                      {p.label}
+                                    </button>
+                                  ))}
+                                </div>
+
+                                {/* ART DER LASUR (VERLAUF VS GLEICHMÄSSIG) */}
+                                <div className="pt-1">
+                                  <span className="text-[9px] font-bold text-text-muted uppercase tracking-wider block mb-1">Lasur-Art</span>
+                                  <div className="grid grid-cols-2 gap-1 bg-background border border-border rounded-xl p-1 text-[10px] font-bold">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleUpdateImageSettings('overlayStyle', 'gradient')}
+                                      className={cn(
+                                        "py-1 rounded-lg transition-all cursor-pointer text-center",
+                                        (activeSlide.dataPayload?.overlayStyle || 'gradient') === 'gradient'
+                                          ? "bg-purple-600 text-white shadow-sm"
+                                          : "text-text-muted hover:text-text-primary"
+                                      )}
+                                      title="Nur am unteren Rand abdunkeln (für optimale Textlesbarkeit), damit das Bild oben hell und brillant bleibt"
+                                    >
+                                      Verlauf unten
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleUpdateImageSettings('overlayStyle', 'solid')}
+                                      className={cn(
+                                        "py-1 rounded-lg transition-all cursor-pointer text-center",
+                                        activeSlide.dataPayload?.overlayStyle === 'solid'
+                                          ? "bg-purple-600 text-white shadow-sm"
+                                          : "text-text-muted hover:text-text-primary"
+                                      )}
+                                      title="Gesamtes Bild gleichmässig abdunkeln"
+                                    >
+                                      Gleichmässig
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
 
                               {/* TEXT-POSITION (WENN VOLLBILD) */}
@@ -4780,7 +4882,7 @@ export default function PitchDeckStudio({
                               initial={{ opacity: 0, x: -8, scale: 0.95 }}
                               animate={{ opacity: 1, x: 0, scale: 1 }}
                               exit={{ opacity: 0, x: -8, scale: 0.95 }}
-                              className="absolute left-14 top-0 bg-surface/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-3 z-[101] w-48 flex flex-col gap-2 text-left"
+                              className="absolute left-14 bottom-[-16px] bg-surface/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-3 z-[101] w-48 max-h-[min(400px,calc(100vh-120px))] overflow-y-auto custom-scrollbar flex flex-col gap-2 text-left"
                             >
                               <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border pb-1">
                                 {t('stamp_label')}

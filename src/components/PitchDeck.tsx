@@ -346,6 +346,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
       const imageScale = (slide.dataPayload?.imageScale || 100) / 100;
       const imagePosition = slide.dataPayload?.imagePosition || 'center';
       const overlayOpacity = ((slide.dataPayload?.overlayOpacity ?? 40) / 100);
+      const overlayStyle = slide.dataPayload?.overlayStyle || 'gradient';
       const textPosition = slide.dataPayload?.textPosition || 'bottom-left';
       return (
         <div className={cn("w-full h-full flex flex-col justify-between p-8 md:p-14 relative overflow-hidden", getThemeClasses())} style={deckSettings.themeStyle === 'scenography' || deckSettings.themeStyle === 'cyberpunk' ? { borderLeftColor: deckSettings.themeColor } : undefined}>
@@ -363,10 +364,16 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                 className="w-full h-full"
               />
             )}
-            <div
-              className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20"
-              style={{ backgroundColor: `rgba(0,0,0,${overlayOpacity})` }}
-            />
+            {sanitizeUrl(slide.imageUrl) && overlayOpacity > 0 && (
+              <div
+                className="absolute inset-0 pointer-events-none transition-all duration-300"
+                style={{
+                  background: overlayStyle === 'solid'
+                    ? `rgba(0,0,0,${overlayOpacity})`
+                    : `linear-gradient(to top, rgba(0,0,0,${Math.min(0.92, overlayOpacity * 1.6)}) 0%, rgba(0,0,0,${overlayOpacity * 0.75}) 45%, rgba(0,0,0,${overlayOpacity * 0.2}) 100%)`
+                }}
+              />
+            )}
           </div>
 
           {/* TOP BAR / BADGE */}
