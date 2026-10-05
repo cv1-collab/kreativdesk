@@ -1209,7 +1209,7 @@ export default function PitchDeckStudio({
       applyUploadedImage(downloadUrl);
       const slideToUpdate = slides.find(s => s.id === targetSlideId);
       if (slideToUpdate && currentUser?.uid) {
-        let updatedSlide = { ...slideToUpdate };
+        const updatedSlide = { ...slideToUpdate };
         if (targetUploadIndex !== null && targetUploadIndex !== undefined) {
           const currentImages = [...(slideToUpdate.dataPayload?.images || [slideToUpdate.imageUrl || '', slideToUpdate.compareImageUrl || '', ''])];
           currentImages[targetUploadIndex] = downloadUrl;
