@@ -193,7 +193,7 @@ export default function PublicLeadForm() {
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64Data = (reader.result as string).split(',')[1];
-        const prompt = `Analysiere diese Visitenkarte. Extrahiere die Daten als striktes JSON Objekt mit exakt diesen Keys: "firstName" (Vorname), "lastName" (Nachname), "company" (Firma), "email", "phone" (Telefon). Antworte NUR mit dem JSON-Code ohne Markdown-Formatierung.`;
+        const prompt = `Analysiere diese Visitenkarte. Extrahiere die Daten als striktes JSON Objekt mit exakt diesen Keys: "firstName" (Vorname), "lastName" (Nachname), "company" (Firma), "email", "phone" (Telefon). Verwende Schweizer Rechtschreibung (immer "ss", niemals "ß"). Antworte NUR mit dem JSON-Code ohne Markdown-Formatierung.`;
         
         const response = await callGeminiAPI('gemini-2.5-flash', [
           { inlineData: { data: base64Data, mimeType: file.type } },

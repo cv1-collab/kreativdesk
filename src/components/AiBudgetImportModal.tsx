@@ -341,6 +341,7 @@ WICHTIGE REGELN:
    - option: 0 (falls reguläre Position) oder der Betrag falls es eine Eventual-/Options-Position ist.
    - total: Multiplikation (qty * unitPrice).
 4. Berechne korrekte Zahlenwerte (keine Strings bei Preisen und Mengen).
+5. Verwende ausschliesslich Schweizer Rechtschreibung (immer "ss", niemals "ß").
 
 Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausserhalb des JSON):
 {

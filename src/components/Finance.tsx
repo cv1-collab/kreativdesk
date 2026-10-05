@@ -1456,7 +1456,7 @@ export default function Finance() {
       }
       if (!b64) throw new Error("No image data");
 
-      const prompt = "Analysiere diese Quittung / diese Rechnung. Antworte AUSSCHLIESSLICH im JSON Format mit diesen Keys: {\"total\": number, \"vendor\": string, \"category\": string, \"description\": string}";
+      const prompt = "Analysiere diese Quittung / diese Rechnung. Verwende Schweizer Rechtschreibung (immer \"ss\", niemals \"ß\"). Antworte AUSSCHLIESSLICH im JSON Format mit diesen Keys: {\"total\": number, \"vendor\": string, \"category\": string, \"description\": string}";
       const response = await callGeminiAPI('gemini-2.5-flash', [
         { inlineData: { data: b64, mimeType: effectiveMime } },
         { text: prompt }

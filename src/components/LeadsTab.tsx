@@ -460,7 +460,7 @@ export default function LeadsTab() {
         const fullDataUrl = reader.result as string;
         setScannedCardPreview(fullDataUrl);
         const base64Data = fullDataUrl.split(',')[1];
-        const prompt = `Analysiere diese Visitenkarte. Extrahiere die Daten als striktes JSON Objekt mit exakt diesen Keys: "firstName" (Vorname), "lastName" (Nachname), "company" (Firma), "email", "phone" (Telefon), "zipCity" (PLZ & Ort), "description" (Jobtitel oder Notizen). Antworte NUR mit dem JSON-Code ohne Markdown-Formatierung.`;
+        const prompt = `Analysiere diese Visitenkarte. Extrahiere die Daten als striktes JSON Objekt mit exakt diesen Keys: "firstName" (Vorname), "lastName" (Nachname), "company" (Firma), "email", "phone" (Telefon), "zipCity" (PLZ & Ort), "description" (Jobtitel oder Notizen). Verwende Schweizer Rechtschreibung (immer "ss", niemals "ß"). Antworte NUR mit dem JSON-Code ohne Markdown-Formatierung.`;
         
         const response = await callGeminiAPI('gemini-2.5-flash', [
           { inlineData: { data: base64Data, mimeType: file.type } },

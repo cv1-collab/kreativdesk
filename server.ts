@@ -130,7 +130,7 @@ async function startServer() {
       const user = (req as any).user;
       const uid = user.uid;
       const email = user.email;
-      const domainURL = req.headers.origin || 'http://localhost:3000';
+      const domainURL = req.headers.origin || process.env.CLIENT_URL || 'https://www.kreativdesk.ch';
 
       if (!priceId) return res.status(400).json({ error: 'Missing Stripe priceId' });
 
@@ -167,7 +167,7 @@ async function startServer() {
       const customerId = profile?.stripe_customer_id;
       if (!customerId) return res.status(400).json({ error: 'Stripe customer ID missing on account' });
       
-      const domainURL = req.headers.origin || 'http://localhost:3000';
+      const domainURL = req.headers.origin || process.env.CLIENT_URL || 'https://www.kreativdesk.ch';
       const portalSession = await stripe.billingPortal.sessions.create({
         customer: customerId,
         return_url: `${domainURL}/settings`,
@@ -693,7 +693,8 @@ Grundpreis: ${proposalContext.basePrice ?? 0} ${proposalContext.currency || 'CHF
 Gesamtsumme: ${proposalContext.totalCalculated ?? proposalContext.basePrice ?? 0} ${proposalContext.currency || 'CHF'}
 Zusatzoptionen: ${(proposalContext.options || []).map((o: any) => `${o.title} (${o.price} CHF)`).join(', ')}
 
-Beantworte Kundenfragen präzise, freundlich und faktenbasiert auf ${language.toUpperCase()}.`;
+Beantworte Kundenfragen präzise, freundlich und faktenbasiert auf ${language.toUpperCase()}.
+Verwende ausschliesslich Schweizer Rechtschreibung (immer "ss", niemals "ß").`;
 
       const contents: any[] = [
         { role: 'user', parts: [{ text: systemPrompt }] },

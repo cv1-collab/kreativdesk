@@ -698,7 +698,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
       const dataUrl = typeof (window as any).captureBimSnapshot === 'function' ? (window as any).captureBimSnapshot() : canvasRef.current?.toDataURL('image/png');
       const base64Data = dataUrl?.split(',')[1];
       if (!base64Data) throw new Error("No image data");
-      const prompt = language === 'de' ? `Du bist ein erfahrener BIM-Auditor. Analysiere diesen Screenshot. Erstelle einen Prüfbericht in 3 Stichpunkten auf Deutsch.` : `You are an expert BIM auditor. Analyze this screenshot. Provide a report in 3 bullet points in English.`;
+      const prompt = language === 'de' ? `Du bist ein erfahrener BIM-Auditor. Analysiere diesen Screenshot. Erstelle einen Prüfbericht in 3 Stichpunkten auf Deutsch. Verwende ausschliesslich Schweizer Rechtschreibung (immer "ss", niemals "ß").` : `You are an expert BIM auditor. Analyze this screenshot. Provide a report in 3 bullet points in English.`;
       const response = await callGeminiAPI('gemini-2.5-flash', [ { inlineData: { data: base64Data, mimeType: 'image/png' } }, { text: prompt } ]);
       const text = typeof response === 'string' ? response : (response?.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || '');
       setAuditReport(text || 'Audit completed with no findings.');

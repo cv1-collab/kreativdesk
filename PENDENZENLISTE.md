@@ -7,6 +7,42 @@
 
 ## 🏆 Erfolgsliste von heute (5. Oktober 2026)
 
+### 0.00000000 Tiefgründige System-, KI- & Logik-Auditierung: Offline-Sync-Reaktivität, Stripe-URL-Absicherung, Smart-Proposals-UUID-Härtung & Lückenlose Schweizer-Rechtschreibung-Standardisierung aller AI-Prompts
+* **Problemstellung & Benutzer-Anforderung:**
+  * Nochmalige tiefgründige Gesamtanalyse des Systems: Wo existieren noch versteckte Fehler oder Inkonsistenzen in Logik, Mechanik, Offline-Synchronisation, System-Prompts, Zahlungsabläufen oder Datenbank-Foreign-Keys?
+* **Aufgedeckte & behobene Fehlerpunkte:**
+  * **1. Offline-Sync-Reaktivität & TanStack-Query-Invalidierung (`offlineSyncManager.ts`):**
+    * Beim Synchronisieren von offline erfassten Mängeln (`defects`) und Dokumenten (`documents`) fehlte die Invalidierung der Query-Caches (`DEFECTS_QUERY_KEY`, `DOCUMENTS_QUERY_KEY`). Ausserdem konnte bei offline erfassten Mängeln/Dokumenten `project_id: 'global'` in die Queues gelangen.
+    * *Behebung:* Strikte UUID-Sanitation `(item.project_id && item.project_id !== 'global') ? item.project_id : null` in `offlineSyncManager.ts` integriert. Nach erfolgreichem Sync-Durchlauf werden `DEFECTS_QUERY_KEY` und `DOCUMENTS_QUERY_KEY` nun unmittelbar via TanStack Query invalidiert, sodass neu synchronisierte Daten sofort in der UI erscheinen.
+  * **2. Stripe Checkout & Portal URL-Sicherheit (`create-checkout-session.ts`, `create-portal-session.ts`, `server.ts`):**
+    * Wenn Browser oder Proxies keinen `Origin`-Header mitsendeten, fielen die Endpunkte auf `http://localhost:3000` zurück, was bei Produktiv-Nutzern auf `https://www.kreativdesk.ch` zu Fehlern bei der Rückleitung nach dem Bezahlen geführt hätte.
+    * *Behebung:* Robuste Fallback-Hierarchie implementiert: `req.headers.origin || (process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'https://www.kreativdesk.ch')`.
+  * **3. Smart Proposals UUID-Absicherung (`proposalService.ts`):**
+    * In `saveSmartProposal` wurde `fullProposal.projectId` ungeprüft in die Postgres-Spalte `project_id` geschrieben. War dort `'global'` gesetzt, warf Supabase einen UUID-Syntaxfehler.
+    * *Behebung:* Sanitiert auf `const cleanProjectId = (fullProposal.projectId && fullProposal.projectId !== 'global') ? fullProposal.projectId : null`.
+  * **4. Lückenlose Schweizer-Rechtschreibung-Standardisierung aller AI-Prompts (100% "ss", 0 "ß"):**
+    * Systemweite Harmonisierung aller System- und User-Prompts über sämtliche Module hinweg:
+      * `LandingPage.tsx` (AI Concierge)
+      * `OpCostStudio.tsx` (Beleg- & Quittungs-OCR)
+      * `BIMViewer.tsx` (3D-BIM-Auditor)
+      * `Defects.tsx` (Mängel-Analyse & Mängel-Foto-OCR)
+      * `Whiteboard.tsx` (Architektur-Audit & Audio-Transkription)
+      * `MobileUpload.tsx` (Visitenkarten-OCR)
+      * `HelpCenter.tsx` (Support-Assistent)
+      * `DailyGoals.tsx` (Tagesziele-Generator)
+      * `AiBudgetImportModal.tsx` (BKP/SIA-Budget-Parser)
+      * `PitchDeckStudio.tsx` (Präsentations-Generator)
+      * `LeadsTab.tsx` & `PublicLeadForm.tsx` (Lead- & Visitenkarten-Scanner)
+      * `ExpenseReport.tsx` & `Finance.tsx` & `FinanceTab.tsx` (Spesen- & Quittungs-OCR)
+      * `TeamCrmTab.tsx` (Kontakt-Scanner)
+      * `MeetChat.tsx` (Live-Chat & Meeting-Zusammenfassung)
+      * `proposal-ai-chat.ts` & `server.ts` (Offerten-Assistent)
+* **Qualitätssicherung & Testergebnisse:**
+  * **TypeScript (`tsc --noEmit`):** 0 Fehler, saubere Kompilierung.
+  * **Vitest Unit-Tests (`npm test -- --run`):** 12/12 Testsuiten bestanden, 69/69 Tests grün (100%).
+  * **Vite & Node Server Build (`npm run build`):** 100% erfolgreich in 13.22s.
+  * **Schweizer Rechtschreibung:** 100% konform (keine unerlaubten "ß" in Benutzertexten oder AI-Ausgaben).
+
 ### 0.0000000 Ganzheitlicher System-Audit: UUID-Sanitation ('global' -> null), TanStack-Query-Synchronisation in ProjectContext, Whiteboard/Calendar/Defects-Härtung & Gemini-2.5-Standardisierung
 * **Problemstellung & Benutzer-Anforderung:**
   * Tiefe, systematische Analyse über alle Schichten: Wo existieren noch versteckte Fehler in Logik, Mechanik, Datenbankschemata, reaktiven Caches, AI-Proxies oder Mandantentrennung?

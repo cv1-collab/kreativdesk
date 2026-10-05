@@ -180,6 +180,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
       const prompt = `Analysiere diese externe Rechnung oder diesen Kostenbeleg. Extrahiere die Daten als striktes JSON-Objekt mit exakt folgenden Keys:
 {"vendor": string, "amount": number, "date": "YYYY-MM-DD", "category": string}
 Kategorie-Optionen: AHV / Sozialleistungen, Pensionskasse (BVG), SUVA / Versicherungen, Steuern & MWST, Treuhand & Beratung, Miete & Infrastruktur, Software & Lizenzen, Fremdleistungen & Subunternehmer, Fahrzeuge & Mobilität, Marketing & Akquise.
+Verwende Schweizer Rechtschreibung (immer "ss", niemals "ß").
 Antworte AUSSCHLIESSLICH mit dem JSON-Code ohne Markdown-Formatierung.`;
 
       const response = await callGeminiAPI('gemini-2.5-flash', [

@@ -261,9 +261,10 @@ export async function saveSmartProposal(proposal: Partial<SmartProposal> & { pro
         ? `${fullProposal.themeStyle || 'scenography'}__mode__${fullProposal.colorMode}`
         : (fullProposal.themeStyle || 'scenography');
 
+      const cleanProjectId = (fullProposal.projectId && fullProposal.projectId !== 'global') ? fullProposal.projectId : null;
       const dbPayload: Record<string, any> = {
         id: fullProposal.id,
-        project_id: fullProposal.projectId,
+        project_id: cleanProjectId,
         company_id: fullProposal.companyId,
         owner_id: fullProposal.ownerId,
         share_token: fullProposal.shareToken,

@@ -156,6 +156,7 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
     setIsGeneratingAi(true);
     try {
       const prompt = `Erstelle genau 3 professionelle Tagesziele für ein Bau- / Architekturprojekt im Schweizer Standard. 
+Verwende ausschliesslich Schweizer Rechtschreibung (immer "ss", niemals "ß").
 Antworte als reines JSON-Array von Strings, z.B. ["Bewehrung EG prüfen", "Elektriker bezüglich Trassees kontaktieren", "Lieferschein Beton kontrollieren"]. Kein Markdown.`;
 
       const res = await callGeminiAPI('gemini-2.5-flash', [{ text: prompt }]);

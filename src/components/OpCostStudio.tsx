@@ -294,7 +294,7 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
       }
       if (!b64) throw new Error("No image data");
 
-      const prompt = `Analysiere diesen Schweizer Rechnungsbeleg oder diese Quittung präzise für die Schweizer Buchhaltung. Antworte AUSSCHLIESSLICH im JSON-Format mit exakt dieser Struktur:
+      const prompt = `Analysiere diesen Schweizer Rechnungsbeleg oder diese Quittung präzise für die Schweizer Buchhaltung. Verwende ausschliesslich Schweizer Rechtschreibung (immer "ss", niemals "ß"). Antworte AUSSCHLIESSLICH im JSON-Format mit exakt dieser Struktur:
 {
   "total": number (Bruttobetrag in CHF),
   "net_amount": number (Nettobetrag),

@@ -217,7 +217,7 @@ export default function HelpCenter() {
                     onClick={async () => {
                       setIsAskingAI(true);
                       try {
-                        const prompt = `Du bist der Kundensupport-Assistent für Kreativ-Desk OS (Schweizer Projekt- und Bausoftware). Beantworte präzise auf Deutsch: "${searchQuery}"`;
+                        const prompt = `Du bist der Kundensupport-Assistent für Kreativ-Desk OS (Schweizer Projekt- und Bausoftware). Beantworte präzise auf Deutsch (Schweizer Rechtschreibung, immer "ss", niemals "ß"): "${searchQuery}"`;
                         const res = await callGeminiAPI('gemini-2.5-flash', [{ text: prompt }]);
                         const text = typeof res === 'string' ? res : (res?.text || res?.candidates?.[0]?.content?.parts?.[0]?.text || '');
                         setAiAnswer(text || "Entschuldigung, keine Antwort generiert.");

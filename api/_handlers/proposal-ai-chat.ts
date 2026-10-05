@@ -46,7 +46,8 @@ DEINE AUFGABE:
 2. Wenn nach Preisen, Phasen oder Optionen gefragt wird, nenne die konkreten Beträge und Inhalte aus dem Angebot.
 3. Bleibe stets höflich, vertrauensvoll und lösungs- sowie kundenorientiert.
 4. Antworte in der Sprache: ${language.toUpperCase()} (Standard Deutsch, respektvolles 'Sie' / 'Ihnen' oder höfliches 'Du' je nach Ton).
-5. Antworte kompakt in 2-4 prägnanten Sätzen, nutze bei Bedarf Aufzählungspunkte. Keine erfundenen Preise oder Leistungen.`;
+5. Verwende ausschliesslich Schweizer Rechtschreibung (immer "ss", niemals "ß").
+6. Antworte kompakt in 2-4 prägnanten Sätzen, nutze bei Bedarf Aufzählungspunkte. Keine erfundenen Preise oder Leistungen.`;
 
     const contents: any[] = [
       { role: 'user', parts: [{ text: systemPrompt }] },

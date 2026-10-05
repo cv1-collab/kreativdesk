@@ -595,7 +595,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
     setIsAnalyzing(true);
     try {
       const dataStr = JSON.stringify(defects.map(d => ({ title: d.title, priority: d.priority, trade: d.trade, status: d.status, location: d.location })));
-      const prompt = language === 'de' ? `Analysiere diese Mängelliste. Welche Gewerke machen Probleme? Sind kritische Dinge offen? Antworte in 2 Sätzen auf Deutsch. \nDaten: ${dataStr}` : `Analyze this defect list. Identify patterns. Answer in 2 short sentences in English. \nData: ${dataStr}`;
+      const prompt = language === 'de' ? `Analysiere diese Mängelliste. Welche Gewerke machen Probleme? Sind kritische Dinge offen? Antworte in 2 Sätzen auf Deutsch. Verwende ausschliesslich Schweizer Rechtschreibung (immer "ss", niemals "ß"). \nDaten: ${dataStr}` : `Analyze this defect list. Identify patterns. Answer in 2 short sentences in English. \nData: ${dataStr}`;
       const response = await callGeminiAPI('gemini-2.5-flash', [{ text: prompt }]);
       setAiInsights(response.text || t('analysis_completed'));
     } catch (error) { addToast(t('error_ai_analysis'), "error"); } 
@@ -607,7 +607,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
     setIsAnalyzingImage(true);
     addToast(t('ai_analyzing_defects'), 'info');
     try {
-      const prompt = "Analysiere dieses Mangel-Foto vom Bau. Antworte NUR im JSON Format: {\"title\": string, \"description\": string, \"trade\": string, \"priority\": \"High\"}";
+      const prompt = "Analysiere dieses Mangel-Foto vom Bau. Verwende Schweizer Rechtschreibung (immer 'ss', niemals 'ß'). Antworte NUR im JSON Format: {\"title\": string, \"description\": string, \"trade\": string, \"priority\": \"High\"}";
       const response = await callGeminiAPI('gemini-2.5-flash', [
         { inlineData: { data: base64Data, mimeType: mimeType || 'image/jpeg' } },
         { text: prompt }

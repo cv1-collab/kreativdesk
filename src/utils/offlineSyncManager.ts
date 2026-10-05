@@ -1,5 +1,8 @@
 import { supabase } from '../lib/supabase';
 import { safeStorage } from './safeStorage';
+import { queryClient } from '../lib/queryClient';
+import { DEFECTS_QUERY_KEY } from '../hooks/queries/useDefectsQuery';
+import { DOCUMENTS_QUERY_KEY } from '../hooks/queries/useDocumentsQuery';
 
 export interface OfflineDefect {
   id: string;
@@ -88,8 +91,9 @@ export const offlineSyncManager = {
       for (const d of defects) {
         try {
           const fullDesc = d.image_url ? (d.description ? `${d.description}\n[Bild: ${d.image_url}]` : `[Bild: ${d.image_url}]`) : d.description;
+          const cleanProjectId = (d.project_id && d.project_id !== 'global') ? d.project_id : null;
           const { error } = await supabase.from('defects').insert({
-            project_id: d.project_id,
+            project_id: cleanProjectId,
             company_id: d.company_id,
             owner_id: d.owner_id,
             prompt: d.prompt,
@@ -111,6 +115,9 @@ export const offlineSyncManager = {
       }
 
       safeStorage.setItem(DEFECTS_QUEUE_KEY, remainingDefects);
+      if (defectsSynced > 0) {
+        queryClient.invalidateQueries({ queryKey: [DEFECTS_QUERY_KEY] });
+      }
     }
 
     // Sync Documents
@@ -121,7 +128,11 @@ export const offlineSyncManager = {
 
       for (const doc of docs) {
         try {
-          const { error } = await supabase.from('documents').insert(doc);
+          const cleanDoc = {
+            ...doc,
+            project_id: (doc.project_id && doc.project_id !== 'global') ? doc.project_id : null
+          };
+          const { error } = await supabase.from('documents').insert(cleanDoc);
           if (error) {
             remainingDocs.push(doc);
           } else {
@@ -133,6 +144,9 @@ export const offlineSyncManager = {
       }
 
       safeStorage.setItem(DOCUMENTS_QUEUE_KEY, remainingDocs);
+      if (docsSynced > 0) {
+        queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
+      }
     }
 
     if ((defectsSynced > 0 || docsSynced > 0) && onStatusChange) {

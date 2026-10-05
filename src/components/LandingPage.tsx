@@ -783,7 +783,7 @@ Offizielle Fakten & Wirtschaftliche Logik von Kreativ-Desk:
 
 Frage des Interessenten: "${query}"
 
-Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und freundlich. Formatiere wichtige Zahlen und Begriffe fett. Antworte in der Sprache der Anfrage (${currentLang === 'de' ? 'Deutsch' : 'Englisch'}).`;
+Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und freundlich. Formatiere wichtige Zahlen und Begriffe fett. Verwende für deutsche Antworten ausschliesslich Schweizer Rechtschreibung (immer "ss", niemals "ß"). Antworte in der Sprache der Anfrage (${currentLang === 'de' ? 'Deutsch' : 'Englisch'}).`;
 
       const res = await callGeminiAPI('gemini-2.5-flash', [{ text: prompt }]);
       const text = typeof res === 'string' ? res : (res?.text || res?.candidates?.[0]?.content?.parts?.[0]?.text || 'Keine Antwort erhalten.');

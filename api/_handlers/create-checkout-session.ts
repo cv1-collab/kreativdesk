@@ -29,7 +29,7 @@ export default async function handler(req: any, res: any) {
       return res.status(401).json({ error: 'Unauthorized: User ID required for subscription' });
     }
 
-    const domainURL = req.headers.origin || 'http://localhost:3000';
+    const domainURL = req.headers.origin || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://www.kreativdesk.ch'));
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'], 

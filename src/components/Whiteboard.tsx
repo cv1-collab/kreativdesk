@@ -769,7 +769,7 @@ Erstelle einen professionellen KI-Auditbericht mit folgenden Abschnitten:
 2. 🏗️ Machbarkeit & Bauphysik: Einschätzung zu Konstruktion, Materialien und Normen.
 3. 💡 Empfehlungen & Nächste Schritte: Konkrete Optimierungsvorschläge und To-Dos.
 
-Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und Stichpunkten auf Deutsch.`;
+Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und Stichpunkten auf Deutsch. Verwende ausschliesslich Schweizer Rechtschreibung (immer "ss", niemals "ß").`;
 
       const response = await callGeminiAPI('gemini-2.5-flash', [
         { inlineData: { data: base64Data, mimeType: 'image/png' } },
@@ -2400,7 +2400,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
               const base64Audio = (reader.result as string).split(',')[1];
               const cleanMime = mimeType.split(';')[0];
               const promptText = language === 'de' 
-                ? `Transkribiere die Sprachaufnahme exakt Wort für Wort auf Deutsch. Erstelle eine kurze Zusammenfassung (max 2 Sätze). Antworte im Format JSON: { "transcription": "...", "summary": "..." }`
+                ? `Transkribiere die Sprachaufnahme exakt Wort für Wort auf Deutsch. Verwende ausschliesslich Schweizer Rechtschreibung (immer "ss", niemals "ß"). Erstelle eine kurze Zusammenfassung (max 2 Sätze). Antworte im Format JSON: { "transcription": "...", "summary": "..." }`
                 : `Transcribe audio exactly word for word. Create a short summary (max 2 sentences). Output JSON format: { "transcription": "...", "summary": "..." }`;
               
               const response = await callGeminiAPI('gemini-2.5-flash', [

@@ -953,7 +953,7 @@ export default function MeetChat() {
         } catch (err) { console.error('Knowledge search fail', err); }
 
         const langInstruction = currentLang === 'de'
-          ? 'Bitte antworte vollständig auf Deutsch.'
+          ? 'Bitte antworte vollständig auf Deutsch unter strikter Einhaltung der Schweizer Rechtschreibung (immer "ss", niemals "ß").'
           : 'Please respond completely in English.';
 
         const context = messages.map(m => `${m.sender}: ${m.text}`).join('\n');
@@ -985,7 +985,7 @@ export default function MeetChat() {
     try {
       const context = messages.map(m => `${m.sender}${m.isTranscript ? (currentLang === 'de' ? ' (gesprochen)' : ' (spoken)') : ''}: ${m.text}`).join('\n');
       const prompt = currentLang === 'de'
-        ? `Basierend auf folgendem Meeting-Chat und gesprochenem Transkript, erstelle eine prägnante Zusammenfassung auf Deutsch mit 3 Stichpunkten (Action Items). Bitte erstelle alle Überschriften und Inhalte VOLLSTÄNDIG auf Deutsch (z.B. "Zusammenfassung:", "Wichtige Aufgaben:"). Formatiere als klaren Text ohne Markdown-Sternchen (*), verwende einfache Bindestriche (-).\nTranskript:\n${context}`
+        ? `Basierend auf folgendem Meeting-Chat und gesprochenem Transkript, erstelle eine prägnante Zusammenfassung auf Deutsch (Schweizer Rechtschreibung, "ss" statt "ß") mit 3 Stichpunkten (Action Items). Bitte erstelle alle Überschriften und Inhalte VOLLSTÄNDIG auf Deutsch (z.B. "Zusammenfassung:", "Wichtige Aufgaben:"). Formatiere als klaren Text ohne Markdown-Sternchen (*), verwende einfache Bindestriche (-).\nTranskript:\n${context}`
         : `Based on the following meeting chat and spoken transcript, generate a concise meeting summary in English with 3 bullet points of Action Items. Format headings and text completely in English (e.g., "Summary:", "Action Items:"). Format as clean text without markdown asterisks if possible, just use bullet points (-).\nTranscript:\n${context}`;
 
       const response = await callGeminiAPI('gemini-2.5-flash', [{ text: prompt }]);

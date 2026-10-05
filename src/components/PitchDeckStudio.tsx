@@ -807,6 +807,7 @@ export default function PitchDeckStudio({
         "dataPayload": optionales Objekt (z.B. { "budgetGroups": [...] } für budget, { "chartSegments": [ { "label": "BKP 1", "value": 65000, "color": "#3b82f6" } ] } für chart-donut, { "milestones": [...] } für calendar)
       }
 
+      Verwende strikt Schweizer Rechtschreibung (immer "ss", niemals "ß").
       Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array, ohne Markdown oder Einleitung!`;
 
       const aiRes = await callGeminiAPI('gemini-2.5-flash', [{ text: prompt }]);
