@@ -526,7 +526,117 @@ const localTranslations: Record<'de' | 'en' | 'fr', Record<string, string>> = {
   }
 };
 
-const PROPOSAL_TITLE_TRANSLATIONS: Record<string, { de: string; en: string; fr: string }> = {
+export const PROPOSAL_TITLE_TRANSLATIONS: Record<string, { de: string; en: string; fr: string }> = {
+  'Projekt-Präsentation': {
+    de: 'Projekt-Präsentation',
+    en: 'Project Presentation',
+    fr: 'Présentation du projet'
+  },
+  'Projekt Präsentation': {
+    de: 'Projekt Präsentation',
+    en: 'Project Presentation',
+    fr: 'Présentation du projet'
+  },
+  'Projektpräsentation': {
+    de: 'Projektpräsentation',
+    en: 'Project Presentation',
+    fr: 'Présentation du projet'
+  },
+  'Project Presentation': {
+    de: 'Projekt-Präsentation',
+    en: 'Project Presentation',
+    fr: 'Présentation du projet'
+  },
+  'Présentation du projet': {
+    de: 'Projekt-Präsentation',
+    en: 'Project Presentation',
+    fr: 'Présentation du projet'
+  },
+  'Présentation de projet': {
+    de: 'Projekt-Präsentation',
+    en: 'Project Presentation',
+    fr: 'Présentation du projet'
+  },
+  'Offerte': {
+    de: 'Offerte',
+    en: 'Proposal',
+    fr: 'Offre'
+  },
+  'Offre': {
+    de: 'Offerte',
+    en: 'Proposal',
+    fr: 'Offre'
+  },
+  'Proposal': {
+    de: 'Offerte',
+    en: 'Proposal',
+    fr: 'Offre'
+  },
+  'Offerte & Präsentation': {
+    de: 'Offerte & Präsentation',
+    en: 'Proposal & Presentation',
+    fr: 'Offre & Présentation'
+  },
+  'Offerte und Präsentation': {
+    de: 'Offerte und Präsentation',
+    en: 'Proposal and Presentation',
+    fr: 'Offre et Présentation'
+  },
+  'Proposal & Presentation': {
+    de: 'Offerte & Präsentation',
+    en: 'Proposal & Presentation',
+    fr: 'Offre & Présentation'
+  },
+  'Offre & Présentation': {
+    de: 'Offerte & Präsentation',
+    en: 'Proposal & Presentation',
+    fr: 'Offre & Présentation'
+  },
+  'Projekt-Offerte': {
+    de: 'Projekt-Offerte',
+    en: 'Project Proposal',
+    fr: 'Offre de projet'
+  },
+  'Projekt Offerte': {
+    de: 'Projekt Offerte',
+    en: 'Project Proposal',
+    fr: 'Offre de projet'
+  },
+  'Projekt-Präsentation & Offerte': {
+    de: 'Projekt-Präsentation & Offerte',
+    en: 'Project Presentation & Proposal',
+    fr: 'Présentation de projet & Offre'
+  },
+  'Projektangebot': {
+    de: 'Projektangebot',
+    en: 'Project Proposal',
+    fr: 'Offre de projet'
+  },
+  'Projekt-Exposé': {
+    de: 'Projekt-Exposé',
+    en: 'Project Exposé',
+    fr: 'Exposé du projet'
+  },
+  'Projekt Exposé': {
+    de: 'Projekt Exposé',
+    en: 'Project Exposé',
+    fr: 'Exposé du projet'
+  },
+  'Exposé': {
+    de: 'Exposé',
+    en: 'Exposé',
+    fr: 'Exposé'
+  },
+  'Smart Proposal': {
+    de: 'Smart Proposal',
+    en: 'Smart Proposal',
+    fr: 'Offre intelligente'
+  },
+  'Kreativ Desk OS • Schweizer Architektur- & Projekt-Präsentation': {
+    de: 'Kreativ Desk OS • Schweizer Architektur- & Projekt-Präsentation',
+    en: 'Kreativ Desk OS • Swiss Architecture & Project Presentation',
+    fr: 'Kreativ Desk OS • Présentation d’architecture & de projet suisse'
+  },
   'Architektur- & Ausführungsplanung Neubau Residenz am Park': {
     de: 'Architektur- & Ausführungsplanung Neubau Residenz am Park',
     en: 'Architecture & Execution Planning New Construction Residence at the Park',
@@ -536,8 +646,86 @@ const PROPOSAL_TITLE_TRANSLATIONS: Record<string, { de: string; en: string; fr: 
     de: 'interacTV Smart Station – 4K Messe- & Event-Paket',
     en: 'interacTV Smart Station – 4K Trade Fair & Event Package',
     fr: 'interacTV Smart Station – Pack Salon & Événement 4K'
+  },
+  'Quartier Neubau Süd - Residenz am Park': {
+    de: 'Quartier Neubau Süd - Residenz am Park',
+    en: 'New District South - Residence at the Park',
+    fr: 'Nouveau quartier Sud - Résidence du Parc'
+  },
+  'Neubau Wohn- & Gewerbepark': {
+    de: 'Neubau Wohn- & Gewerbepark',
+    en: 'New Residential & Commercial Park',
+    fr: 'Nouveau parc résidentiel et commercial'
+  },
+  'Projekt Status Overview': {
+    de: 'Projekt Status Overview',
+    en: 'Project Status Overview',
+    fr: 'Aperçu du statut du projet'
+  },
+  'Projektstatus Übersicht': {
+    de: 'Projektstatus Übersicht',
+    en: 'Project Status Overview',
+    fr: 'Aperçu du statut du projet'
+  },
+  'Aktueller Baufortschritt': {
+    de: 'Aktueller Baufortschritt',
+    en: 'Current Construction Progress',
+    fr: 'Avancement actuel des travaux'
   }
 };
+
+export function translateProposalTitle(title?: string, proposalLang: 'de' | 'fr' | 'en' = 'de'): string {
+  if (!title) return '';
+  const trimmed = title.trim();
+  if (!trimmed) return '';
+
+  // 1. Exact key match in dictionary
+  if (PROPOSAL_TITLE_TRANSLATIONS[trimmed]?.[proposalLang]) {
+    return PROPOSAL_TITLE_TRANSLATIONS[trimmed][proposalLang];
+  }
+
+  // 2. Case-insensitive & normalized search across all dictionary entries (bidirectional)
+  const normalizedInput = trimmed.toLowerCase().replace(/[\s\-_]+/g, ' ');
+  for (const [key, entry] of Object.entries(PROPOSAL_TITLE_TRANSLATIONS)) {
+    const matchDe = entry.de.toLowerCase().replace(/[\s\-_]+/g, ' ') === normalizedInput;
+    const matchEn = entry.en.toLowerCase().replace(/[\s\-_]+/g, ' ') === normalizedInput;
+    const matchFr = entry.fr.toLowerCase().replace(/[\s\-_]+/g, ' ') === normalizedInput;
+    const matchKey = key.toLowerCase().replace(/[\s\-_]+/g, ' ') === normalizedInput;
+    if (matchDe || matchEn || matchFr || matchKey) {
+      return entry[proposalLang];
+    }
+  }
+
+  // 3. Prefix matching for compound titles (e.g. "Projekt-Präsentation - Neubau Villa", "Offerte: Umbau")
+  const commonPrefixes: Array<{ de: string; en: string; fr: string }> = [
+    { de: 'Projekt-Präsentation & Offerte', en: 'Project Presentation & Proposal', fr: 'Présentation de projet & Offre' },
+    { de: 'Offerte & Präsentation', en: 'Proposal & Presentation', fr: 'Offre & Présentation' },
+    { de: 'Projekt-Präsentation', en: 'Project Presentation', fr: 'Présentation du projet' },
+    { de: 'Projektpräsentation', en: 'Project Presentation', fr: 'Présentation du projet' },
+    { de: 'Projekt-Offerte', en: 'Project Proposal', fr: 'Offre de projet' },
+    { de: 'Offerte', en: 'Proposal', fr: 'Offre' },
+    { de: 'Projektangebot', en: 'Project Proposal', fr: 'Offre de projet' },
+    { de: 'Smart Proposal', en: 'Smart Proposal', fr: 'Offre interactive' }
+  ];
+
+  const separators = [' – ', ' - ', ': ', ' • ', ' | ', ' / '];
+
+  for (const pref of commonPrefixes) {
+    for (const variant of [pref.de, pref.en, pref.fr]) {
+      for (const sep of separators) {
+        const testStart = `${variant}${sep}`;
+        if (trimmed.toLowerCase().startsWith(testStart.toLowerCase())) {
+          const remainder = trimmed.slice(testStart.length).trim();
+          const translatedPrefix = pref[proposalLang];
+          return `${translatedPrefix}${sep}${remainder}`;
+        }
+      }
+    }
+  }
+
+  // 4. Default fallback: return title as provided
+  return title;
+}
 
 const SLIDE_TITLE_TRANSLATIONS: Record<string, { de: string; en: string; fr: string }> = {
   'Projekt Status Overview': {
@@ -1288,12 +1476,7 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
   }, [proposalLang]);
 
   const getTranslatedProposalTitle = useCallback((title?: string) => {
-    if (!title) return '';
-    const trimmed = title.trim();
-    if (PROPOSAL_TITLE_TRANSLATIONS[trimmed]?.[proposalLang]) {
-      return PROPOSAL_TITLE_TRANSLATIONS[trimmed][proposalLang];
-    }
-    return title;
+    return translateProposalTitle(title, proposalLang);
   }, [proposalLang]);
 
   const getTranslatedSlideTitle = (title?: string) => {
@@ -1807,7 +1990,7 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
     doc.setTextColor(30, 41, 59);
     doc.setFontSize(13);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Projekt: ${proposalData.title}`, 15, 48);
+    doc.text(`Projekt: ${getTranslatedProposalTitle(proposalData.title)}`, 15, 48);
 
     doc.setFontSize(9.5);
     doc.setFont('helvetica', 'normal');
@@ -1882,7 +2065,7 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
       } catch (e) {}
     }
 
-    doc.save(`Auftragsbestaetigung_${proposalData.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+    doc.save(`Auftragsbestaetigung_${getTranslatedProposalTitle(proposalData.title).replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
   };
 
   const handleDownloadQRBill = () => {
@@ -1908,7 +2091,7 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
     doc.setTextColor(30, 41, 59);
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Projekt / Offerte: ${proposal.title}`, 15, 45);
+    doc.text(`Projekt / Offerte: ${getTranslatedProposalTitle(proposal.title)}`, 15, 45);
 
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
@@ -1939,7 +2122,7 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
     doc.setTextColor(2, 132, 199);
     doc.text(`Zahlbarer Betrag: CHF ${depositAmount.toLocaleString('de-CH', { minimumFractionDigits: 2 })}`, 22, 126);
 
-    doc.save(`QR_Rechnung_Anzahlung_${proposal.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+    doc.save(`QR_Rechnung_Anzahlung_${getTranslatedProposalTitle(proposal.title).replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
   };
 
   const handlePinSubmit = (e: React.FormEvent) => {
@@ -2618,7 +2801,7 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
                           <FileText size={32} />
                         </div>
                         <span className="text-xs font-bold uppercase tracking-widest text-purple-400 mb-1">Projekt-Dokumentation</span>
-                        <h3 className="text-xl font-extrabold text-white mb-2 max-w-md">{proposal.title} — Exposé</h3>
+                        <h3 className="text-xl font-extrabold text-white mb-2 max-w-md">{getTranslatedProposalTitle(proposal.title)} — Exposé</h3>
                         <p className="text-xs text-zinc-400 max-w-md mb-6 leading-relaxed">
                           Interaktives PDF-Exposé mit Baukonzept, Raumprogramm und Spezifikationen.
                         </p>
@@ -2813,7 +2996,7 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
               </span>
               <div>
                 <div className="text-[10px] uppercase tracking-wider text-blue-500 font-bold">
-                  {t('slideCountLabel', { title: proposal.title, curr: currentSlideIndex + 1, total: slides.length })}
+                  {t('slideCountLabel', { title: getTranslatedProposalTitle(proposal.title), curr: currentSlideIndex + 1, total: slides.length })}
                 </div>
                 <h2 className={cn("text-lg font-black", isLight ? "text-slate-900" : "text-white")}>{getTranslatedSlideTitle(activeDeckSlide.title)}</h2>
               </div>

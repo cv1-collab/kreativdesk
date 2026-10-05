@@ -12,7 +12,7 @@ import {
   Sparkles, Shield, DollarSign, Calendar, Target, LayoutDashboard, 
   Settings, Megaphone, Users, Folder, LayoutTemplate, Briefcase, 
   Camera, Video, MonitorPlay, Box, Layers, Globe, CalendarDays, FileText,
-  BookOpen, X, PenTool, Search, Building2, Filter, Clock, Terminal
+  BookOpen, X, PenTool, Search, Building2, Filter, Clock, Terminal, Share2
 } from 'lucide-react';
 
 export default function ProductTour() {
@@ -394,7 +394,18 @@ export default function ProductTour() {
       } else if (activeModuleTour === 'pitch') {
         candidateDefs = [
           {
-            target: '.tour-pitch-present, .tour-pitch-stage, body',
+            target: '.tour-deck-template, .tour-pitch-templates, .tour-pitch-toolbar, body',
+            title: isGerman ? 'Deck Studio & Master-Vorlagen' : 'Deck Studio & Master Templates',
+            content: isGerman
+              ? 'Wähle aus kuratierten Schweizer SIA- und Keynote-Vorlagen oder binde BKP-Finanzen, 3D-BIM-Schnitte und Baufortschrittsberichte direkt in deine Folien ein.'
+              : 'Choose from curated Swiss SIA and Keynote templates or bind BKP finances, 3D BIM views, and construction progress directly into your slides.',
+            IconComponent: Sparkles,
+            submodules: isGerman ? ['Master-Vorlagen', 'BKP-Kostensync', '3D BIM Schnitte'] : ['Master Templates', 'BKP Cost Sync', '3D BIM Views'],
+            proTip: isGerman ? 'Nutze die linke Seitenleiste zur schnellen Auswahl von Stilen wie Swiss Minimal (SIA) oder BIM Cyberpunk.' : 'Use the left sidebar to quickly switch between styles like Swiss Minimal (SIA) or BIM Cyberpunk.',
+            placement: 'right'
+          },
+          {
+            target: '.tour-pitch-present, .tour-deck-present, .tour-pitch-stage, body',
             title: isGerman ? '16:9 Cinema-Präsentation für Bauherren' : '16:9 Cinema Presentation for Clients',
             content: isGerman
               ? 'Präsentiere dein Architekturprojekt im modernen 16:9 Kino-Vollbildmodus. Zeige fotorealistische Renderings, 3D-BIM-Schnitte, Grundrisse und das interdisziplinäre Planungsteam.'
@@ -405,13 +416,13 @@ export default function ProductTour() {
             placement: 'bottom'
           },
           {
-            target: '.tour-pitch-export, body',
-            title: isGerman ? 'Live-Kostensync & Dual-Export (PDF & PPTX)' : 'Live Cost Sync & Dual Export (PDF & PPTX)',
+            target: '.tour-deck-export, .tour-pitch-export, body',
+            title: isGerman ? 'Kunden-Landingpage & Dual-Export (PDF & PPTX)' : 'Client Landing Page & Dual Export (PDF & PPTX)',
             content: isGerman
-              ? 'Alle Baukostenzahlen, Meilensteine und Termine aktualisieren sich automatisch aus deinen BKP-Finanzen. Exportiere das Deck wahlweise als druckreifes PDF oder editierbare PowerPoint/Keynote.'
-              : 'All cost figures and milestone dates automatically sync from your BKP ledger. Export as print-ready PDF or editable PowerPoint/Keynote slides.',
-            IconComponent: Sparkles,
-            submodules: isGerman ? ['BKP-Zahlensync', 'Keynote & PowerPoint', 'Universal PDF Studio'] : ['BKP Cost Sync', 'Keynote & PowerPoint', 'Universal PDF Studio'],
+              ? 'Veröffentliche per Klick eine interaktive, passwortgeschützte Kunden-Landingpage mit digitaler Signatur oder exportiere das Deck als druckreifes PDF oder editierbare PowerPoint/Keynote.'
+              : 'Publish an interactive password-protected client landing page with digital signature in one click, or export the deck as print-ready PDF or editable PowerPoint/Keynote slides.',
+            IconComponent: Share2,
+            submodules: isGerman ? ['Smart Landingpage', 'SIA 118 E-Signatur', 'PowerPoint & PDF'] : ['Smart Landing Page', 'SIA 118 E-Signature', 'PowerPoint & PDF'],
             proTip: isGerman ? 'Erstelle individuelle Versionen für Investoren, Baubehörden oder Käufer.' : 'Generate customized decks for investors, authorities, or buyers.',
             placement: 'bottom'
           }
@@ -1230,7 +1241,7 @@ export default function ProductTour() {
             textColor: isDark ? '#ffffff' : '#0f172a',
             arrowColor: isDark ? '#0f172a' : '#ffffff',
             overlayColor: isDark ? 'rgba(0, 0, 0, 0.75)' : 'rgba(15, 23, 42, 0.45)',
-            zIndex: 100000,
+            zIndex: 250000,
             beaconSize: 36,
           },
           tooltip: {

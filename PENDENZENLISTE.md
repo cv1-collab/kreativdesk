@@ -1,11 +1,46 @@
 # Kreativ Desk & interacTV — Status, Erfolge & Pendenzen
 
 **Datum:** 5. Oktober 2026  
-**Status:** 🟢 Alle Prüfungen grün (Vitest 69/69 grün in 12 Test-Dateien, System-Vollprüfung 42/42 bestanden, 100% Schweizer Rechtschreibung, TypeScript 0 Fehler `tsc --noEmit`, Production Build 100% fehlerfrei), Dev-Server aktiv (`http://localhost:3001`), redundante Module und Dead Code 100% bereinigt.
+**Status:** 🟢 Alle Prüfungen grün (Vitest 75/75 grün in 13 Test-Dateien, System-Vollprüfung 42/42 bestanden, 100% Schweizer Rechtschreibung, TypeScript 0 Fehler `tsc --noEmit`, Production Build 100% fehlerfrei), Dev-Server aktiv (`http://localhost:3001`), redundante Module und Dead Code 100% bereinigt.
 
 ---
 
 ## 🏆 Erfolgsliste von heute (5. Oktober 2026)
+
+### 0.0000000000 Bereinigung alter Vercel-Deployments (`kreativ-desk-v2-0`)
+* **Problemstellung & Benutzer-Anforderung:**
+  * Löschen aller veralteten, inaktiven Deployments in Vercel unter Beibehaltung der aktiven Produktions- und Domain-Aliase.
+* **Durchführung & Ergebnis:**
+  * Über die Vercel CLI wurden sämtliche 13 inaktiven/abgelaufenen Preview- und Test-Deployments sicher via `--safe --yes` gelöscht.
+  * Die aktiven Produktions-Deployments und Domains (`https://www.kreativdesk.ch`, `kreativdesk.ch`, `kreativ-desk-v2-0.vercel.app` auf `dpl_AnXDwXRkFEVmRK2Y7ivr6WwgMcGo` sowie der Git-Main-Branch-Alias auf `dpl_2tkNCGiupoaCccjJuMk1CgiEANmK`) blieben 100% unberührt und aktiv.
+  * Das Vercel-Projekt ist nun vollständig aufgeräumt (2 aktive Deployments verbleibend).
+
+### 0.000000000 Pitch Deck Studio Guide-Modul & Offerten-Landingpage Mehrsprachigkeit des Titels (DE/FR/EN)
+* **Problemstellung & Benutzer-Anforderung:**
+  * 1. Im Pitch Deck Studio («DECK ENGINE») fehlte das interaktive «Modul-Guide»-Hilfemodul, während es in allen anderen Modulen vorhanden war.
+  * 2. Auf der Kunden-Offerte & Smart Proposal Landingpage (`/p/:shareToken`, `/offerte`) blieb der Haupttitel (H1 und Header-Untertitel) beim Wechseln der Sprache (z. B. auf Französisch `?lang=fr` oder Englisch) immer starr auf Deutsch («Projekt-Präsentation»), während alle Folien, Einleitungstexte und Buttons korrekt übersetzt wurden.
+* **Aufgedeckte Ursachen & Behebung:**
+  * **1. Pitch Deck Studio Modul-Guide Integration (`PitchDeckStudio.tsx`, `ProductTour.tsx`):**
+    * *Ursache:* `ModuleGuideButton` war im Viewer (`PitchDeck.tsx`) vorhanden, wurde jedoch in der Studio-Vollbild-Komponente (`PitchDeckStudio.tsx`) weder importiert noch im Header platziert. Zudem besass die Joyride-Tour einen z-Index von `100000`, der mit dem z-Index von `PitchDeckStudio` (`z-[100000]`) kollidieren konnte.
+    * *Behebung:* `<ModuleGuideButton moduleId="pitch" compact />` wurde sowohl in der Desktop-Kopfzeile (neben «Präsentieren» und «Freigabe & Export») als auch im mobilen Header integriert. Die Tour-Schritte in `ProductTour.tsx` wurden erweitert (Deck Studio & Master-Vorlagen, 16:9 Cinema-Präsentation, Kunden-Landingpage & Dual-Export), der z-Index der Tour auf `250000` erhöht und die Zielklassen (`tour-pitch-present tour-deck-present`, `tour-pitch-export tour-deck-export`, `tour-pitch-templates tour-deck-template`) sauber verdrahtet.
+  * **2. Mehrsprachige Titel-Übersetzung auf der Offerten-Landingpage (`SmartProposalLandingPage.tsx`):**
+    * *Ursache:* Das Übersetzungswörterbuch `PROPOSAL_TITLE_TRANSLATIONS` in `SmartProposalLandingPage.tsx` enthielt nur zwei spezifische Demoprojekt-Titel. Für den Standard-Titel «Projekt-Präsentation» (sowie «Projekt Präsentation», «Offerte», «Projekt-Offerte», «Offerte & Präsentation», etc.) gab es keinen Eintrag, wodurch `getTranslatedProposalTitle` immer auf den gespeicherten deutschen Originalstring zurückfiel.
+    * *Behebung:*
+      * Umfassendes trilinguales Wörterbuch (`de`, `en`, `fr`) für sämtliche Standard-Offertentitel, Schreibweisen und Varianten implementiert:
+        * «Projekt-Präsentation» -> DE: «Projekt-Präsentation», EN: «Project Presentation», FR: «Présentation du projet»
+        * «Offerte» -> DE: «Offerte», EN: «Proposal», FR: «Offre»
+        * «Offerte & Präsentation» -> DE: «Offerte & Präsentation», EN: «Proposal & Presentation», FR: «Offre & Présentation»
+      * Intelligente Erkennung in `translateProposalTitle`:
+        * 1. Exakter Wörterbuchabgleich.
+        * 2. Gross-/Kleinschreibungs- und bindestrich-unempfindlicher Abgleich über alle drei Sprachvarianten (bidirektional).
+        * 3. Präfix-Erkennung für zusammengesetzte Projekttitel (z. B. «Projekt-Präsentation – Neubau Zürich» -> FR: «Présentation du projet – Neubau Zürich»).
+      * Alle Stellen auf der Landingpage (H1-Hero, Nav-Header, Exposé-Überschrift, Folienzähler, PDF-Auftragsbestätigung und QR-Rechnung) nutzen nun `getTranslatedProposalTitle`.
+      * Automatische Unit-Tests (`tests/unit/proposalTranslation.test.ts`) erstellt und verifiziert (6/6 Tests grün).
+* **Qualitätssicherung & Testergebnisse:**
+  * **TypeScript (`tsc --noEmit`):** 0 Fehler, vollständige Typensicherheit.
+  * **Vitest Unit-Tests (`npm test -- --run`):** 13/13 Testsuiten bestanden, 75/75 Tests grün (100%).
+  * **Vite & Node Production Build (`npm run build`):** 100% fehlerfrei kompiliert (14.26s).
+  * **Schweizer Rechtschreibung:** 100% konform (0 unerlaubte "ß").
 
 ### 0.00000000 Tiefgründige System-, KI- & Logik-Auditierung: Offline-Sync-Reaktivität, Stripe-URL-Absicherung, Smart-Proposals-UUID-Härtung & Lückenlose Schweizer-Rechtschreibung-Standardisierung aller AI-Prompts
 * **Problemstellung & Benutzer-Anforderung:**

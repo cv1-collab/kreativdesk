@@ -30,6 +30,7 @@ import { saveSmartProposal, SmartProposal, ProposalConfigOption } from '../servi
 import { fetchSystemConfigJSON } from '../utils/configHelper';
 import { safeStorage } from '../utils/safeStorage';
 import { serializeSlideForDb, deserializeSlideFromDb, type Slide } from '../utils/pitchDeckHelpers';
+import ModuleGuideButton from './ModuleGuideButton';
 
 if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
   window.Buffer = { from: () => new Uint8Array(), isBuffer: () => false } as any;
@@ -100,7 +101,9 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     whiteboard_sketch_btn: 'Whiteboard Sketch',
     export_presentation_dropdown: 'Export Presentation',
     export_presentation_sub: 'PDF Studio, Keynote & PPTX',
-    client_link_sub: '3D Web Link & E-Signature'
+    client_link_sub: '3D Web Link & E-Signature',
+    proposal_title_label: 'Title of Proposal / Landing Page',
+    proposal_title_placeholder: 'e.g. Project Presentation or Residential Park'
   },
   de: {
     new_slide: 'Neue Folie', type_text_here: 'Inhalt hier einfügen...', budget_plan: 'Projekt-Budget',
@@ -165,7 +168,9 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     whiteboard_sketch_btn: 'Whiteboard-Skizze',
     export_presentation_dropdown: 'Präsentation exportieren',
     export_presentation_sub: 'PDF Studio, Keynote & PPTX',
-    client_link_sub: '3D Web-Link & E-Signatur'
+    client_link_sub: '3D Web-Link & E-Signatur',
+    proposal_title_label: 'Titel der Offerte / Landingpage',
+    proposal_title_placeholder: 'z. B. Projekt-Präsentation oder Neubau Wohnpark'
   }
 };
 
@@ -3539,7 +3544,8 @@ export default function PitchDeckStudio({
               {deckSettings.colorMode === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
             </button>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+             <ModuleGuideButton moduleId="pitch" compact className="h-7 px-2 text-[11px]" />
              <span className="text-xs font-sans font-medium text-text-muted bg-surface border border-border px-2 py-1 rounded">{slides.findIndex(s=>s.id===activeSlideId) + 1} / {slides.length}</span>
              <button type="button" onClick={onClose} className="p-2 bg-red-500/20 text-red-500 rounded-lg"><X size={18}/></button>
           </div>
@@ -3776,7 +3782,7 @@ export default function PitchDeckStudio({
             <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
 
               {/* MASTER TEMPLATES & ANIMATIONS */}
-              <div className="tour-deck-template">
+              <div className="tour-deck-template tour-pitch-templates">
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-5 h-5 rounded-md bg-purple-500/10 text-purple-500 border border-purple-500/20 flex items-center justify-center shrink-0">
                     <Palette size={12}/>
@@ -3959,6 +3965,7 @@ export default function PitchDeckStudio({
             </div>
 
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
+              <ModuleGuideButton moduleId="pitch" compact className="h-8 sm:h-9" />
               <button 
                 type="button" 
                 onClick={() => { 
@@ -3968,7 +3975,7 @@ export default function PitchDeckStudio({
                   setIsPresenterMode(true); 
                 }} 
                 disabled={slides.length === 0} 
-                className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/30 rounded-lg text-xs font-bold gap-1.5 items-center shadow-sm disabled:opacity-50 transition-all flex shrink-0 cursor-pointer relative z-30 font-sans"
+                className="tour-pitch-present tour-deck-present px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/30 rounded-lg text-xs font-bold gap-1.5 items-center shadow-sm disabled:opacity-50 transition-all flex shrink-0 cursor-pointer relative z-30 font-sans"
                 title={t('present_tooltip')}
               >
                 <Play size={14} className="fill-current"/> <span>{t('present_btn')}</span>
@@ -3979,7 +3986,7 @@ export default function PitchDeckStudio({
                 <button 
                   type="button" 
                   onClick={() => setShowExportShareMenu(!showExportShareMenu)} 
-                  className="tour-deck-export px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg text-xs font-bold gap-1.5 items-center shadow-md transition-all flex shrink-0 cursor-pointer font-sans"
+                  className="tour-pitch-export tour-deck-export px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg text-xs font-bold gap-1.5 items-center shadow-md transition-all flex shrink-0 cursor-pointer font-sans"
                   title={t('share_export_tooltip')}
                 >
                   <Share2 size={14}/> <span>{t('share_export')}</span>
@@ -5010,7 +5017,7 @@ export default function PitchDeckStudio({
                   projectId: targetId,
                   companyId: currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid || 'company-default',
                   ownerId: currentUser?.uid || 'user',
-                  title: proposalTitle.trim() || activeProject?.name || 'Projekt-Präsentation',
+                  title: proposalTitle.trim() || activeProject?.name || (currentLang === 'de' ? 'Projekt-Präsentation' : 'Project Presentation'),
                   clientName: proposalClientName.trim() || 'Sehr geehrte Damen und Herren',
                   clientCompany: proposalClientCompany.trim(),
                   clientEmail: proposalClientEmail.trim(),
@@ -5075,11 +5082,11 @@ export default function PitchDeckStudio({
                 {proposalModalTab === 'basic' && (
                   <div className="space-y-4">
                     <div>
-                      <label className="text-xs font-bold text-text-muted uppercase block mb-1.5">Titel der Offerte / Landingpage</label>
+                      <label className="text-xs font-bold text-text-muted uppercase block mb-1.5">{t('proposal_title_label')}</label>
                       <input 
                         type="text" 
                         required 
-                        placeholder={activeProject?.name || 'z. B. Neubau Wohn- & Gewerbepark'}
+                        placeholder={activeProject?.name || t('proposal_title_placeholder')}
                         value={proposalTitle}
                         onChange={e => setProposalTitle(e.target.value)}
                         className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-xs font-medium text-text-primary outline-none focus:border-blue-500"
