@@ -21,11 +21,12 @@ interface Slide {
   title: string; 
   content: string; 
   imageUrl?: string; 
+  compareImageUrl?: string;
   videoUrl?: string;
   order_index: number; 
   ownerId: string; 
   projectId?: string; 
-  layout?: 'title-only' | 'split' | 'image-focus' | 'video-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid' | 'chart-donut' | 'table-of-contents' | 'full-image'; 
+  layout?: 'title-only' | 'split' | 'image-focus' | 'video-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid' | 'chart-donut' | 'table-of-contents' | 'full-image' | 'two-images' | 'three-images'; 
   fontSize?: number; 
   titleFontSize?: number;
   dataPayload?: any; 
@@ -83,6 +84,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [remoteCursors, setRemoteCursors] = useState<Record<string, { x: number; y: number; name: string; slideIndex: number }>>({});
+  const [sliderPosMap, setSliderPosMap] = useState<Record<string, number>>({});
   const channelRef = useRef<any>(null);
 
   const [containerDimensions, setContainerDimensions] = useState<{ w: number; h: number }>({ 
@@ -708,6 +710,159 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
               <video src={slide.videoUrl || slide.imageUrl} controls autoPlay loop muted playsInline className="w-full h-full object-cover absolute" />
             </div>
           )}
+
+          {/* 2-BILDER-VERGLEICH (DUAL / BEFORE-AFTER) */}
+          {slide.layout === 'two-images' && (() => {
+            const img0 = slide.dataPayload?.images?.[0] || slide.imageUrl || '';
+            const img1 = slide.dataPayload?.images?.[1] || slide.compareImageUrl || '';
+            const cap0 = slide.dataPayload?.captions?.[0] ?? 'Vorher / Bestand';
+            const cap1 = slide.dataPayload?.captions?.[1] ?? 'Nachher / Realisierung';
+            const splitRatio = slide.dataPayload?.splitRatio ?? 50;
+            const displayMode = slide.dataPayload?.displayMode || 'side-by-side';
+            const maskRadius = slide.dataPayload?.maskRadius ?? 16;
+            const sliderPos = sliderPosMap[slide.id] ?? slide.dataPayload?.sliderPos ?? 50;
+
+            if (displayMode === 'slider') {
+              return (
+                <div
+                  className="w-full h-full rounded-2xl overflow-hidden relative select-none shadow-2xl border cursor-ew-resize min-h-[300px]"
+                  style={{ borderRadius: `${maskRadius}px` }}
+                  onMouseMove={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const pct = Math.max(5, Math.min(95, Math.round((x / rect.width) * 100)));
+                    setSliderPosMap(prev => ({ ...prev, [slide.id]: pct }));
+                  }}
+                  onTouchMove={(e) => {
+                    if (e.touches[0]) {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const x = e.touches[0].clientX - rect.left;
+                      const pct = Math.max(5, Math.min(95, Math.round((x / rect.width) * 100)));
+                      setSliderPosMap(prev => ({ ...prev, [slide.id]: pct }));
+                    }
+                  }}
+                >
+                  {/* Nachher / Base */}
+                  {sanitizeUrl(img1) && (
+                    <img src={sanitizeUrl(img1)} alt={cap1} className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
+                  )}
+                  <span className="absolute top-4 right-4 px-3 py-1 bg-purple-600/90 backdrop-blur-md text-white text-xs font-black rounded-full z-10 shadow-lg">
+                    {cap1 || 'Nachher'}
+                  </span>
+
+                  {/* Vorher / Clipped */}
+                  <div
+                    className="absolute inset-0 overflow-hidden pointer-events-none"
+                    style={{ clipPath: `polygon(0 0, ${sliderPos}% 0, ${sliderPos}% 100%, 0 100%)` }}
+                  >
+                    {sanitizeUrl(img0) && (
+                      <img src={sanitizeUrl(img0)} alt={cap0} className="absolute inset-0 w-full h-full object-cover" />
+                    )}
+                    <span className="absolute top-4 left-4 px-3 py-1 bg-black/80 backdrop-blur-md text-white text-xs font-black rounded-full z-10 border border-white/20 shadow-lg">
+                      {cap0 || 'Vorher'}
+                    </span>
+                  </div>
+
+                  {/* Divider line & handle */}
+                  <div
+                    className="absolute top-0 bottom-0 w-1 bg-white shadow-[0_0_15px_rgba(255,255,255,1)] pointer-events-none z-20"
+                    style={{ left: `${sliderPos}%` }}
+                  >
+                    <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white text-zinc-950 shadow-2xl flex items-center justify-center font-black text-xs border border-zinc-300">
+                      ↔
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            // Side-by-side mode
+            return (
+              <div className="flex flex-row w-full h-full gap-4 items-stretch overflow-hidden">
+                <div style={{ width: `calc(${splitRatio}% - 8px)` }} className="flex flex-col h-full">
+                  <div
+                    style={{ borderRadius: `${maskRadius}px` }}
+                    className="w-full flex-1 overflow-hidden relative border border-black/10 bg-black/5"
+                  >
+                    {sanitizeUrl(img0) && (
+                      <img src={sanitizeUrl(img0)} alt={cap0} className="w-full h-full object-cover absolute pointer-events-none" />
+                    )}
+                  </div>
+                  {cap0 && (
+                    <div className={cn("text-xs font-bold truncate opacity-80 mt-2 px-1", tc)}>{cap0}</div>
+                  )}
+                </div>
+
+                <div style={{ width: `calc(${100 - splitRatio}% - 8px)` }} className="flex flex-col h-full">
+                  <div
+                    style={{ borderRadius: `${maskRadius}px` }}
+                    className="w-full flex-1 overflow-hidden relative border border-black/10 bg-black/5"
+                  >
+                    {sanitizeUrl(img1) && (
+                      <img src={sanitizeUrl(img1)} alt={cap1} className="w-full h-full object-cover absolute pointer-events-none" />
+                    )}
+                  </div>
+                  {cap1 && (
+                    <div className={cn("text-xs font-bold truncate opacity-80 mt-2 px-1", tc)}>{cap1}</div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* 3-BILDER-GALERIE (TRIPTYCHON / HERO + 2) */}
+          {slide.layout === 'three-images' && (() => {
+            const img0 = slide.dataPayload?.images?.[0] || slide.imageUrl || '';
+            const img1 = slide.dataPayload?.images?.[1] || slide.compareImageUrl || '';
+            const img2 = slide.dataPayload?.images?.[2] || '';
+            const cap0 = slide.dataPayload?.captions?.[0] ?? 'Perspektive 1';
+            const cap1 = slide.dataPayload?.captions?.[1] ?? 'Perspektive 2';
+            const cap2 = slide.dataPayload?.captions?.[2] ?? 'Perspektive 3';
+            const galleryMode = slide.dataPayload?.galleryMode || 'columns';
+            const maskRadius = slide.dataPayload?.maskRadius ?? 16;
+
+            const renderCard = (imgUrl: string, captionText: string) => (
+              <div className="flex flex-col h-full flex-1 min-w-0">
+                <div
+                  style={{ borderRadius: `${maskRadius}px` }}
+                  className="w-full flex-1 overflow-hidden relative border border-black/10 bg-black/5"
+                >
+                  {sanitizeUrl(imgUrl) && (
+                    <img src={sanitizeUrl(imgUrl)} alt={captionText} className="w-full h-full object-cover absolute pointer-events-none" />
+                  )}
+                </div>
+                {captionText && (
+                  <div className={cn("text-xs font-bold truncate opacity-80 mt-1.5 px-0.5", tc)}>{captionText}</div>
+                )}
+              </div>
+            );
+
+            if (galleryMode === 'hero' || galleryMode === 'hero-stacked') {
+              return (
+                <div className="flex flex-row w-full h-full gap-4 items-stretch overflow-hidden">
+                  <div className="w-[60%] h-full">
+                    {renderCard(img0, cap0)}
+                  </div>
+                  <div className="w-[40%] h-full flex flex-col gap-3">
+                    <div className="flex-1 h-1/2 min-h-0">
+                      {renderCard(img1, cap1)}
+                    </div>
+                    <div className="flex-1 h-1/2 min-h-0">
+                      {renderCard(img2, cap2)}
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div className="grid grid-cols-3 gap-4 w-full h-full items-stretch overflow-hidden">
+                {renderCard(img0, cap0)}
+                {renderCard(img1, cap1)}
+                {renderCard(img2, cap2)}
+              </div>
+            );
+          })()}
 
           {slide.layout === 'defect-grid' && slide.dataPayload?.defects && (
              <div className="w-full h-full grid grid-cols-2 gap-6 col-span-full pointer-events-none">

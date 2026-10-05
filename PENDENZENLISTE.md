@@ -1,11 +1,46 @@
 # Kreativ Desk & interacTV — Status, Erfolge & Pendenzen
 
 **Datum:** 5. Oktober 2026  
-**Status:** 🟢 Alle Prüfungen grün (Playwright E2E 56/56 bestanden in 17 Test-Suiten, Vitest 77/77 grün in 14 Test-Dateien, TypeScript 0 Fehler `tsc --noEmit`, ESLint 0 Fehler, Production Build 100% fehlerfrei, 100% Schweizer Rechtschreibung), alle Module und Tools synchronisiert und live geschaltet (`https://www.kreativdesk.ch`).
+**Status:** 🟢 Alle Prüfungen grün (Playwright E2E 56/56 bestanden in 17 Test-Suiten, Vitest 80/80 grün in 15 Test-Dateien, TypeScript 0 Fehler `tsc --noEmit`, ESLint 0 Fehler, Production Build 100% fehlerfrei, 100% Schweizer Rechtschreibung), alle Module und Tools synchronisiert und live geschaltet (`https://www.kreativdesk.ch`).
 
 ---
 
 ## 🏆 Erfolgsliste von heute (5. Oktober 2026)
+
+### 0.00000000000000 Pitch Deck Studio: 2-Bilder-Vergleich, 3-Bilder-Galerie & Masken-Skalierung (5. Oktober 2026)
+* **Problemstellung & Benutzer-Anforderung:**
+  * Der Benutzer stellte fest, dass bei den Vorlagen-Layouts noch Darstellungen fehlten, bei denen 2 oder 3 Bilder pro Folie flexibel gezeigt werden können, sowie Layouts mit frei skalierbarer Maske: «bei den volragen layouts fehlt noch eine vorlage wo zeri oder drei bilder pro slides gezeigt werden oder nicht? oder ein layout wo man selber die maske skalieren kann etc.? ok? bitte überprüfen».
+  * Zudem wünschte der Benutzer eine Bereinigung alter Vercel-Deployments, um Speicherplatzlimits nicht zu erreichen: «bitte alte deployments in vercel löschen um die speicherplatz limits nicht zu erreichen.ok?».
+* **Umgesetzte Lösungen & Architektur:**
+  * **1. Neues Layout `two-images` (2-Bilder-Vergleich / Dual):**
+    * Zwei Betriebsmodi wählbar:
+      * **Nebeneinander (Split):** Stufenloses oder vordefiniertes Split-Verhältnis (`50:50`, `40:60`, `60:40`, `30:70`, `70:30`).
+      * **Vorher/Nachher-Schieber (Interactive Slider):** Interaktiver Schieberegler mit ↔-Griff, der mit Maus oder Touch nahtlos verschoben werden kann.
+    * Separate Bild-Slots: Jedes Bild kann unabhängig hochgeladen, aus der Medienbibliothek gewählt oder getauscht werden.
+    * Editierbare Bildbeschriftungen für beide Bilder direkt auf der Folie.
+  * **2. Neues Layout `three-images` (3-Bilder-Galerie / Triptychon):**
+    * Zwei Galeriemodi wählbar:
+      * **3 Spalten (Triptychon):** Drei gleichmässige Spalten nebeneinander mit individueller Beschriftung.
+      * **1 Hero + 2 Detail:** Ein dominantes grosses Bild links (60% Breite) und zwei vertikal gestapelte Detailbilder rechts (40% Breite).
+    * Drei separate Bild-Slots mit unabhängigem Upload, Medien-Import und Beschriftung.
+  * **3. Masken-Skalierungs- & Styling-Werkzeuge im Flyout:**
+    * **Seitenverhältnis / Masken-Format:** Umschaltung zwischen `Ausfüllend (Cover)`, `16:9 Cinema`, `4:3 Standard` und `1:1 Quadrat`.
+    * **Eckenabrundung:** `0px (Scharf)`, `8px (Dezent)`, `16px (Standard)`, `24px (Stark)`.
+    * **Schnell-Umschalter:** Direkte Modus- und Split-Umschaltung im Flyout sowie in der Folien-Ansicht.
+  * **4. Plattformweite 100%ige Vollintegration:**
+    * **Pitch Deck Studio Canvas ([PitchDeckStudio.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/PitchDeckStudio.tsx)):** Vollständiges Rendering beider Layouts im Bearbeitungs- und Vorschaumodus, Menüeinträge auf Mobile und Desktop, Buttons in der CAD-Toolbar.
+    * **Vektorieller PDF-Export:** `generatePdfBlob` berechnet die Geometrie für beide Layouts (Split-Verhältnis, Hero-Stacking, 3 Spalten) und bettet die Bilder mit `addSafeImage` und Beschriftungen sauber ein.
+    * **PowerPoint PPTX-Export ([pptxExportHelper.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/utils/pptxExportHelper.ts)):** Multi-Image Base64-Konvertierung und native Platzierung aller Bilder und Beschriftungen für Microsoft PowerPoint und Apple Keynote.
+    * **Präsentationsmodus ([PitchDeck.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/PitchDeck.tsx)):** Vollbild-Wiedergabe inklusive interaktivem Vorher/Nachher-Schieber per Maus und Touch.
+    * **Kunden-Landingpage ([SmartProposalLandingPage.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/SmartProposalLandingPage.tsx)):** Volle Unterstützung sowohl im vertikalen Dokumenten-Scroll-Flow als auch im interaktiven Pitch-Deck-Viewer-Modal.
+  * **5. Vercel-Speicherbereinigung:**
+    * 14 alte, inaktive Deployments sicher via `vercel remove --safe --yes` entfernt.
+    * Das aktive Produktions-Deployment (`kreativ-desk-v2-0-lhwi2zkn5-cv1-6952s-projects.vercel.app` / `https://www.kreativdesk.ch`) blieb unangetastet (HTTP 200 verifiziert).
+  * **6. Qualitätssicherung:**
+    * Neue Unit-Tests in [pitchDeckMultiImageLayout.test.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/tests/unit/pitchDeckMultiImageLayout.test.ts) erstellt.
+    * Vitest: 80/80 Tests grün (15/15 Suiten).
+    * TypeScript: 0 Fehler (`tsc --noEmit`).
+    * Production Build: 100% erfolgreich.
 
 ### 0.0000000000000 Finaler Systemweiter Tiefenaudit & Härtung aller Upload- & Event-Pfade (5. Oktober 2026)
 * **Problemstellung & Benutzer-Anforderung:**

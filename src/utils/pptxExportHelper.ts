@@ -10,6 +10,7 @@ export interface PptxSlideData {
   fontSize?: number;
   titleFontSize?: number;
   imageUrl?: string;
+  compareImageUrl?: string;
   videoUrl?: string;
   dataPayload?: any;
   agendaItems?: Array<{ num: string; title: string; desc: string; page: string }>;
@@ -378,6 +379,13 @@ export async function exportDeckToPptx(
     if (s.imageUrl) {
       embeddedImgBase64 = await toBase64(s.imageUrl);
     }
+    let multiImagesBase64: (string | null)[] = [];
+    if (layout === 'two-images' || layout === 'three-images') {
+      const rawImgs: string[] = (s.dataPayload?.images && Array.isArray(s.dataPayload.images) && s.dataPayload.images.length > 0)
+        ? s.dataPayload.images
+        : [s.imageUrl, s.compareImageUrl].filter(Boolean) as string[];
+      multiImagesBase64 = await Promise.all(rawImgs.map(img => img ? toBase64(img) : Promise.resolve(null)));
+    }
 
     if (layout === 'title-only') {
       // Large Centered Title Slide
@@ -697,6 +705,237 @@ export async function exportDeckToPptx(
           });
         } catch (e) {
           console.warn("Could not embed image-focus slide image:", e);
+        }
+      }
+    } else if (layout === 'two-images') {
+      pptxSlide.addText(s.title || '', {
+        x: 0.8,
+        y: titleY,
+        w: titleWidth,
+        h: 0.8,
+        fontSize: 24,
+        bold: true,
+        color: titleColor,
+        valign: 'middle',
+        fontFace: fontFace
+      });
+
+      const captions: string[] = s.dataPayload?.captions || ['Vorher / Bestand', 'Nachher / Realisierung'];
+      const splitRatio = typeof s.dataPayload?.splitRatio === 'number' ? s.dataPayload.splitRatio : 50;
+      const totalW = 11.7;
+      const gap = 0.3;
+      const w1 = (totalW - gap) * (splitRatio / 100);
+      const w2 = (totalW - gap) * (1 - (splitRatio / 100));
+      const imgH = 4.6;
+
+      if (multiImagesBase64[0]) {
+        try {
+          if (themeStyle === 'neo-brutalism') {
+            pptxSlide.addShape(pptx.ShapeType.rect, {
+              x: 0.85,
+              y: 1.55,
+              w: w1,
+              h: imgH,
+              fill: { color: '000000' }
+            });
+          }
+          pptxSlide.addImage({
+            data: multiImagesBase64[0],
+            x: 0.8,
+            y: 1.5,
+            w: w1,
+            h: imgH,
+            sizing: { type: 'cover', w: w1, h: imgH }
+          });
+        } catch (e) {
+          console.warn("Could not embed two-images slide image 1:", e);
+        }
+      }
+      if (captions[0]) {
+        pptxSlide.addText(captions[0], {
+          x: 0.8,
+          y: 6.15,
+          w: w1,
+          h: 0.4,
+          fontSize: 11,
+          bold: true,
+          color: textColor,
+          fontFace: fontFace
+        });
+      }
+
+      const x2 = 0.8 + w1 + gap;
+      if (multiImagesBase64[1]) {
+        try {
+          if (themeStyle === 'neo-brutalism') {
+            pptxSlide.addShape(pptx.ShapeType.rect, {
+              x: x2 + 0.05,
+              y: 1.55,
+              w: w2,
+              h: imgH,
+              fill: { color: '000000' }
+            });
+          }
+          pptxSlide.addImage({
+            data: multiImagesBase64[1],
+            x: x2,
+            y: 1.5,
+            w: w2,
+            h: imgH,
+            sizing: { type: 'cover', w: w2, h: imgH }
+          });
+        } catch (e) {
+          console.warn("Could not embed two-images slide image 2:", e);
+        }
+      }
+      if (captions[1]) {
+        pptxSlide.addText(captions[1], {
+          x: x2,
+          y: 6.15,
+          w: w2,
+          h: 0.4,
+          fontSize: 11,
+          bold: true,
+          color: textColor,
+          fontFace: fontFace
+        });
+      }
+    } else if (layout === 'three-images') {
+      pptxSlide.addText(s.title || '', {
+        x: 0.8,
+        y: titleY,
+        w: titleWidth,
+        h: 0.8,
+        fontSize: 24,
+        bold: true,
+        color: titleColor,
+        valign: 'middle',
+        fontFace: fontFace
+      });
+
+      const captions: string[] = s.dataPayload?.captions || ['Perspektive 1', 'Perspektive 2', 'Perspektive 3'];
+      const galleryMode = s.dataPayload?.galleryMode || 'columns';
+      const totalW = 11.7;
+
+      if (galleryMode === 'hero' || galleryMode === 'hero-stacked') {
+        const gap = 0.3;
+        const heroW = (totalW - gap) * 0.6;
+        const stackW = (totalW - gap) * 0.4;
+        const stackH = (4.6 - gap) / 2;
+
+        if (multiImagesBase64[0]) {
+          try {
+            pptxSlide.addImage({
+              data: multiImagesBase64[0],
+              x: 0.8,
+              y: 1.5,
+              w: heroW,
+              h: 4.6,
+              sizing: { type: 'cover', w: heroW, h: 4.6 }
+            });
+          } catch (e) {
+            console.warn("Could not embed three-images hero image:", e);
+          }
+        }
+        if (captions[0]) {
+          pptxSlide.addText(captions[0], {
+            x: 0.8,
+            y: 6.15,
+            w: heroW,
+            h: 0.4,
+            fontSize: 11,
+            bold: true,
+            color: textColor,
+            fontFace: fontFace
+          });
+        }
+
+        const stackX = 0.8 + heroW + gap;
+        if (multiImagesBase64[1]) {
+          try {
+            pptxSlide.addImage({
+              data: multiImagesBase64[1],
+              x: stackX,
+              y: 1.5,
+              w: stackW,
+              h: stackH,
+              sizing: { type: 'cover', w: stackW, h: stackH }
+            });
+          } catch (e) {
+            console.warn("Could not embed three-images detail 1:", e);
+          }
+        }
+        if (captions[1]) {
+          pptxSlide.addText(captions[1], {
+            x: stackX,
+            y: 1.5 + stackH - 0.3,
+            w: stackW,
+            h: 0.3,
+            fontSize: 9.5,
+            bold: true,
+            color: textColor,
+            fontFace: fontFace
+          });
+        }
+
+        const d2Y = 1.5 + stackH + gap;
+        if (multiImagesBase64[2]) {
+          try {
+            pptxSlide.addImage({
+              data: multiImagesBase64[2],
+              x: stackX,
+              y: d2Y,
+              w: stackW,
+              h: stackH,
+              sizing: { type: 'cover', w: stackW, h: stackH }
+            });
+          } catch (e) {
+            console.warn("Could not embed three-images detail 2:", e);
+          }
+        }
+        if (captions[2]) {
+          pptxSlide.addText(captions[2], {
+            x: stackX,
+            y: d2Y + stackH - 0.3,
+            w: stackW,
+            h: 0.3,
+            fontSize: 9.5,
+            bold: true,
+            color: textColor,
+            fontFace: fontFace
+          });
+        }
+      } else {
+        const gap = 0.3;
+        const colW = (totalW - (gap * 2)) / 3;
+        for (let i = 0; i < 3; i++) {
+          const colX = 0.8 + i * (colW + gap);
+          if (multiImagesBase64[i]) {
+            try {
+              pptxSlide.addImage({
+                data: multiImagesBase64[i],
+                x: colX,
+                y: 1.5,
+                w: colW,
+                h: 4.6,
+                sizing: { type: 'cover', w: colW, h: 4.6 }
+              });
+            } catch (e) {
+              console.warn(`Could not embed three-images column ${i}:`, e);
+            }
+          }
+          if (captions[i]) {
+            pptxSlide.addText(captions[i], {
+              x: colX,
+              y: 6.15,
+              w: colW,
+              h: 0.4,
+              fontSize: 10.5,
+              bold: true,
+              color: textColor,
+              fontFace: fontFace
+            });
+          }
         }
       }
     } else {

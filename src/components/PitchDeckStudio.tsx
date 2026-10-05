@@ -49,6 +49,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     import_cad: 'Import CAD Plans', import_bim: 'Import 3D BIM', import_renderings: 'Import Renderings',
     import_defects: 'Import Defects & Tickets', import_whiteboard: 'Import Whiteboard Sketches', slides_count: 'Slides',
     standard_layouts: 'Standard Layouts', title_slide: 'Title Slide', text_and_image: 'Text & Image',
+    two_images_slide: '2-Image Comparison', three_images_slide: '3-Image Gallery',
     image_slide: 'Image Focus', full_image_slide: 'Full-Bleed Cover', image_tools: 'Image & Scaling', upload_image: 'Upload Image', text_block: 'Text Only', slide: 'Slide', preview_active: 'Preview Active',
     editor_mode: 'Editor Mode', typo_size: 'Font Size', export_pdf_native: 'PDF Export',
     no_slide_selected: 'No slide selected.', select_project: 'Please select a project first.',
@@ -117,6 +118,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     import_cad: 'CAD & Pläne', import_bim: '3D BIM Modelle', import_renderings: '3D Renderings',
     import_defects: 'Mängel & Tickets', import_whiteboard: 'Whiteboard Skizzen', slides_count: 'Folien',
     standard_layouts: 'Standard Layouts', title_slide: 'Titel-Folie', text_and_image: 'Text & Bild',
+    two_images_slide: '2-Bilder-Vergleich', three_images_slide: '3-Bilder-Galerie',
     image_slide: 'Bild-Fokus', full_image_slide: 'Vollbild-Cover', image_tools: 'Bild & Skalierung', upload_image: 'Bild hochladen', text_block: 'Nur Text', slide: 'Folie', preview_active: 'Vorschau Aktiv',
     editor_mode: 'Editor Modus', typo_size: 'Schriftgrösse', export_pdf_native: 'PDF Export',
     no_slide_selected: 'Keine Folie ausgewählt.', select_project: 'Bitte wähle zuerst ein Projekt.',
@@ -327,10 +329,12 @@ export default function PitchDeckStudio({
   const videoInputRef = useRef<HTMLInputElement>(null);
   const slideImageInputRef = useRef<HTMLInputElement>(null);
   const [targetSlideForUpload, setTargetSlideForUpload] = useState<string | null>(null);
+  const [targetUploadIndex, setTargetUploadIndex] = useState<number | null>(null);
 
-  const triggerSlideImageUpload = (slideId?: string) => {
+  const triggerSlideImageUpload = (slideId?: string, imageIndex?: number) => {
     const sId = slideId || activeSlideId || (activeSlide ? activeSlide.id : null);
     setTargetSlideForUpload(sId);
+    setTargetUploadIndex(imageIndex !== undefined ? imageIndex : null);
     if (slideImageInputRef.current) {
       slideImageInputRef.current.value = '';
       slideImageInputRef.current.click();
@@ -435,7 +439,26 @@ export default function PitchDeckStudio({
     if (!activeSlide) return;
     
     let updatedPayload = activeSlide.dataPayload || {};
-    if (newLayout === 'chart-donut' && (!updatedPayload.chartSegments || updatedPayload.chartSegments.length === 0)) {
+    if (newLayout === 'two-images' && (!updatedPayload.images || updatedPayload.images.length === 0)) {
+      updatedPayload = {
+        ...updatedPayload,
+        images: [activeSlide.imageUrl || '', activeSlide.compareImageUrl || ''],
+        captions: updatedPayload.captions || ['Vorher / Bestand', 'Nachher / Realisierung'],
+        splitRatio: updatedPayload.splitRatio ?? 50,
+        displayMode: updatedPayload.displayMode || 'side-by-side',
+        maskAspect: updatedPayload.maskAspect || 'cover',
+        maskRadius: updatedPayload.maskRadius ?? 16
+      };
+    } else if (newLayout === 'three-images' && (!updatedPayload.images || updatedPayload.images.length < 3)) {
+      updatedPayload = {
+        ...updatedPayload,
+        images: [activeSlide.imageUrl || '', activeSlide.compareImageUrl || '', (updatedPayload.images && updatedPayload.images[2]) || ''],
+        captions: updatedPayload.captions || ['Perspektive 1', 'Perspektive 2', 'Perspektive 3'],
+        galleryMode: updatedPayload.galleryMode || 'columns',
+        maskAspect: updatedPayload.maskAspect || 'cover',
+        maskRadius: updatedPayload.maskRadius ?? 16
+      };
+    } else if (newLayout === 'chart-donut' && (!updatedPayload.chartSegments || updatedPayload.chartSegments.length === 0)) {
       updatedPayload = {
         ...updatedPayload,
         chartSegments: [
@@ -1159,6 +1182,23 @@ export default function PitchDeckStudio({
     setIsUploadingImage(true);
     addToast('Bild wird hochgeladen...', 'info');
 
+    const applyUploadedImage = (url: string) => {
+      setSlides(prev => prev.map(s => {
+        if (s.id !== targetSlideId) return s;
+        if (targetUploadIndex !== null && targetUploadIndex !== undefined) {
+          const currentImages = [...(s.dataPayload?.images || [s.imageUrl || '', s.compareImageUrl || '', ''])];
+          currentImages[targetUploadIndex] = url;
+          const updatedPayload = { ...(s.dataPayload || {}), images: currentImages };
+          const updatedSlide: any = { ...s, dataPayload: updatedPayload };
+          if (targetUploadIndex === 0) updatedSlide.imageUrl = url;
+          if (targetUploadIndex === 1) updatedSlide.compareImageUrl = url;
+          return updatedSlide;
+        } else {
+          return { ...s, imageUrl: url };
+        }
+      }));
+    };
+
     try {
       const downloadUrl = await uploadFileWithFallback(file, file.name, safeCompanyId, 'slides');
 
@@ -1166,10 +1206,21 @@ export default function PitchDeckStudio({
         throw new Error('Upload ergab keine Bild-URL');
       }
 
-      setSlides(prev => prev.map(s => s.id === targetSlideId ? { ...s, imageUrl: downloadUrl } : s));
+      applyUploadedImage(downloadUrl);
       const slideToUpdate = slides.find(s => s.id === targetSlideId);
       if (slideToUpdate && currentUser?.uid) {
-        const serialized = serializeSlideForDb({ ...slideToUpdate, imageUrl: downloadUrl });
+        let updatedSlide = { ...slideToUpdate };
+        if (targetUploadIndex !== null && targetUploadIndex !== undefined) {
+          const currentImages = [...(slideToUpdate.dataPayload?.images || [slideToUpdate.imageUrl || '', slideToUpdate.compareImageUrl || '', ''])];
+          currentImages[targetUploadIndex] = downloadUrl;
+          const updatedPayload = { ...(slideToUpdate.dataPayload || {}), images: currentImages };
+          updatedSlide.dataPayload = updatedPayload;
+          if (targetUploadIndex === 0) updatedSlide.imageUrl = downloadUrl;
+          if (targetUploadIndex === 1) updatedSlide.compareImageUrl = downloadUrl;
+        } else {
+          updatedSlide.imageUrl = downloadUrl;
+        }
+        const serialized = serializeSlideForDb(updatedSlide);
         await supabase.from('slides').update(serialized).eq('id', targetSlideId);
       }
       addToast('Bild erfolgreich hinterlegt!', 'success');
@@ -1177,13 +1228,14 @@ export default function PitchDeckStudio({
       console.error('Slide image upload fallback:', err);
       try {
         const fallbackUrl = URL.createObjectURL(file);
-        setSlides(prev => prev.map(s => s.id === targetSlideId ? { ...s, imageUrl: fallbackUrl } : s));
+        applyUploadedImage(fallbackUrl);
         addToast('Bild lokal hinterlegt', 'info');
       } catch (e2) {
         addToast('Upload fehlgeschlagen', 'error');
       }
     } finally {
       setIsUploadingImage(false);
+      setTargetUploadIndex(null);
       if (e.target) e.target.value = '';
     }
   };
@@ -1840,6 +1892,94 @@ export default function PitchDeckStudio({
           });
         }
       }
+      else if (slide.layout === 'two-images') {
+        const images: string[] = (slide.dataPayload?.images && Array.isArray(slide.dataPayload.images) && slide.dataPayload.images.length > 0)
+          ? slide.dataPayload.images
+          : [slide.imageUrl, slide.compareImageUrl].filter(Boolean) as string[];
+        const captions: string[] = slide.dataPayload?.captions || [];
+        const splitRatio: number = typeof slide.dataPayload?.splitRatio === 'number' ? slide.dataPayload.splitRatio : 50;
+
+        const availW = pw - 30;
+        const availH = ph - cy - 25;
+        const gap = 6;
+        const w1 = (availW - gap) * (splitRatio / 100);
+        const w2 = (availW - gap) * (1 - (splitRatio / 100));
+
+        if (images[0]) {
+          await addSafeImage(images[0], 15, cy, w1, availH - 8, true);
+        }
+        if (captions[0]) {
+          docPdf.setFontSize(8);
+          docPdf.setTextColor(isDarkTheme ? 190 : 80);
+          docPdf.text(captions[0], 15, cy + availH - 2);
+        }
+
+        if (images[1]) {
+          await addSafeImage(images[1], 15 + w1 + gap, cy, w2, availH - 8, true);
+        }
+        if (captions[1]) {
+          docPdf.setFontSize(8);
+          docPdf.setTextColor(isDarkTheme ? 190 : 80);
+          docPdf.text(captions[1], 15 + w1 + gap, cy + availH - 2);
+        }
+      }
+      else if (slide.layout === 'three-images') {
+        const images: string[] = (slide.dataPayload?.images && Array.isArray(slide.dataPayload.images) && slide.dataPayload.images.length > 0)
+          ? slide.dataPayload.images
+          : [slide.imageUrl, slide.compareImageUrl].filter(Boolean) as string[];
+        const captions: string[] = slide.dataPayload?.captions || [];
+        const galleryMode = slide.dataPayload?.galleryMode || 'columns';
+
+        const availW = pw - 30;
+        const availH = ph - cy - 25;
+        const gap = 5;
+
+        if (galleryMode === 'hero' || galleryMode === 'hero-stacked') {
+          const heroW = (availW - gap) * 0.6;
+          const stackW = (availW - gap) * 0.4;
+          const stackH = (availH - gap) / 2;
+
+          if (images[0]) {
+            await addSafeImage(images[0], 15, cy, heroW, availH - 8, true);
+          }
+          if (captions[0]) {
+            docPdf.setFontSize(8);
+            docPdf.setTextColor(isDarkTheme ? 190 : 80);
+            docPdf.text(captions[0], 15, cy + availH - 2);
+          }
+
+          if (images[1]) {
+            await addSafeImage(images[1], 15 + heroW + gap, cy, stackW, stackH - 8, true);
+          }
+          if (captions[1]) {
+            docPdf.setFontSize(7.5);
+            docPdf.setTextColor(isDarkTheme ? 190 : 80);
+            docPdf.text(captions[1], 15 + heroW + gap, cy + stackH - 2);
+          }
+
+          if (images[2]) {
+            await addSafeImage(images[2], 15 + heroW + gap, cy + stackH + gap, stackW, stackH - 8, true);
+          }
+          if (captions[2]) {
+            docPdf.setFontSize(7.5);
+            docPdf.setTextColor(isDarkTheme ? 190 : 80);
+            docPdf.text(captions[2], 15 + heroW + gap, cy + (stackH * 2) + gap - 2);
+          }
+        } else {
+          const colW = (availW - (gap * 2)) / 3;
+          for (let i = 0; i < 3; i++) {
+            const x = 15 + i * (colW + gap);
+            if (images[i]) {
+              await addSafeImage(images[i], x, cy, colW, availH - 8, true);
+            }
+            if (captions[i]) {
+              docPdf.setFontSize(8);
+              docPdf.setTextColor(isDarkTheme ? 190 : 80);
+              docPdf.text(captions[i], x, cy + availH - 2);
+            }
+          }
+        }
+      }
     }
     return docPdf.output('blob');
   }, [slides, deckSettings, t]);
@@ -1942,8 +2082,13 @@ export default function PitchDeckStudio({
     if (!currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
     const newId = `slide-${Date.now()}`;
-    const initialPayload = dataPayload || (layout === 'full-image' ? { imageFit: 'cover', imageScale: 100, overlayOpacity: 40, imagePosition: 'center', textPosition: 'bottom-left' } : null);
-    const initialContent = layout === 'full-image' ? '' : t('type_text_here');
+    const initialPayload = dataPayload || (
+      layout === 'full-image' ? { imageFit: 'cover', imageScale: 100, overlayOpacity: 40, imagePosition: 'center', textPosition: 'bottom-left' } :
+      layout === 'two-images' ? { images: ['', ''], captions: ['Vorher / Bestand', 'Nachher / Realisierung'], splitRatio: 50, displayMode: 'side-by-side', maskAspect: 'cover', maskRadius: 16 } :
+      layout === 'three-images' ? { images: ['', '', ''], captions: ['Perspektive 1', 'Perspektive 2', 'Perspektive 3'], galleryMode: 'columns', maskAspect: 'cover', maskRadius: 16 } :
+      null
+    );
+    const initialContent = (layout === 'full-image' || layout === 'two-images' || layout === 'three-images') ? '' : t('type_text_here');
     const newSlide: Slide = {
       id: newId, title, content: initialContent, order_index: slides.length, 
       ownerId: currentUser.uid, companyId: safeCompanyId, projectId: targetId, 
@@ -2772,11 +2917,36 @@ export default function PitchDeckStudio({
        const targetId = mediaPickerType.meta?.slideId || activeSlideId;
        const selectedMedia = availableMedia.find(m => m.id === selectedMediaIds[0]);
        if (selectedMedia && targetId) {
-         setSlides(prev => prev.map(s => s.id === targetId ? { ...s, imageUrl: selectedMedia.url } : s));
-         const slideToUpdate = slides.find(s => s.id === targetId);
-         if (slideToUpdate) {
-           const serialized = serializeSlideForDb({ ...slideToUpdate, imageUrl: selectedMedia.url });
-           supabase.from('slides').update(serialized).eq('id', targetId).then();
+         const imageIndex = mediaPickerType.meta?.imageIndex;
+         if (imageIndex !== undefined && imageIndex !== null) {
+           setSlides(prev => prev.map(s => {
+             if (s.id !== targetId) return s;
+             const currentImages = [...(s.dataPayload?.images || [s.imageUrl || '', s.compareImageUrl || '', ''])];
+             currentImages[imageIndex] = selectedMedia.url;
+             const updatedPayload = { ...(s.dataPayload || {}), images: currentImages };
+             const updatedSlide: any = { ...s, dataPayload: updatedPayload };
+             if (imageIndex === 0) updatedSlide.imageUrl = selectedMedia.url;
+             if (imageIndex === 1) updatedSlide.compareImageUrl = selectedMedia.url;
+             return updatedSlide;
+           }));
+           const slideToUpdate = slides.find(s => s.id === targetId);
+           if (slideToUpdate) {
+             const currentImages = [...(slideToUpdate.dataPayload?.images || [slideToUpdate.imageUrl || '', slideToUpdate.compareImageUrl || '', ''])];
+             currentImages[imageIndex] = selectedMedia.url;
+             const updatedPayload = { ...(slideToUpdate.dataPayload || {}), images: currentImages };
+             const updatedSlide: any = { ...slideToUpdate, dataPayload: updatedPayload };
+             if (imageIndex === 0) updatedSlide.imageUrl = selectedMedia.url;
+             if (imageIndex === 1) updatedSlide.compareImageUrl = selectedMedia.url;
+             const serialized = serializeSlideForDb(updatedSlide);
+             supabase.from('slides').update(serialized).eq('id', targetId).then();
+           }
+         } else {
+           setSlides(prev => prev.map(s => s.id === targetId ? { ...s, imageUrl: selectedMedia.url } : s));
+           const slideToUpdate = slides.find(s => s.id === targetId);
+           if (slideToUpdate) {
+             const serialized = serializeSlideForDb({ ...slideToUpdate, imageUrl: selectedMedia.url });
+             supabase.from('slides').update(serialized).eq('id', targetId).then();
+           }
          }
          addToast('Bild aktualisiert!', 'success');
        }
@@ -3535,6 +3705,421 @@ export default function PitchDeckStudio({
             </div>
           )}
           
+          {/* 2-BILDER-VERGLEICH (DUAL / BEFORE-AFTER) */}
+          {slide.layout === 'two-images' && (() => {
+            const img0 = slide.dataPayload?.images?.[0] || slide.imageUrl || '';
+            const img1 = slide.dataPayload?.images?.[1] || slide.compareImageUrl || '';
+            const cap0 = slide.dataPayload?.captions?.[0] ?? 'Vorher / Bestand';
+            const cap1 = slide.dataPayload?.captions?.[1] ?? 'Nachher / Realisierung';
+            const splitRatio = slide.dataPayload?.splitRatio ?? 50;
+            const displayMode = slide.dataPayload?.displayMode || 'side-by-side';
+            const maskRadius = slide.dataPayload?.maskRadius ?? 16;
+            const maskAspect = slide.dataPayload?.maskAspect || 'cover';
+            const sliderPos = slide.dataPayload?.sliderPos ?? 50;
+
+            const handleUpdateCaption = (index: number, val: string) => {
+              const curCaps = [...(slide.dataPayload?.captions || ['Vorher / Bestand', 'Nachher / Realisierung'])];
+              curCaps[index] = val;
+              handleUpdateImageSettings('captions', curCaps);
+            };
+
+            const handleRemoveSlot = (index: number) => {
+              const curImgs = [...(slide.dataPayload?.images || [slide.imageUrl || '', slide.compareImageUrl || ''])];
+              curImgs[index] = '';
+              const newPayload = { ...(slide.dataPayload || {}), images: curImgs };
+              const updatedSlide: any = { ...slide, dataPayload: newPayload };
+              if (index === 0) updatedSlide.imageUrl = '';
+              if (index === 1) updatedSlide.compareImageUrl = '';
+              setSlides(prev => prev.map(s => s.id === slide.id ? updatedSlide : s));
+              supabase.from('slides').update(serializeSlideForDb(updatedSlide)).eq('id', slide.id).then();
+            };
+
+            const getAspectClass = () => {
+              if (maskAspect === '16/9') return 'aspect-[16/9]';
+              if (maskAspect === '4/3') return 'aspect-[4/3]';
+              if (maskAspect === '1/1') return 'aspect-square';
+              return 'h-full flex-1';
+            };
+
+            return (
+              <div className="w-full h-full flex flex-col justify-between">
+                {/* TOP CONTROL BAR (EDIT MODE ONLY) */}
+                {!isPreviewMode && (
+                  <div className="flex items-center justify-between mb-2 px-1 flex-wrap gap-2 shrink-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Modus:</span>
+                      <div className="flex bg-black/10 dark:bg-white/10 rounded-lg p-0.5 border border-border">
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateImageSettings('displayMode', 'side-by-side')}
+                          className={cn("px-2.5 py-1 text-[11px] font-bold rounded-md transition-all cursor-pointer", displayMode === 'side-by-side' ? "bg-purple-600 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
+                        >
+                          Nebeneinander (Split)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateImageSettings('displayMode', 'slider')}
+                          className={cn("px-2.5 py-1 text-[11px] font-bold rounded-md transition-all cursor-pointer", displayMode === 'slider' ? "bg-purple-600 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
+                        >
+                          Vorher/Nachher-Schieber
+                        </button>
+                      </div>
+                    </div>
+
+                    {displayMode === 'side-by-side' && (
+                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-text-muted">
+                        <span>Split:</span>
+                        {[
+                          { val: 50, label: '50:50' },
+                          { val: 40, label: '40:60' },
+                          { val: 60, label: '60:40' },
+                          { val: 30, label: '30:70' },
+                          { val: 70, label: '70:30' }
+                        ].map(r => (
+                          <button
+                            key={r.val}
+                            type="button"
+                            onClick={() => handleUpdateImageSettings('splitRatio', r.val)}
+                            className={cn("px-2 py-0.5 rounded border transition-colors cursor-pointer", splitRatio === r.val ? "bg-purple-500/20 text-purple-300 border-purple-500/40" : "bg-surface border-border text-text-muted hover:text-text-primary")}
+                          >
+                            {r.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* SLIDER DISPLAY MODE */}
+                {displayMode === 'slider' ? (
+                  <div
+                    className={cn(
+                      "w-full flex-1 rounded-2xl overflow-hidden relative select-none shadow-xl border cursor-ew-resize min-h-[300px]",
+                      isDarkTheme ? "border-white/10 bg-black/40" : "border-black/10 bg-black/5"
+                    )}
+                    style={{ borderRadius: `${maskRadius}px` }}
+                    onMouseMove={(e) => {
+                      if (e.buttons === 1) {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const x = e.clientX - rect.left;
+                        const pct = Math.max(5, Math.min(95, Math.round((x / rect.width) * 100)));
+                        handleUpdateImageSettings('sliderPos', pct);
+                      }
+                    }}
+                    onClick={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const x = e.clientX - rect.left;
+                      const pct = Math.max(5, Math.min(95, Math.round((x / rect.width) * 100)));
+                      handleUpdateImageSettings('sliderPos', pct);
+                    }}
+                  >
+                    {/* BASE IMAGE (AFTER / NACHHER) */}
+                    {sanitizeUrl(img1) ? (
+                      <img src={sanitizeUrl(img1)} alt={cap1} className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
+                    ) : (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-zinc-400 bg-zinc-900/60">
+                        <ImageIcon size={32} className="mb-2 opacity-50" />
+                        <span className="text-xs font-bold uppercase tracking-wider">{cap1 || 'Bild 2 (Nachher)'}</span>
+                        {!isPreviewMode && (
+                          <div className="flex gap-2 mt-3">
+                            <button type="button" onClick={(e) => { e.stopPropagation(); triggerSlideImageUpload(slide.id, 1); }} className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow"><Upload size={12} /> Hochladen</button>
+                            <button type="button" onClick={(e) => { e.stopPropagation(); openMediaPicker('render', t('choose_image'), 'slide', { slideId: slide.id, imageIndex: 1 }); }} className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 border border-white/20 cursor-pointer"><ImageIcon size={12} /> Medien</button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <span className="absolute top-4 right-4 px-3 py-1 bg-purple-600/90 backdrop-blur-md text-white text-xs font-black rounded-full z-10 shadow-lg">
+                      {cap1 || 'Nachher'}
+                    </span>
+
+                    {/* OVERLAY CLIPPED IMAGE (BEFORE / VORHER) */}
+                    <div
+                      className="absolute inset-0 overflow-hidden pointer-events-none"
+                      style={{ clipPath: `polygon(0 0, ${sliderPos}% 0, ${sliderPos}% 100%, 0 100%)` }}
+                    >
+                      {sanitizeUrl(img0) ? (
+                        <img src={sanitizeUrl(img0)} alt={cap0} className="absolute inset-0 w-full h-full object-cover" />
+                      ) : (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-zinc-400 bg-zinc-800/80">
+                          <ImageIcon size={32} className="mb-2 opacity-50" />
+                          <span className="text-xs font-bold uppercase tracking-wider">{cap0 || 'Bild 1 (Vorher)'}</span>
+                          {!isPreviewMode && (
+                            <div className="flex gap-2 mt-3 pointer-events-auto">
+                              <button type="button" onClick={(e) => { e.stopPropagation(); triggerSlideImageUpload(slide.id, 0); }} className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow"><Upload size={12} /> Hochladen</button>
+                              <button type="button" onClick={(e) => { e.stopPropagation(); openMediaPicker('render', t('choose_image'), 'slide', { slideId: slide.id, imageIndex: 0 }); }} className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 border border-white/20 cursor-pointer"><ImageIcon size={12} /> Medien</button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      <span className="absolute top-4 left-4 px-3 py-1 bg-black/80 backdrop-blur-md text-white text-xs font-black rounded-full z-10 border border-white/20 shadow-lg pointer-events-auto">
+                        {cap0 || 'Vorher'}
+                      </span>
+                    </div>
+
+                    {/* SLIDER LINE & HANDLE */}
+                    <div
+                      className="absolute top-0 bottom-0 w-1 bg-white shadow-[0_0_15px_rgba(255,255,255,1)] pointer-events-none z-20"
+                      style={{ left: `${sliderPos}%` }}
+                    >
+                      <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white text-zinc-950 shadow-2xl flex items-center justify-center font-black text-xs border border-zinc-300">
+                        ↔
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* SIDE-BY-SIDE MODE */
+                  <div className="flex flex-row w-full flex-1 gap-4 items-stretch overflow-hidden">
+                    {/* IMAGE 1 SLOT */}
+                    <div
+                      style={{ width: `calc(${splitRatio}% - 8px)` }}
+                      className="flex flex-col h-full group/slot1"
+                    >
+                      <div
+                        style={{ borderRadius: `${maskRadius}px` }}
+                        className={cn(
+                          "w-full flex-1 overflow-hidden relative border transition-all flex flex-col items-center justify-center min-h-[220px]",
+                          getAspectClass(),
+                          !isPreviewMode && !sanitizeUrl(img0) && "border-2 border-dashed",
+                          isDarkTheme ? "bg-black/20 border-white/10 hover:border-purple-500/40" : "bg-black/5 border-black/10 hover:border-purple-500/40"
+                        )}
+                      >
+                        {sanitizeUrl(img0) ? (
+                          <>
+                            <img src={sanitizeUrl(img0)} alt={cap0} className="w-full h-full object-cover absolute pointer-events-none" />
+                            {!isPreviewMode && (
+                              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/slot1:opacity-100 transition-opacity flex items-center justify-center gap-2 z-20 p-2">
+                                <button type="button" onClick={() => triggerSlideImageUpload(slide.id, 0)} className="px-2.5 py-1.5 bg-purple-600 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 shadow hover:bg-purple-500 cursor-pointer"><Upload size={12}/> Tauschen</button>
+                                <button type="button" onClick={() => openMediaPicker('render', t('choose_image'), 'slide', { slideId: slide.id, imageIndex: 0 })} className="px-2.5 py-1.5 bg-white/20 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 border border-white/30 hover:bg-white/30 cursor-pointer"><ImageIcon size={12}/> Medien</button>
+                                <button type="button" onClick={() => handleRemoveSlot(0)} className="p-1.5 bg-red-600 text-white rounded-lg text-[11px] hover:bg-red-500 cursor-pointer shadow"><Trash2 size={13}/></button>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          !isPreviewMode && (
+                            <div className="flex flex-col items-center justify-center text-zinc-500 gap-2 p-4 text-center">
+                              <ImageIcon size={28} className="text-purple-400/70 mb-1" />
+                              <span className="text-[11px] font-bold uppercase tracking-wider text-text-primary">Bild 1 (Links)</span>
+                              <div className="flex items-center gap-1.5 mt-1">
+                                <button type="button" onClick={() => triggerSlideImageUpload(slide.id, 0)} className="px-3 py-1.5 rounded-lg bg-purple-600 text-white text-[11px] font-bold flex items-center gap-1 hover:bg-purple-500 transition-all cursor-pointer shadow"><Upload size={12} /> Hochladen</button>
+                                <button type="button" onClick={() => openMediaPicker('render', t('choose_image'), 'slide', { slideId: slide.id, imageIndex: 0 })} className="px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-text-primary border border-border text-[11px] font-bold flex items-center gap-1 cursor-pointer"><ImageIcon size={12} /> Medien</button>
+                              </div>
+                            </div>
+                          )
+                        )}
+                      </div>
+
+                      {/* CAPTION 1 */}
+                      <div className="mt-2 px-1">
+                        {!isPreviewMode ? (
+                          <input
+                            type="text"
+                            value={cap0}
+                            onChange={(e) => handleUpdateCaption(0, e.target.value)}
+                            placeholder="Beschriftung Bild 1 (z. B. Vorher / Bestand)..."
+                            className={cn("w-full bg-transparent outline-none text-xs font-bold border-b border-transparent focus:border-purple-500 transition-colors pb-0.5", tc)}
+                          />
+                        ) : (
+                          cap0 && <div className={cn("text-xs font-bold truncate opacity-80", tc)}>{cap0}</div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* IMAGE 2 SLOT */}
+                    <div
+                      style={{ width: `calc(${100 - splitRatio}% - 8px)` }}
+                      className="flex flex-col h-full group/slot2"
+                    >
+                      <div
+                        style={{ borderRadius: `${maskRadius}px` }}
+                        className={cn(
+                          "w-full flex-1 overflow-hidden relative border transition-all flex flex-col items-center justify-center min-h-[220px]",
+                          getAspectClass(),
+                          !isPreviewMode && !sanitizeUrl(img1) && "border-2 border-dashed",
+                          isDarkTheme ? "bg-black/20 border-white/10 hover:border-purple-500/40" : "bg-black/5 border-black/10 hover:border-purple-500/40"
+                        )}
+                      >
+                        {sanitizeUrl(img1) ? (
+                          <>
+                            <img src={sanitizeUrl(img1)} alt={cap1} className="w-full h-full object-cover absolute pointer-events-none" />
+                            {!isPreviewMode && (
+                              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/slot2:opacity-100 transition-opacity flex items-center justify-center gap-2 z-20 p-2">
+                                <button type="button" onClick={() => triggerSlideImageUpload(slide.id, 1)} className="px-2.5 py-1.5 bg-purple-600 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 shadow hover:bg-purple-500 cursor-pointer"><Upload size={12}/> Tauschen</button>
+                                <button type="button" onClick={() => openMediaPicker('render', t('choose_image'), 'slide', { slideId: slide.id, imageIndex: 1 })} className="px-2.5 py-1.5 bg-white/20 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 border border-white/30 hover:bg-white/30 cursor-pointer"><ImageIcon size={12}/> Medien</button>
+                                <button type="button" onClick={() => handleRemoveSlot(1)} className="p-1.5 bg-red-600 text-white rounded-lg text-[11px] hover:bg-red-500 cursor-pointer shadow"><Trash2 size={13}/></button>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          !isPreviewMode && (
+                            <div className="flex flex-col items-center justify-center text-zinc-500 gap-2 p-4 text-center">
+                              <ImageIcon size={28} className="text-purple-400/70 mb-1" />
+                              <span className="text-[11px] font-bold uppercase tracking-wider text-text-primary">Bild 2 (Rechts)</span>
+                              <div className="flex items-center gap-1.5 mt-1">
+                                <button type="button" onClick={() => triggerSlideImageUpload(slide.id, 1)} className="px-3 py-1.5 rounded-lg bg-purple-600 text-white text-[11px] font-bold flex items-center gap-1 hover:bg-purple-500 transition-all cursor-pointer shadow"><Upload size={12} /> Hochladen</button>
+                                <button type="button" onClick={() => openMediaPicker('render', t('choose_image'), 'slide', { slideId: slide.id, imageIndex: 1 })} className="px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-text-primary border border-border text-[11px] font-bold flex items-center gap-1 cursor-pointer"><ImageIcon size={12} /> Medien</button>
+                              </div>
+                            </div>
+                          )
+                        )}
+                      </div>
+
+                      {/* CAPTION 2 */}
+                      <div className="mt-2 px-1">
+                        {!isPreviewMode ? (
+                          <input
+                            type="text"
+                            value={cap1}
+                            onChange={(e) => handleUpdateCaption(1, e.target.value)}
+                            placeholder="Beschriftung Bild 2 (z. B. Nachher / Realisierung)..."
+                            className={cn("w-full bg-transparent outline-none text-xs font-bold border-b border-transparent focus:border-purple-500 transition-colors pb-0.5", tc)}
+                          />
+                        ) : (
+                          cap1 && <div className={cn("text-xs font-bold truncate opacity-80", tc)}>{cap1}</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* 3-BILDER-GALERIE (TRIPTYCHON / HERO + 2) */}
+          {slide.layout === 'three-images' && (() => {
+            const img0 = slide.dataPayload?.images?.[0] || slide.imageUrl || '';
+            const img1 = slide.dataPayload?.images?.[1] || slide.compareImageUrl || '';
+            const img2 = slide.dataPayload?.images?.[2] || '';
+            const cap0 = slide.dataPayload?.captions?.[0] ?? 'Perspektive 1';
+            const cap1 = slide.dataPayload?.captions?.[1] ?? 'Perspektive 2';
+            const cap2 = slide.dataPayload?.captions?.[2] ?? 'Perspektive 3';
+            const galleryMode = slide.dataPayload?.galleryMode || 'columns';
+            const maskRadius = slide.dataPayload?.maskRadius ?? 16;
+
+            const handleUpdateCaption = (index: number, val: string) => {
+              const curCaps = [...(slide.dataPayload?.captions || ['Perspektive 1', 'Perspektive 2', 'Perspektive 3'])];
+              curCaps[index] = val;
+              handleUpdateImageSettings('captions', curCaps);
+            };
+
+            const handleRemoveSlot = (index: number) => {
+              const curImgs = [...(slide.dataPayload?.images || [slide.imageUrl || '', slide.compareImageUrl || '', ''])];
+              curImgs[index] = '';
+              const newPayload = { ...(slide.dataPayload || {}), images: curImgs };
+              const updatedSlide: any = { ...slide, dataPayload: newPayload };
+              if (index === 0) updatedSlide.imageUrl = '';
+              if (index === 1) updatedSlide.compareImageUrl = '';
+              setSlides(prev => prev.map(s => s.id === slide.id ? updatedSlide : s));
+              supabase.from('slides').update(serializeSlideForDb(updatedSlide)).eq('id', slide.id).then();
+            };
+
+            const renderSlotCard = (index: number, imgUrl: string, captionText: string, label: string) => (
+              <div key={index} className="flex flex-col h-full flex-1 min-w-0 group/slot">
+                <div
+                  style={{ borderRadius: `${maskRadius}px` }}
+                  className={cn(
+                    "w-full flex-1 overflow-hidden relative border transition-all flex flex-col items-center justify-center min-h-[140px]",
+                    !isPreviewMode && !sanitizeUrl(imgUrl) && "border-2 border-dashed",
+                    isDarkTheme ? "bg-black/20 border-white/10 hover:border-purple-500/40" : "bg-black/5 border-black/10 hover:border-purple-500/40"
+                  )}
+                >
+                  {sanitizeUrl(imgUrl) ? (
+                    <>
+                      <img src={sanitizeUrl(imgUrl)} alt={captionText} className="w-full h-full object-cover absolute pointer-events-none" />
+                      {!isPreviewMode && (
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/slot:opacity-100 transition-opacity flex items-center justify-center gap-1.5 z-20 p-2">
+                          <button type="button" onClick={() => triggerSlideImageUpload(slide.id, index)} className="p-1.5 bg-purple-600 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 shadow hover:bg-purple-500 cursor-pointer"><Upload size={11}/> Tauschen</button>
+                          <button type="button" onClick={() => openMediaPicker('render', t('choose_image'), 'slide', { slideId: slide.id, imageIndex: index })} className="p-1.5 bg-white/20 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 border border-white/30 hover:bg-white/30 cursor-pointer"><ImageIcon size={11}/></button>
+                          <button type="button" onClick={() => handleRemoveSlot(index)} className="p-1.5 bg-red-600 text-white rounded-lg text-[10px] hover:bg-red-500 cursor-pointer shadow"><Trash2 size={12}/></button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    !isPreviewMode && (
+                      <div className="flex flex-col items-center justify-center text-zinc-500 gap-1.5 p-3 text-center">
+                        <ImageIcon size={22} className="text-purple-400/70" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-text-primary truncate max-w-[120px]">{label}</span>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <button type="button" onClick={() => triggerSlideImageUpload(slide.id, index)} className="px-2 py-1 rounded bg-purple-600 text-white text-[10px] font-bold flex items-center gap-1 hover:bg-purple-500 transition-all cursor-pointer shadow"><Upload size={10} /> Upload</button>
+                          <button type="button" onClick={() => openMediaPicker('render', t('choose_image'), 'slide', { slideId: slide.id, imageIndex: index })} className="px-1.5 py-1 rounded bg-white/10 hover:bg-white/20 text-text-primary border border-border text-[10px] font-bold cursor-pointer"><ImageIcon size={10} /></button>
+                        </div>
+                      </div>
+                    )
+                  )}
+                </div>
+
+                {/* CAPTION */}
+                <div className="mt-1.5 px-0.5">
+                  {!isPreviewMode ? (
+                    <input
+                      type="text"
+                      value={captionText}
+                      onChange={(e) => handleUpdateCaption(index, e.target.value)}
+                      placeholder={`Beschriftung ${label}...`}
+                      className={cn("w-full bg-transparent outline-none text-xs font-bold border-b border-transparent focus:border-purple-500 transition-colors pb-0.5", tc)}
+                    />
+                  ) : (
+                    captionText && <div className={cn("text-xs font-bold truncate opacity-80", tc)}>{captionText}</div>
+                  )}
+                </div>
+              </div>
+            );
+
+            return (
+              <div className="w-full h-full flex flex-col justify-between">
+                {/* TOP TOGGLE (EDIT MODE ONLY) */}
+                {!isPreviewMode && (
+                  <div className="flex items-center justify-between mb-2 px-1 shrink-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Layout:</span>
+                      <div className="flex bg-black/10 dark:bg-white/10 rounded-lg p-0.5 border border-border">
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateImageSettings('galleryMode', 'columns')}
+                          className={cn("px-2.5 py-1 text-[11px] font-bold rounded-md transition-all cursor-pointer", galleryMode === 'columns' ? "bg-purple-600 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
+                        >
+                          3 Spalten (Triptychon)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateImageSettings('galleryMode', 'hero')}
+                          className={cn("px-2.5 py-1 text-[11px] font-bold rounded-md transition-all cursor-pointer", galleryMode === 'hero' ? "bg-purple-600 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
+                        >
+                          1 Hero + 2 Detail
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* COLUMNS MODE (3 EQUAL COLUMNS) */}
+                {galleryMode === 'columns' ? (
+                  <div className="grid grid-cols-3 gap-4 w-full flex-1 items-stretch overflow-hidden">
+                    {renderSlotCard(0, img0, cap0, 'Bild 1 (Links)')}
+                    {renderSlotCard(1, img1, cap1, 'Bild 2 (Mitte)')}
+                    {renderSlotCard(2, img2, cap2, 'Bild 3 (Rechts)')}
+                  </div>
+                ) : (
+                  /* HERO + 2 DETAIL MODE */
+                  <div className="flex flex-row w-full flex-1 gap-4 items-stretch overflow-hidden">
+                    {/* HERO LEFT (60%) */}
+                    <div className="w-[60%] h-full">
+                      {renderSlotCard(0, img0, cap0, 'Hero-Bild (Gross)')}
+                    </div>
+                    {/* DETAIL RIGHT (40% STACKED) */}
+                    <div className="w-[40%] h-full flex flex-col gap-3">
+                      <div className="flex-1 h-1/2 min-h-0">
+                        {renderSlotCard(1, img1, cap1, 'Detail 1 (Oben)')}
+                      </div>
+                      <div className="flex-1 h-1/2 min-h-0">
+                        {renderSlotCard(2, img2, cap2, 'Detail 2 (Unten)')}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+          
           {slide.layout === 'image-focus' && (
             <div onClick={() => !isPreviewMode && !slide.videoUrl && openMediaPicker('render', t('choose_image'), 'slide')} 
                  className={cn("w-full h-full rounded-xl md:rounded-2xl overflow-hidden relative group/img transition-colors flex flex-col items-center justify-center", 
@@ -3957,6 +4542,8 @@ export default function PitchDeckStudio({
                          <button type="button" onClick={() => handleAddSlide('full-image', t('full_image_slide'))} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-purple-500/40 text-purple-400 hover:bg-surface-hover flex items-center gap-3"><Maximize2 size={16}/> {t('full_image_slide')} (Hintergrund)</button>
                          <button type="button" onClick={() => handleAddSlide('title-only', t('new_vision'))} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-border hover:bg-surface-hover flex items-center gap-3"><Type size={16}/> {t('title_slide')}</button>
                          <button type="button" onClick={() => handleAddSlide('split', t('new_topic'))} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-border hover:bg-surface-hover flex items-center gap-3"><Columns size={16}/> {t('text_and_image')}</button>
+                         <button type="button" onClick={() => handleAddSlide('two-images', t('two_images_slide'))} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-border hover:bg-surface-hover flex items-center gap-3"><Layers size={16}/> {t('two_images_slide')} (Dual)</button>
+                         <button type="button" onClick={() => handleAddSlide('three-images', t('three_images_slide'))} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-border hover:bg-surface-hover flex items-center gap-3"><LayoutDashboard size={16}/> {t('three_images_slide')} (Triptychon)</button>
                          <button type="button" onClick={() => handleAddSlide('image-focus', t('image_slide'))} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-border hover:bg-surface-hover flex items-center gap-3"><ImageIcon size={16}/> {t('image_slide')}</button>
                          <button type="button" onClick={() => handleAddSlide('video-focus', 'Video-Präsentation')} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-border hover:bg-surface-hover flex items-center gap-3"><VideoIcon size={16}/> Video-Fokus (HD/4K)</button>
                          <button type="button" onClick={() => handleAddSlide('text-only', t('text_block'))} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-border hover:bg-surface-hover flex items-center gap-3"><Layout size={16}/> {t('text_block')}</button>
@@ -4281,6 +4868,8 @@ export default function PitchDeckStudio({
                     <button type="button" onClick={() => { handleAddSlide('full-image', t('full_image_slide')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-purple-400 hover:bg-purple-500/10 flex items-center gap-2"><Maximize2 size={14} className="text-purple-400"/> {t('full_image_slide')} (Hintergrund)</button>
                     <button type="button" onClick={() => { handleAddSlide('title-only', t('new_vision')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><Type size={14}/> {t('title_slide')}</button>
                     <button type="button" onClick={() => { handleAddSlide('split', t('new_topic')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><Columns size={14}/> {t('text_and_image')}</button>
+                    <button type="button" onClick={() => { handleAddSlide('two-images', t('two_images_slide')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><Layers size={14}/> {t('two_images_slide')} (Dual)</button>
+                    <button type="button" onClick={() => { handleAddSlide('three-images', t('three_images_slide')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><LayoutDashboard size={14}/> {t('three_images_slide')} (Triptychon)</button>
                     <button type="button" onClick={() => { handleAddSlide('image-focus', t('image_slide')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><ImageIcon size={14}/> {t('image_slide')}</button>
                     <button type="button" onClick={() => { handleAddSlide('video-focus', 'Video-Präsentation'); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><VideoIcon size={14}/> Video-Fokus (HD/4K)</button>
                     <button type="button" onClick={() => { handleAddSlide('text-only', 'Kernaussage & Statement'); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><FileText size={14}/> {t('text_block') || 'Nur Text'}</button>
@@ -4465,11 +5054,13 @@ export default function PitchDeckStudio({
                 
                 {activeSlide && (
                   <>
-                    {/* 7 FOLIEN-LAYOUTS */}
+                    {/* 9 FOLIEN-LAYOUTS */}
                     {[
                       { id: 'full-image', icon: Maximize2, title: 'Vollbild-Cover / Hintergrund' },
                       { id: 'title-only', icon: Type, title: 'Titel-Folie' },
                       { id: 'split', icon: Columns, title: 'Text & Bild' },
+                      { id: 'two-images', icon: Layers, title: '2-Bilder-Vergleich (Dual)' },
+                      { id: 'three-images', icon: LayoutDashboard, title: '3-Bilder-Galerie (Triptychon)' },
                       { id: 'image-focus', icon: ImageIcon, title: 'Bild-Fokus' },
                       { id: 'video-focus', icon: VideoIcon, title: 'Video-Fokus' },
                       { id: 'text-only', icon: Layout, title: 'Nur Text' },
@@ -4621,6 +5212,139 @@ export default function PitchDeckStudio({
                                   <span>Projekt-Medien</span>
                                 </button>
                               </div>
+
+                              {/* MASKEN-SKALIERUNG: SEITENVERHÄLTNIS / ASPECT */}
+                              <div className="space-y-1">
+                                <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block">Masken-Format</span>
+                                <div className="grid grid-cols-4 gap-1 bg-background border border-border rounded-xl p-1 text-[10px] font-bold">
+                                  {[
+                                    { id: 'cover', label: 'Füllend' },
+                                    { id: '16/9', label: '16:9' },
+                                    { id: '4/3', label: '4:3' },
+                                    { id: '1/1', label: '1:1' }
+                                  ].map((asp) => (
+                                    <button
+                                      key={asp.id}
+                                      type="button"
+                                      onClick={() => handleUpdateImageSettings('maskAspect', asp.id)}
+                                      className={cn(
+                                        "py-1 rounded-lg transition-all cursor-pointer text-center",
+                                        (activeSlide.dataPayload?.maskAspect || 'cover') === asp.id
+                                          ? "bg-purple-600 text-white shadow-sm"
+                                          : "text-text-muted hover:text-text-primary"
+                                      )}
+                                    >
+                                      {asp.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* ECKENABRUNDUNG (MASK RADIUS) */}
+                              <div className="space-y-1">
+                                <div className="flex justify-between items-center text-[10px] font-bold text-text-muted uppercase">
+                                  <span>Eckenabrundung</span>
+                                  <span className="text-purple-400 font-mono">{activeSlide.dataPayload?.maskRadius ?? 16}px</span>
+                                </div>
+                                <div className="grid grid-cols-4 gap-1 bg-background border border-border rounded-xl p-1 text-[10px] font-bold">
+                                  {[
+                                    { rad: 0, label: '0px' },
+                                    { rad: 8, label: '8px' },
+                                    { rad: 16, label: '16px' },
+                                    { rad: 24, label: '24px' }
+                                  ].map((r) => (
+                                    <button
+                                      key={r.rad}
+                                      type="button"
+                                      onClick={() => handleUpdateImageSettings('maskRadius', r.rad)}
+                                      className={cn(
+                                        "py-1 rounded-lg transition-all cursor-pointer text-center",
+                                        (activeSlide.dataPayload?.maskRadius ?? 16) === r.rad
+                                          ? "bg-purple-600 text-white shadow-sm"
+                                          : "text-text-muted hover:text-text-primary"
+                                      )}
+                                    >
+                                      {r.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* 2-BILDER-SPEZIFISCHE STEUERUNG (SPLIT RATIO & MODUS) */}
+                              {activeSlide.layout === 'two-images' && (
+                                <div className="space-y-1.5 border-t border-border pt-2">
+                                  <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block">Split-Verhältnis</span>
+                                  <div className="flex justify-between items-center text-[10px] font-bold text-text-muted uppercase">
+                                    <span>Verteilung</span>
+                                    <span className="text-purple-400 font-mono">{activeSlide.dataPayload?.splitRatio ?? 50}% : {100 - (activeSlide.dataPayload?.splitRatio ?? 50)}%</span>
+                                  </div>
+                                  <input
+                                    type="range"
+                                    min={20}
+                                    max={80}
+                                    step={5}
+                                    value={activeSlide.dataPayload?.splitRatio ?? 50}
+                                    onChange={(e) => handleUpdateImageSettings('splitRatio', Number(e.target.value))}
+                                    className="w-full accent-purple-500 cursor-pointer"
+                                  />
+                                  <div className="grid grid-cols-5 gap-1">
+                                    {[
+                                      { val: 50, label: '50:50' },
+                                      { val: 40, label: '40:60' },
+                                      { val: 60, label: '60:40' },
+                                      { val: 30, label: '30:70' },
+                                      { val: 70, label: '70:30' }
+                                    ].map((p) => (
+                                      <button
+                                        key={p.val}
+                                        type="button"
+                                        onClick={() => handleUpdateImageSettings('splitRatio', p.val)}
+                                        className={cn(
+                                          "py-1 rounded text-[9px] font-bold border transition-colors cursor-pointer text-center",
+                                          (activeSlide.dataPayload?.splitRatio ?? 50) === p.val
+                                            ? "bg-purple-500/20 text-purple-300 border-purple-500/40"
+                                            : "bg-background border-border text-text-muted hover:text-text-primary"
+                                        )}
+                                      >
+                                        {p.label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* 3-BILDER-SPEZIFISCHE STEUERUNG (GALERIE MODUS) */}
+                              {activeSlide.layout === 'three-images' && (
+                                <div className="space-y-1 border-t border-border pt-2">
+                                  <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block">Galerie-Modus</span>
+                                  <div className="grid grid-cols-2 gap-1 bg-background border border-border rounded-xl p-1 text-[11px] font-bold">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleUpdateImageSettings('galleryMode', 'columns')}
+                                      className={cn(
+                                        "py-1 rounded-lg transition-all cursor-pointer text-center",
+                                        (activeSlide.dataPayload?.galleryMode || 'columns') === 'columns'
+                                          ? "bg-purple-600 text-white shadow-sm"
+                                          : "text-text-muted hover:text-text-primary"
+                                      )}
+                                    >
+                                      3 Spalten
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleUpdateImageSettings('galleryMode', 'hero')}
+                                      className={cn(
+                                        "py-1 rounded-lg transition-all cursor-pointer text-center",
+                                        activeSlide.dataPayload?.galleryMode === 'hero'
+                                          ? "bg-purple-600 text-white shadow-sm"
+                                          : "text-text-muted hover:text-text-primary"
+                                      )}
+                                    >
+                                      1 Hero + 2 Detail
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
 
                               {/* EINPASSUNG: COVER VS CONTAIN */}
                               <div className="space-y-1">

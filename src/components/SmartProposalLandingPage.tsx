@@ -2924,6 +2924,134 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
                     </div>
                   )}
 
+                  {/* 2-BILDER-VERGLEICH (TWO-IMAGES) */}
+                  {slide.layout === 'two-images' && (() => {
+                    const img0 = slide.dataPayload?.images?.[0] || slide.imageUrl || '';
+                    const img1 = slide.dataPayload?.images?.[1] || slide.compareImageUrl || '';
+                    const cap0 = slide.dataPayload?.captions?.[0] ?? 'Vorher / Bestand';
+                    const cap1 = slide.dataPayload?.captions?.[1] ?? 'Nachher / Realisierung';
+                    const splitRatio = slide.dataPayload?.splitRatio ?? 50;
+                    const displayMode = slide.dataPayload?.displayMode || 'side-by-side';
+                    const maskRadius = slide.dataPayload?.maskRadius ?? 16;
+                    const sliderPos = beforeAfterPosMap[slide.id || sIdx] ?? slide.dataPayload?.sliderPos ?? 50;
+
+                    if (displayMode === 'slider') {
+                      return (
+                        <div className="space-y-4">
+                          <div 
+                            className={cn("rounded-2xl overflow-hidden aspect-video bg-black relative select-none cursor-ew-resize border shadow-md", isLight ? "border-slate-200" : "border-white/10")}
+                            style={{ borderRadius: `${maskRadius}px` }}
+                            onMouseMove={(e) => {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const x = e.clientX - rect.left;
+                              const pos = Math.max(5, Math.min(95, (x / rect.width) * 100));
+                              setBeforeAfterPosMap(prev => ({ ...prev, [slide.id || sIdx]: pos }));
+                            }}
+                            onTouchMove={(e) => {
+                              if (e.touches[0]) {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                const x = e.touches[0].clientX - rect.left;
+                                const pos = Math.max(5, Math.min(95, (x / rect.width) * 100));
+                                setBeforeAfterPosMap(prev => ({ ...prev, [slide.id || sIdx]: pos }));
+                              }
+                            }}
+                          >
+                            {img1 && <img src={img1} alt={cap1} className="absolute inset-0 w-full h-full object-cover pointer-events-none" />}
+                            <span className="absolute top-4 right-4 px-3 py-1 bg-purple-600/90 backdrop-blur-md text-white text-xs font-extrabold rounded-full z-10 shadow-lg">
+                              {cap1}
+                            </span>
+                            <div 
+                              className="absolute inset-0 overflow-hidden pointer-events-none"
+                              style={{ clipPath: `polygon(0 0, ${sliderPos}% 0, ${sliderPos}% 100%, 0 100%)` }}
+                            >
+                              {img0 && <img src={img0} alt={cap0} className="absolute inset-0 w-full h-full object-cover" />}
+                              <span className="absolute top-4 left-4 px-3 py-1 bg-black/80 backdrop-blur-md text-zinc-300 text-xs font-bold rounded-full z-10 border border-white/20">
+                                {cap0}
+                              </span>
+                            </div>
+                            <div 
+                              className="absolute top-0 bottom-0 w-1 bg-white shadow-[0_0_15px_rgba(255,255,255,1)] pointer-events-none z-20"
+                              style={{ left: `${sliderPos}%` }}
+                            >
+                              <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white text-zinc-950 shadow-2xl flex items-center justify-center font-black text-xs">
+                                ↔
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="flex flex-col sm:flex-row gap-4 items-stretch">
+                        <div style={{ width: `calc(${splitRatio}% - 8px)` }} className="w-full sm:w-auto flex flex-col flex-1">
+                          <div 
+                            style={{ borderRadius: `${maskRadius}px` }}
+                            className={cn("overflow-hidden aspect-video relative border shadow-sm", isLight ? "border-slate-200 bg-slate-100" : "border-white/10 bg-white/5")}
+                          >
+                            {img0 && <img src={img0} alt={cap0} className="w-full h-full object-cover" />}
+                          </div>
+                          {cap0 && <p className={cn("text-xs font-bold mt-1.5 px-0.5", isLight ? "text-slate-700" : "text-zinc-300")}>{cap0}</p>}
+                        </div>
+                        <div style={{ width: `calc(${100 - splitRatio}% - 8px)` }} className="w-full sm:w-auto flex flex-col flex-1">
+                          <div 
+                            style={{ borderRadius: `${maskRadius}px` }}
+                            className={cn("overflow-hidden aspect-video relative border shadow-sm", isLight ? "border-slate-200 bg-slate-100" : "border-white/10 bg-white/5")}
+                          >
+                            {img1 && <img src={img1} alt={cap1} className="w-full h-full object-cover" />}
+                          </div>
+                          {cap1 && <p className={cn("text-xs font-bold mt-1.5 px-0.5", isLight ? "text-slate-700" : "text-zinc-300")}>{cap1}</p>}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* 3-BILDER-GALERIE (THREE-IMAGES) */}
+                  {slide.layout === 'three-images' && (() => {
+                    const img0 = slide.dataPayload?.images?.[0] || slide.imageUrl || '';
+                    const img1 = slide.dataPayload?.images?.[1] || slide.compareImageUrl || '';
+                    const img2 = slide.dataPayload?.images?.[2] || '';
+                    const cap0 = slide.dataPayload?.captions?.[0] ?? 'Perspektive 1';
+                    const cap1 = slide.dataPayload?.captions?.[1] ?? 'Perspektive 2';
+                    const cap2 = slide.dataPayload?.captions?.[2] ?? 'Perspektive 3';
+                    const galleryMode = slide.dataPayload?.galleryMode || 'columns';
+                    const maskRadius = slide.dataPayload?.maskRadius ?? 16;
+
+                    const renderCard = (imgUrl: string, captionText: string) => (
+                      <div className="flex flex-col flex-1 min-w-0">
+                        <div 
+                          style={{ borderRadius: `${maskRadius}px` }}
+                          className={cn("overflow-hidden aspect-video relative border shadow-sm", isLight ? "border-slate-200 bg-slate-100" : "border-white/10 bg-white/5")}
+                        >
+                          {imgUrl && <img src={imgUrl} alt={captionText} className="w-full h-full object-cover" />}
+                        </div>
+                        {captionText && <p className={cn("text-xs font-bold mt-1 px-0.5", isLight ? "text-slate-700" : "text-zinc-300")}>{captionText}</p>}
+                      </div>
+                    );
+
+                    if (galleryMode === 'hero' || galleryMode === 'hero-stacked') {
+                      return (
+                        <div className="flex flex-col sm:flex-row gap-4 items-stretch">
+                          <div className="w-full sm:w-[60%]">
+                            {renderCard(img0, cap0)}
+                          </div>
+                          <div className="w-full sm:w-[40%] flex flex-col gap-3">
+                            {renderCard(img1, cap1)}
+                            {renderCard(img2, cap2)}
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        {renderCard(img0, cap0)}
+                        {renderCard(img1, cap1)}
+                        {renderCard(img2, cap2)}
+                      </div>
+                    );
+                  })()}
+
                   {slide.layout === 'image-focus' && slide.imageUrl && (
                     <div className={cn("rounded-2xl overflow-hidden aspect-video relative group border", isLight ? "border-slate-200 shadow-md" : "border-white/10")}>
                       <img 
@@ -3283,8 +3411,139 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
                     </div>
                   )}
 
+                  {/* Two Images Comparison Layout */}
+                  {activeDeckSlide.layout === 'two-images' && (() => {
+                    const img0 = activeDeckSlide.dataPayload?.images?.[0] || activeDeckSlide.imageUrl || '';
+                    const img1 = activeDeckSlide.dataPayload?.images?.[1] || activeDeckSlide.compareImageUrl || '';
+                    const cap0 = activeDeckSlide.dataPayload?.captions?.[0] ?? 'Vorher / Bestand';
+                    const cap1 = activeDeckSlide.dataPayload?.captions?.[1] ?? 'Nachher / Realisierung';
+                    const splitRatio = activeDeckSlide.dataPayload?.splitRatio ?? 50;
+                    const displayMode = activeDeckSlide.dataPayload?.displayMode || 'side-by-side';
+                    const maskRadius = activeDeckSlide.dataPayload?.maskRadius ?? 16;
+                    const sliderPos = beforeAfterPosMap[activeDeckSlide.id] ?? activeDeckSlide.dataPayload?.sliderPos ?? 50;
+
+                    if (displayMode === 'slider') {
+                      return (
+                        <div className="w-full h-full rounded-2xl overflow-hidden relative group/img bg-black flex flex-col items-center justify-center select-none shadow-2xl min-h-[340px] max-h-[420px]" style={{ borderRadius: `${maskRadius}px` }}>
+                          <div 
+                            className="relative w-full h-full cursor-ew-resize min-h-[340px]"
+                            onMouseMove={(e) => {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const x = e.clientX - rect.left;
+                              const pos = Math.max(5, Math.min(95, (x / rect.width) * 100));
+                              setBeforeAfterPosMap(prev => ({ ...prev, [activeDeckSlide.id]: pos }));
+                            }}
+                            onTouchMove={(e) => {
+                              if (e.touches[0]) {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                const x = e.touches[0].clientX - rect.left;
+                                const pos = Math.max(5, Math.min(95, (x / rect.width) * 100));
+                                setBeforeAfterPosMap(prev => ({ ...prev, [activeDeckSlide.id]: pos }));
+                              }
+                            }}
+                          >
+                            {img1 && <img src={img1} alt={cap1} className="absolute inset-0 w-full h-full object-cover pointer-events-none" />}
+                            <span className="absolute top-4 right-4 px-3 py-1 bg-purple-600/90 backdrop-blur-md text-white text-xs font-black rounded-full z-10 shadow-lg">
+                              {cap1}
+                            </span>
+                            <div 
+                              className="absolute inset-0 overflow-hidden pointer-events-none"
+                              style={{ clipPath: `polygon(0 0, ${sliderPos}% 0, ${sliderPos}% 100%, 0 100%)` }}
+                            >
+                              {img0 && <img src={img0} alt={cap0} className="absolute inset-0 w-full h-full object-cover" />}
+                              <span className="absolute top-4 left-4 px-3 py-1 bg-black/80 backdrop-blur-md text-zinc-300 text-xs font-bold rounded-full z-10 border border-white/20">
+                                {cap0}
+                              </span>
+                            </div>
+                            <div 
+                              className="absolute top-0 bottom-0 w-1 bg-white shadow-[0_0_15px_rgba(255,255,255,1)] pointer-events-none z-20"
+                              style={{ left: `${sliderPos}%` }}
+                            >
+                              <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white text-zinc-950 shadow-2xl flex items-center justify-center font-black text-xs">
+                                ↔
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="w-full h-full flex flex-row gap-4 items-stretch justify-center min-h-[300px]">
+                        <div style={{ width: `calc(${splitRatio}% - 8px)` }} className="flex flex-col h-full">
+                          <div 
+                            style={{ borderRadius: `${maskRadius}px` }}
+                            className={cn("w-full flex-1 overflow-hidden relative border shadow-md", isLight ? "border-slate-200 bg-slate-100" : "border-white/10 bg-white/5")}
+                          >
+                            {img0 && <img src={img0} alt={cap0} className="w-full h-full object-cover absolute" />}
+                          </div>
+                          {cap0 && <div className={cn("text-xs font-bold truncate opacity-80 mt-2 px-1 text-center", isLight ? "text-slate-800" : "text-white")}>{cap0}</div>}
+                        </div>
+                        <div style={{ width: `calc(${100 - splitRatio}% - 8px)` }} className="flex flex-col h-full">
+                          <div 
+                            style={{ borderRadius: `${maskRadius}px` }}
+                            className={cn("w-full flex-1 overflow-hidden relative border shadow-md", isLight ? "border-slate-200 bg-slate-100" : "border-white/10 bg-white/5")}
+                          >
+                            {img1 && <img src={img1} alt={cap1} className="w-full h-full object-cover absolute" />}
+                          </div>
+                          {cap1 && <div className={cn("text-xs font-bold truncate opacity-80 mt-2 px-1 text-center", isLight ? "text-slate-800" : "text-white")}>{cap1}</div>}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Three Images Gallery Layout */}
+                  {activeDeckSlide.layout === 'three-images' && (() => {
+                    const img0 = activeDeckSlide.dataPayload?.images?.[0] || activeDeckSlide.imageUrl || '';
+                    const img1 = activeDeckSlide.dataPayload?.images?.[1] || activeDeckSlide.compareImageUrl || '';
+                    const img2 = activeDeckSlide.dataPayload?.images?.[2] || '';
+                    const cap0 = activeDeckSlide.dataPayload?.captions?.[0] ?? 'Perspektive 1';
+                    const cap1 = activeDeckSlide.dataPayload?.captions?.[1] ?? 'Perspektive 2';
+                    const cap2 = activeDeckSlide.dataPayload?.captions?.[2] ?? 'Perspektive 3';
+                    const galleryMode = activeDeckSlide.dataPayload?.galleryMode || 'columns';
+                    const maskRadius = activeDeckSlide.dataPayload?.maskRadius ?? 16;
+
+                    const renderCard = (imgUrl: string, captionText: string) => (
+                      <div className="flex flex-col flex-1 h-full min-w-0">
+                        <div 
+                          style={{ borderRadius: `${maskRadius}px` }}
+                          className={cn("w-full flex-1 overflow-hidden relative border shadow-md min-h-[120px]", isLight ? "border-slate-200 bg-slate-100" : "border-white/10 bg-white/5")}
+                        >
+                          {imgUrl && <img src={imgUrl} alt={captionText} className="w-full h-full object-cover absolute" />}
+                        </div>
+                        {captionText && <div className={cn("text-xs font-bold truncate opacity-80 mt-1.5 px-0.5 text-center", isLight ? "text-slate-800" : "text-white")}>{captionText}</div>}
+                      </div>
+                    );
+
+                    if (galleryMode === 'hero' || galleryMode === 'hero-stacked') {
+                      return (
+                        <div className="w-full h-full flex flex-row gap-4 items-stretch min-h-[300px]">
+                          <div className="w-[60%] h-full">
+                            {renderCard(img0, cap0)}
+                          </div>
+                          <div className="w-[40%] h-full flex flex-col gap-3">
+                            <div className="flex-1 h-1/2 min-h-0">
+                              {renderCard(img1, cap1)}
+                            </div>
+                            <div className="flex-1 h-1/2 min-h-0">
+                              {renderCard(img2, cap2)}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="w-full h-full grid grid-cols-3 gap-4 items-stretch min-h-[300px]">
+                        {renderCard(img0, cap0)}
+                        {renderCard(img1, cap1)}
+                        {renderCard(img2, cap2)}
+                      </div>
+                    );
+                  })()}
+
                   {/* Fallback Layout */}
-                  {activeDeckSlide.layout !== 'split' && activeDeckSlide.layout !== 'video-focus' && activeDeckSlide.layout !== 'data-budget' && activeDeckSlide.layout !== 'team-grid' && activeDeckSlide.layout !== 'image-focus' && activeDeckSlide.layout !== 'before-after' && activeDeckSlide.layout !== 'chart-donut' && activeDeckSlide.layout !== 'full-image' && (
+                  {activeDeckSlide.layout !== 'split' && activeDeckSlide.layout !== 'video-focus' && activeDeckSlide.layout !== 'data-budget' && activeDeckSlide.layout !== 'team-grid' && activeDeckSlide.layout !== 'image-focus' && activeDeckSlide.layout !== 'before-after' && activeDeckSlide.layout !== 'chart-donut' && activeDeckSlide.layout !== 'full-image' && activeDeckSlide.layout !== 'two-images' && activeDeckSlide.layout !== 'three-images' && (
                     <div className="text-center space-y-4 max-w-2xl mx-auto">
                       <h3 className={cn("text-3xl font-extrabold", isLight ? "text-slate-900" : "text-white")}>{getTranslatedSlideTitle(activeDeckSlide.title)}</h3>
                       <p className={cn("text-base leading-relaxed whitespace-pre-wrap", isLight ? "text-slate-700" : "text-zinc-300")}>{getTranslatedSlideContent(activeDeckSlide.content)}</p>

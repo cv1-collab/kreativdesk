@@ -4,11 +4,12 @@ export interface Slide {
   content: string; 
   imageUrl?: string; 
   videoUrl?: string;
+  compareImageUrl?: string;
   order_index: number; 
   ownerId: string; 
   companyId?: string; 
   projectId?: string; 
-  layout?: 'title-only' | 'split' | 'image-focus' | 'video-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid' | 'chart-donut' | 'table-of-contents' | 'budget-comparison' | 'full-image'; 
+  layout?: 'title-only' | 'split' | 'image-focus' | 'video-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid' | 'chart-donut' | 'table-of-contents' | 'budget-comparison' | 'full-image' | 'two-images' | 'three-images'; 
   fontSize?: number; 
   titleFontSize?: number;
   dataPayload?: any; 
@@ -46,6 +47,7 @@ export const serializeSlideForDb = (slide: Partial<Slide> & { [key: string]: any
     slide.stamp !== undefined ||
     slide.agendaItems !== undefined ||
     slide.agenda_items !== undefined ||
+    slide.compareImageUrl !== undefined ||
     slide.videoUrl !== undefined;
 
   if (hasExtra) {
@@ -57,6 +59,7 @@ export const serializeSlideForDb = (slide: Partial<Slide> & { [key: string]: any
       titleFontSize: slide.titleFontSize,
       stamp: slide.stamp,
       agendaItems: slide.agendaItems || slide.agenda_items,
+      compareImageUrl: slide.compareImageUrl,
       videoUrl: slide.videoUrl
     });
   } else if (slide.content !== undefined) {
@@ -76,6 +79,7 @@ export const deserializeSlideFromDb = (d: any, fallbackOwnerId?: string): Slide 
   let stamp = d.stamp || '';
   let agendaItems = d.agenda_items || d.agendaItems || null;
   let videoUrl = d.video_url || d.videoUrl;
+  let compareImageUrl = d.compare_image_url || d.compareImageUrl;
 
   if (typeof d.content === 'string' && d.content.trim().startsWith('{')) {
     try {
@@ -89,6 +93,7 @@ export const deserializeSlideFromDb = (d: any, fallbackOwnerId?: string): Slide 
         if ('stamp' in envelope) stamp = envelope.stamp;
         if ('agendaItems' in envelope) agendaItems = envelope.agendaItems;
         if ('videoUrl' in envelope) videoUrl = envelope.videoUrl;
+        if ('compareImageUrl' in envelope) compareImageUrl = envelope.compareImageUrl;
       }
     } catch(e) {}
   }
@@ -99,6 +104,7 @@ export const deserializeSlideFromDb = (d: any, fallbackOwnerId?: string): Slide 
     content: contentText,
     imageUrl: d.image_url || d.imageUrl || '',
     videoUrl,
+    compareImageUrl,
     layout: d.layout || 'split',
     order_index: d.order_index ?? 0,
     companyId: d.company_id || d.companyId,
