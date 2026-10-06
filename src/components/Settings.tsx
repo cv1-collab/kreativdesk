@@ -4,7 +4,7 @@ import {
   User as LucideUser, Shield as LucideShield, Camera as LucideCamera, 
   Loader2, CheckCircle2, Phone as LucidePhone, MapPin as LucideMapPin, 
   KeyRound, ArrowLeft, Download as LucideDownload, AlertTriangle, 
-  Trash2, ExternalLink 
+  Trash2, ExternalLink, Upload 
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -93,7 +93,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 };
 
 export default function Settings() {
-  const { currentUser } = useAuth();
+  const { currentUser, updateCurrentUser } = useAuth();
   const navigate = useNavigate();
   const { addToast } = useToast();
   const { language, t: globalT } = useLanguage();
@@ -189,11 +189,39 @@ export default function Settings() {
       if (upErr) throw upErr;
       const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
       const photoURL = pubData.publicUrl;
-      await supabase.from('profiles').update({ updated_at: new Date().toISOString() }).eq('id', currentUser.uid);
+      await supabase.from('profiles').update({ photo_url: photoURL, avatar: photoURL, updated_at: new Date().toISOString() } as any).eq('id', currentUser.uid);
+      if (currentUser?.email) {
+        await supabase.from('company_users').update({ avatar: photoURL } as any).eq('email', currentUser.email);
+      }
       if (photoURL) safeStorage.setItem(`avatar_${currentUser.uid}`, photoURL);
+      if (updateCurrentUser) {
+        updateCurrentUser({ photoURL } as any);
+      }
       addToast(t('upload_success'), 'success');
     } catch (error) {
       addToast(t('upload_failed'), 'error');
+    } finally {
+      setIsUploadingPhoto(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    if (!currentUser) return;
+    setIsUploadingPhoto(true);
+    try {
+      await supabase.from('profiles').update({ photo_url: null, avatar: null, updated_at: new Date().toISOString() } as any).eq('id', currentUser.uid);
+      if (currentUser?.email) {
+        await supabase.from('company_users').update({ avatar: null } as any).eq('email', currentUser.email);
+      }
+      safeStorage.removeItem(`avatar_${currentUser.uid}`);
+      if (updateCurrentUser) {
+        updateCurrentUser({ photoURL: '' } as any);
+      }
+      addToast(currentLang === 'de' ? 'Profilbild erfolgreich entfernt!' : 'Profile picture removed successfully!', 'success');
+    } catch (error) {
+      console.error('Error removing photo:', error);
+      addToast(currentLang === 'de' ? 'Fehler beim Entfernen des Profilbilds.' : 'Error removing profile picture.', 'error');
     } finally {
       setIsUploadingPhoto(false);
     }
@@ -348,7 +376,7 @@ export default function Settings() {
           <div className="bg-surface rounded-2xl border border-border p-4 md:p-8 shadow-sm">
             <div className="flex flex-col md:flex-row gap-6 md:gap-8 items-center md:items-start">
               
-              <div className="flex flex-col items-center gap-4 shrink-0">
+              <div className="flex flex-col items-center gap-3 shrink-0">
                 <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-background border-2 border-border overflow-hidden relative group">
                   {sanitizeUrl(currentUser?.photoURL) ? (
                     <img src={sanitizeUrl(currentUser.photoURL)} alt="Avatar" className="w-full h-full object-cover" />
@@ -358,12 +386,33 @@ export default function Settings() {
                     </div>
                   )}
                   <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <button onClick={() => fileInputRef.current?.click()} className="text-white hover:scale-110 transition-transform">
+                    <button type="button" onClick={() => fileInputRef.current?.click()} className="text-white hover:scale-110 transition-transform cursor-pointer">
                       {isUploadingPhoto ? <Loader2 className="w-6 h-6 md:w-8 md:h-8 animate-spin" /> : <LucideCamera className="w-6 h-6 md:w-8 md:h-8" />}
                     </button>
                   </div>
                 </div>
                 <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" className="hidden" />
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploadingPhoto}
+                    className="px-3 py-1.5 bg-background border border-border hover:bg-white/5 text-text-primary rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                  >
+                    <Upload className="w-3.5 h-3.5" /> {currentLang === 'de' ? 'Bild ändern' : 'Change'}
+                  </button>
+                  {currentUser?.photoURL && (
+                    <button
+                      type="button"
+                      onClick={handleRemovePhoto}
+                      disabled={isUploadingPhoto}
+                      className="px-3 py-1.5 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-400 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                      title={currentLang === 'de' ? 'Profilbild entfernen' : 'Remove picture'}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" /> {currentLang === 'de' ? 'Entfernen' : 'Remove'}
+                    </button>
+                  )}
+                </div>
               </div>
 
               <form onSubmit={handleProfileUpdate} className="flex-1 space-y-4 w-full">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Scale, FileText, Upload, CheckCircle2, Loader2, Shield, Activity, AlertTriangle } from 'lucide-react';
+import { Scale, FileText, Upload, CheckCircle2, Loader2, Shield, Activity, AlertTriangle, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../../contexts/ToastContext';
 import { fetchSystemConfigJSON, saveSystemConfigJSON } from '../../utils/configHelper';
@@ -61,6 +61,19 @@ export default function AdminLegalTab() {
     }
   };
 
+  const handleRemove = async (docType: string) => {
+    try {
+      const newDocs = { ...legalDocs };
+      delete newDocs[docType];
+      await saveSystemConfigJSON('legal_documents', newDocs);
+      setLegalDocs(newDocs);
+      addToast('Rechtsdokument erfolgreich entfernt.', 'info');
+    } catch (error) {
+      console.error("Remove-Fehler:", error);
+      addToast('Fehler beim Entfernen des Dokuments.', 'error');
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <div className="bg-surface border border-border p-6 rounded-3xl shadow-sm">
@@ -111,14 +124,24 @@ export default function AdminLegalTab() {
                 </button>
 
                 {legalDocs[item.id]?.url && (
-                  <a 
-                    href={legalDocs[item.id].url} 
-                    target="_blank" 
-                    rel="noreferrer" 
-                    className="text-xs font-semibold text-emerald-500 hover:underline flex items-center gap-1"
-                  >
-                    <FileText size={14} /> Ansehen
-                  </a>
+                  <div className="flex items-center gap-3">
+                    <a 
+                      href={legalDocs[item.id].url} 
+                      target="_blank" 
+                      rel="noreferrer" 
+                      className="text-xs font-semibold text-emerald-500 hover:underline flex items-center gap-1"
+                    >
+                      <FileText size={14} /> Ansehen
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => handleRemove(item.id)}
+                      className="p-1.5 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                      title="Dokument entfernen"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

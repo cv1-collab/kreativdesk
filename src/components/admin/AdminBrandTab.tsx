@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { fetchSystemConfigJSON, saveSystemConfigJSON } from '../../utils/configHelper';
 import { applyBrandColor, resetBrandColor, DEFAULT_BRAND_COLOR, calculateBrandShades } from '../../utils/brandColorManager';
-import { Palette, Upload, Loader2, Image as ImageIcon, Building2, PaintBucket, Globe, Mail, Phone, MapPin, CreditCard, Hash, CheckCircle2, Megaphone, Lock, Sparkles, Link as LinkIcon, AlertTriangle, Info, ShieldAlert, RotateCcw, Eye } from 'lucide-react';
+import { Palette, Upload, Loader2, Image as ImageIcon, Building2, PaintBucket, Globe, Mail, Phone, MapPin, CreditCard, Hash, CheckCircle2, Megaphone, Lock, Sparkles, Link as LinkIcon, AlertTriangle, Info, ShieldAlert, RotateCcw, Eye, Trash2 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
 import { supabase } from '../../lib/supabase';
@@ -233,11 +233,23 @@ export default function AdminBrandTab() {
                   )}
                 </div>
                 <div className="space-y-2 flex-1">
-                  <label className="inline-flex items-center gap-2 px-4 py-2 bg-background border border-border/60 hover:bg-white/5 rounded-xl text-xs font-semibold text-text-primary cursor-pointer transition-colors shadow-sm">
-                    {isUploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-                    <span>Logo Datei Hochladen</span>
-                    <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
-                  </label>
+                  <div className="flex items-center gap-2">
+                    <label className="inline-flex items-center gap-2 px-4 py-2 bg-background border border-border/60 hover:bg-white/5 rounded-xl text-xs font-semibold text-text-primary cursor-pointer transition-colors shadow-sm">
+                      {isUploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                      <span>Logo Datei Hochladen</span>
+                      <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+                    </label>
+                    {config.masterLogo && (
+                      <button
+                        type="button"
+                        onClick={() => setConfig({ ...config, masterLogo: '' })}
+                        className="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
+                        title="Master-Logo entfernen"
+                      >
+                        <Trash2 size={14} /> Logo entfernen
+                      </button>
+                    )}
+                  </div>
                   <p className="text-[11px] text-text-muted">{t('upload_desc')}</p>
                 </div>
               </div>
@@ -552,6 +564,16 @@ export default function AdminBrandTab() {
                     onChange={(e) => setConfig({ ...config, screensaverImage: e.target.value })}
                     className="flex-1 px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
                   />
+                  {config.screensaverImage && (
+                    <button
+                      type="button"
+                      onClick={() => setConfig({ ...config, screensaverImage: '' })}
+                      className="px-3 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-xs font-semibold cursor-pointer transition-colors flex items-center gap-1 shrink-0"
+                      title="Screensaver-Bild entfernen"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                   <label className="px-4 py-2.5 bg-background border border-border/50 hover:bg-white/5 text-text-primary rounded-xl text-xs font-semibold cursor-pointer transition-all flex items-center gap-2 shrink-0">
                     <Upload size={14} className="text-amber-500" />
                     <span>Upload</span>
@@ -681,6 +703,16 @@ export default function AdminBrandTab() {
                   onChange={(e) => setConfig({ ...config, loginBgImage: e.target.value })}
                   className="flex-1 px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
                 />
+                {config.loginBgImage && (
+                  <button
+                    type="button"
+                    onClick={() => setConfig({ ...config, loginBgImage: '' })}
+                    className="px-3 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-xs font-semibold cursor-pointer transition-colors flex items-center gap-1 shrink-0"
+                    title="Login-Hintergrundbild entfernen"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
                 <label className="px-4 py-2.5 bg-background border border-border/50 hover:bg-white/5 text-text-primary rounded-xl text-xs font-semibold cursor-pointer transition-all flex items-center gap-2 shrink-0">
                   <Upload size={14} className="text-purple-400" />
                   <span>Upload</span>

@@ -7,6 +7,46 @@
 
 ## 🏆 Erfolgsliste von heute (6. Oktober 2026)
 
+### 0.0000000000000000 Systemweite System-Überprüfung: Bereinigung & Löschbarkeit aller Medien, Avatare, Logos und Dokumente (6. Oktober 2026)
+* **Problemstellung & Benutzer-Anforderung:**
+  * Der Benutzer forderte nach den Logo- und Typografie-Korrekturen im Pitch Deck Studio eine vollständige Überprüfung des gesamten Systems auf gleichartige Schwachstellen: «haben wir noch solche fehler im system? bitte alles überprüfen».
+* **Systemweites Audit & gefundene Schwachstellen:**
+  * Bei einer umfassenden Analyse aller Upload- und Medien-Funktionen im Codebase wurden 6 Stellen identifiziert, an denen Nutzer zwar Medien hochladen, diese aber anschliessend nicht mehr sauber löschen konnten oder wo das Entfernen nicht vollständig in Supabase und LocalStorage persistiert wurde:
+    1. **Mitarbeiter- & Benutzerprofil ([SettingsTab.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/SettingsTab.tsx)):** Es gab nur «Avatar ändern», aber keinen «Entfernen»-Button für das Profilbild, um auf die Standard-Initialen zurückzusetzen.
+    2. **Persönliche Einstellungen ([Settings.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/Settings.tsx)):** Beim Hover über den Avatar gab es nur den Kamera-Upload. `handlePhotoUpload` aktualisierte nur `updated_at`, ohne `photo_url` in der `profiles`-Tabelle zu speichern. Es fehlte eine sichtbare Schaltfläche zum Löschen des Bildes.
+    3. **Firmen-AGB & Datenschutzerklärung ([SettingsTab.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/SettingsTab.tsx)):** PDFs für AGB (`termsPdfUrl`) und Datenschutz (`privacyPdfUrl`) konnten hochgeladen und angesehen werden, aber es gab keine Möglichkeit, ein Dokument wieder zu entfernen.
+    4. **Team & CRM PDF Studio ([TeamCrmTab.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/TeamCrmTab.tsx)):** Nach dem Upload eines Firmenlogos für den PDF-Export gab es weder eine Bildvorschau noch eine Löschfunktion, um das Logo wieder aus dem PDF zu entfernen.
+    5. **Team & CRM Kontakte / Partner ([TeamCrmTab.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/TeamCrmTab.tsx)):** Im Kontakt-Modal gab es keinen Löschen-Button für den Avatar/Firmenlogo, und beim Speichern wurde ein geleerter Avatar nicht sauber auf `null` in Supabase gesetzt.
+    6. **Master Branding & Hintergrundbilder ([AdminBrandTab.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/admin/AdminBrandTab.tsx)):** Beim Master-Logo gab es keinen «Logo entfernen»-Button. Bei Screensaver- und Login-Hintergrundbildern fehlten Buttons zum schnellen Zurücksetzen/Leeren.
+    7. **Admin Rechtsdokumente ([AdminLegalTab.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/admin/AdminLegalTab.tsx)):** Hochgeladene PDFs (AGB, AVV, Datenschutz) konnten nicht mehr gelöscht werden.
+    8. **Onboarding-Assistent ([WelcomeOnboarding.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/WelcomeOnboarding.tsx)):** Ein gewähltes Profilbild konnte vor dem Abschluss nicht mehr abgewählt werden, und `photo_url` wurde in der Datenbank nicht mitgeschrieben.
+* **Umgesetzte Lösungen & Korrekturen:**
+  * **1. [SettingsTab.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/SettingsTab.tsx):**
+    * `handleRemoveAvatar`: Setzt `photo_url: null` und `avatar: null` in `profiles` & `company_users`, leert `safeStorage` und den Auth-State. Roter `Entfernen`-Button (`Trash2`) neben «Avatar ändern».
+    * `handleRemoveTerms` & `handleRemovePrivacy`: Leeren die URLs in `company_profile` und Supabase, inklusive rotem `Entfernen`-Button.
+  * **2. [Settings.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/Settings.tsx):**
+    * `handlePhotoUpload` persistiert nun `photo_url` und `avatar` vollständig in `profiles`, `company_users` und `safeStorage`.
+    * `handleRemovePhoto` entfernt das Profilbild rückstandslos.
+    * Sichtbare Buttons unter dem Avatar: «Bild ändern» und roter «Entfernen»-Button.
+  * **3. [TeamCrmTab.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/TeamCrmTab.tsx):**
+    * PDF Studio Export-Modal: Erscheint ein echtes Miniatur-Vorschaubild des hochgeladenen Logos zusammen mit einem roten `Trash2`-Button, um das Logo mit einem Klick aus dem PDF zu entfernen.
+    * Kontakt-Modal: Roter «Entfernen»-Button unter dem Bild. `handleAddContact` setzt `photo_url: null`, wenn der Avatar entfernt wurde.
+  * **4. [AdminBrandTab.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/admin/AdminBrandTab.tsx):**
+    * Roter `Trash2`-Button «Logo entfernen» für das Master-Logo.
+    * Schnelle Löschbuttons für individuelle Screensaver- und Login-Hintergründe.
+  * **5. [AdminLegalTab.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/admin/AdminLegalTab.tsx):**
+    * `handleRemove`: Löscht das hinterlegte Dokument aus `legalDocs` und speichert die Konfiguration in `system_config`. Roter Papierkorb neben «Ansehen».
+  * **6. [WelcomeOnboarding.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/WelcomeOnboarding.tsx):**
+    * `handleRemoveAvatar`: Setzt gewählte Bilddatei und Vorschau zurück. Roter `Trash2`-Button über dem Avatar-Kreis.
+    * `handleSubmit` persistiert `photo_url` und `avatar` zuverlässig in der Supabase `profiles`-Tabelle.
+* **Ergebnis der Verifikation:**
+  * **TypeScript (`tsc --noEmit`):** 0 Fehler.
+  * **Vitest Test Suite:** 82/82 Tests bestanden (15 Testdateien).
+  * **Vite & Server Build:** 100% fehlerfrei kompiliert (`dist/`).
+  * **Schweizer Rechtschreibung:** 100% konform (konsequentes «ss», kein «ß»).
+
+---
+
 ### 0.000000000000000 Pitch Deck Studio: Typografie-Werkzeuge (Fett / Normal), Logo-Löschfunktion & Clean-Image Folien (6. Oktober 2026)
 * **Problemstellung & Benutzer-Anforderung:**
   * Der Benutzer bemängelte fehlende Werkzeuge, um Pitch-Deck-Texte und Titel auf **Fett (Bold)** oder **Normal (Regular)** zu schalten: «und bei den pitch deck bitte anpassen das man texte auf bold oder regualr setzten kann fehlt auch als werkezuge oder so?».

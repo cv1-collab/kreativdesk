@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Camera, Check, Loader2, Sparkles } from 'lucide-react';
+import { Camera, Check, Loader2, Sparkles, Trash2 } from 'lucide-react';
 import { useTour } from '../contexts/TourContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -16,6 +16,13 @@ export default function WelcomeOnboarding({ currentUser, onComplete }: { current
   const [avatarPreview, setAvatarPreview] = useState<string>(currentUser?.photoURL || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState(1);
+
+  const handleRemoveAvatar = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setAvatar(null);
+    setAvatarPreview('');
+  };
 
   useEffect(() => {
     stopTour();
@@ -44,7 +51,7 @@ export default function WelcomeOnboarding({ currentUser, onComplete }: { current
     
     setIsSubmitting(true);
     try {
-      let photoURL = currentUser?.photoURL;
+      let photoURL = avatarPreview ? (currentUser?.photoURL || null) : null;
       const userId = currentUser?.id || currentUser?.uid;
       
       if (avatar && userId) {
@@ -67,11 +74,15 @@ export default function WelcomeOnboarding({ currentUser, onComplete }: { current
           .from('profiles')
           .update({
             name,
+            photo_url: photoURL,
+            avatar: photoURL,
             has_completed_onboarding: true
-          })
+          } as any)
           .eq('id', userId);
         updateCurrentUser({ name, photoURL, hasCompletedOnboarding: true });
         safeStorage.setItem(`onboarding_completed_${userId}`, 'true');
+        if (photoURL) safeStorage.setItem(`avatar_${userId}`, photoURL);
+        else safeStorage.removeItem(`avatar_${userId}`);
       }
 
       setStep(3);
@@ -131,10 +142,22 @@ export default function WelcomeOnboarding({ currentUser, onComplete }: { current
                       <span className="text-2xl font-bold">{name.charAt(0).toUpperCase() || 'U'}</span>
                     )}
                   </div>
-                  <label className="absolute bottom-0 right-0 p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full cursor-pointer shadow-md transition-colors">
-                    <Camera size={16} />
-                    <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
-                  </label>
+                  <div className="absolute -bottom-1 -right-1 flex items-center gap-1.5">
+                    <label className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full cursor-pointer shadow-md transition-colors" title={isGerman ? 'Foto hochladen' : 'Upload photo'}>
+                      <Camera size={15} />
+                      <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
+                    </label>
+                    {avatarPreview && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveAvatar}
+                        className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-full cursor-pointer shadow-md transition-colors"
+                        title={isGerman ? 'Foto entfernen' : 'Remove photo'}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 

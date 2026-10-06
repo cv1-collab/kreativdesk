@@ -769,6 +769,13 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
     }
   };
 
+  const handleRemoveAvatar = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setAvatarFile(null);
+    setAvatarPreview(null);
+    if (avatarInputRef.current) avatarInputRef.current.value = '';
+  };
+
   const handleAddContact = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newContact.isExternal) {
@@ -788,7 +795,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
     const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     try {
-      let photoURL = newContact.id ? selectedContact?.photoURL : null; 
+      let photoURL = !avatarPreview ? null : (newContact.id ? selectedContact?.photoURL : null); 
       
       if (avatarFile) {
         photoURL = await uploadFileWithFallback(avatarFile, avatarFile.name, safeCompanyId, 'crm_avatars');
@@ -2061,7 +2068,7 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                   {/* LINKE SPALTE: BILD / SCANNER / INFO */}
                   <div className="lg:col-span-1 space-y-5">
                     <div className="bg-surface border border-border/60 rounded-2xl p-6 flex flex-col items-center text-center shadow-sm">
-                      <div onClick={() => avatarInputRef.current?.click()} className={cn("relative w-24 h-24 bg-background border border-border flex items-center justify-center cursor-pointer group overflow-hidden mb-4 hover:border-accent-ai transition-colors", !newContact.isExternal ? "rounded-full" : "rounded-2xl")}>
+                      <div onClick={() => avatarInputRef.current?.click()} className={cn("relative w-24 h-24 bg-background border border-border flex items-center justify-center cursor-pointer group overflow-hidden mb-3 hover:border-accent-ai transition-colors", !newContact.isExternal ? "rounded-full" : "rounded-2xl")}>
                         {sanitizeUrl(avatarPreview) ? <img src={sanitizeUrl(avatarPreview)} alt="Preview" className="w-full h-full object-cover" /> : <Camera size={32} className="text-text-muted group-hover:text-accent-ai transition-colors" />}
                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Camera size={20} className="text-white"/></div>
                       </div>
@@ -2070,6 +2077,16 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                         {!newContact.isExternal ? t('team_photo') : t('company_logo_label')}
                       </h4>
                       <p className="text-xs text-text-muted mt-1 font-medium">{t('click_to_upload')}</p>
+                      {avatarPreview && (
+                        <button
+                          type="button"
+                          onClick={handleRemoveAvatar}
+                          className="mt-3 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                          title="Bild/Logo entfernen"
+                        >
+                          <Trash2 size={13} /> {t('delete') || 'Entfernen'}
+                        </button>
+                      )}
                     </div>
 
                     {!newContact.isExternal ? (
@@ -2500,10 +2517,31 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
               <div className="p-6 space-y-8 flex-1 overflow-y-auto custom-scrollbar">
                 <div className="space-y-3">
                   <label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('company_logo')}</label>
-                  <div className="border-2 border-dashed border-border/50 rounded-lg p-4 flex flex-col items-center justify-center text-center hover:bg-surface transition-colors cursor-pointer relative">
-                    <input type="file" accept="image/*" onChange={handlePdfLogoUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
-                    {pdfLogo ? <div className="text-xs text-emerald-400 font-bold">{t('logo_loaded')}</div> : <><ImageIcon size={24} className="text-text-muted mb-2" /><span className="text-xs text-text-muted font-medium">{t('upload_logo')}</span></>}
-                  </div>
+                  {pdfLogo ? (
+                    <div className="border border-border/60 rounded-xl p-3 bg-surface flex items-center justify-between gap-3 shadow-xs">
+                      <div className="w-14 h-14 bg-background rounded-lg border border-border/40 p-1 flex items-center justify-center overflow-hidden shrink-0">
+                        <img src={sanitizeUrl(pdfLogo)} alt="PDF Logo" className="w-full h-full object-contain" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-emerald-400 font-bold truncate">{t('logo_loaded') || 'Logo aktiv'}</div>
+                        <div className="text-[10px] text-text-muted truncate">Im PDF eingebunden</div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setPdfLogo(null)}
+                        className="p-2 text-red-400 hover:bg-red-500/10 border border-red-500/20 rounded-lg transition-colors cursor-pointer"
+                        title="Logo aus PDF entfernen"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="border-2 border-dashed border-border/50 rounded-lg p-4 flex flex-col items-center justify-center text-center hover:bg-surface transition-colors cursor-pointer relative">
+                      <input type="file" accept="image/*" onChange={handlePdfLogoUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
+                      <ImageIcon size={24} className="text-text-muted mb-2" />
+                      <span className="text-xs text-text-muted font-medium">{t('upload_logo')}</span>
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2"><label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('color')}</label><input type="color" value={themeColor} onChange={(e) => setThemeColor(e.target.value)} className="w-full h-9 bg-background border border-border/50 rounded-lg cursor-pointer px-1 py-1" /></div>
                 <div className="space-y-4">

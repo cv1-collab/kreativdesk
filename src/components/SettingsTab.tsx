@@ -715,6 +715,32 @@ export default function SettingsTab() {
     }
   };
 
+  const handleRemoveTerms = async () => {
+    setIsUploadingTerms(true);
+    try {
+      setTermsPdfUrl('');
+      await updateCompanyProfileConfig({ termsPdfUrl: '' });
+      addToast('AGB erfolgreich entfernt', 'info');
+    } catch (error: any) {
+      addToast(`Fehler beim Entfernen der AGB: ${error.message}`, 'error');
+    } finally {
+      setIsUploadingTerms(false);
+    }
+  };
+
+  const handleRemovePrivacy = async () => {
+    setIsUploadingPrivacy(true);
+    try {
+      setPrivacyPdfUrl('');
+      await updateCompanyProfileConfig({ privacyPdfUrl: '' });
+      addToast('Datenschutzrichtlinie erfolgreich entfernt', 'info');
+    } catch (error: any) {
+      addToast(`Fehler beim Entfernen der Datenschutzrichtlinie: ${error.message}`, 'error');
+    } finally {
+      setIsUploadingPrivacy(false);
+    }
+  };
+
   // Passwort zurücksetzen über Supabase Auth
   const handleResetPassword = async () => {
     if (!currentUser?.email) return;
@@ -990,9 +1016,16 @@ export default function SettingsTab() {
                   <div className="space-y-2 flex-1">
                     <h5 className="font-bold text-sm">AGB (Terms & Conditions)</h5>
                     <input type="file" ref={termsFileRef} onChange={handleTermsUpload} accept="application/pdf" className="hidden" />
-                    <button type="button" onClick={() => termsFileRef.current?.click()} disabled={isUploadingTerms} className="px-4 py-2 bg-background border border-border hover:bg-white/5 text-text-primary rounded-lg text-xs font-bold transition-colors flex items-center gap-2 shadow-sm">
-                      <Upload size={14} /> {termsPdfUrl ? 'AGB aktualisieren' : 'AGB hochladen (PDF)'}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button type="button" onClick={() => termsFileRef.current?.click()} disabled={isUploadingTerms} className="px-4 py-2 bg-background border border-border hover:bg-white/5 text-text-primary rounded-lg text-xs font-bold transition-colors flex items-center gap-2 shadow-sm cursor-pointer">
+                        <Upload size={14} /> {termsPdfUrl ? 'AGB aktualisieren' : 'AGB hochladen (PDF)'}
+                      </button>
+                      {termsPdfUrl && (
+                        <button type="button" onClick={handleRemoveTerms} disabled={isUploadingTerms} className="px-3 py-2 bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer" title="AGB entfernen">
+                          <Trash2 size={14} /> Entfernen
+                        </button>
+                      )}
+                    </div>
                     {termsPdfUrl && <a href={termsPdfUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-accent-ai hover:underline flex items-center gap-1"><ExternalLink size={10} /> Aktuelles Dokument ansehen</a>}
                   </div>
                 </div>
@@ -1004,9 +1037,16 @@ export default function SettingsTab() {
                   <div className="space-y-2 flex-1">
                     <h5 className="font-bold text-sm">Datenschutzrichtlinie (Privacy Policy)</h5>
                     <input type="file" ref={privacyFileRef} onChange={handlePrivacyUpload} accept="application/pdf" className="hidden" />
-                    <button type="button" onClick={() => privacyFileRef.current?.click()} disabled={isUploadingPrivacy} className="px-4 py-2 bg-background border border-border hover:bg-white/5 text-text-primary rounded-lg text-xs font-bold transition-colors flex items-center gap-2 shadow-sm">
-                      <Upload size={14} /> {privacyPdfUrl ? 'Datenschutz aktualisieren' : 'Datenschutz hochladen (PDF)'}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button type="button" onClick={() => privacyFileRef.current?.click()} disabled={isUploadingPrivacy} className="px-4 py-2 bg-background border border-border hover:bg-white/5 text-text-primary rounded-lg text-xs font-bold transition-colors flex items-center gap-2 shadow-sm cursor-pointer">
+                        <Upload size={14} /> {privacyPdfUrl ? 'Datenschutz aktualisieren' : 'Datenschutz hochladen (PDF)'}
+                      </button>
+                      {privacyPdfUrl && (
+                        <button type="button" onClick={handleRemovePrivacy} disabled={isUploadingPrivacy} className="px-3 py-2 bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer" title="Datenschutzrichtlinie entfernen">
+                          <Trash2 size={14} /> Entfernen
+                        </button>
+                      )}
+                    </div>
                     {privacyPdfUrl && <a href={privacyPdfUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-accent-ai hover:underline flex items-center gap-1"><ExternalLink size={10} /> Aktuelles Dokument ansehen</a>}
                   </div>
                 </div>
@@ -1797,6 +1837,27 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
     }
   };
 
+  const handleRemoveAvatar = async () => {
+    if (!currentUser) return;
+    setIsUploadingAvatar(true);
+    try {
+      await (supabase.from('profiles').update({ photo_url: null, avatar: null } as any) as any).eq('id', currentUser.uid);
+      if (currentUser?.email) {
+        await supabase.from('company_users').update({ avatar: null } as any).eq('email', currentUser.email);
+      }
+      safeStorage.removeItem(`avatar_${currentUser.uid}`);
+      if (updateCurrentUser) {
+        updateCurrentUser({ photoURL: '' } as any);
+      }
+      addToast('Profilbild erfolgreich entfernt!', 'success');
+    } catch (err: any) {
+      console.error('Avatar Remove Error:', err);
+      addToast(`Fehler beim Entfernen des Profilbilds: ${err.message || 'Fehler'}`, 'error');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPassword || newPassword.length < 6) {
@@ -1873,7 +1934,7 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
           </div>
         </div>
 
-        <div>
+        <div className="flex items-center gap-2">
           <input type="file" ref={avatarInputRef} onChange={handleAvatarUpload} accept="image/*" className="hidden" />
           <button
             type="button"
@@ -1883,6 +1944,17 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
           >
             <Upload size={14} /> {t('change_avatar')}
           </button>
+          {currentPhoto && (
+            <button
+              type="button"
+              onClick={handleRemoveAvatar}
+              disabled={isUploadingAvatar}
+              className="px-3 py-2 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-400 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+              title="Profilbild entfernen"
+            >
+              <Trash2 size={14} /> Entfernen
+            </button>
+          )}
         </div>
       </div>
 
