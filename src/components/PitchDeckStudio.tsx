@@ -10,7 +10,7 @@ import { supabase } from '../lib/supabase';
 import { 
   Sparkles, Image as ImageIcon, ImagePlus, X, Download, Plus, Trash2, 
   MonitorPlay, Layout, Type, Columns, Maximize2, 
-  ChevronUp, ChevronDown, Loader2, Settings, Eye, Users, DollarSign, 
+  ChevronUp, ChevronDown, Loader2, Settings, Eye, EyeOff, Users, DollarSign, 
   LayoutDashboard, Milestone, BookOpen, Palette, Map, Box, CheckSquare, Mail, Phone,
   AlertTriangle, PenTool, PieChart, CalendarDays, TrendingUp, RefreshCw, LogOut, Cuboid, Camera, Cloud,
   Layers, PaintBucket, DownloadCloud, ZoomIn, ZoomOut, Minus, FileText, FileEdit, Upload, ChevronLeft, ChevronRight, Play, Clock,
@@ -51,7 +51,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     import_defects: 'Import Defects & Tickets', import_whiteboard: 'Import Whiteboard Sketches', slides_count: 'Slides',
     standard_layouts: 'Standard Layouts', title_slide: 'Title Slide', text_and_image: 'Text & Image',
     two_images_slide: '2-Image Comparison', three_images_slide: '3-Image Gallery',
-    image_slide: 'Image Focus', full_image_slide: 'Full-Bleed Cover', image_tools: 'Image & Scaling', upload_image: 'Upload Image', text_block: 'Text Only', slide: 'Slide', preview_active: 'Preview Active',
+    image_slide: 'Image Focus', full_image_slide: 'Full-Bleed Cover', full_image_clean_slide: 'Full-Bleed Image (Clean / No Text)', image_tools: 'Image & Scaling', upload_image: 'Upload Image', text_block: 'Text Only', slide: 'Slide', preview_active: 'Preview Active',
     editor_mode: 'Editor Mode', typo_size: 'Font Size', export_pdf_native: 'PDF Export',
     no_slide_selected: 'No slide selected.', select_project: 'Please select a project first.',
     budget_imported: 'Budget imported!', team_imported: 'Team imported!', roadmap_imported: 'Calendar imported!',
@@ -120,7 +120,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     import_defects: 'Mängel & Tickets', import_whiteboard: 'Whiteboard Skizzen', slides_count: 'Folien',
     standard_layouts: 'Standard Layouts', title_slide: 'Titel-Folie', text_and_image: 'Text & Bild',
     two_images_slide: '2-Bilder-Vergleich', three_images_slide: '3-Bilder-Galerie',
-    image_slide: 'Bild-Fokus', full_image_slide: 'Vollbild-Cover', image_tools: 'Bild & Skalierung', upload_image: 'Bild hochladen', text_block: 'Nur Text', slide: 'Folie', preview_active: 'Vorschau Aktiv',
+    image_slide: 'Bild-Fokus', full_image_slide: 'Vollbild-Cover', full_image_clean_slide: 'Ganzseitiges Bild (Clean / Ohne Text)', image_tools: 'Bild & Skalierung', upload_image: 'Bild hochladen', text_block: 'Nur Text', slide: 'Folie', preview_active: 'Vorschau Aktiv',
     editor_mode: 'Editor Modus', typo_size: 'Schriftgrösse', export_pdf_native: 'PDF Export',
     no_slide_selected: 'Keine Folie ausgewählt.', select_project: 'Bitte wähle zuerst ein Projekt.',
     budget_imported: 'Budget importiert!', team_imported: 'Team importiert!', roadmap_imported: 'Terminplan importiert!',
@@ -480,6 +480,18 @@ export default function PitchDeckStudio({
           { label: 'BKP 291 Honorare & Umgebungsarbeiten', value: 1250000, color: '#f59e0b' }
         ]
       };
+    } else if (newLayout === 'full-image-clean') {
+      updatedPayload = {
+        ...updatedPayload,
+        hideTextOverlay: true,
+        overlayOpacity: updatedPayload.overlayOpacity !== undefined ? updatedPayload.overlayOpacity : 0
+      };
+    } else if (newLayout === 'full-image') {
+      updatedPayload = {
+        ...updatedPayload,
+        hideTextOverlay: false,
+        overlayOpacity: updatedPayload.overlayOpacity !== undefined ? updatedPayload.overlayOpacity : 40
+      };
     }
 
     const defaultAgendaItems = (newLayout === 'table-of-contents' && (!activeSlide.agendaItems || activeSlide.agendaItems.length === 0))
@@ -546,10 +558,12 @@ export default function PitchDeckStudio({
     if (!activeSlide || !currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
     const newId = `slide-${Date.now()}`;
+    const hasTitle = !!activeSlide.title && activeSlide.title.trim().length > 0;
+    const newTitle = hasTitle ? `${activeSlide.title} (Kopie)` : '';
     const duplicated: Slide = {
       ...activeSlide,
       id: newId,
-      title: `${activeSlide.title} (Kopie)`,
+      title: newTitle,
       order_index: slides.length,
       companyId: safeCompanyId,
       projectId: targetId
@@ -997,11 +1011,11 @@ export default function PitchDeckStudio({
 
   useEffect(() => {
     if (activeSlide) {
-      setLocalTitle(activeSlide.title || '');
-      setLocalContent(activeSlide.content || '');
-      setLocalNotes(activeSlide.notes || '');
+      setLocalTitle(activeSlide.title ?? '');
+      setLocalContent(activeSlide.content ?? '');
+      setLocalNotes(activeSlide.notes ?? '');
     }
-  }, [activeSlide]); 
+  }, [activeSlide?.id]); 
 
   useEffect(() => {
     const safeCompanyId = currentUser?.companyId || currentUser?.uid;
@@ -1725,19 +1739,8 @@ export default function PitchDeckStudio({
         docPdf.rect(0, 0, pw, 2, 'F');
       }
       
-      // 3. Footer Text & Page Number
+      // 3. Slide Typography Setup
       const pdfFont = themeStyle === 'photography' ? "times" : "helvetica";
-      docPdf.setFont(pdfFont, "normal");
-      docPdf.setFontSize(8);
-      docPdf.setTextColor(isDarkTheme ? 160 : 110);
-      docPdf.text(deckSettings.footerText || 'Vertraulich – Projekt Status Report', 15, ph - 10);
-      docPdf.text(`${i + 1} / ${slides.length}`, pw - 25, ph - 10);
-      
-      if (deckSettings.logoUrl) {
-         await addSafeImage(deckSettings.logoUrl, pw - 65, ph - 18, 35, 10, true);
-      }
-
-      // 4. Slide Typography
       docPdf.setFont(pdfFont, "bold");
       let titleTextColor: [number, number, number] = isDarkTheme ? [255, 255, 255] : [20, 20, 20];
       if (themeStyle === 'neo-brutalism' || themeStyle === 'swiss') {
@@ -1760,10 +1763,12 @@ export default function PitchDeckStudio({
           const cLines = docPdf.splitTextToSize(slide.content, pw - 60);
           docPdf.text(cLines, pw / 2, ph / 2 + 12, { align: 'center' });
         }
-      } else if (slide.layout === 'full-image') {
+      } else if (slide.layout === 'full-image' || slide.layout === 'full-image-clean') {
+        const isClean = slide.layout === 'full-image-clean' || !!slide.dataPayload?.hideTextOverlay;
         if (slide.imageUrl) {
           await addSafeImage(slide.imageUrl, 0, 0, pw, ph, false);
-          const overlayOpacity = ((slide.dataPayload?.overlayOpacity ?? 40) / 100);
+          const defaultOpacity = isClean ? 0 : 40;
+          const overlayOpacity = ((slide.dataPayload?.overlayOpacity ?? defaultOpacity) / 100);
           const overlayStyle = slide.dataPayload?.overlayStyle || 'gradient';
           if (overlayOpacity > 0) {
             try {
@@ -1790,35 +1795,40 @@ export default function PitchDeckStudio({
             }
           }
         }
-        const textPos = slide.dataPayload?.textPosition || 'bottom-left';
-        docPdf.setFont(pdfFont, "bold");
-        docPdf.setFontSize(slide.titleFontSize ? Math.round(slide.titleFontSize * 0.8) : 32);
-        docPdf.setTextColor(255, 255, 255);
-        if (textPos === 'center') {
-          const tw = docPdf.getTextWidth(slide.title || '');
-          docPdf.text(slide.title || '', (pw - tw) / 2, ph / 2 - 5);
-          if (slide.content && slide.content !== t('type_text_here')) {
-            docPdf.setFont(pdfFont, "normal");
-            docPdf.setFontSize(slide.fontSize || 16);
-            docPdf.setTextColor(240, 240, 240);
-            const cLines = docPdf.splitTextToSize(slide.content, pw - 60);
-            docPdf.text(cLines, pw / 2, ph / 2 + 14, { align: 'center' });
-          }
-        } else {
-          docPdf.text(slide.title || '', 20, ph - 38);
-          if (slide.content && slide.content !== t('type_text_here')) {
-            docPdf.setFont(pdfFont, "normal");
-            docPdf.setFontSize(slide.fontSize || 16);
-            docPdf.setTextColor(240, 240, 240);
-            const cLines = docPdf.splitTextToSize(slide.content, pw - 40);
-            docPdf.text(cLines, 20, ph - 24);
+
+        if (!isClean && slide.title && slide.title.trim().length > 0) {
+          const textPos = slide.dataPayload?.textPosition || 'bottom-left';
+          docPdf.setFont(pdfFont, "bold");
+          docPdf.setFontSize(slide.titleFontSize ? Math.round(slide.titleFontSize * 0.8) : 32);
+          docPdf.setTextColor(255, 255, 255);
+          if (textPos === 'center') {
+            const tw = docPdf.getTextWidth(slide.title);
+            docPdf.text(slide.title, (pw - tw) / 2, ph / 2 - 5);
+            if (slide.content && slide.content.trim().length > 0 && slide.content !== t('type_text_here')) {
+              docPdf.setFont(pdfFont, "normal");
+              docPdf.setFontSize(slide.fontSize || 16);
+              docPdf.setTextColor(240, 240, 240);
+              const cLines = docPdf.splitTextToSize(slide.content, pw - 60);
+              docPdf.text(cLines, pw / 2, ph / 2 + 14, { align: 'center' });
+            }
+          } else {
+            docPdf.text(slide.title, 20, ph - 38);
+            if (slide.content && slide.content.trim().length > 0 && slide.content !== t('type_text_here')) {
+              docPdf.setFont(pdfFont, "normal");
+              docPdf.setFontSize(slide.fontSize || 16);
+              docPdf.setTextColor(240, 240, 240);
+              const cLines = docPdf.splitTextToSize(slide.content, pw - 40);
+              docPdf.text(cLines, 20, ph - 24);
+            }
           }
         }
       } else { 
-        docPdf.setFontSize(slide.titleFontSize ? Math.round(slide.titleFontSize * 0.7) : 26); 
-        const maxTitleW = (themeStyle === 'neo-brutalism' || themeStyle === 'swiss') ? pw - 60 : pw - 30;
-        const titleLns = docPdf.splitTextToSize(slide.title || '', maxTitleW);
-        docPdf.text(titleLns, 15, 22); 
+        if (slide.title && slide.title.trim().length > 0) {
+          docPdf.setFontSize(slide.titleFontSize ? Math.round(slide.titleFontSize * 0.7) : 26); 
+          const maxTitleW = (themeStyle === 'neo-brutalism' || themeStyle === 'swiss') ? pw - 60 : pw - 30;
+          const titleLns = docPdf.splitTextToSize(slide.title, maxTitleW);
+          docPdf.text(titleLns, 15, 22); 
+        }
       }
 
       if (slide.stamp) {
@@ -1833,7 +1843,7 @@ export default function PitchDeckStudio({
       docPdf.setTextColor(isDarkTheme ? 220 : 50);
       const cy = 36;
       
-      if (slide.layout === 'full-image') {
+      if (slide.layout === 'full-image' || slide.layout === 'full-image-clean') {
         // Full bleed background already drawn
       }
       else if (slide.layout === 'text-only') { 
@@ -2168,6 +2178,36 @@ export default function PitchDeckStudio({
           }
         }
       }
+
+      // 5. Footer Text, Logo & Page Number (Rendered last so it sits on top of all images/drawings)
+      const isFullBleedSlide = slide.layout === 'full-image' || slide.layout === 'full-image-clean';
+      if (isFullBleedSlide) {
+        docPdf.saveGraphicsState();
+        try {
+          (docPdf as any).setGState?.(new (docPdf as any).GState({ opacity: 0.7 }));
+        } catch (_) {}
+        docPdf.setFillColor(0, 0, 0);
+        docPdf.rect(0, ph - 14, pw, 14, 'F');
+        docPdf.restoreGraphicsState();
+
+        docPdf.setFont(pdfFont, "normal");
+        docPdf.setFontSize(8);
+        docPdf.setTextColor(245, 245, 245);
+        docPdf.text(deckSettings.footerText || 'Vertraulich – Projekt Status Report', 15, ph - 5.5);
+        docPdf.text(`${i + 1} / ${slides.length}`, pw - 25, ph - 5.5);
+        if (deckSettings.logoUrl) {
+          await addSafeImage(deckSettings.logoUrl, pw - 65, ph - 12, 35, 8.5, true);
+        }
+      } else {
+        docPdf.setFont(pdfFont, "normal");
+        docPdf.setFontSize(8);
+        docPdf.setTextColor(isDarkTheme ? 160 : 110);
+        docPdf.text(deckSettings.footerText || 'Vertraulich – Projekt Status Report', 15, ph - 10);
+        docPdf.text(`${i + 1} / ${slides.length}`, pw - 25, ph - 10);
+        if (deckSettings.logoUrl) {
+          await addSafeImage(deckSettings.logoUrl, pw - 65, ph - 18, 35, 10, true);
+        }
+      }
     }
     return docPdf.output('blob');
   }, [slides, deckSettings, t]);
@@ -2270,17 +2310,20 @@ export default function PitchDeckStudio({
     if (!currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
     const newId = `slide-${Date.now()}`;
+    const isCleanImage = layout === 'full-image-clean';
+    const slideTitle = isCleanImage ? '' : title;
     const initialPayload = dataPayload || (
+      layout === 'full-image-clean' ? { imageFit: 'cover', imageScale: 100, overlayOpacity: 0, imagePosition: 'center', hideTextOverlay: true } :
       layout === 'full-image' ? { imageFit: 'cover', imageScale: 100, overlayOpacity: 40, imagePosition: 'center', textPosition: 'bottom-left' } :
       layout === 'two-images' ? { images: ['', ''], captions: ['Vorher / Bestand', 'Nachher / Realisierung'], splitRatio: 50, displayMode: 'side-by-side', maskAspect: 'cover', maskRadius: 16 } :
       layout === 'three-images' ? { images: ['', '', ''], captions: ['Perspektive 1', 'Perspektive 2', 'Perspektive 3'], galleryMode: 'columns', maskAspect: 'cover', maskRadius: 16 } :
       null
     );
-    const initialContent = (layout === 'full-image' || layout === 'two-images' || layout === 'three-images') ? '' : t('type_text_here');
+    const initialContent = (layout === 'full-image' || layout === 'full-image-clean' || layout === 'two-images' || layout === 'three-images') ? '' : t('type_text_here');
     const newSlide: Slide = {
-      id: newId, title, content: initialContent, order_index: slides.length, 
+      id: newId, title: slideTitle, content: initialContent, order_index: slides.length, 
       ownerId: currentUser.uid, companyId: safeCompanyId, projectId: targetId, 
-      layout, fontSize: 18, titleFontSize: layout === 'full-image' ? 44 : 36, dataPayload: initialPayload, ...(imageUrl && { imageUrl }), ...(videoUrl && { videoUrl }), notes: '',
+      layout, fontSize: 18, titleFontSize: (layout === 'full-image' || layout === 'full-image-clean') ? 44 : 36, dataPayload: initialPayload, ...(imageUrl && { imageUrl }), ...(videoUrl && { videoUrl }), notes: '',
       agendaItems: dataPayload?.agendaItems || undefined
     };
     try {
@@ -3281,17 +3324,19 @@ export default function PitchDeckStudio({
     const isDarkTheme = !isLightMode && ['photography', 'scenography', 'cyberpunk', 'architecture', 'keynote', 'glassmorphism'].includes(deckSettings.themeStyle);
     const tc = isDarkTheme ? "text-white" : "text-slate-900";
     
-    const displayTitle = activeSlide?.id === slide.id ? localTitle || slide.title : slide.title;
-    const displayContent = activeSlide?.id === slide.id ? localContent || slide.content : slide.content;
+    const displayTitle = activeSlide?.id === slide.id ? localTitle : (slide.title ?? '');
+    const displayContent = activeSlide?.id === slide.id ? localContent : (slide.content ?? '');
 
-    const titleFs = slide.titleFontSize || (slide.layout === 'title-only' || slide.layout === 'full-image' ? 48 : 32);
+    const titleFs = slide.titleFontSize || (slide.layout === 'title-only' || slide.layout === 'full-image' || slide.layout === 'full-image-clean' ? 48 : 32);
     const contentFs = slide.fontSize || 18;
 
-    if (slide.layout === 'full-image') {
+    if (slide.layout === 'full-image' || slide.layout === 'full-image-clean') {
+      const isClean = slide.layout === 'full-image-clean' || !!slide.dataPayload?.hideTextOverlay;
       const imageFit = slide.dataPayload?.imageFit || 'cover';
       const imageScale = (slide.dataPayload?.imageScale || 100) / 100;
       const imagePosition = slide.dataPayload?.imagePosition || 'center';
-      const overlayOpacity = ((slide.dataPayload?.overlayOpacity ?? 40) / 100);
+      const defaultOpacity = isClean ? 0 : 40;
+      const overlayOpacity = ((slide.dataPayload?.overlayOpacity ?? defaultOpacity) / 100);
       const overlayStyle = slide.dataPayload?.overlayStyle || 'gradient';
       const textPosition = slide.dataPayload?.textPosition || 'bottom-left';
 
@@ -3337,8 +3382,14 @@ export default function PitchDeckStudio({
               <div className="w-16 h-16 rounded-2xl bg-purple-500/20 border border-purple-500/40 text-purple-400 flex items-center justify-center mb-3 shadow-lg">
                 <ImagePlus size={32} />
               </div>
-              <h3 className="text-base font-bold mb-1 text-white">Vollbild-Cover / Hintergrundbild</h3>
-              <p className="text-xs text-zinc-300 mb-4 max-w-sm text-center">Lade ein Bild hoch oder wähle ein Rendering aus dem Projekt, um es als randloses Vollbild zu verwenden.</p>
+              <h3 className="text-base font-bold mb-1 text-white">
+                {isClean ? 'Ganzseitiges Bild (Clean / Ohne Text)' : 'Vollbild-Cover / Hintergrundbild'}
+              </h3>
+              <p className="text-xs text-zinc-300 mb-4 max-w-sm text-center">
+                {isClean 
+                  ? 'Lade ein Bild hoch – es wird im Vollbild ohne Titel-Überlagerung dargestellt. Nur die Fusszeile bleibt sichtbar.'
+                  : 'Lade ein Bild hoch oder wähle ein Rendering aus dem Projekt, um es als randloses Vollbild zu verwenden.'}
+              </p>
               <div className="flex items-center gap-3">
                 <button
                   type="button"
@@ -3369,6 +3420,26 @@ export default function PitchDeckStudio({
                 className="px-2.5 py-1 rounded-lg text-xs font-bold text-white bg-purple-600 hover:bg-purple-500 flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
               >
                 <Sliders size={13} /> <span>Bild anpassen</span>
+              </button>
+              <button
+                type="button"
+                title={isClean ? "Titel & Text einblenden" : "Titel & Text ausblenden (nur Bild & Fusszeile)"}
+                onClick={() => {
+                  const nextClean = !isClean;
+                  const nextLayout = nextClean ? 'full-image-clean' : 'full-image';
+                  const newPayload = { ...(slide.dataPayload || {}), hideTextOverlay: nextClean, overlayOpacity: nextClean ? 0 : (slide.dataPayload?.overlayOpacity ?? 40) };
+                  setSlides(prev => prev.map(s => s.id === slide.id ? { ...s, layout: nextLayout, dataPayload: newPayload } : s));
+                  if (!isPreviewMode) {
+                    supabase.from('slides').update(serializeSlideForDb({ ...slide, layout: nextLayout, dataPayload: newPayload })).then(()=>{});
+                  }
+                }}
+                className={cn(
+                  "px-2 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors",
+                  isClean ? "bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30" : "text-white/90 hover:bg-white/10"
+                )}
+              >
+                {isClean ? <EyeOff size={13} /> : <Eye size={13} />}
+                <span>{isClean ? 'Nur Bild' : 'Text aktiv'}</span>
               </button>
               <button
                 type="button"
@@ -3416,69 +3487,78 @@ export default function PitchDeckStudio({
             !sanitizeUrl(slide.imageUrl) && !isPreviewMode ? "z-10 pointer-events-none" : "z-20",
             textPosition === 'center' ? "items-center text-center justify-center" : "items-start text-left"
           )}>
-            {!isPreviewMode && !isMobile ? (
-              <input
-                type="text"
-                value={displayTitle}
-                onChange={(e) => handleLocalUpdate('title', e.target.value)}
-                style={{ fontSize: `${titleFs}px` }}
-                placeholder="Titel der Folie..."
-                className={cn(
-                  "bg-transparent outline-none w-full font-black text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)] border-b border-transparent focus:border-purple-400 transition-colors leading-tight",
-                  textPosition === 'center' ? "text-center" : ""
+            {!isClean && (
+              <>
+                {!isPreviewMode && !isMobile ? (
+                  <input
+                    type="text"
+                    value={displayTitle}
+                    onChange={(e) => handleLocalUpdate('title', e.target.value)}
+                    style={{ fontSize: `${titleFs}px` }}
+                    placeholder="Titel der Folie..."
+                    className={cn(
+                      "bg-transparent outline-none w-full font-black text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)] border-b border-transparent focus:border-purple-400 transition-colors leading-tight",
+                      textPosition === 'center' ? "text-center" : ""
+                    )}
+                  />
+                ) : (
+                  displayTitle && (
+                    <h2
+                      style={{ fontSize: `${titleFs}px` }}
+                      className={cn(
+                        "w-full font-black text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)] truncate leading-tight",
+                        textPosition === 'center' ? "text-center" : ""
+                      )}
+                    >
+                      {displayTitle}
+                    </h2>
+                  )
                 )}
-              />
-            ) : (
-              <h2
-                style={{ fontSize: `${titleFs}px` }}
-                className={cn(
-                  "w-full font-black text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)] truncate leading-tight",
-                  textPosition === 'center' ? "text-center" : ""
-                )}
-              >
-                {displayTitle}
-              </h2>
-            )}
 
-            {!isPreviewMode && !isMobile ? (
-              <textarea
-                value={displayContent}
-                onChange={(e) => handleLocalUpdate('content', e.target.value)}
-                style={{ fontSize: `${contentFs}px` }}
-                placeholder="Untertitel oder Kurzbeschreibung hier eingeben..."
-                rows={2}
-                className={cn(
-                  "w-full mt-2 bg-transparent outline-none text-white/95 drop-shadow-[0_1px_8px_rgba(0,0,0,0.9)] resize-none border-b border-transparent focus:border-purple-400 transition-colors leading-relaxed",
-                  textPosition === 'center' ? "text-center max-w-2xl mx-auto" : "max-w-3xl"
+                {!isPreviewMode && !isMobile ? (
+                  <textarea
+                    value={displayContent}
+                    onChange={(e) => handleLocalUpdate('content', e.target.value)}
+                    style={{ fontSize: `${contentFs}px` }}
+                    placeholder="Untertitel oder Kurzbeschreibung hier eingeben..."
+                    rows={2}
+                    className={cn(
+                      "w-full mt-2 bg-transparent outline-none text-white/95 drop-shadow-[0_1px_8px_rgba(0,0,0,0.9)] resize-none border-b border-transparent focus:border-purple-400 transition-colors leading-relaxed",
+                      textPosition === 'center' ? "text-center max-w-2xl mx-auto" : "max-w-3xl"
+                    )}
+                  />
+                ) : (
+                  displayContent && (
+                    <p
+                      style={{ fontSize: `${contentFs}px` }}
+                      className={cn(
+                        "mt-2 text-white/95 drop-shadow-[0_1px_8px_rgba(0,0,0,0.9)] leading-relaxed whitespace-pre-wrap",
+                        textPosition === 'center' ? "text-center max-w-2xl mx-auto" : "max-w-3xl line-clamp-3"
+                      )}
+                    >
+                      {displayContent}
+                    </p>
+                  )
                 )}
-              />
-            ) : (
-              displayContent && (
-                <p
-                  style={{ fontSize: `${contentFs}px` }}
-                  className={cn(
-                    "mt-2 text-white/95 drop-shadow-[0_1px_8px_rgba(0,0,0,0.9)] leading-relaxed whitespace-pre-wrap",
-                    textPosition === 'center' ? "text-center max-w-2xl mx-auto" : "max-w-3xl line-clamp-3"
-                  )}
-                >
-                  {displayContent}
-                </p>
-              )
+              </>
             )}
           </div>
 
+          {/* FOOTER GRADIENT SHADOW FOR MAXIMUM LEGIBILITY OVER ANY IMAGE */}
+          <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/60 via-black/25 to-transparent pointer-events-none z-10" />
+
           {/* FOOTER */}
           <div className="h-[8%] flex flex-row items-end justify-between border-t border-white/20 pb-2 z-20 shrink-0">
-            <span className="text-[8px] lg:text-[10px] uppercase font-bold tracking-widest text-white/80 drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
+            <span className="text-[8px] lg:text-[10px] uppercase font-bold tracking-widest text-white/90 drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
               {!isMobile && !isPreviewMode ? (
-                <input type="text" value={deckSettings.footerText} onChange={e => updateDeckSettings({ footerText: e.target.value })} className="bg-transparent outline-none w-64 text-white/80" placeholder="Footer Text" />
+                <input type="text" value={deckSettings.footerText} onChange={e => updateDeckSettings({ footerText: e.target.value })} className="bg-transparent outline-none w-64 text-white/90" placeholder="Footer Text" />
               ) : (
                 <span>{deckSettings.footerText}</span>
               )}
             </span>
             <div className="flex items-center gap-3">
-              {!!sanitizeUrl(deckSettings.logoUrl) && <img src={sanitizeUrl(deckSettings.logoUrl)} alt="Logo" className="h-4 lg:h-6 object-contain opacity-90 drop-shadow pointer-events-none" />}
-              <span className="text-[8px] lg:text-[10px] uppercase font-sans font-bold tracking-widest text-white/80 drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
+              {!!sanitizeUrl(deckSettings.logoUrl) && <img src={sanitizeUrl(deckSettings.logoUrl)} alt="Logo" className="h-4 lg:h-6 object-contain opacity-95 drop-shadow pointer-events-none" />}
+              <span className="text-[8px] lg:text-[10px] uppercase font-sans font-bold tracking-widest text-white/90 drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
                 {slides.findIndex(s => s.id === slide.id) + 1} / {slides.length}
               </span>
             </div>
@@ -4776,7 +4856,8 @@ export default function PitchDeckStudio({
                    <AnimatePresence>
                      {showAddMenu && (
                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden flex flex-col gap-2 mt-2">
-                         <button type="button" onClick={() => handleAddSlide('full-image', t('full_image_slide'))} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-purple-500/40 text-purple-400 hover:bg-surface-hover flex items-center gap-3"><Maximize2 size={16}/> {t('full_image_slide')} (Hintergrund)</button>
+                         <button type="button" onClick={() => handleAddSlide('full-image-clean', '')} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-emerald-500/40 text-emerald-400 hover:bg-surface-hover flex items-center gap-3"><ImageIcon size={16}/> {t('full_image_clean_slide')} (Nur Bild & Fusszeile)</button>
+                         <button type="button" onClick={() => handleAddSlide('full-image', t('full_image_slide'))} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-purple-500/40 text-purple-400 hover:bg-surface-hover flex items-center gap-3"><Maximize2 size={16}/> {t('full_image_slide')} (Mit Titel-Overlay)</button>
                          <button type="button" onClick={() => handleAddSlide('title-only', t('new_vision'))} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-border hover:bg-surface-hover flex items-center gap-3"><Type size={16}/> {t('title_slide')}</button>
                          <button type="button" onClick={() => handleAddSlide('split', t('new_topic'))} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-border hover:bg-surface-hover flex items-center gap-3"><Columns size={16}/> {t('text_and_image')}</button>
                          <button type="button" onClick={() => handleAddSlide('two-images', t('two_images_slide'))} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-border hover:bg-surface-hover flex items-center gap-3"><Layers size={16}/> {t('two_images_slide')} (Dual)</button>
@@ -4797,7 +4878,7 @@ export default function PitchDeckStudio({
                  <div className="grid grid-cols-2 gap-3">
                    {slides.map((s,i)=>(
                      <div key={s.id} onClick={()=>setActiveSlideId(s.id)} className={cn("p-3 rounded-xl border relative cursor-pointer", activeSlideId===s.id?"bg-purple-500/20 border-purple-500":"bg-surface border-border")}>
-                       <h4 className="text-xs font-bold truncate mb-1 pr-6 text-text-primary">{s.title}</h4>
+                       <h4 className="text-xs font-bold truncate mb-1 pr-6 text-text-primary">{s.title || (s.layout === 'full-image-clean' ? '(Ganzseitiges Bild)' : '(Ohne Titel)')}</h4>
                        <span className="text-[10px] text-text-muted">{t('slide')} {i+1}</span>
                        <button type="button" onClick={(e) => handleDeleteSlide(e, s.id)} className="absolute top-2 right-2 p-1 text-text-muted hover:text-red-400"><Trash2 size={14}/></button>
                      </div>
@@ -4844,10 +4925,10 @@ export default function PitchDeckStudio({
                     <textarea value={localNotes} onChange={e => handleLocalUpdate('notes', e.target.value)} placeholder="Stichpunkte für deinen Vortrag eingeben..." className="w-full h-28 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3 text-xs text-text-primary resize-none custom-scrollbar outline-none focus:border-amber-500" />
                  </div>
                  
-                 {(activeSlide.layout === 'split' || activeSlide.layout === 'image-focus' || activeSlide.layout === 'full-image') && (
+                 {(activeSlide.layout === 'split' || activeSlide.layout === 'image-focus' || activeSlide.layout === 'full-image' || activeSlide.layout === 'full-image-clean') && (
                     <div className="space-y-2 pt-2">
                        <label className="text-xs font-bold text-blue-400 uppercase flex items-center gap-1.5">
-                         <ImageIcon size={14} /> {activeSlide.layout === 'full-image' ? 'Hintergrundbild' : t('choose_image')}
+                         <ImageIcon size={14} /> {(activeSlide.layout === 'full-image' || activeSlide.layout === 'full-image-clean') ? 'Hintergrundbild' : t('choose_image')}
                        </label>
                        <div className="grid grid-cols-2 gap-2">
                          <button
@@ -4865,7 +4946,7 @@ export default function PitchDeckStudio({
                            <ImageIcon size={14} /> Galerie
                          </button>
                        </div>
-                       {activeSlide.layout === 'full-image' && (
+                       {(activeSlide.layout === 'full-image' || activeSlide.layout === 'full-image-clean') && (
                          <button
                            type="button"
                            onClick={() => setShowImageToolsFlyout(prev => !prev)}
@@ -5106,7 +5187,8 @@ export default function PitchDeckStudio({
                 {showAddMenu && (
                   <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="absolute top-14 right-4 w-56 bg-surface border border-border rounded-xl shadow-2xl z-[60] overflow-hidden py-1.5">
                     <div className="px-3 py-1 text-[9px] font-bold text-text-muted uppercase tracking-widest">{t('standard_layouts')}</div>
-                    <button type="button" onClick={() => { handleAddSlide('full-image', t('full_image_slide')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-purple-400 hover:bg-purple-500/10 flex items-center gap-2"><Maximize2 size={14} className="text-purple-400"/> {t('full_image_slide')} (Hintergrund)</button>
+                    <button type="button" onClick={() => { handleAddSlide('full-image-clean', ''); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-emerald-400 hover:bg-emerald-500/10 flex items-center gap-2"><ImageIcon size={14} className="text-emerald-400"/> {t('full_image_clean_slide')} (Nur Bild)</button>
+                    <button type="button" onClick={() => { handleAddSlide('full-image', t('full_image_slide')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-purple-400 hover:bg-purple-500/10 flex items-center gap-2"><Maximize2 size={14} className="text-purple-400"/> {t('full_image_slide')} (Titel-Overlay)</button>
                     <button type="button" onClick={() => { handleAddSlide('title-only', t('new_vision')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><Type size={14}/> {t('title_slide')}</button>
                     <button type="button" onClick={() => { handleAddSlide('split', t('new_topic')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><Columns size={14}/> {t('text_and_image')}</button>
                     <button type="button" onClick={() => { handleAddSlide('two-images', t('two_images_slide')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><Layers size={14}/> {t('two_images_slide')} (Dual)</button>
@@ -5137,7 +5219,9 @@ export default function PitchDeckStudio({
                       <button type="button" onClick={(e) => { e.stopPropagation(); handleMoveSlide(s.id, 'down'); }} className="hover:text-text-primary p-0.5"><ChevronDown size={12}/></button>
                     </div>
                   </div>
-                  <h4 className="text-xs font-bold text-text-primary truncate pr-5">{s.title}</h4>
+                  <h4 className="text-xs font-bold text-text-primary truncate pr-5">
+                    {s.title || (s.layout === 'full-image-clean' ? <span className="italic text-text-muted font-normal">(Ganzseitiges Bild)</span> : <span className="italic text-text-muted font-normal">(Ohne Titel)</span>)}
+                  </h4>
                   {s.stamp && <span className="text-[8px] font-bold text-red-400 uppercase tracking-widest block truncate mt-1">[ {s.stamp} ]</span>}
                   <button type="button" onClick={(e) => handleDeleteSlide(e, s.id)} className="absolute right-2 bottom-2 p-1 text-text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={12}/></button>
                 </div>
@@ -5296,14 +5380,15 @@ export default function PitchDeckStudio({
                 
                 {activeSlide && (
                   <>
-                    {/* 9 FOLIEN-LAYOUTS */}
+                    {/* 10 FOLIEN-LAYOUTS */}
                     {[
-                      { id: 'full-image', icon: Maximize2, title: 'Vollbild-Cover / Hintergrund' },
+                      { id: 'full-image-clean', icon: ImageIcon, title: 'Ganzseitiges Bild (Clean / nur Bild, ohne Text)' },
+                      { id: 'full-image', icon: Maximize2, title: 'Vollbild-Cover (mit Titel-Overlay)' },
                       { id: 'title-only', icon: Type, title: 'Titel-Folie' },
                       { id: 'split', icon: Columns, title: 'Text & Bild' },
                       { id: 'two-images', icon: Layers, title: '2-Bilder-Vergleich (Dual)' },
                       { id: 'three-images', icon: LayoutDashboard, title: '3-Bilder-Galerie (Triptychon)' },
-                      { id: 'image-focus', icon: ImageIcon, title: 'Bild-Fokus' },
+                      { id: 'image-focus', icon: ImagePlus, title: 'Bild-Fokus' },
                       { id: 'video-focus', icon: VideoIcon, title: 'Video-Fokus' },
                       { id: 'text-only', icon: Layout, title: 'Nur Text' },
                       { id: 'chart-donut', icon: PieChart, title: 'Baukosten Donut Chart' }
@@ -5400,7 +5485,7 @@ export default function PitchDeckStudio({
                         }}
                         className={cn(
                           "p-2 rounded-xl transition-all cursor-pointer relative shrink-0",
-                          showImageToolsFlyout || (activeSlide.imageUrl && activeSlide.layout === 'full-image')
+                          showImageToolsFlyout || (activeSlide.imageUrl && (activeSlide.layout === 'full-image' || activeSlide.layout === 'full-image-clean'))
                             ? "bg-purple-600 text-white shadow-md shadow-purple-500/25"
                             : "text-text-muted hover:bg-white/5 hover:text-text-primary"
                         )}
@@ -5754,8 +5839,60 @@ export default function PitchDeckStudio({
                                 </div>
                               </div>
 
-                              {/* TEXT-POSITION (WENN VOLLBILD) */}
-                              {activeSlide.layout === 'full-image' && (
+                              {/* TEXT-OVERLAY TOGGLE (VOLLBILD) */}
+                              {(activeSlide.layout === 'full-image' || activeSlide.layout === 'full-image-clean') && (
+                                <div className="space-y-1.5 border-t border-border pt-2">
+                                  <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block">Texte & Titel über Bild</span>
+                                  <div className="grid grid-cols-2 gap-1 bg-background border border-border rounded-xl p-1 text-[11px] font-bold">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const newPayload = { ...(activeSlide.dataPayload || {}), hideTextOverlay: true, overlayOpacity: activeSlide.dataPayload?.overlayOpacity ?? 0 };
+                                        setSlides(prev => prev.map(s => s.id === activeSlide.id ? { ...s, layout: 'full-image-clean', dataPayload: newPayload } : s));
+                                        if (!isPreviewMode) {
+                                          supabase.from('slides').update(serializeSlideForDb({ ...activeSlide, layout: 'full-image-clean', dataPayload: newPayload })).then(()=>{});
+                                        }
+                                      }}
+                                      className={cn(
+                                        "py-1.5 rounded-lg transition-all cursor-pointer text-center flex items-center justify-center gap-1",
+                                        (activeSlide.layout === 'full-image-clean' || activeSlide.dataPayload?.hideTextOverlay)
+                                          ? "bg-emerald-600 text-white shadow-sm"
+                                          : "text-text-muted hover:text-text-primary"
+                                      )}
+                                    >
+                                      <EyeOff size={12} />
+                                      <span>Nur Bild</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const newPayload = { ...(activeSlide.dataPayload || {}), hideTextOverlay: false, overlayOpacity: activeSlide.dataPayload?.overlayOpacity ?? 40 };
+                                        setSlides(prev => prev.map(s => s.id === activeSlide.id ? { ...s, layout: 'full-image', dataPayload: newPayload } : s));
+                                        if (!isPreviewMode) {
+                                          supabase.from('slides').update(serializeSlideForDb({ ...activeSlide, layout: 'full-image', dataPayload: newPayload })).then(()=>{});
+                                        }
+                                      }}
+                                      className={cn(
+                                        "py-1.5 rounded-lg transition-all cursor-pointer text-center flex items-center justify-center gap-1",
+                                        (activeSlide.layout === 'full-image' && !activeSlide.dataPayload?.hideTextOverlay)
+                                          ? "bg-purple-600 text-white shadow-sm"
+                                          : "text-text-muted hover:text-text-primary"
+                                      )}
+                                    >
+                                      <Eye size={12} />
+                                      <span>Mit Titel & Text</span>
+                                    </button>
+                                  </div>
+                                  {(activeSlide.layout === 'full-image-clean' || activeSlide.dataPayload?.hideTextOverlay) && (
+                                    <p className="text-[10px] text-emerald-400 font-medium px-1">
+                                      Titel & Text sind ausgeblendet. Nur Bild & Fusszeile werden angezeigt.
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* TEXT-POSITION (WENN VOLLBILD MIT TEXT) */}
+                              {activeSlide.layout === 'full-image' && !activeSlide.dataPayload?.hideTextOverlay && (
                                 <div className="space-y-1 border-t border-border pt-2">
                                   <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block">Text-Platzierung</span>
                                   <div className="grid grid-cols-2 gap-1 bg-background border border-border rounded-xl p-1 text-[11px] font-bold">

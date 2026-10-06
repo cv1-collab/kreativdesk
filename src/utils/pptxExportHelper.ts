@@ -614,7 +614,7 @@ export async function exportDeckToPptx(
         valign: 'middle',
         fontFace
       });
-    } else if (layout === 'full-image') {
+    } else if (layout === 'full-image' || layout === 'full-image-clean') {
       // Full Bleed Image Cover / Background Slide
       if (embeddedImgBase64) {
         try {
@@ -627,7 +627,8 @@ export async function exportDeckToPptx(
             sizing: { type: s.dataPayload?.imageFit === 'contain' ? 'contain' : 'cover', w: 13.333, h: 7.5 }
           });
 
-          const overlayOpacity = s.dataPayload?.overlayOpacity ?? 40;
+          const defaultOpacity = layout === 'full-image-clean' ? 0 : 40;
+          const overlayOpacity = s.dataPayload?.overlayOpacity ?? defaultOpacity;
           if (overlayOpacity > 0) {
             pptxSlide.addShape(pptx.ShapeType.rect, {
               x: 0,
@@ -642,7 +643,8 @@ export async function exportDeckToPptx(
         }
       }
 
-      if (s.title) {
+      const isClean = layout === 'full-image-clean' || !!s.dataPayload?.hideTextOverlay;
+      if (!isClean && s.title && s.title.trim().length > 0) {
         pptxSlide.addText(s.title, {
           x: 1.0,
           y: s.dataPayload?.textPosition === 'center' ? 2.5 : 4.5,
@@ -657,7 +659,7 @@ export async function exportDeckToPptx(
         });
       }
 
-      if (s.content && !s.content.startsWith('{')) {
+      if (!isClean && s.content && !s.content.startsWith('{') && s.content.trim().length > 0) {
         pptxSlide.addText(s.content, {
           x: 1.0,
           y: s.dataPayload?.textPosition === 'center' ? 4.2 : 6.0,
@@ -669,6 +671,50 @@ export async function exportDeckToPptx(
           valign: 'top',
           fontFace
         });
+      }
+
+      // Re-render footer on top of full-bleed slide so it is never covered by the image
+      pptxSlide.addShape(pptx.ShapeType.rect, {
+        x: 0,
+        y: 6.85,
+        w: 13.333,
+        h: 0.65,
+        fill: { color: '000000', transparency: 45 }
+      });
+      pptxSlide.addText(footerText, {
+        x: 0.8,
+        y: 6.95,
+        w: 8.0,
+        h: 0.35,
+        fontSize: 8.5,
+        color: 'E2E8F0',
+        valign: 'middle',
+        fontFace: fontFace
+      });
+      pptxSlide.addText(`${i + 1} / ${slides.length}`, {
+        x: 11.2,
+        y: 6.95,
+        w: 1.3,
+        h: 0.35,
+        fontSize: 8.5,
+        color: 'E2E8F0',
+        align: 'right',
+        valign: 'middle',
+        fontFace: fontFace
+      });
+      if (logoBase64) {
+        try {
+          pptxSlide.addImage({
+            data: logoBase64,
+            x: 9.2,
+            y: 6.92,
+            w: 1.8,
+            h: 0.4,
+            sizing: { type: 'contain', w: 1.8, h: 0.4 }
+          });
+        } catch (err) {
+          console.warn("Could not embed footer logo on full-bleed PPTX slide:", err);
+        }
       }
     } else if (layout === 'image-focus') {
       // Full Width Image Slide
