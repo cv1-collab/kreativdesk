@@ -7,6 +7,33 @@
 
 ## 🏆 Erfolgsliste von heute (6. Oktober 2026)
 
+### 0.000000000000000000 Vollständiger System-Audit & Subsystem-Verifikation: API-Parität, Gemini AI, Stripe, Make.com, Supabase & Live-Produktion (6. Oktober 2026)
+* **Problemstellung & Benutzer-Anforderung:**
+  * Der Benutzer forderte eine finale, allumfassende Überprüfung des gesamten Systems auf Herz und Nieren: «bitte überprüfen nochmals alles auf fehler im system, api, ai, stripe, make, supabase etc. ok? nur um sicher zu sein das nun alles fehlerfrei läuft.»
+* **Durchgeführter Tiefenaudit & gefundene Optimierungen:**
+  * **1. API- & Serverless-Parität ([server.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/server.ts) & [webhook-lead.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/api/_handlers/webhook-lead.ts)):**
+    * Diskrepanz aufgedeckt und behoben: `/api/webhook/lead` im lokalen Express-Server quittierte Leads bisher nur lokal, ohne sie an Make weiterzuleiten. Vollständig an die Serverless-Logik mit SSRF-Schutz (`isSafeExternalUrl`) und fehlertoleranter Weiterleitung an `LEAD_WEBHOOK_URL` / `WELCOME_WEBHOOK_URL` angeglichen.
+  * **2. AI-Integration (Google Gemini 2.5 Flash):**
+    * Modellmapping auf `gemini-2.5-flash` standardisiert ([geminiClient.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/utils/geminiClient.ts)).
+    * Dual-Fallback aktiv: Server-Proxy (`/api/generate`) mit nahtlosem Fallback auf Direkt-API (`callGeminiDirectly`).
+    * Automatische Base64-Bildkompression vor dem Request verhindert 413-Payload-Too-Large-Abbrüche.
+  * **3. Stripe-Subsystem (Abos, Checkout, Webhooks):**
+    * Webhook-Verarbeitung ([api/webhook.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/api/webhook.ts)) sichert den Raw-Body (`stripe-signature`) ab.
+    * Checkout- & Kundenportal-Sitzungen mit URL-Fallback (`https://www.kreativdesk.ch`) geschützt.
+  * **4. Make.com & Webhooks:**
+    * Transaktionale Webhooks für Leads, Willkommensmails, Einladungen und Passwort-Resets geprüft.
+    * SSRF-Schutz kapselt externe URLs gegen Angriffe auf interne Netzwerke.
+  * **5. Supabase Datenbank & Auth:**
+    * Dual-Env-Parsing (`VITE_SUPABASE_*` und `SUPABASE_*`) verifiziert.
+    * Service-Role-Key sicher ausschliesslich auf der Server-Seite gekapselt ([api/_auth.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/api/_auth.ts)).
+* **Ergebnis der Verifikation:**
+  * **Vitest Unit- & Integrationstests:** 82/82 Tests bestanden (15 Suiten).
+  * **TypeScript (`tsc --noEmit`):** 0 Fehler.
+  * **Production Build:** 100% sauber kompiliert in 14.32s.
+  * **Live-Status:** `https://www.kreativdesk.ch` live verifiziert (HTTP/2 200 OK).
+
+---
+
 ### 0.00000000000000000 Pitch Deck Studio: Undo- / Redo-Verlauf & Folie-Löschen-Gruppe in der Kopfzeile (6. Oktober 2026)
 * **Problemstellung & Benutzer-Anforderung:**
   * Der Benutzer fragte nach einer Undo-/Redo-Funktionalität und wünschte die Platzierung der Buttons ausdrücklich ausschliesslich in der Kopfzeile: «buttons nur in der kopfzeile zusammen mit löschen button ok? bitte erstellen».
