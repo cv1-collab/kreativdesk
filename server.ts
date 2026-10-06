@@ -733,7 +733,34 @@ Verwende ausschliesslich Schweizer Rechtschreibung (immer "ss", niemals "ß").`;
   });
 
   app.post('/api/webhook/lead', async (req, res) => {
-    return res.status(200).json({ success: true, received: true });
+    try {
+      const { event = 'PROPOSAL_ACCEPTED', proposalId, acceptanceData, acceptedAt, webhookUrl } = req.body || {};
+      let forwarded = false;
+      const targetUrl = webhookUrl || process.env.LEAD_WEBHOOK_URL || process.env.WELCOME_WEBHOOK_URL;
+
+      if (targetUrl && isSafeExternalUrl(targetUrl)) {
+        try {
+          const whRes = await fetch(targetUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              event,
+              proposalId,
+              acceptanceData,
+              acceptedAt: acceptedAt || new Date().toISOString(),
+              source: 'KreativDesk'
+            })
+          });
+          forwarded = whRes.ok;
+        } catch (fwdErr) {
+          console.warn('Lead webhook forwarding failed:', fwdErr);
+        }
+      }
+
+      return res.status(200).json({ success: true, forwarded, received: true });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
   });
 
   app.post('/api/quote/send-email', async (req, res) => {
