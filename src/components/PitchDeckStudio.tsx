@@ -31,6 +31,7 @@ import { fetchSystemConfigJSON } from '../utils/configHelper';
 import { safeStorage } from '../utils/safeStorage';
 import { serializeSlideForDb, deserializeSlideFromDb, type Slide } from '../utils/pitchDeckHelpers';
 import ModuleGuideButton from './ModuleGuideButton';
+import { isPdfFile, getPdfDocumentInfo, convertPdfPageToImage, renderPdfThumbnail } from '../utils/pdfToImageHelper';
 
 if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
   window.Buffer = { from: () => new Uint8Array(), isBuffer: () => false } as any;
@@ -330,6 +331,17 @@ export default function PitchDeckStudio({
   const slideImageInputRef = useRef<HTMLInputElement>(null);
   const [targetSlideForUpload, setTargetSlideForUpload] = useState<string | null>(null);
   const [targetUploadIndex, setTargetUploadIndex] = useState<number | null>(null);
+
+  // MULTI-PAGE PDF PAGE SELECTOR MODAL STATE
+  const [pdfPagePicker, setPdfPagePicker] = useState<{
+    file: File;
+    pdfDoc: any;
+    totalPages: number;
+    targetSlideId: string | null;
+    targetUploadIndex: number | null;
+    thumbnails: { [page: number]: string };
+    isConvertingAll?: boolean;
+  } | null>(null);
 
   const triggerSlideImageUpload = (slideId?: string, imageIndex?: number) => {
     const sId = slideId || activeSlideId || (activeSlide ? activeSlide.id : null);
@@ -1086,29 +1098,55 @@ export default function PitchDeckStudio({
     const safeCompanyId = currentUser.companyId || currentUser.uid;
     setIsUploadingImage(true);
     try {
-      const fileExt = file.name.split('.').pop();
+      let fileToUpload = file;
+      let localFallbackUrl = '';
+      const isPdf = isPdfFile(file);
+
+      if (isPdf) {
+        addToast('PDF-Datei erkannt. Wird als Bild gerendert...', 'info');
+        const converted = await convertPdfPageToImage(file, 1, {
+          baseFileName: file.name.replace(/\.pdf$/i, '')
+        });
+        fileToUpload = converted.file;
+        localFallbackUrl = converted.dataUrl;
+      }
+
+      const fileExt = fileToUpload.name.split('.').pop() || 'jpg';
       const filePath = `${safeCompanyId}/documents/${Date.now()}.${fileExt}`;
-      const { error: uploadErr } = await supabase.storage.from('documents').upload(filePath, file, { upsert: true });
+      const { error: uploadErr } = await supabase.storage.from('documents').upload(filePath, fileToUpload, { upsert: true });
       let downloadUrl = '';
       if (!uploadErr) {
         const { data: urlData } = supabase.storage.from('documents').getPublicUrl(filePath);
         downloadUrl = urlData.publicUrl;
+      } else if (localFallbackUrl) {
+        downloadUrl = localFallbackUrl;
       }
+
       const newDoc = {
-        name: file.name, url: downloadUrl, file_url: downloadUrl, size: `${Math.round(file.size / 1024)} KB`, type: file.type,
-        owner_id: currentUser.uid, company_id: safeCompanyId,
-        project_id: targetId, category: 'projects', is_folder: false, created_at: new Date().toISOString()
+        name: isPdf ? `${file.name.replace(/\.pdf$/i, '')} (PDF-Seite 1)` : file.name,
+        url: downloadUrl || localFallbackUrl,
+        file_url: downloadUrl || localFallbackUrl,
+        size: `${Math.round(fileToUpload.size / 1024)} KB`,
+        type: fileToUpload.type,
+        owner_id: currentUser.uid,
+        company_id: safeCompanyId,
+        project_id: targetId,
+        category: 'projects',
+        is_folder: false,
+        created_at: new Date().toISOString()
       };
       const { data: created } = await supabase.from('documents').insert(newDoc).select();
       const createdDoc = (created || [])[0];
       const docId = createdDoc ? createdDoc.id : `doc-${Date.now()}`;
       setAvailableMedia([{ id: docId, ...newDoc }, ...availableMedia]);
       setSelectedMediaIds([docId]); 
-      addToast('Bild erfolgreich hochgeladen', 'success');
+      addToast(isPdf ? 'PDF-Seite erfolgreich als Bild hinzugefügt' : 'Bild erfolgreich hochgeladen', 'success');
     } catch (err) {
+      console.error('Direct image upload error:', err);
       addToast('Upload fehlgeschlagen', 'error');
     } finally {
       setIsUploadingImage(false);
+      if (e.target) e.target.value = '';
     }
   };
 
@@ -1168,6 +1206,112 @@ export default function PitchDeckStudio({
     }
   };
 
+  const handleSelectPdfPageForSlot = async (pageNum: number) => {
+    if (!pdfPagePicker) return;
+    const { pdfDoc, targetSlideId, targetUploadIndex, file } = pdfPagePicker;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid || 'guest';
+    setIsUploadingImage(true);
+    addToast(`Seite ${pageNum} wird als hochauflösendes Bild gerendert...`, 'info');
+    try {
+      const converted = await convertPdfPageToImage(pdfDoc, pageNum, {
+        baseFileName: file.name.replace(/\.pdf$/i, '')
+      });
+      const downloadUrl = await uploadFileWithFallback(converted.file, converted.file.name, safeCompanyId, 'slides');
+      const finalUrl = downloadUrl || converted.dataUrl;
+
+      if (targetSlideId) {
+        setSlides(prev => prev.map(s => {
+          if (s.id !== targetSlideId) return s;
+          if (targetUploadIndex !== null && targetUploadIndex !== undefined) {
+            const currentImages = [...(s.dataPayload?.images || [s.imageUrl || '', s.compareImageUrl || '', ''])];
+            currentImages[targetUploadIndex] = finalUrl;
+            const updatedPayload = { ...(s.dataPayload || {}), images: currentImages };
+            const updatedSlide: any = { ...s, dataPayload: updatedPayload };
+            if (targetUploadIndex === 0) updatedSlide.imageUrl = finalUrl;
+            if (targetUploadIndex === 1) updatedSlide.compareImageUrl = finalUrl;
+            return updatedSlide;
+          } else {
+            return { ...s, imageUrl: finalUrl };
+          }
+        }));
+
+        const slideToUpdate = slides.find(s => s.id === targetSlideId);
+        if (slideToUpdate && currentUser?.uid) {
+          const updatedSlide = { ...slideToUpdate };
+          if (targetUploadIndex !== null && targetUploadIndex !== undefined) {
+            const currentImages = [...(slideToUpdate.dataPayload?.images || [slideToUpdate.imageUrl || '', slideToUpdate.compareImageUrl || '', ''])];
+            currentImages[targetUploadIndex] = finalUrl;
+            const updatedPayload = { ...(slideToUpdate.dataPayload || {}), images: currentImages };
+            updatedSlide.dataPayload = updatedPayload;
+            if (targetUploadIndex === 0) updatedSlide.imageUrl = finalUrl;
+            if (targetUploadIndex === 1) updatedSlide.compareImageUrl = finalUrl;
+          } else {
+            updatedSlide.imageUrl = finalUrl;
+          }
+          const serialized = serializeSlideForDb(updatedSlide);
+          await supabase.from('slides').update(serialized).eq('id', targetSlideId);
+        }
+      }
+      addToast(`Seite ${pageNum} erfolgreich als Bild hinterlegt!`, 'success');
+      setPdfPagePicker(null);
+    } catch (err) {
+      console.error('Failed to convert chosen page:', err);
+      addToast('Fehler bei der Seiten-Konvertierung', 'error');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handleImportAllPdfPagesAsSlides = async () => {
+    if (!pdfPagePicker) return;
+    const { pdfDoc, totalPages, file } = pdfPagePicker;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid || 'guest';
+    setPdfPagePicker(prev => prev ? { ...prev, isConvertingAll: true } : null);
+    addToast(`Erstelle ${totalPages} Folien aus PDF...`, 'info');
+
+    try {
+      const newCreatedSlides: Slide[] = [];
+      const baseTitle = file.name.replace(/\.pdf$/i, '').replace(/_/g, ' ');
+
+      for (let p = 1; p <= totalPages; p++) {
+        const converted = await convertPdfPageToImage(pdfDoc, p, {
+          baseFileName: file.name.replace(/\.pdf$/i, '')
+        });
+        const downloadUrl = await uploadFileWithFallback(converted.file, converted.file.name, safeCompanyId, 'slides');
+        const finalUrl = downloadUrl || converted.dataUrl;
+
+        const newSlide: Slide = {
+          id: `slide-pdf-${Date.now()}-${p}`,
+          title: totalPages === 1 ? baseTitle : `${baseTitle} (Seite ${p})`,
+          content: '',
+          layout: 'image-focus',
+          fontSize: 18,
+          titleFontSize: 36,
+          imageUrl: finalUrl,
+          notes: `Importiert aus PDF ${file.name} - Seite ${p}`,
+          order_index: slides.length + p - 1,
+          ownerId: currentUser?.uid || 'guest'
+        };
+        newCreatedSlides.push(newSlide);
+
+        if (currentUser?.uid) {
+          const serialized = serializeSlideForDb(newSlide);
+          await supabase.from('slides').insert(serialized);
+        }
+      }
+
+      setSlides(prev => [...prev, ...newCreatedSlides]);
+      if (newCreatedSlides.length > 0) {
+        setActiveSlideId(newCreatedSlides[0].id);
+      }
+      addToast(`${newCreatedSlides.length} Folien erfolgreich importiert!`, 'success');
+      setPdfPagePicker(null);
+    } catch (err) {
+      console.error('Error importing all PDF pages:', err);
+      addToast('Fehler beim Importieren aller PDF-Seiten', 'error');
+    }
+  };
+
   const handleDirectSlideImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, slideId?: string) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1180,7 +1324,6 @@ export default function PitchDeckStudio({
 
     const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid || 'guest';
     setIsUploadingImage(true);
-    addToast('Bild wird hochgeladen...', 'info');
 
     const applyUploadedImage = (url: string) => {
       setSlides(prev => prev.map(s => {
@@ -1200,36 +1343,81 @@ export default function PitchDeckStudio({
     };
 
     try {
-      const downloadUrl = await uploadFileWithFallback(file, file.name, safeCompanyId, 'slides');
+      let fileToUpload = file;
+      let localFallbackUrl = '';
 
-      if (!downloadUrl) {
+      if (isPdfFile(file)) {
+        addToast('PDF wird geladen...', 'info');
+        const { pdfDoc, totalPages } = await getPdfDocumentInfo(file);
+
+        if (totalPages > 1) {
+          setIsUploadingImage(false);
+          setPdfPagePicker({
+            file,
+            pdfDoc,
+            totalPages,
+            targetSlideId,
+            targetUploadIndex,
+            thumbnails: {}
+          });
+
+          // Generate initial thumbnails in background
+          (async () => {
+            const thumbs: { [p: number]: string } = {};
+            const limit = Math.min(totalPages, 24);
+            for (let p = 1; p <= limit; p++) {
+              try {
+                thumbs[p] = await renderPdfThumbnail(pdfDoc, p, 280);
+                setPdfPagePicker(prev => prev ? { ...prev, thumbnails: { ...prev.thumbnails, [p]: thumbs[p] } } : null);
+              } catch (thumbErr) {
+                console.warn(`Could not render thumbnail for page ${p}`, thumbErr);
+              }
+            }
+          })();
+          return;
+        }
+
+        addToast('PDF-Seite wird als hochauflösendes Bild gerastert...', 'info');
+        const converted = await convertPdfPageToImage(pdfDoc, 1, {
+          baseFileName: file.name.replace(/\.pdf$/i, '')
+        });
+        fileToUpload = converted.file;
+        localFallbackUrl = converted.dataUrl;
+      } else {
+        addToast('Bild wird hochgeladen...', 'info');
+      }
+
+      const downloadUrl = await uploadFileWithFallback(fileToUpload, fileToUpload.name, safeCompanyId, 'slides');
+      const finalUrl = downloadUrl || localFallbackUrl;
+
+      if (!finalUrl) {
         throw new Error('Upload ergab keine Bild-URL');
       }
 
-      applyUploadedImage(downloadUrl);
+      applyUploadedImage(finalUrl);
       const slideToUpdate = slides.find(s => s.id === targetSlideId);
       if (slideToUpdate && currentUser?.uid) {
         const updatedSlide = { ...slideToUpdate };
         if (targetUploadIndex !== null && targetUploadIndex !== undefined) {
           const currentImages = [...(slideToUpdate.dataPayload?.images || [slideToUpdate.imageUrl || '', slideToUpdate.compareImageUrl || '', ''])];
-          currentImages[targetUploadIndex] = downloadUrl;
+          currentImages[targetUploadIndex] = finalUrl;
           const updatedPayload = { ...(slideToUpdate.dataPayload || {}), images: currentImages };
           updatedSlide.dataPayload = updatedPayload;
-          if (targetUploadIndex === 0) updatedSlide.imageUrl = downloadUrl;
-          if (targetUploadIndex === 1) updatedSlide.compareImageUrl = downloadUrl;
+          if (targetUploadIndex === 0) updatedSlide.imageUrl = finalUrl;
+          if (targetUploadIndex === 1) updatedSlide.compareImageUrl = finalUrl;
         } else {
-          updatedSlide.imageUrl = downloadUrl;
+          updatedSlide.imageUrl = finalUrl;
         }
         const serialized = serializeSlideForDb(updatedSlide);
         await supabase.from('slides').update(serialized).eq('id', targetSlideId);
       }
-      addToast('Bild erfolgreich hinterlegt!', 'success');
+      addToast(isPdfFile(file) ? 'PDF erfolgreich als Bild eingefügt!' : 'Bild erfolgreich hinterlegt!', 'success');
     } catch (err) {
       console.error('Slide image upload fallback:', err);
       try {
         const fallbackUrl = URL.createObjectURL(file);
         applyUploadedImage(fallbackUrl);
-        addToast('Bild lokal hinterlegt', 'info');
+        addToast('Datei lokal hinterlegt', 'info');
       } catch (e2) {
         addToast('Upload fehlgeschlagen', 'error');
       }
@@ -2894,21 +3082,41 @@ export default function PitchDeckStudio({
     setIsMediaLoading(true);
     try {
       const { data: docs } = await supabase.from('documents').select('*').eq('company_id', safeCompanyId).eq('project_id', targetId);
-      const filteredDocs = (docs || []).filter((d:any) => (d.url || d.file_url) && (d.type?.includes('image') || d.name?.match(/\.(jpg|jpeg|png|webp)$/i)));
+      const filteredDocs = (docs || []).filter((d:any) => (d.url || d.file_url) && (
+        d.type?.includes('image') || 
+        d.type?.includes('pdf') || 
+        d.name?.match(/\.(jpg|jpeg|png|webp|svg|pdf)$/i)
+      ));
       setAvailableMedia(filteredDocs.map((d: any) => ({...d, url: d.url || d.file_url})));
     } catch(e) { addToast(t('error_load'), "error"); }
     finally { setIsMediaLoading(false); }
   };
 
   const executeMediaImport = async () => {
+    if (!currentUser) return;
+    const safeCompanyId = currentUser.companyId || (currentUser as any)?.company_id || currentUser.uid || 'guest';
+
     if (mediaPickerType?.action === 'team' && mediaPickerType.meta) {
        const { slideId, memberIdx } = mediaPickerType.meta;
        const selectedMedia = availableMedia.find(m => m.id === selectedMediaIds[0]);
        if (selectedMedia) {
+         let mediaUrl = selectedMedia.url;
+         if (isPdfFile(selectedMedia.url || selectedMedia.name)) {
+           try {
+             addToast('PDF-Seite wird als Bild gerendert...', 'info');
+             const converted = await convertPdfPageToImage(selectedMedia.url, 1, {
+               baseFileName: (selectedMedia.name || 'foto').replace(/\.pdf$/i, '')
+             });
+             const uploadedUrl = await uploadFileWithFallback(converted.file, converted.file.name, safeCompanyId, 'slides');
+             mediaUrl = uploadedUrl || converted.dataUrl;
+           } catch (err) {
+             console.warn('PDF conversion failed:', err);
+           }
+         }
          const currentSlide = slides.find(s => s.id === slideId);
          if (currentSlide && currentSlide.dataPayload?.members) {
            const newMembers = [...currentSlide.dataPayload.members];
-           newMembers[memberIdx].photoURL = selectedMedia.url;
+           newMembers[memberIdx].photoURL = mediaUrl;
            updateSlidePayload(slideId, { ...currentSlide.dataPayload, members: newMembers });
            addToast('Foto aktualisiert!', 'success');
          }
@@ -2917,34 +3125,48 @@ export default function PitchDeckStudio({
        const targetId = mediaPickerType.meta?.slideId || activeSlideId;
        const selectedMedia = availableMedia.find(m => m.id === selectedMediaIds[0]);
        if (selectedMedia && targetId) {
+         let mediaUrl = selectedMedia.url;
+         if (isPdfFile(selectedMedia.url || selectedMedia.name)) {
+           try {
+             addToast('PDF-Seite wird als Bild gerendert...', 'info');
+             const converted = await convertPdfPageToImage(selectedMedia.url, 1, {
+               baseFileName: (selectedMedia.name || 'folie').replace(/\.pdf$/i, '')
+             });
+             const uploadedUrl = await uploadFileWithFallback(converted.file, converted.file.name, safeCompanyId, 'slides');
+             mediaUrl = uploadedUrl || converted.dataUrl;
+           } catch (err) {
+             console.warn('PDF conversion failed:', err);
+           }
+         }
+
          const imageIndex = mediaPickerType.meta?.imageIndex;
          if (imageIndex !== undefined && imageIndex !== null) {
            setSlides(prev => prev.map(s => {
              if (s.id !== targetId) return s;
              const currentImages = [...(s.dataPayload?.images || [s.imageUrl || '', s.compareImageUrl || '', ''])];
-             currentImages[imageIndex] = selectedMedia.url;
+             currentImages[imageIndex] = mediaUrl;
              const updatedPayload = { ...(s.dataPayload || {}), images: currentImages };
              const updatedSlide: any = { ...s, dataPayload: updatedPayload };
-             if (imageIndex === 0) updatedSlide.imageUrl = selectedMedia.url;
-             if (imageIndex === 1) updatedSlide.compareImageUrl = selectedMedia.url;
+             if (imageIndex === 0) updatedSlide.imageUrl = mediaUrl;
+             if (imageIndex === 1) updatedSlide.compareImageUrl = mediaUrl;
              return updatedSlide;
            }));
            const slideToUpdate = slides.find(s => s.id === targetId);
            if (slideToUpdate) {
              const currentImages = [...(slideToUpdate.dataPayload?.images || [slideToUpdate.imageUrl || '', slideToUpdate.compareImageUrl || '', ''])];
-             currentImages[imageIndex] = selectedMedia.url;
+             currentImages[imageIndex] = mediaUrl;
              const updatedPayload = { ...(slideToUpdate.dataPayload || {}), images: currentImages };
              const updatedSlide: any = { ...slideToUpdate, dataPayload: updatedPayload };
-             if (imageIndex === 0) updatedSlide.imageUrl = selectedMedia.url;
-             if (imageIndex === 1) updatedSlide.compareImageUrl = selectedMedia.url;
+             if (imageIndex === 0) updatedSlide.imageUrl = mediaUrl;
+             if (imageIndex === 1) updatedSlide.compareImageUrl = mediaUrl;
              const serialized = serializeSlideForDb(updatedSlide);
              supabase.from('slides').update(serialized).eq('id', targetId).then();
            }
          } else {
-           setSlides(prev => prev.map(s => s.id === targetId ? { ...s, imageUrl: selectedMedia.url } : s));
+           setSlides(prev => prev.map(s => s.id === targetId ? { ...s, imageUrl: mediaUrl } : s));
            const slideToUpdate = slides.find(s => s.id === targetId);
            if (slideToUpdate) {
-             const serialized = serializeSlideForDb({ ...slideToUpdate, imageUrl: selectedMedia.url });
+             const serialized = serializeSlideForDb({ ...slideToUpdate, imageUrl: mediaUrl });
              supabase.from('slides').update(serialized).eq('id', targetId).then();
            }
          }
@@ -2952,7 +3174,22 @@ export default function PitchDeckStudio({
        }
     } else {
        const toAdd = availableMedia.filter(m => selectedMediaIds.includes(m.id));
-       for (const media of toAdd) { await handleAddSlide('image-focus', media.name.split('.')[0], null, media.url); }
+       for (const media of toAdd) { 
+         let urlToUse = media.url;
+         if (isPdfFile(media.name || media.url)) {
+           try {
+             addToast(`Konvertiere ${media.name}...`, 'info');
+             const converted = await convertPdfPageToImage(media.url, 1, {
+               baseFileName: (media.name || 'pdf').replace(/\.pdf$/i, '')
+             });
+             const uploadedUrl = await uploadFileWithFallback(converted.file, converted.file.name, safeCompanyId, 'slides');
+             urlToUse = uploadedUrl || converted.dataUrl;
+           } catch (err) {
+             console.warn('PDF conversion failed:', err);
+           }
+         }
+         await handleAddSlide('image-focus', media.name.split('.')[0], null, urlToUse); 
+       }
        addToast(`${toAdd.length} Folie(n) erstellt!`, 'success');
        setMobileTab('slides');
     }
@@ -3694,7 +3931,7 @@ export default function PitchDeckStudio({
                          <span className="text-[11px] font-bold uppercase tracking-widest text-center">{t('choose_image')}</span>
                        </div>
                        <div className="text-[10px] opacity-40 font-bold uppercase">oder</div>
-                       <label onClick={(e) => e.stopPropagation()} className="px-3 py-1.5 rounded-lg bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 text-[11px] font-bold flex items-center gap-1.5 cursor-pointer transition-all">
+                       <label onClick={(e) => e.stopPropagation()} className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white shadow-sm text-[11px] font-bold flex items-center gap-1.5 cursor-pointer transition-all">
                          <VideoIcon size={14}/> <span>Video hochladen</span>
                          <input type="file" accept="video/mp4,video/webm,video/quicktime" onChange={(e) => handleDirectVideoUpload(e, 'slide', slide.id)} className="hidden" />
                        </label>
@@ -4149,7 +4386,7 @@ export default function PitchDeckStudio({
                       <span className="text-sm font-bold uppercase tracking-widest">{t('choose_image')}</span>
                     </div>
                     <div className="text-xs opacity-40 font-bold uppercase">oder</div>
-                    <label onClick={(e) => e.stopPropagation()} className="px-4 py-2 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 text-xs font-bold flex items-center gap-2 cursor-pointer transition-all">
+                    <label onClick={(e) => e.stopPropagation()} className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white shadow-sm text-xs font-bold flex items-center gap-2 cursor-pointer transition-all">
                       <VideoIcon size={16}/> <span>Video hochladen (MP4 / 4K)</span>
                       <input type="file" accept="video/mp4,video/webm,video/quicktime" onChange={(e) => handleDirectVideoUpload(e, 'slide', slide.id)} className="hidden" />
                     </label>
@@ -4616,9 +4853,9 @@ export default function PitchDeckStudio({
                          <button
                            type="button"
                            onClick={() => triggerSlideImageUpload(activeSlide.id)}
-                           className="py-3 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 rounded-xl font-bold text-xs flex justify-center items-center gap-1.5 border border-blue-500/30 active:scale-95 transition-transform"
+                           className="py-3 bg-purple-600 hover:bg-purple-700 text-white shadow-sm rounded-xl font-bold text-xs flex justify-center items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
                          >
-                           {isUploadingImage ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />} Direkt hochladen
+                           {isUploadingImage ? <Loader2 size={14} className="animate-spin text-white" /> : <Upload size={14} className="text-white" />} <span className="text-white font-bold">Direkt hochladen</span>
                          </button>
                          <button
                            type="button"
@@ -4846,6 +5083,10 @@ export default function PitchDeckStudio({
                     <span className="flex items-center gap-2.5 truncate"><Box size={15} className="text-fuchsia-600 dark:text-fuchsia-400 shrink-0"/> <span className="truncate">{t('import_renderings')}</span></span>
                     <span className="text-[9px] px-2 py-0.5 rounded-md font-sans font-bold bg-fuchsia-200/80 dark:bg-fuchsia-900/60 text-fuchsia-900 dark:text-fuchsia-200 shrink-0 border border-fuchsia-300/60 dark:border-fuchsia-700/50">{t('badge_media')}</span>
                   </button>
+                  <button type="button" onClick={() => triggerSlideImageUpload()} className="w-full p-2.5 rounded-lg bg-violet-50 hover:bg-violet-100/80 dark:bg-violet-950/20 dark:hover:bg-violet-900/30 text-violet-950 dark:text-violet-200 border border-violet-200 dark:border-violet-800/40 flex items-center justify-between transition-all text-xs font-bold shadow-sm cursor-pointer">
+                    <span className="flex items-center gap-2.5 truncate"><FileText size={15} className="text-violet-600 dark:text-violet-400 shrink-0"/> <span className="truncate">PDF-Pläne / Präsentation</span></span>
+                    <span className="text-[9px] px-2 py-0.5 rounded-md font-sans font-bold bg-violet-200/80 dark:bg-violet-900/60 text-violet-900 dark:text-violet-200 shrink-0 border border-violet-300/60 dark:border-violet-700/50">PDF</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -4873,6 +5114,7 @@ export default function PitchDeckStudio({
                     <button type="button" onClick={() => { handleAddSlide('image-focus', t('image_slide')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><ImageIcon size={14}/> {t('image_slide')}</button>
                     <button type="button" onClick={() => { handleAddSlide('video-focus', 'Video-Präsentation'); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><VideoIcon size={14}/> Video-Fokus (HD/4K)</button>
                     <button type="button" onClick={() => { handleAddSlide('text-only', 'Kernaussage & Statement'); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><FileText size={14}/> {t('text_block') || 'Nur Text'}</button>
+                    <button type="button" onClick={() => { setShowAddMenu(false); triggerSlideImageUpload(); }} className="w-full text-left px-3 py-2 text-xs font-bold text-purple-600 dark:text-purple-300 hover:bg-purple-500/10 flex items-center gap-2 border-t border-border/50 cursor-pointer"><FileText size={14} className="text-purple-600 dark:text-purple-400"/> PDF-Präsentation importieren (.pdf)</button>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -5195,10 +5437,10 @@ export default function PitchDeckStudio({
                                 <button
                                   type="button"
                                   onClick={() => triggerSlideImageUpload(activeSlide.id)}
-                                  className="px-2.5 py-2 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                                  className="px-2.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white shadow-sm text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                                 >
-                                  {isUploadingImage ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
-                                  <span>{t('upload_image') || 'Hochladen'}</span>
+                                  {isUploadingImage ? <Loader2 size={13} className="animate-spin text-white" /> : <Upload size={13} className="text-white" />}
+                                  <span className="text-white font-bold">{t('upload_image') || 'Bild hochladen'}</span>
                                 </button>
                                 <button
                                   type="button"
@@ -5206,7 +5448,7 @@ export default function PitchDeckStudio({
                                     openMediaPicker('render', t('choose_image'), 'slide', { slideId: activeSlide.id });
                                     setShowImageToolsFlyout(false);
                                   }}
-                                  className="px-2.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-text-primary border border-border text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                                  className="px-2.5 py-2 rounded-xl bg-surface hover:bg-surface-hover text-text-primary border border-border text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm"
                                 >
                                   <ImageIcon size={13} />
                                   <span>Projekt-Medien</span>
@@ -5302,7 +5544,7 @@ export default function PitchDeckStudio({
                                         className={cn(
                                           "py-1 rounded text-[9px] font-bold border transition-colors cursor-pointer text-center",
                                           (activeSlide.dataPayload?.splitRatio ?? 50) === p.val
-                                            ? "bg-purple-500/20 text-purple-300 border-purple-500/40"
+                                            ? "bg-purple-600 text-white border-purple-600 shadow-sm"
                                             : "bg-background border-border text-text-muted hover:text-text-primary"
                                         )}
                                       >
@@ -5401,7 +5643,7 @@ export default function PitchDeckStudio({
                                       className={cn(
                                         "py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer",
                                         (activeSlide.dataPayload?.imageScale || 100) === sc
-                                          ? "bg-purple-500/20 text-purple-300 border-purple-500/40"
+                                          ? "bg-purple-600 text-white border-purple-600 shadow-sm"
                                           : "bg-background border-border text-text-muted hover:text-text-primary"
                                       )}
                                     >
@@ -5469,7 +5711,7 @@ export default function PitchDeckStudio({
                                       className={cn(
                                         "py-1 rounded text-[9px] font-bold border transition-colors cursor-pointer text-center",
                                         (activeSlide.dataPayload?.overlayOpacity ?? 40) === p.val
-                                          ? "bg-purple-500/20 text-purple-300 border-purple-500/40"
+                                          ? "bg-purple-600 text-white border-purple-600 shadow-sm"
                                           : "bg-background border-border text-text-muted hover:text-text-primary"
                                       )}
                                     >
@@ -5724,7 +5966,7 @@ export default function PitchDeckStudio({
               <div className="p-4 lg:p-5 border-b border-border flex justify-between items-center bg-surface shrink-0">
                 <h3 className="font-bold text-text-primary text-sm lg:text-base">{mediaPickerType.title}</h3>
                 <div className="flex items-center gap-2 lg:gap-3">
-                  <input type="file" id="pitch-direct-upload-input" className="hidden" accept="image/*" onChange={handleDirectImageUpload} />
+                  <input type="file" id="pitch-direct-upload-input" className="hidden" accept="image/jpeg,image/png,image/webp,image/svg+xml,application/pdf,.pdf" onChange={handleDirectImageUpload} />
                   <label htmlFor="pitch-direct-upload-input" className="cursor-pointer px-3 py-1.5 lg:px-4 lg:py-2 bg-accent-ai/10 text-accent-ai hover:bg-accent-ai/20 rounded-lg text-xs lg:text-sm font-bold flex flex-row items-center gap-2 transition-colors shadow-sm">
                     {isUploadingImage ? <Loader2 size={14} className="animate-spin"/> : <Upload size={14}/>} <span className="hidden sm:inline">Upload</span>
                   </label>
@@ -5738,7 +5980,15 @@ export default function PitchDeckStudio({
                       if(selectedMediaIds.includes(m.id)) setSelectedMediaIds(selectedMediaIds.filter(i=>i!==m.id)); 
                       else setSelectedMediaIds(mediaPickerType.action === 'team' ? [m.id] : [...selectedMediaIds, m.id]);
                     }} className={cn("aspect-video rounded-xl overflow-hidden border-4 cursor-pointer relative hover:brightness-110 transition-all", selectedMediaIds.includes(m.id)?"border-accent-ai shadow-[0_0_15px_rgba(59,130,246,0.5)]":"border-transparent")}>
-                    <img src={sanitizeUrl(m.url)} className="w-full h-full object-cover"/>
+                    {m.url?.toLowerCase().includes('.pdf') || m.type?.includes('pdf') || m.name?.toLowerCase().endsWith('.pdf') ? (
+                      <div className="w-full h-full flex flex-col items-center justify-center bg-purple-500/10 border border-purple-500/20 p-2 text-center text-purple-400">
+                        <FileText size={28} className="mb-1 text-purple-400" />
+                        <span className="text-[10px] font-bold truncate max-w-full px-1 text-text-primary">{m.name}</span>
+                        <span className="text-[8px] uppercase tracking-wider text-purple-400 font-bold mt-0.5">PDF-Plan / Dok</span>
+                      </div>
+                    ) : (
+                      <img src={sanitizeUrl(m.url)} className="w-full h-full object-cover"/>
+                    )}
                     {selectedMediaIds.includes(m.id) && <div className="absolute inset-0 bg-accent-ai/20 flex items-center justify-center"><CheckSquare className="text-white drop-shadow-md" size={32} /></div>}
                   </div>
                 ))}
@@ -7053,12 +7303,127 @@ export default function PitchDeckStudio({
         </div>
       )}
 
-      {/* DEDICATED SLIDE DIRECT IMAGE UPLOAD INPUT */}
+      {/* MULTI-PAGE PDF PAGE SELECTOR MODAL */}
+      <AnimatePresence>
+        {pdfPagePicker && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[125000] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 10 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 10 }}
+              className="bg-surface border border-border rounded-3xl w-full max-w-3xl max-h-[85vh] shadow-2xl flex flex-col overflow-hidden"
+            >
+              {/* MODAL HEADER */}
+              <div className="p-4 sm:p-5 border-b border-border flex items-center justify-between bg-surface/90 shrink-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center border border-purple-500/30 shrink-0">
+                    <FileText size={20} />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-text-primary text-sm sm:text-base truncate">
+                      PDF-Seiten auswählen
+                    </h3>
+                    <p className="text-xs text-text-muted truncate">
+                      {pdfPagePicker.file.name} • {pdfPagePicker.totalPages} Seiten
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPdfPagePicker(null)}
+                  className="p-2 hover:bg-white/10 rounded-xl text-text-muted hover:text-text-primary transition-colors cursor-pointer shrink-0"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* MODAL ACTIONS BAR */}
+              <div className="px-5 py-3 bg-purple-500/10 border-b border-purple-500/20 flex flex-wrap items-center justify-between gap-2 shrink-0">
+                <span className="text-xs text-purple-300 font-medium">
+                  Klicken Sie auf eine Seite für diesen Bild-Slot, oder importieren Sie das gesamte PDF:
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={pdfPagePicker.isConvertingAll}
+                    onClick={() => handleSelectPdfPageForSlot(1)}
+                    className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-text-primary text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    Seite 1 wählen
+                  </button>
+                  <button
+                    type="button"
+                    disabled={pdfPagePicker.isConvertingAll}
+                    onClick={handleImportAllPdfPagesAsSlides}
+                    className="px-3.5 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-purple-600/30 cursor-pointer disabled:opacity-50"
+                  >
+                    {pdfPagePicker.isConvertingAll ? (
+                      <>
+                        <Loader2 size={13} className="animate-spin" />
+                        <span>Importiere Folien...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Layers size={13} />
+                        <span>Alle {pdfPagePicker.totalPages} Seiten als Folien anlegen</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* MODAL THUMBNAILS GRID */}
+              <div className="p-5 overflow-y-auto flex-1 custom-scrollbar grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5">
+                {Array.from({ length: pdfPagePicker.totalPages }).map((_, idx) => {
+                  const pageNum = idx + 1;
+                  const thumb = pdfPagePicker.thumbnails[pageNum];
+                  return (
+                    <div
+                      key={pageNum}
+                      onClick={() => !pdfPagePicker.isConvertingAll && handleSelectPdfPageForSlot(pageNum)}
+                      className="group relative border border-border hover:border-purple-500 rounded-xl overflow-hidden cursor-pointer transition-all bg-background/50 hover:shadow-lg hover:shadow-purple-500/10 flex flex-col"
+                    >
+                      <div className="aspect-[16/10] bg-black/20 flex items-center justify-center relative overflow-hidden">
+                        {thumb ? (
+                          <img src={thumb} alt={`Seite ${pageNum}`} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300" />
+                        ) : (
+                          <div className="flex flex-col items-center justify-center text-text-muted gap-1">
+                            <Loader2 size={18} className="animate-spin text-purple-400" />
+                            <span className="text-[10px]">Wird geladen...</span>
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <span className="px-2.5 py-1 rounded-lg bg-purple-600 text-white text-[10px] font-bold shadow-md">
+                            Auswählen
+                          </span>
+                        </div>
+                      </div>
+                      <div className="p-2 flex items-center justify-between text-[11px] font-bold border-t border-border/50 bg-surface/50">
+                        <span className="text-text-primary">Seite {pageNum}</span>
+                        <span className="text-[10px] text-purple-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                          Einfügen →
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* DEDICATED SLIDE DIRECT IMAGE UPLOAD INPUT (ACCEPTS IMAGES & PDF) */}
       <input
         type="file"
         ref={slideImageInputRef}
         id="pitch-slide-direct-image-input"
-        accept="image/jpeg,image/png,image/webp,image/svg+xml"
+        accept="image/jpeg,image/png,image/webp,image/svg+xml,application/pdf,.pdf"
         className="hidden"
         onChange={(e) => handleDirectSlideImageUpload(e, targetSlideForUpload || activeSlideId)}
       />
