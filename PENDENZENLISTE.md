@@ -1,11 +1,40 @@
 # Kreativ Desk & interacTV — Status, Erfolge & Pendenzen
 
-**Datum:** 5. Oktober 2026  
-**Status:** 🟢 Alle Prüfungen grün (Playwright E2E 56/56 bestanden in 17 Test-Suiten, Vitest 80/80 grün in 15 Test-Dateien, TypeScript 0 Fehler `tsc --noEmit`, ESLint 0 Fehler, Production Build 100% fehlerfrei, 100% Schweizer Rechtschreibung), alle Module und Tools synchronisiert und live geschaltet (`https://www.kreativdesk.ch`).
+**Datum:** 6. Oktober 2026  
+**Status:** 🟢 Alle Prüfungen grün (Vitest 82/82 grün in 15 Test-Dateien, TypeScript 0 Fehler `tsc --noEmit`, ESLint 0 Fehler, Production Build 100% fehlerfrei, 100% Schweizer Rechtschreibung), alle Module und Tools synchronisiert und live geschaltet (`https://www.kreativdesk.ch`).
 
 ---
 
-## 🏆 Erfolgsliste von heute (5. Oktober 2026)
+## 🏆 Erfolgsliste von heute (6. Oktober 2026)
+
+### 0.000000000000000 Pitch Deck Studio: Typografie-Werkzeuge (Fett / Normal), Logo-Löschfunktion & Clean-Image Folien (6. Oktober 2026)
+* **Problemstellung & Benutzer-Anforderung:**
+  * Der Benutzer bemängelte fehlende Werkzeuge, um Pitch-Deck-Texte und Titel auf **Fett (Bold)** oder **Normal (Regular)** zu schalten: «und bei den pitch deck bitte anpassen das man texte auf bold oder regualr setzten kann fehlt auch als werkezuge oder so?».
+  * Zudem liess sich ein einmal hochgeladenes Logo weder in den Vorlagen noch im PDF-Studio mehr löschen: «ich kann leider das logo nicht löschen im pdf und in den vorlagen wenn ich ein logo hochgelande habe. das muss löschbar sein. ok? bitte auch prüfen».
+  * Zuvor wurde zudem gefordert, dass ganzseitige Bildfolien ohne jegliche Titel- oder Text-Überlagerungen gedruckt werden können: «können wir machen das wir einen ganzseitige bildvorlage haben aber ohne texte oder titel darüber so wie es jetzt ist... nur fusszeile muss hin. ok?».
+* **Umgesetzte Lösungen & Architektur:**
+  * **1. Typografie-Werkzeuge (Fett / Normal):**
+    * **Folien-Datenmodell ([pitchDeckHelpers.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/utils/pitchDeckHelpers.ts)):** `Slide`-Schnittstelle um optionale Attribute `titleFontWeight?: 'bold' | 'normal'` und `contentFontWeight?: 'bold' | 'normal'` erweitert. Vollständige Serialisierung und Deserialisierung im JSON-Envelope für Supabase und LocalStorage.
+    * **Typografie-Flyout & CAD-Toolbar ([PitchDeckStudio.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/PitchDeckStudio.tsx)):** Im Schnellwerkzeug-Flyout (Sliders-Icon) und in der mobilen Inhalts-Ansicht stehen getrennte Schaltflächen für Titel-Stil (`Fett` / `Normal`) und Text-Stil (`Fett` / `Normal`) bereit.
+    * **Editor-Canvas & Präsentation ([PitchDeck.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/PitchDeck.tsx)):** Dynamische Zuweisung von `fontWeight: 700 / 900` bzw. `400` über alle Layouts hinweg (Full-Image, Title-Only, Text-Only, Split).
+    * **Vektorieller PDF-Export:** `generatePdfBlob` setzt gezielt `docPdf.setFont(pdfFont, titleFontWeight)` und `docPdf.setFont(pdfFont, contentFontWeight)`.
+    * **PowerPoint PPTX-Export ([pptxExportHelper.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/utils/pptxExportHelper.ts)):** Nativer Export mit `bold: true` oder `bold: false` für Titel und Inhaltsblöcke.
+  * **2. Durchgängige Logo-Löschfunktion:**
+    * **PDF-Studio Modal:** Deutlicher roter `Entfernen`-Button (`Trash2`) neben dem Logo-Ändern-Button.
+    * **Master-Vorlagen / Design-Tab:** Roter Löschen-Button im Desktop-Seitenpanel sowie im mobilen Design-Tab.
+    * **Slide Canvas Fusszeile:** Roter Löschen-Button erscheint beim Überfahren des Logos mit der Maus.
+    * **Globale Firmen- & Dokumenteinstellungen ([SettingsTab.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/SettingsTab.tsx), [DocumentStudioModal.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/DocumentStudioModal.tsx)):** Einheitliche Logo-Löschung inklusive Cache- und Supabase-Bereinigung (`updateCompanyProfileConfig({ logoUrl: '' })`).
+    * **Keine Geister-Logos:** Beim Leeren von `logoUrl` wird das Logo rückstandslos aus `safeStorage` (`pitch_deckSettings_global`, `pitch_deckSettings_${projectId}`) und der Datenbank entfernt; der PDF-Generator überspringt das Logo vollständig.
+  * **3. Ganzseitige Bildfolien ohne Text (`full-image-clean`):**
+    * Saubere Bilddarstellung ohne Titel oder Beschreibung, während die Fusszeile mit Seitenzahl und Projekttext erhalten bleibt.
+* **Ergebnis der Verifikation:**
+  * **TypeScript (`tsc --noEmit`):** 0 Fehler.
+  * **Vitest:** 82/82 Tests grün (15 Testdateien).
+  * **Production Build:** 100% fehlerfrei kompiliert (`dist/index.html`, PWA-Manifest, Service Worker).
+
+---
+
+## 🏆 Erfolgsliste von gestern (5. Oktober 2026)
 
 ### 0.00000000000000 Pitch Deck Studio: 2-Bilder-Vergleich, 3-Bilder-Galerie & Masken-Skalierung (5. Oktober 2026)
 * **Problemstellung & Benutzer-Anforderung:**

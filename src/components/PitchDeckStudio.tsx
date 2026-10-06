@@ -9,7 +9,7 @@ import PremiumFeature from './PremiumFeature';
 import { supabase } from '../lib/supabase';
 import { 
   Sparkles, Image as ImageIcon, ImagePlus, X, Download, Plus, Trash2, 
-  MonitorPlay, Layout, Type, Columns, Maximize2, 
+  MonitorPlay, Layout, Type, Columns, Maximize2, Bold,
   ChevronUp, ChevronDown, Loader2, Settings, Eye, EyeOff, Users, DollarSign, 
   LayoutDashboard, Milestone, BookOpen, Palette, Map, Box, CheckSquare, Mail, Phone,
   AlertTriangle, PenTool, PieChart, CalendarDays, TrendingUp, RefreshCw, LogOut, Cuboid, Camera, Cloud,
@@ -45,6 +45,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     add_as_slide: 'Add as Slide', deck_engine: 'Deck Engine', master_templates: 'Master Templates',
     keynote: 'Executive (Kreativ Desk)', architecture: 'Architecture (Blueprint)', photography: 'Editorial Gallery', scenography: 'Stage Spotlight',
     swiss: 'Swiss Minimal (SIA)', neo_brutalism: 'Neo-Brutalism (Bold)', glassmorphism: 'Glassmorphism (Luxury)', cyberpunk: 'BIM Cyberpunk', minimal_tech: 'Eco Timber (Warm)', master_logo: 'Master Logo', change_logo: 'Change Logo', upload_logo: 'Upload Logo',
+    delete_logo: 'Remove Logo', font_weight: 'Font Weight', weight_bold: 'Bold', weight_regular: 'Regular', title_weight: 'Title Style', text_weight: 'Text Style',
     accent_color: 'Accent Color', footer_text: 'Footer Text', import_app_data: 'Project Reporting',
     load_budget: 'Import Budget Table', load_team: 'Import Project Team', generate_roadmap: 'Import Smart Calendar',
     import_cad: 'Import CAD Plans', import_bim: 'Import 3D BIM', import_renderings: 'Import Renderings',
@@ -114,6 +115,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     add_as_slide: 'Als Folie hinzufügen', deck_engine: 'Deck Engine', master_templates: 'Master-Vorlagen',
     keynote: 'Executive (Kreativ Desk)', architecture: 'Architektur (Blueprint)', photography: 'Editorial Galerie', scenography: 'Stage Spotlight',
     swiss: 'Swiss Minimal (SIA)', neo_brutalism: 'Neo-Brutalism (Bold)', glassmorphism: 'Glassmorphism (Luxury)', cyberpunk: 'BIM Cyberpunk', minimal_tech: 'Eco Timber (Holzbau)', master_logo: 'Master Logo', change_logo: 'Logo ändern', upload_logo: 'Logo hochladen',
+    delete_logo: 'Logo entfernen', font_weight: 'Schriftschnitt', weight_bold: 'Fett (Bold)', weight_regular: 'Normal (Regular)', title_weight: 'Titel-Schriftschnitt', text_weight: 'Text-Schriftschnitt',
     accent_color: 'Akzentfarbe', footer_text: 'Fusszeile', import_app_data: 'Projekt-Berichterstattung',
     load_budget: 'Budget Tabelle', load_team: 'Projekt-Team', generate_roadmap: 'Smart Calendar',
     import_cad: 'CAD & Pläne', import_bim: '3D BIM Modelle', import_renderings: '3D Renderings',
@@ -551,6 +553,28 @@ export default function PitchDeckStudio({
       await supabase.from('slides').update(serializeSlideForDb(updatedSlide)).eq('id', activeSlide.id);
     } catch (err) {
       console.warn("Content font size update error:", err);
+    }
+  };
+
+  const handleTitleFontWeightChange = async (weight: 'bold' | 'normal') => {
+    if (!activeSlide) return;
+    const updatedSlide: Slide = { ...activeSlide, titleFontWeight: weight };
+    setSlides(prev => prev.map(s => s.id === activeSlide.id ? updatedSlide : s));
+    try {
+      await supabase.from('slides').update(serializeSlideForDb(updatedSlide)).eq('id', activeSlide.id);
+    } catch (err) {
+      console.warn("Title font weight update error:", err);
+    }
+  };
+
+  const handleContentFontWeightChange = async (weight: 'bold' | 'normal') => {
+    if (!activeSlide) return;
+    const updatedSlide: Slide = { ...activeSlide, contentFontWeight: weight };
+    setSlides(prev => prev.map(s => s.id === activeSlide.id ? updatedSlide : s));
+    try {
+      await supabase.from('slides').update(serializeSlideForDb(updatedSlide)).eq('id', activeSlide.id);
+    } catch (err) {
+      console.warn("Content font weight update error:", err);
     }
   };
 
@@ -1101,9 +1125,34 @@ export default function PitchDeckStudio({
     const file = e.target.files?.[0];
     if (file) { 
       const reader = new FileReader(); 
-      reader.onloadend = () => updateDeckSettings({ logoUrl: reader.result as string });
+      reader.onloadend = () => {
+        const resultUrl = reader.result as string;
+        updateDeckSettings({ logoUrl: resultUrl });
+        addToast('Logo erfolgreich hochgeladen', 'success');
+        refreshPdfPreview();
+      };
       reader.readAsDataURL(file); 
     }
+  };
+
+  const handleRemoveLogo = (e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    updateDeckSettings({ logoUrl: '' });
+    if (activeProject) {
+      if (activeProject.deckSettings) {
+        activeProject.deckSettings.logoUrl = '';
+      }
+    }
+    const globalCached = safeStorage.getItem<any>('pitch_deckSettings_global', null);
+    if (globalCached) {
+      globalCached.logoUrl = '';
+      safeStorage.setItem('pitch_deckSettings_global', globalCached);
+    }
+    addToast('Logo erfolgreich entfernt', 'info');
+    refreshPdfPreview();
   };
 
   const handleDirectImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1741,7 +1790,9 @@ export default function PitchDeckStudio({
       
       // 3. Slide Typography Setup
       const pdfFont = themeStyle === 'photography' ? "times" : "helvetica";
-      docPdf.setFont(pdfFont, "bold");
+      const titleFontWeight = slide.titleFontWeight === 'normal' ? "normal" : "bold";
+      const contentFontWeight = slide.contentFontWeight === 'bold' ? "bold" : "normal";
+      docPdf.setFont(pdfFont, titleFontWeight);
       let titleTextColor: [number, number, number] = isDarkTheme ? [255, 255, 255] : [20, 20, 20];
       if (themeStyle === 'neo-brutalism' || themeStyle === 'swiss') {
         titleTextColor = isDarkTheme ? [255, 255, 255] : [0, 0, 0];
@@ -1753,11 +1804,12 @@ export default function PitchDeckStudio({
       docPdf.setTextColor(titleTextColor[0], titleTextColor[1], titleTextColor[2]);
       
       if (slide.layout === 'title-only') { 
+        docPdf.setFont(pdfFont, titleFontWeight);
         docPdf.setFontSize(slide.titleFontSize ? Math.round(slide.titleFontSize * 0.9) : 38); 
         const tw = docPdf.getTextWidth(slide.title || ''); 
         docPdf.text(slide.title || '', (pw - tw)/2, ph/2 - 5); 
         if (slide.content) {
-          docPdf.setFont(pdfFont, "normal");
+          docPdf.setFont(pdfFont, contentFontWeight);
           docPdf.setFontSize(slide.fontSize || 16);
           docPdf.setTextColor(isDarkTheme ? 200 : 70);
           const cLines = docPdf.splitTextToSize(slide.content, pw - 60);
@@ -1798,14 +1850,14 @@ export default function PitchDeckStudio({
 
         if (!isClean && slide.title && slide.title.trim().length > 0) {
           const textPos = slide.dataPayload?.textPosition || 'bottom-left';
-          docPdf.setFont(pdfFont, "bold");
+          docPdf.setFont(pdfFont, titleFontWeight);
           docPdf.setFontSize(slide.titleFontSize ? Math.round(slide.titleFontSize * 0.8) : 32);
           docPdf.setTextColor(255, 255, 255);
           if (textPos === 'center') {
             const tw = docPdf.getTextWidth(slide.title);
             docPdf.text(slide.title, (pw - tw) / 2, ph / 2 - 5);
             if (slide.content && slide.content.trim().length > 0 && slide.content !== t('type_text_here')) {
-              docPdf.setFont(pdfFont, "normal");
+              docPdf.setFont(pdfFont, contentFontWeight);
               docPdf.setFontSize(slide.fontSize || 16);
               docPdf.setTextColor(240, 240, 240);
               const cLines = docPdf.splitTextToSize(slide.content, pw - 60);
@@ -1814,7 +1866,7 @@ export default function PitchDeckStudio({
           } else {
             docPdf.text(slide.title, 20, ph - 38);
             if (slide.content && slide.content.trim().length > 0 && slide.content !== t('type_text_here')) {
-              docPdf.setFont(pdfFont, "normal");
+              docPdf.setFont(pdfFont, contentFontWeight);
               docPdf.setFontSize(slide.fontSize || 16);
               docPdf.setTextColor(240, 240, 240);
               const cLines = docPdf.splitTextToSize(slide.content, pw - 40);
@@ -1824,6 +1876,7 @@ export default function PitchDeckStudio({
         }
       } else { 
         if (slide.title && slide.title.trim().length > 0) {
+          docPdf.setFont(pdfFont, titleFontWeight);
           docPdf.setFontSize(slide.titleFontSize ? Math.round(slide.titleFontSize * 0.7) : 26); 
           const maxTitleW = (themeStyle === 'neo-brutalism' || themeStyle === 'swiss') ? pw - 60 : pw - 30;
           const titleLns = docPdf.splitTextToSize(slide.title, maxTitleW);
@@ -1838,7 +1891,7 @@ export default function PitchDeckStudio({
         docPdf.text(`[ ${slide.stamp} ]`, pw - 50, 22);
       }
       
-      docPdf.setFont(pdfFont, "normal");
+      docPdf.setFont(pdfFont, contentFontWeight);
       docPdf.setFontSize(slide.fontSize || 16);
       docPdf.setTextColor(isDarkTheme ? 220 : 50);
       const cy = 36;
@@ -3330,6 +3383,9 @@ export default function PitchDeckStudio({
     const titleFs = slide.titleFontSize || (slide.layout === 'title-only' || slide.layout === 'full-image' || slide.layout === 'full-image-clean' ? 48 : 32);
     const contentFs = slide.fontSize || 18;
 
+    const isTitleBold = (activeSlide?.id === slide.id ? (activeSlide.titleFontWeight || 'bold') : (slide.titleFontWeight || 'bold')) !== 'normal';
+    const isContentBold = (activeSlide?.id === slide.id ? (activeSlide.contentFontWeight || 'normal') : (slide.contentFontWeight || 'normal')) === 'bold';
+
     if (slide.layout === 'full-image' || slide.layout === 'full-image-clean') {
       const isClean = slide.layout === 'full-image-clean' || !!slide.dataPayload?.hideTextOverlay;
       const imageFit = slide.dataPayload?.imageFit || 'cover';
@@ -3494,19 +3550,21 @@ export default function PitchDeckStudio({
                     type="text"
                     value={displayTitle}
                     onChange={(e) => handleLocalUpdate('title', e.target.value)}
-                    style={{ fontSize: `${titleFs}px` }}
+                    style={{ fontSize: `${titleFs}px`, fontWeight: isTitleBold ? 900 : 400 }}
                     placeholder="Titel der Folie..."
                     className={cn(
-                      "bg-transparent outline-none w-full font-black text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)] border-b border-transparent focus:border-purple-400 transition-colors leading-tight",
+                      "bg-transparent outline-none w-full text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)] border-b border-transparent focus:border-purple-400 transition-colors leading-tight",
+                      isTitleBold ? "font-black" : "font-normal font-sans",
                       textPosition === 'center' ? "text-center" : ""
                     )}
                   />
                 ) : (
                   displayTitle && (
                     <h2
-                      style={{ fontSize: `${titleFs}px` }}
+                      style={{ fontSize: `${titleFs}px`, fontWeight: isTitleBold ? 900 : 400 }}
                       className={cn(
-                        "w-full font-black text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)] truncate leading-tight",
+                        "w-full text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)] truncate leading-tight",
+                        isTitleBold ? "font-black" : "font-normal font-sans",
                         textPosition === 'center' ? "text-center" : ""
                       )}
                     >
@@ -3519,20 +3577,22 @@ export default function PitchDeckStudio({
                   <textarea
                     value={displayContent}
                     onChange={(e) => handleLocalUpdate('content', e.target.value)}
-                    style={{ fontSize: `${contentFs}px` }}
+                    style={{ fontSize: `${contentFs}px`, fontWeight: isContentBold ? 700 : 400 }}
                     placeholder="Untertitel oder Kurzbeschreibung hier eingeben..."
                     rows={2}
                     className={cn(
                       "w-full mt-2 bg-transparent outline-none text-white/95 drop-shadow-[0_1px_8px_rgba(0,0,0,0.9)] resize-none border-b border-transparent focus:border-purple-400 transition-colors leading-relaxed",
+                      isContentBold ? "font-bold" : "font-normal",
                       textPosition === 'center' ? "text-center max-w-2xl mx-auto" : "max-w-3xl"
                     )}
                   />
                 ) : (
                   displayContent && (
                     <p
-                      style={{ fontSize: `${contentFs}px` }}
+                      style={{ fontSize: `${contentFs}px`, fontWeight: isContentBold ? 700 : 400 }}
                       className={cn(
                         "mt-2 text-white/95 drop-shadow-[0_1px_8px_rgba(0,0,0,0.9)] leading-relaxed whitespace-pre-wrap",
+                        isContentBold ? "font-bold" : "font-normal",
                         textPosition === 'center' ? "text-center max-w-2xl mx-auto" : "max-w-3xl line-clamp-3"
                       )}
                     >
@@ -3557,7 +3617,21 @@ export default function PitchDeckStudio({
               )}
             </span>
             <div className="flex items-center gap-3">
-              {!!sanitizeUrl(deckSettings.logoUrl) && <img src={sanitizeUrl(deckSettings.logoUrl)} alt="Logo" className="h-4 lg:h-6 object-contain opacity-95 drop-shadow pointer-events-none" />}
+              {!!sanitizeUrl(deckSettings.logoUrl) && (
+                <div className="relative group/logo flex items-center">
+                  <img src={sanitizeUrl(deckSettings.logoUrl)} alt="Logo" className="h-4 lg:h-6 object-contain opacity-95 drop-shadow pointer-events-none" />
+                  {!isPreviewMode && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveLogo}
+                      title={t('delete_logo') || 'Logo entfernen'}
+                      className="ml-1 p-1 rounded bg-red-600/90 hover:bg-red-600 text-white opacity-0 group-hover/logo:opacity-100 transition-opacity cursor-pointer shadow z-30 pointer-events-auto"
+                    >
+                      <Trash2 size={11} />
+                    </button>
+                  )}
+                </div>
+              )}
               <span className="text-[8px] lg:text-[10px] uppercase font-sans font-bold tracking-widest text-white/90 drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
                 {slides.findIndex(s => s.id === slide.id) + 1} / {slides.length}
               </span>
@@ -3594,11 +3668,11 @@ export default function PitchDeckStudio({
               type="text" 
               value={displayTitle} 
               onChange={(e) => handleLocalUpdate('title', e.target.value)} 
-              style={{ fontSize: `${titleFs}px` }}
-              className={cn("bg-transparent outline-none w-full font-bold border-b border-transparent focus:border-purple-500/50 transition-colors leading-tight", slide.layout === 'title-only' ? "text-center" : "", tc)} 
+              style={{ fontSize: `${titleFs}px`, fontWeight: isTitleBold ? 700 : 400 }}
+              className={cn("bg-transparent outline-none w-full border-b border-transparent focus:border-purple-500/50 transition-colors leading-tight", isTitleBold ? "font-bold" : "font-normal", slide.layout === 'title-only' ? "text-center" : "", tc)} 
             />
           ) : (
-            <h2 style={{ fontSize: `${titleFs}px` }} className={cn("w-full font-bold truncate leading-tight", slide.layout === 'title-only' ? "text-center" : "", tc)}>{displayTitle}</h2>
+            <h2 style={{ fontSize: `${titleFs}px`, fontWeight: isTitleBold ? 700 : 400 }} className={cn("w-full truncate leading-tight", isTitleBold ? "font-bold" : "font-normal", slide.layout === 'title-only' ? "text-center" : "", tc)}>{displayTitle}</h2>
           )}
         </div>
         
@@ -3953,9 +4027,9 @@ export default function PitchDeckStudio({
 
           {slide.layout === 'text-only' && (
              !isPreviewMode && !isMobile ? (
-               <textarea value={displayContent} onChange={(e) => handleLocalUpdate('content', e.target.value)} style={{ fontSize: `${contentFs}px` }} className={cn("w-full h-full bg-transparent outline-none resize-none leading-relaxed", tc)} />
+               <textarea value={displayContent} onChange={(e) => handleLocalUpdate('content', e.target.value)} style={{ fontSize: `${contentFs}px`, fontWeight: isContentBold ? 700 : 400 }} className={cn("w-full h-full bg-transparent outline-none resize-none leading-relaxed", isContentBold ? "font-bold" : "font-normal", tc)} />
              ) : (
-               <div style={{ fontSize: `${contentFs}px` }} className={cn("w-full h-full whitespace-pre-wrap overflow-y-auto custom-scrollbar leading-relaxed", tc)}>{displayContent}</div>
+               <div style={{ fontSize: `${contentFs}px`, fontWeight: isContentBold ? 700 : 400 }} className={cn("w-full h-full whitespace-pre-wrap overflow-y-auto custom-scrollbar leading-relaxed", isContentBold ? "font-bold" : "font-normal", tc)}>{displayContent}</div>
              )
           )}
 
@@ -3965,12 +4039,12 @@ export default function PitchDeckStudio({
                 <textarea 
                   value={displayContent} 
                   onChange={(e) => handleLocalUpdate('content', e.target.value)} 
-                  style={{ fontSize: `${contentFs}px` }} 
+                  style={{ fontSize: `${contentFs}px`, fontWeight: isContentBold ? 700 : 400 }} 
                   placeholder="Untertitel oder Kernaussage hier eingeben..."
-                  className={cn("w-full bg-transparent outline-none resize-none text-center opacity-80 leading-normal", tc)} 
+                  className={cn("w-full bg-transparent outline-none resize-none text-center opacity-80 leading-normal", isContentBold ? "font-bold" : "font-normal", tc)} 
                 />
               ) : (
-                <p style={{ fontSize: `${contentFs}px` }} className={cn("opacity-80 max-w-2xl leading-normal", tc)}>{displayContent}</p>
+                <p style={{ fontSize: `${contentFs}px`, fontWeight: isContentBold ? 700 : 400 }} className={cn("opacity-80 max-w-2xl leading-normal", isContentBold ? "font-bold" : "font-normal", tc)}>{displayContent}</p>
               )}
             </div>
           )}
@@ -3978,9 +4052,9 @@ export default function PitchDeckStudio({
           {slide.layout === 'split' && (
             <div className="flex flex-row w-full h-full gap-4 md:gap-10">
               {!isPreviewMode && !isMobile ? (
-                 <textarea value={displayContent} onChange={(e) => handleLocalUpdate('content', e.target.value)} style={{ fontSize: `${contentFs}px` }} className={cn("w-1/2 h-full bg-transparent outline-none resize-none leading-relaxed", tc)} />
+                 <textarea value={displayContent} onChange={(e) => handleLocalUpdate('content', e.target.value)} style={{ fontSize: `${contentFs}px`, fontWeight: isContentBold ? 700 : 400 }} className={cn("w-1/2 h-full bg-transparent outline-none resize-none leading-relaxed", isContentBold ? "font-bold" : "font-normal", tc)} />
               ) : (
-                 <div style={{ fontSize: `${contentFs}px` }} className={cn("w-1/2 h-full whitespace-pre-wrap leading-relaxed overflow-y-auto custom-scrollbar", tc)}>{displayContent}</div>
+                 <div style={{ fontSize: `${contentFs}px`, fontWeight: isContentBold ? 700 : 400 }} className={cn("w-1/2 h-full whitespace-pre-wrap leading-relaxed overflow-y-auto custom-scrollbar", isContentBold ? "font-bold" : "font-normal", tc)}>{displayContent}</div>
               )}
               
               <div onClick={() => !isPreviewMode && !slide.videoUrl && openMediaPicker('render', t('choose_image'), 'slide')} 
@@ -4763,7 +4837,21 @@ export default function PitchDeckStudio({
              )}
           </span>
           <div className="flex items-center gap-3">
-            {!!sanitizeUrl(deckSettings.logoUrl) && <img src={sanitizeUrl(deckSettings.logoUrl)} alt="Logo" className="h-4 lg:h-6 object-contain opacity-80 pointer-events-none" />}
+            {!!sanitizeUrl(deckSettings.logoUrl) && (
+              <div className="relative group/logo flex items-center">
+                <img src={sanitizeUrl(deckSettings.logoUrl)} alt="Logo" className="h-4 lg:h-6 object-contain opacity-80 pointer-events-none" />
+                {!isPreviewMode && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveLogo}
+                    title={t('delete_logo') || 'Logo entfernen'}
+                    className="ml-1 p-1 rounded bg-red-600/90 hover:bg-red-600 text-white opacity-0 group-hover/logo:opacity-100 transition-opacity cursor-pointer shadow z-30 pointer-events-auto"
+                  >
+                    <Trash2 size={11} />
+                  </button>
+                )}
+              </div>
+            )}
             <span className="text-[8px] lg:text-[10px] uppercase font-sans font-bold tracking-widest opacity-60" style={{ color: deckSettings.themeColor }}>
               {slides.findIndex(s => s.id === slide.id) + 1} / {slides.length}
             </span>
@@ -4912,6 +5000,67 @@ export default function PitchDeckStudio({
                      </div>
                    </div>
                  </div>
+
+                 <div className="flex gap-4">
+                   <div className="flex-1">
+                     <label className="text-xs font-bold text-text-muted uppercase mb-1 block">{t('title_weight') || 'Titel-Stil'}</label>
+                     <div className="flex items-center bg-surface border border-border rounded-xl p-1 gap-1">
+                       <button
+                         type="button"
+                         onClick={() => handleTitleFontWeightChange('bold')}
+                         className={cn(
+                           "flex-1 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all",
+                           (activeSlide.titleFontWeight || 'bold') !== 'normal'
+                             ? "bg-purple-600 text-white shadow-sm"
+                             : "text-text-muted hover:text-text-primary hover:bg-black/5 dark:hover:bg-white/5"
+                         )}
+                       >
+                         <Bold size={12} /> Fett
+                       </button>
+                       <button
+                         type="button"
+                         onClick={() => handleTitleFontWeightChange('normal')}
+                         className={cn(
+                           "flex-1 py-1.5 rounded-lg text-xs font-normal flex items-center justify-center transition-all",
+                           activeSlide.titleFontWeight === 'normal'
+                             ? "bg-purple-600 text-white shadow-sm font-semibold"
+                             : "text-text-muted hover:text-text-primary hover:bg-black/5 dark:hover:bg-white/5"
+                         )}
+                       >
+                         Normal
+                       </button>
+                     </div>
+                   </div>
+                   <div className="flex-1">
+                     <label className="text-xs font-bold text-text-muted uppercase mb-1 block">{t('text_weight') || 'Text-Stil'}</label>
+                     <div className="flex items-center bg-surface border border-border rounded-xl p-1 gap-1">
+                       <button
+                         type="button"
+                         onClick={() => handleContentFontWeightChange('bold')}
+                         className={cn(
+                           "flex-1 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all",
+                           activeSlide.contentFontWeight === 'bold'
+                             ? "bg-purple-600 text-white shadow-sm"
+                             : "text-text-muted hover:text-text-primary hover:bg-black/5 dark:hover:bg-white/5"
+                         )}
+                       >
+                         <Bold size={12} /> Fett
+                       </button>
+                       <button
+                         type="button"
+                         onClick={() => handleContentFontWeightChange('normal')}
+                         className={cn(
+                           "flex-1 py-1.5 rounded-lg text-xs font-normal flex items-center justify-center transition-all",
+                           (activeSlide.contentFontWeight || 'normal') === 'normal'
+                             ? "bg-purple-600 text-white shadow-sm font-semibold"
+                             : "text-text-muted hover:text-text-primary hover:bg-black/5 dark:hover:bg-white/5"
+                         )}
+                       >
+                         Normal
+                       </button>
+                     </div>
+                   </div>
+                 </div>
                  
                  {activeSlide.layout !== 'title-only' && activeSlide.layout !== 'image-focus' && (
                     <div>
@@ -4998,6 +5147,39 @@ export default function PitchDeckStudio({
                       </button>
                     ))}
                   </div>
+                </div>
+
+                <div className="pt-2">
+                  <label className="text-xs font-bold text-text-muted uppercase mb-2 block">{t('master_logo') || 'Master-Logo'}</label>
+                  {deckSettings.logoUrl ? (
+                    <div className="p-3 bg-surface border border-border rounded-xl space-y-2">
+                      <div className="h-14 w-full flex items-center justify-center p-1 bg-black/5 dark:bg-black/20 rounded-lg">
+                        <img src={sanitizeUrl(deckSettings.logoUrl)} alt="Logo" className="max-h-full max-w-full object-contain" />
+                      </div>
+                      <div className="flex gap-2">
+                        <label className="flex-1 py-2 px-2 bg-purple-600/10 hover:bg-purple-600/20 text-purple-600 dark:text-purple-400 border border-purple-500/20 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-colors">
+                          <Upload size={13} />
+                          <span>{t('change_logo') || 'Logo ändern'}</span>
+                          <input type="file" accept="image/*" onChange={handlePdfLogoUpload} className="hidden" />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={handleRemoveLogo}
+                          className="py-2 px-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                          title={t('delete_logo') || 'Logo entfernen'}
+                        >
+                          <Trash2 size={13} />
+                          <span>{t('delete_logo') || 'Löschen'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className="w-full p-4 bg-surface border-2 border-dashed border-border hover:border-purple-500/50 rounded-xl flex items-center justify-center gap-2 text-xs font-bold text-text-muted hover:text-text-primary cursor-pointer transition-all">
+                      <Upload size={14} />
+                      <span>{t('upload_logo') || 'Logo hochladen'}</span>
+                      <input type="file" accept="image/*" onChange={handlePdfLogoUpload} className="hidden" />
+                    </label>
+                  )}
                 </div>
 
                 <div className="pt-2">
@@ -5110,6 +5292,46 @@ export default function PitchDeckStudio({
                       </button>
                     ))}
                   </div>
+                </div>
+
+                {/* MASTER-LOGO / DECK-LOGO */}
+                <div className="pt-4 border-t border-border mt-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-5 h-5 rounded-md bg-purple-500/10 text-purple-500 border border-purple-500/20 flex items-center justify-center shrink-0">
+                      <ImageIcon size={12}/>
+                    </div>
+                    <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{t('master_logo') || 'Master-Logo'}</h3>
+                  </div>
+
+                  {deckSettings.logoUrl ? (
+                    <div className="p-3 bg-surface border border-border rounded-xl space-y-2">
+                      <div className="h-12 w-full flex items-center justify-center p-1 bg-black/5 dark:bg-black/20 rounded-lg">
+                        <img src={sanitizeUrl(deckSettings.logoUrl)} alt="Master Logo" className="max-h-full max-w-full object-contain" />
+                      </div>
+                      <div className="flex gap-2">
+                        <label className="flex-1 py-1.5 px-2 bg-purple-600/10 hover:bg-purple-600/20 text-purple-600 dark:text-purple-400 border border-purple-500/20 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-colors">
+                          <Upload size={12} />
+                          <span>{t('change_logo') || 'Ändern'}</span>
+                          <input type="file" accept="image/*" onChange={handlePdfLogoUpload} className="hidden" />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={handleRemoveLogo}
+                          className="py-1.5 px-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                          title={t('delete_logo') || 'Logo entfernen'}
+                        >
+                          <Trash2 size={12} />
+                          <span>{t('delete_logo') || 'Löschen'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className="w-full p-3 bg-surface border border-dashed border-border hover:border-purple-500/50 rounded-xl flex items-center justify-center gap-2 text-xs font-bold text-text-muted hover:text-text-primary cursor-pointer transition-all">
+                      <Upload size={13} />
+                      <span>{t('upload_logo') || 'Logo für Vorlagen hochladen'}</span>
+                      <input type="file" accept="image/*" onChange={handlePdfLogoUpload} className="hidden" />
+                    </label>
+                  )}
                 </div>
               </div>
 
@@ -5439,29 +5661,93 @@ export default function PitchDeckStudio({
                               initial={{ opacity: 0, x: -8, scale: 0.95 }}
                               animate={{ opacity: 1, x: 0, scale: 1 }}
                               exit={{ opacity: 0, x: -8, scale: 0.95 }}
-                              className="absolute left-14 top-0 bg-surface/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-3 z-[101] w-52 flex flex-col gap-2.5 text-left"
+                              className="absolute left-14 top-0 bg-surface/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-3 z-[101] w-60 flex flex-col gap-3 text-left"
                             >
                               <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border pb-1">
-                                {t('typography') || 'Typografie'}
+                                {t('typography') || 'Typografie & Text-Werkzeuge'}
                               </div>
 
-                              {/* TITEL SCHRIFTGRÖSSE */}
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs font-semibold text-text-muted">{t('title_label')}</span>
-                                <div className="flex items-center gap-1 bg-background border border-border rounded-lg px-1.5 py-0.5">
-                                  <button type="button" onClick={() => handleTitleFontSizeChange(-2)} className="p-0.5 text-text-muted hover:text-text-primary cursor-pointer"><Minus size={11} /></button>
-                                  <span className="text-xs font-bold tabular-nums w-5 text-center text-purple-400">{activeSlide.titleFontSize || 36}</span>
-                                  <button type="button" onClick={() => handleTitleFontSizeChange(2)} className="p-0.5 text-text-muted hover:text-text-primary cursor-pointer"><Plus size={11} /></button>
+                              {/* TITEL BEREICH */}
+                              <div className="space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-bold text-text-primary">{t('title_label') || 'Titel'}</span>
+                                  <div className="flex items-center gap-1 bg-background border border-border rounded-lg px-1.5 py-0.5">
+                                    <button type="button" onClick={() => handleTitleFontSizeChange(-2)} className="p-0.5 text-text-muted hover:text-text-primary cursor-pointer" title="Kleiner"><Minus size={11} /></button>
+                                    <span className="text-xs font-bold tabular-nums w-6 text-center text-purple-400">{activeSlide.titleFontSize || (activeSlide.layout === 'title-only' || activeSlide.layout === 'full-image' || activeSlide.layout === 'full-image-clean' ? 48 : 32)}</span>
+                                    <button type="button" onClick={() => handleTitleFontSizeChange(2)} className="p-0.5 text-text-muted hover:text-text-primary cursor-pointer" title="Grösser"><Plus size={11} /></button>
+                                  </div>
+                                </div>
+                                {/* TITEL SCHRIFTSCHNITT (BOLD / REGULAR) */}
+                                <div className="grid grid-cols-2 gap-1 p-0.5 bg-background border border-border rounded-lg">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleTitleFontWeightChange('bold')}
+                                    className={cn(
+                                      "py-1 px-2 rounded-md text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer",
+                                      (activeSlide.titleFontWeight || 'bold') !== 'normal'
+                                        ? "bg-purple-600 text-white shadow-sm"
+                                        : "text-text-muted hover:text-text-primary"
+                                    )}
+                                  >
+                                    <Bold size={11} className="stroke-[3]" />
+                                    <span>Fett</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleTitleFontWeightChange('normal')}
+                                    className={cn(
+                                      "py-1 px-2 rounded-md text-xs font-normal flex items-center justify-center gap-1.5 transition-all cursor-pointer",
+                                      activeSlide.titleFontWeight === 'normal'
+                                        ? "bg-purple-600 text-white font-semibold shadow-sm"
+                                        : "text-text-muted hover:text-text-primary"
+                                    )}
+                                  >
+                                    <Type size={11} />
+                                    <span>Normal</span>
+                                  </button>
                                 </div>
                               </div>
 
-                              {/* TEXT SCHRIFTGRÖSSE */}
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs font-semibold text-text-muted">{t('text_label')}</span>
-                                <div className="flex items-center gap-1 bg-background border border-border rounded-lg px-1.5 py-0.5">
-                                  <button type="button" onClick={() => handleContentFontSizeChange(-2)} className="p-0.5 text-text-muted hover:text-text-primary cursor-pointer"><Minus size={11} /></button>
-                                  <span className="text-xs font-bold tabular-nums w-5 text-center text-text-primary">{activeSlide.fontSize || 18}</span>
-                                  <button type="button" onClick={() => handleContentFontSizeChange(2)} className="p-0.5 text-text-muted hover:text-text-primary cursor-pointer"><Plus size={11} /></button>
+                              <div className="w-full h-px bg-border/60" />
+
+                              {/* TEXT / INHALT BEREICH */}
+                              <div className="space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-bold text-text-primary">{t('text_label') || 'Text / Inhalt'}</span>
+                                  <div className="flex items-center gap-1 bg-background border border-border rounded-lg px-1.5 py-0.5">
+                                    <button type="button" onClick={() => handleContentFontSizeChange(-2)} className="p-0.5 text-text-muted hover:text-text-primary cursor-pointer" title="Kleiner"><Minus size={11} /></button>
+                                    <span className="text-xs font-bold tabular-nums w-6 text-center text-text-primary">{activeSlide.fontSize || 18}</span>
+                                    <button type="button" onClick={() => handleContentFontSizeChange(2)} className="p-0.5 text-text-muted hover:text-text-primary cursor-pointer" title="Grösser"><Plus size={11} /></button>
+                                  </div>
+                                </div>
+                                {/* TEXT SCHRIFTSCHNITT (BOLD / REGULAR) */}
+                                <div className="grid grid-cols-2 gap-1 p-0.5 bg-background border border-border rounded-lg">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleContentFontWeightChange('normal')}
+                                    className={cn(
+                                      "py-1 px-2 rounded-md text-xs font-normal flex items-center justify-center gap-1.5 transition-all cursor-pointer",
+                                      (activeSlide.contentFontWeight || 'normal') === 'normal'
+                                        ? "bg-purple-600 text-white font-semibold shadow-sm"
+                                        : "text-text-muted hover:text-text-primary"
+                                    )}
+                                  >
+                                    <Type size={11} />
+                                    <span>Normal</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleContentFontWeightChange('bold')}
+                                    className={cn(
+                                      "py-1 px-2 rounded-md text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer",
+                                      activeSlide.contentFontWeight === 'bold'
+                                        ? "bg-purple-600 text-white shadow-sm"
+                                        : "text-text-muted hover:text-text-primary"
+                                    )}
+                                  >
+                                    <Bold size={11} className="stroke-[3]" />
+                                    <span>Fett</span>
+                                  </button>
                                 </div>
                               </div>
                             </motion.div>
@@ -6168,10 +6454,35 @@ export default function PitchDeckStudio({
 
                   <div className="space-y-3 pt-2">
                     <label className={cn("text-xs font-bold uppercase tracking-widest", deckSettings.colorMode === 'light' ? "text-slate-500" : "text-white/50")}>{t('company_logo')}</label>
-                    <div className={cn("border-2 border-dashed rounded-lg p-4 flex flex-col items-center justify-center text-center transition-colors cursor-pointer relative", deckSettings.colorMode === 'light' ? "border-slate-300 hover:bg-slate-100 bg-white" : "border-white/10 hover:bg-white/5 bg-white/5")}>
-                      <input type="file" accept="image/*" onChange={handlePdfLogoUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
-                      {deckSettings.logoUrl ? <div className="text-xs text-emerald-500 font-bold">{t('logo_loaded')}</div> : <><ImageIcon size={24} className={cn("mb-2", deckSettings.colorMode === 'light' ? "text-slate-400" : "text-white/30")} /><span className={cn("text-xs font-medium", deckSettings.colorMode === 'light' ? "text-slate-500" : "text-white/50")}>{t('upload_logo')}</span></>}
-                    </div>
+                    {deckSettings.logoUrl ? (
+                      <div className={cn("border rounded-xl p-3 flex flex-col items-center justify-center gap-2 relative group", deckSettings.colorMode === 'light' ? "border-slate-200 bg-white" : "border-white/10 bg-white/5")}>
+                        <div className="h-16 w-full flex items-center justify-center p-1 bg-black/5 dark:bg-black/20 rounded-lg">
+                          <img src={sanitizeUrl(deckSettings.logoUrl)} alt="Logo Vorschau" className="max-h-full max-w-full object-contain" />
+                        </div>
+                        <div className="flex items-center gap-2 w-full pt-1">
+                          <label className="flex-1 py-1.5 px-3 bg-purple-600/10 hover:bg-purple-600/20 text-purple-600 dark:text-purple-400 border border-purple-500/20 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-colors">
+                            <Upload size={13} />
+                            <span>{t('change_logo') || 'Logo ändern'}</span>
+                            <input type="file" accept="image/*" onChange={handlePdfLogoUpload} className="hidden" />
+                          </label>
+                          <button
+                            type="button"
+                            onClick={handleRemoveLogo}
+                            className="py-1.5 px-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                            title={t('delete_logo') || 'Logo entfernen'}
+                          >
+                            <Trash2 size={13} />
+                            <span>{t('delete_logo') || 'Entfernen'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className={cn("border-2 border-dashed rounded-lg p-4 flex flex-col items-center justify-center text-center transition-colors cursor-pointer relative", deckSettings.colorMode === 'light' ? "border-slate-300 hover:bg-slate-100 bg-white" : "border-white/10 hover:bg-white/5 bg-white/5")}>
+                        <input type="file" accept="image/*" onChange={handlePdfLogoUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
+                        <ImageIcon size={24} className={cn("mb-2", deckSettings.colorMode === 'light' ? "text-slate-400" : "text-white/30")} />
+                        <span className={cn("text-xs font-medium", deckSettings.colorMode === 'light' ? "text-slate-500" : "text-white/50")}>{t('upload_logo')}</span>
+                      </div>
+                    )}
                   </div>
                   
                   <div className="space-y-3">

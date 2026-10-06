@@ -77,4 +77,62 @@ describe('Pitch Deck Full-Image Background & Scaling Helper', () => {
     expect(deserialized.fontSize).toBe(20);
     expect(deserialized.titleFontSize).toBe(44);
   });
+
+  it('correctly serializes and deserializes titleFontWeight and contentFontWeight (bold vs normal)', () => {
+    const slideWithWeights: Slide = {
+      id: 'slide-typo-1',
+      title: 'Typografie-Fokus Titel',
+      content: 'Fliesstext in regulärem Schnitt ohne Fettung.',
+      order_index: 1,
+      ownerId: 'user-typo',
+      layout: 'text-only',
+      titleFontWeight: 'normal',
+      contentFontWeight: 'bold',
+      fontSize: 18,
+      titleFontSize: 36
+    };
+
+    const serialized = serializeSlideForDb(slideWithWeights);
+    const parsedEnvelope = JSON.parse(serialized.content);
+    expect(parsedEnvelope.titleFontWeight).toBe('normal');
+    expect(parsedEnvelope.contentFontWeight).toBe('bold');
+
+    const deserialized = deserializeSlideFromDb({
+      id: serialized.id,
+      title: serialized.title,
+      layout: serialized.layout,
+      content: serialized.content,
+      order_index: serialized.order_index
+    }, 'user-typo');
+
+    expect(deserialized.titleFontWeight).toBe('normal');
+    expect(deserialized.contentFontWeight).toBe('bold');
+  });
+
+  it('correctly handles full-image-clean layout without text overlay', () => {
+    const cleanSlide: Slide = {
+      id: 'slide-clean-1',
+      title: '',
+      content: '',
+      imageUrl: '/demo-assets/clean_photo.jpg',
+      order_index: 3,
+      ownerId: 'user-clean',
+      layout: 'full-image-clean'
+    };
+
+    const serialized = serializeSlideForDb(cleanSlide);
+    expect(serialized.layout).toBe('full-image-clean');
+
+    const deserialized = deserializeSlideFromDb({
+      id: serialized.id,
+      title: serialized.title,
+      layout: serialized.layout,
+      image_url: serialized.image_url,
+      content: serialized.content,
+      order_index: serialized.order_index
+    }, 'user-clean');
+
+    expect(deserialized.layout).toBe('full-image-clean');
+    expect(deserialized.imageUrl).toBe('/demo-assets/clean_photo.jpg');
+  });
 });

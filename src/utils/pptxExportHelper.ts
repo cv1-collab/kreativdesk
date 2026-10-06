@@ -9,6 +9,8 @@ export interface PptxSlideData {
   notes?: string;
   fontSize?: number;
   titleFontSize?: number;
+  titleFontWeight?: 'bold' | 'normal';
+  contentFontWeight?: 'bold' | 'normal';
   imageUrl?: string;
   compareImageUrl?: string;
   videoUrl?: string;
@@ -56,7 +58,8 @@ function parseContentToTextObjects(
   content: string,
   fontSize: number,
   textColor: string,
-  fontFace: string
+  fontFace: string,
+  isBold: boolean = false
 ): pptxgen.TextProps[] {
   if (!content) return [];
   const lines = content.split('\n').filter(l => l.trim().length > 0);
@@ -71,6 +74,7 @@ function parseContentToTextObjects(
       text: cleanText,
       options: {
         fontSize: fontSize,
+        bold: isBold,
         color: textColor,
         fontFace: fontFace,
         bullet: isBullet ? { code: '2022' } : false,
@@ -395,7 +399,7 @@ export async function exportDeckToPptx(
         w: 11.33,
         h: 2.2,
         fontSize: Math.min(s.titleFontSize || 40, 36),
-        bold: true,
+        bold: s.titleFontWeight !== 'normal',
         color: titleColor,
         align: 'center',
         valign: 'middle',
@@ -409,6 +413,7 @@ export async function exportDeckToPptx(
           w: 10.33,
           h: 1.5,
           fontSize: s.fontSize || 18,
+          bold: s.contentFontWeight === 'bold',
           color: textColor,
           align: 'center',
           valign: 'top',
@@ -424,7 +429,7 @@ export async function exportDeckToPptx(
         w: titleWidth,
         h: 0.8,
         fontSize: 26,
-        bold: true,
+        bold: s.titleFontWeight !== 'normal',
         color: titleColor,
         valign: 'middle',
         fontFace: fontFace
@@ -651,7 +656,7 @@ export async function exportDeckToPptx(
           w: 11.333,
           h: 1.5,
           fontSize: Math.min(s.titleFontSize || 36, 42),
-          bold: true,
+          bold: s.titleFontWeight !== 'normal',
           color: 'FFFFFF',
           align: s.dataPayload?.textPosition === 'center' ? 'center' : 'left',
           valign: 'middle',
@@ -724,7 +729,7 @@ export async function exportDeckToPptx(
         w: titleWidth,
         h: 0.8,
         fontSize: 24,
-        bold: true,
+        bold: s.titleFontWeight !== 'normal',
         color: titleColor,
         valign: 'middle',
         fontFace: fontFace
@@ -760,7 +765,7 @@ export async function exportDeckToPptx(
         w: titleWidth,
         h: 0.8,
         fontSize: 24,
-        bold: true,
+        bold: s.titleFontWeight !== 'normal',
         color: titleColor,
         valign: 'middle',
         fontFace: fontFace
@@ -853,7 +858,7 @@ export async function exportDeckToPptx(
         w: titleWidth,
         h: 0.8,
         fontSize: 24,
-        bold: true,
+        bold: s.titleFontWeight !== 'normal',
         color: titleColor,
         valign: 'middle',
         fontFace: fontFace
@@ -992,7 +997,7 @@ export async function exportDeckToPptx(
         w: titleWidth,
         h: 0.8,
         fontSize: Math.min(s.titleFontSize || 30, 26),
-        bold: true,
+        bold: s.titleFontWeight !== 'normal',
         color: titleColor,
         valign: 'middle',
         fontFace: fontFace
@@ -1002,7 +1007,7 @@ export async function exportDeckToPptx(
       const textWidth = hasImage ? 6.0 : 11.7;
 
       if (s.content) {
-        const textObjects = parseContentToTextObjects(s.content, s.fontSize || 15, textColor, fontFace);
+        const textObjects = parseContentToTextObjects(s.content, s.fontSize || 15, textColor, fontFace, s.contentFontWeight === 'bold');
         if (textObjects.length > 0) {
           pptxSlide.addText(textObjects, {
             x: 0.8,

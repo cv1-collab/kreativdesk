@@ -653,6 +653,20 @@ export default function SettingsTab() {
     }
   };
 
+  const handleRemoveLogo = async () => {
+    setIsUploadingLogo(true);
+    try {
+      setLogoUrl('');
+      await updateCompanyProfileConfig({ logoUrl: '' });
+      addToast('Logo erfolgreich entfernt', 'info');
+    } catch (error: any) {
+      console.error("Logo Remove Error:", error);
+      addToast(`Fehler beim Entfernen des Logos: ${error.message}`, 'error');
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
+
   const handleTermsUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
@@ -895,9 +909,16 @@ export default function SettingsTab() {
               </div>
               <div className="space-y-2">
                 <input type="file" ref={fileInputRef} onChange={handleLogoChange} accept="image/*" className="hidden" />
-                <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploadingLogo} className="px-4 py-2 bg-background border border-border hover:bg-white/5 text-text-primary rounded-lg text-xs font-bold transition-colors flex items-center gap-2 shadow-sm">
-                  <Upload size={14} /> {logoUrl ? t('change_logo') : t('upload_logo')}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploadingLogo} className="px-4 py-2 bg-background border border-border hover:bg-white/5 text-text-primary rounded-lg text-xs font-bold transition-colors flex items-center gap-2 shadow-sm cursor-pointer">
+                    <Upload size={14} /> {logoUrl ? t('change_logo') : t('upload_logo')}
+                  </button>
+                  {logoUrl && (
+                    <button type="button" onClick={handleRemoveLogo} disabled={isUploadingLogo} className="px-3 py-2 bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer" title={t('delete_logo') || 'Logo entfernen'}>
+                      <Trash2 size={14} /> {t('delete_logo') || 'Entfernen'}
+                    </button>
+                  )}
+                </div>
                 <p className="text-[11px] text-text-muted leading-relaxed max-w-md">{t('logo_invoice_desc')}</p>
               </div>
             </div>

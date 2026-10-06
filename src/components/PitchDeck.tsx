@@ -26,9 +26,11 @@ interface Slide {
   order_index: number; 
   ownerId: string; 
   projectId?: string; 
-  layout?: 'title-only' | 'split' | 'image-focus' | 'video-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid' | 'chart-donut' | 'table-of-contents' | 'full-image' | 'two-images' | 'three-images'; 
+  layout?: 'title-only' | 'split' | 'image-focus' | 'video-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid' | 'chart-donut' | 'table-of-contents' | 'full-image' | 'full-image-clean' | 'two-images' | 'three-images'; 
   fontSize?: number; 
   titleFontSize?: number;
+  titleFontWeight?: 'bold' | 'normal';
+  contentFontWeight?: 'bold' | 'normal';
   dataPayload?: any; 
   notes?: string; 
   stamp?: string; 
@@ -342,12 +344,16 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
   const renderSlideContent = (slide: Slide) => {
     const isDarkTheme = ['photography', 'scenography', 'cyberpunk'].includes(deckSettings.themeStyle);
     const tc = isDarkTheme ? "text-white" : "text-black";
+    const isTitleBold = (slide.titleFontWeight || 'bold') !== 'normal';
+    const isContentBold = slide.contentFontWeight === 'bold';
     
-    if (slide.layout === 'full-image') {
+    if (slide.layout === 'full-image' || slide.layout === 'full-image-clean') {
+      const isClean = slide.layout === 'full-image-clean' || !!slide.dataPayload?.hideTextOverlay;
       const imageFit = slide.dataPayload?.imageFit || 'cover';
       const imageScale = (slide.dataPayload?.imageScale || 100) / 100;
       const imagePosition = slide.dataPayload?.imagePosition || 'center';
-      const overlayOpacity = ((slide.dataPayload?.overlayOpacity ?? 40) / 100);
+      const defaultOpacity = isClean ? 0 : 40;
+      const overlayOpacity = ((slide.dataPayload?.overlayOpacity ?? defaultOpacity) / 100);
       const overlayStyle = slide.dataPayload?.overlayStyle || 'gradient';
       const textPosition = slide.dataPayload?.textPosition || 'bottom-left';
       return (
@@ -392,31 +398,37 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
           </div>
 
           {/* MAIN TITLE & CONTENT */}
-          <div className={cn(
-            "relative z-10 flex-1 flex flex-col justify-end pb-8",
-            textPosition === 'center' ? "items-center text-center justify-center" : "items-start text-left"
-          )}>
-            <h1
-              style={{ fontSize: `${slide.titleFontSize || 54}px` }}
-              className={cn(
-                "font-black text-white drop-shadow-[0_2px_14px_rgba(0,0,0,0.9)] leading-tight max-w-4xl",
-                textPosition === 'center' ? "text-center mx-auto" : ""
+          {!isClean && (slide.title || slide.content) && (
+            <div className={cn(
+              "relative z-10 flex-1 flex flex-col justify-end pb-8",
+              textPosition === 'center' ? "items-center text-center justify-center" : "items-start text-left"
+            )}>
+              {slide.title && (
+                <h1
+                  style={{ fontSize: `${slide.titleFontSize || 54}px`, fontWeight: isTitleBold ? 900 : 400 }}
+                  className={cn(
+                    isTitleBold ? "font-black" : "font-normal",
+                    "text-white drop-shadow-[0_2px_14px_rgba(0,0,0,0.9)] leading-tight max-w-4xl",
+                    textPosition === 'center' ? "text-center mx-auto" : ""
+                  )}
+                >
+                  {slide.title}
+                </h1>
               )}
-            >
-              {slide.title}
-            </h1>
-            {slide.content && (
-              <p
-                style={{ fontSize: `${slide.fontSize || 22}px` }}
-                className={cn(
-                  "mt-4 text-white/90 drop-shadow-[0_1px_8px_rgba(0,0,0,0.9)] font-medium leading-relaxed max-w-3xl whitespace-pre-wrap",
-                  textPosition === 'center' ? "text-center mx-auto" : ""
-                )}
-              >
-                {slide.content}
-              </p>
-            )}
-          </div>
+              {slide.content && (
+                <p
+                  style={{ fontSize: `${slide.fontSize || 22}px`, fontWeight: isContentBold ? 700 : 400 }}
+                  className={cn(
+                    "mt-4 text-white/90 drop-shadow-[0_1px_8px_rgba(0,0,0,0.9)] leading-relaxed max-w-3xl whitespace-pre-wrap",
+                    isContentBold ? "font-bold" : "font-normal",
+                    textPosition === 'center' ? "text-center mx-auto" : ""
+                  )}
+                >
+                  {slide.content}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* FOOTER */}
           <div className="h-[8%] flex flex-row items-end justify-between border-t border-white/20 pb-2 z-10 shrink-0">
@@ -439,7 +451,12 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
         
         {slide.layout !== 'title-only' ? (
           <div className="h-[15%] shrink-0 flex items-end pb-4 z-10">
-            <h2 className={cn("w-full font-bold truncate leading-tight text-3xl md:text-5xl", tc)}>{slide.title}</h2>
+            <h2
+              style={{ fontWeight: isTitleBold ? 700 : 400 }}
+              className={cn("w-full truncate leading-tight text-3xl md:text-5xl", isTitleBold ? "font-bold" : "font-normal", tc)}
+            >
+              {slide.title}
+            </h2>
           </div>
         ) : null}
         
@@ -450,11 +467,17 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                 <span>🏛️</span>
                 <span>{activeProject?.name || 'Projekt-Präsentation'}</span>
               </div>
-              <h1 className={cn("text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-tight", tc)}>
+              <h1
+                style={{ fontWeight: isTitleBold ? 800 : 400 }}
+                className={cn("text-4xl md:text-6xl lg:text-7xl tracking-tight leading-tight", isTitleBold ? "font-extrabold" : "font-normal", tc)}
+              >
                 {slide.title}
               </h1>
               {slide.content ? (
-                <p className={cn("text-lg md:text-2xl font-medium leading-relaxed max-w-3xl opacity-80 pt-2 whitespace-pre-wrap", tc)}>
+                <p
+                  style={{ fontWeight: isContentBold ? 700 : 400 }}
+                  className={cn("text-lg md:text-2xl leading-relaxed max-w-3xl opacity-80 pt-2 whitespace-pre-wrap", isContentBold ? "font-bold" : "font-normal", tc)}
+                >
                   {slide.content}
                 </p>
               ) : (
@@ -679,12 +702,22 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
            )}
 
           {slide.layout === 'text-only' && (
-             <div style={{ fontSize: `${slide.fontSize || 18}px` }} className="w-full h-full whitespace-pre-wrap overflow-y-auto custom-scrollbar text-zinc-700">{slide.content}</div>
+             <div
+               style={{ fontSize: `${slide.fontSize || 18}px`, fontWeight: isContentBold ? 700 : 400 }}
+               className={cn("w-full h-full whitespace-pre-wrap overflow-y-auto custom-scrollbar text-zinc-700", isContentBold ? "font-bold" : "font-normal")}
+             >
+               {slide.content}
+             </div>
           )}
           
           {slide.layout === 'split' && (
             <div className="flex flex-row w-full h-full gap-10">
-              <div style={{ fontSize: `${slide.fontSize || 18}px` }} className="w-1/2 h-full whitespace-pre-wrap leading-relaxed overflow-y-auto custom-scrollbar text-zinc-700">{slide.content}</div>
+              <div
+                style={{ fontSize: `${slide.fontSize || 18}px`, fontWeight: isContentBold ? 700 : 400 }}
+                className={cn("w-1/2 h-full whitespace-pre-wrap leading-relaxed overflow-y-auto custom-scrollbar text-zinc-700", isContentBold ? "font-bold" : "font-normal")}
+              >
+                {slide.content}
+              </div>
               <div className="w-1/2 h-full rounded-2xl overflow-hidden relative border-black/10 bg-black/5">
                 {slide.videoUrl ? (
                   <video src={slide.videoUrl} autoPlay loop muted playsInline className="w-full h-full object-cover absolute" />

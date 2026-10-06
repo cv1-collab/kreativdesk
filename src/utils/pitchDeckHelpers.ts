@@ -12,6 +12,8 @@ export interface Slide {
   layout?: 'title-only' | 'split' | 'image-focus' | 'video-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid' | 'chart-donut' | 'table-of-contents' | 'budget-comparison' | 'full-image' | 'full-image-clean' | 'two-images' | 'three-images'; 
   fontSize?: number; 
   titleFontSize?: number;
+  titleFontWeight?: 'bold' | 'normal';
+  contentFontWeight?: 'bold' | 'normal';
   dataPayload?: any; 
   notes?: string; 
   stamp?: string; 
@@ -44,6 +46,8 @@ export const serializeSlideForDb = (slide: Partial<Slide> & { [key: string]: any
     slide.notes !== undefined ||
     slide.fontSize !== undefined ||
     slide.titleFontSize !== undefined ||
+    slide.titleFontWeight !== undefined ||
+    slide.contentFontWeight !== undefined ||
     slide.stamp !== undefined ||
     slide.agendaItems !== undefined ||
     slide.agenda_items !== undefined ||
@@ -57,6 +61,8 @@ export const serializeSlideForDb = (slide: Partial<Slide> & { [key: string]: any
       notes: slide.notes,
       fontSize: slide.fontSize,
       titleFontSize: slide.titleFontSize,
+      titleFontWeight: slide.titleFontWeight,
+      contentFontWeight: slide.contentFontWeight,
       stamp: slide.stamp,
       agendaItems: slide.agendaItems || slide.agenda_items,
       compareImageUrl: slide.compareImageUrl,
@@ -76,6 +82,8 @@ export const deserializeSlideFromDb = (d: any, fallbackOwnerId?: string): Slide 
   let notes = d.notes || '';
   let fontSize = d.font_size || d.fontSize || 18;
   let titleFontSize = d.title_font_size || d.titleFontSize || 36;
+  let titleFontWeight: 'bold' | 'normal' = d.title_font_weight || d.titleFontWeight || 'bold';
+  let contentFontWeight: 'bold' | 'normal' = d.content_font_weight || d.contentFontWeight || 'normal';
   let stamp = d.stamp || '';
   let agendaItems = d.agenda_items || d.agendaItems || null;
   let videoUrl = d.video_url || d.videoUrl;
@@ -90,6 +98,8 @@ export const deserializeSlideFromDb = (d: any, fallbackOwnerId?: string): Slide 
         if ('notes' in envelope) notes = envelope.notes;
         if ('fontSize' in envelope) fontSize = envelope.fontSize;
         if ('titleFontSize' in envelope) titleFontSize = envelope.titleFontSize;
+        if ('titleFontWeight' in envelope) titleFontWeight = envelope.titleFontWeight;
+        if ('contentFontWeight' in envelope) contentFontWeight = envelope.contentFontWeight;
         if ('stamp' in envelope) stamp = envelope.stamp;
         if ('agendaItems' in envelope) agendaItems = envelope.agendaItems;
         if ('videoUrl' in envelope) videoUrl = envelope.videoUrl;
@@ -115,6 +125,8 @@ export const deserializeSlideFromDb = (d: any, fallbackOwnerId?: string): Slide 
     notes,
     fontSize,
     titleFontSize,
+    titleFontWeight,
+    contentFontWeight,
     stamp,
     agendaItems
   } as Slide;
