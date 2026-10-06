@@ -7,6 +7,38 @@
 
 ## 🏆 Erfolgsliste von heute (6. Oktober 2026)
 
+### 0.00000000000000000 Pitch Deck Studio: Undo- / Redo-Verlauf & Folie-Löschen-Gruppe in der Kopfzeile (6. Oktober 2026)
+* **Problemstellung & Benutzer-Anforderung:**
+  * Der Benutzer fragte nach einer Undo-/Redo-Funktionalität und wünschte die Platzierung der Buttons ausdrücklich ausschliesslich in der Kopfzeile: «buttons nur in der kopfzeile zusammen mit löschen button ok? bitte erstellen».
+* **Umgesetzte Lösungen & Architektur:**
+  * **1. Platzierung ausschliesslich in der Kopfzeile ([PitchDeckStudio.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/PitchDeckStudio.tsx)):**
+    * **Desktop-Kopfzeile:** Direkt neben den Modus-Umschaltern (Editor / Vorschau, Hell / Dunkel) wurde eine moderne, abgerundete Segment-Gruppe platziert mit:
+      * `Undo2`-Button: «Rückgängig (Cmd+Z / Ctrl+Z)», deaktiviert wenn Verlauf leer ist.
+      * `Redo2`-Button: «Wiederholen (Cmd+Shift+Z / Ctrl+Y)», deaktiviert wenn kein Folgeschritt vorliegt.
+      * Trennlinie (`border`).
+      * `Trash2`-Button: «Aktuelle Folie löschen» mit Label «Löschen» auf grossen Bildschirmen.
+    * **Mobile Kopfzeile:** Analoge kompakte Segment-Gruppe im Mobile Header (`Undo2`, `Redo2`, `Trash2`), platzsparend und touch-optimiert.
+    * **CAD-Werkzeugleiste:** Wurde gemäss Kundenwunsch unberührt gelassen (keine redundanten Buttons in der schwebenden Seitenleiste).
+  * **2. Memento-Verlaufsspeicher (Snapshot Engine):**
+    * Tiefen-Stack (`undoStack`, `redoStack`, bis zu 40 Schritte) speichert exakte Momentaufnahmen der Folien (`Slide[]`) und der aktiven Folien-ID (`activeSlideId`).
+    * **Typing-Burst Debouncing:** Beim Tippen von Titeln, Texten oder Notizen wird vor dem ersten Anschlag ein Snapshot gesichert. Nach 1 Sekunde Pause schliesst sich das Zeitfenster, sodass Rückgängig immer ganze Formulierungen sauber zurücksetzt statt Buchstabe für Buchstabe.
+    * **Diskrete Aktionen:** Folie hinzufügen, Folie duplizieren, Layout wechseln, Schriftgrösse und Schriftschnitt ändern, Stempel setzen, Folien verschieben / per Drag & Drop sortieren sowie Folien löschen legen sofort einen Snapshot an.
+  * **3. Löschen mit Sofort-Wiederherstellung:**
+    * Beim Klick auf «Löschen» in der Kopfzeile wird die aktive Folie nach Bestätigung entfernt und die nächste Folie aktiviert.
+    * Ein Klick auf «Rückgängig» (oder `Cmd+Z`) stellt die gelöschte Folie mit allen Texten, Bildern und Parametern umgehend wieder her.
+    * Vollständige Zwei-Wege-Synchronisation mit Supabase und LocalStorage.
+  * **4. Tastatur-Shortcuts:**
+    * `Cmd+Z` / `Ctrl+Z`: Rückgängig.
+    * `Cmd+Shift+Z` / `Ctrl+Shift+Z` / `Cmd+Y` / `Ctrl+Y`: Wiederholen.
+    * Berücksichtigt Eingabefelder: Innerhalb von Textfeldern greift das native Browser-Undo.
+* **Ergebnis der Verifikation:**
+  * **TypeScript (`tsc --noEmit`):** 0 Fehler.
+  * **Vitest Test Suite:** 82/82 Tests bestanden (15 Testdateien).
+  * **Vite & Server Build:** 100% fehlerfrei in 14.29s kompiliert (`dist/`).
+  * **Schweizer Rechtschreibung:** 100% konform (konsequentes «ss», kein «ß»).
+
+---
+
 ### 0.0000000000000000 Systemweite System-Überprüfung: Bereinigung & Löschbarkeit aller Medien, Avatare, Logos und Dokumente (6. Oktober 2026)
 * **Problemstellung & Benutzer-Anforderung:**
   * Der Benutzer forderte nach den Logo- und Typografie-Korrekturen im Pitch Deck Studio eine vollständige Überprüfung des gesamten Systems auf gleichartige Schwachstellen: «haben wir noch solche fehler im system? bitte alles überprüfen».

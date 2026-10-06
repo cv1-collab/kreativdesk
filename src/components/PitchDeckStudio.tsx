@@ -16,7 +16,8 @@ import {
   Layers, PaintBucket, DownloadCloud, ZoomIn, ZoomOut, Minus, FileText, FileEdit, Upload, ChevronLeft, ChevronRight, Play, Clock,
   Copy, Zap, Check, Edit3, Wand2, Compass, Layers3, Flame, Building2, Trees, Tag, StickyNote, Circle, RotateCcw,
   Sun, Moon, Sliders, Type as TypeIcon, AlignLeft, AlignCenter, AlignRight, ArrowRight,
-  Video as VideoIcon, Globe, MessageSquare, CheckCircle2, ShieldCheck, Share2, PlusCircle, ExternalLink, AlertCircle, HelpCircle
+  Video as VideoIcon, Globe, MessageSquare, CheckCircle2, ShieldCheck, Share2, PlusCircle, ExternalLink, AlertCircle, HelpCircle,
+  Undo2, Redo2
 } from 'lucide-react';
 import { exportDeckToPptx } from '../utils/pptxExportHelper';
 import { jsPDF } from 'jspdf';
@@ -59,6 +60,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     defects_imported: 'Defects imported!', error_load: 'Error loading data.', error_create: 'Error creating slide.',
     delete_slide_confirm: 'Delete slide?', delete_all_confirm: 'Delete all slides in this project?',
     slide_deleted: 'Slide deleted.', reset_deck: 'Reset Deck', close_studio: 'Exit Studio', pdf_generated: 'PDF generated successfully!',
+    undo_action: 'Undo (Cmd+Z)', redo_action: 'Redo (Cmd+Shift+Z)', delete_current_slide: 'Delete current slide',
+    action_undone: 'Action undone', action_redone: 'Action redone', slide_deleted_undoable: 'Slide deleted (can be restored with Undo)',
     error_pdf: 'Error generating PDF.', all_selected: 'Select All', new_vision: 'The Vision',
     new_topic: 'New Topic', total_budget: 'Total Project Budget', timeline: 'Timeline',
     deck_cleared: 'Deck cleared.', error_delete: 'Error deleting.', location: 'Location:',
@@ -129,6 +132,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     defects_imported: 'Mängel importiert!', error_load: 'Fehler beim Laden.', error_create: 'Fehler beim Erstellen.',
     delete_slide_confirm: 'Folie löschen?', delete_all_confirm: 'Alle Folien löschen?',
     slide_deleted: 'Folie gelöscht.', reset_deck: 'Deck leeren', close_studio: 'Studio verlassen', pdf_generated: 'PDF erfolgreich exportiert!',
+    undo_action: 'Rückgängig (Cmd+Z)', redo_action: 'Wiederholen (Cmd+Shift+Z)', delete_current_slide: 'Aktuelle Folie löschen',
+    action_undone: 'Aktion rückgängig gemacht', action_redone: 'Aktion wiederhergestellt', slide_deleted_undoable: 'Folie gelöscht (mit Rückgängig wiederherstellbar)',
     error_pdf: 'Fehler bei der PDF-Generierung.', all_selected: 'Alle anwählen', new_vision: 'Die Vision',
     new_topic: 'Neues Thema', total_budget: 'Gesamtbudget Projekt', timeline: 'Terminplan',
     deck_cleared: 'Deck wurde geleert.', error_delete: 'Fehler beim Löschen.', location: 'Ort:',
@@ -302,6 +307,136 @@ export default function PitchDeckStudio({
   const [localNotes, setLocalNotes] = useState('');
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // UNDO / REDO HISTORY SYSTEM (KOPFZEILE)
+  const [undoStack, setUndoStack] = useState<{ slides: Slide[]; activeSlideId: string | null }[]>([]);
+  const [redoStack, setRedoStack] = useState<{ slides: Slide[]; activeSlideId: string | null }[]>([]);
+  const isHistoryActionRef = useRef(false);
+  const slidesRef = useRef<Slide[]>(slides);
+  const activeSlideIdRef = useRef<string | null>(activeSlideId);
+  const isTypingBurstRef = useRef(false);
+  const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    slidesRef.current = slides;
+  }, [slides]);
+
+  useEffect(() => {
+    activeSlideIdRef.current = activeSlideId;
+  }, [activeSlideId]);
+
+  const pushHistorySnapshot = useCallback((customSlides?: Slide[], customActiveId?: string | null) => {
+    if (isHistoryActionRef.current) return;
+    const snapshot = {
+      slides: JSON.parse(JSON.stringify(customSlides || slidesRef.current)),
+      activeSlideId: customActiveId !== undefined ? customActiveId : activeSlideIdRef.current
+    };
+    setUndoStack(prev => {
+      const next = [...prev, snapshot];
+      return next.length > 40 ? next.slice(next.length - 40) : next;
+    });
+    setRedoStack([]);
+  }, []);
+
+  const syncRestoredSlides = useCallback(async (restoredSlides: Slide[], previousSlides: Slide[]) => {
+    if (!targetId || targetId.startsWith('demo-') || !currentUser) return;
+    try {
+      const restoredIds = new Set(restoredSlides.map(s => s.id));
+      const deletedIds = previousSlides.filter(s => !restoredIds.has(s.id)).map(s => s.id);
+      if (deletedIds.length > 0) {
+        await supabase.from('slides').delete().in('id', deletedIds);
+      }
+      if (restoredSlides.length > 0) {
+        await supabase.from('slides').upsert(restoredSlides.map(s => serializeSlideForDb(s)));
+      }
+    } catch (err) {
+      console.warn("History backend sync error:", err);
+    }
+  }, [targetId, currentUser]);
+
+  const handleUndo = useCallback(() => {
+    if (undoStack.length === 0) return;
+
+    isHistoryActionRef.current = true;
+    const previousSnapshot = undoStack[undoStack.length - 1];
+    const newUndoStack = undoStack.slice(0, undoStack.length - 1);
+
+    const currentSnapshot = {
+      slides: JSON.parse(JSON.stringify(slidesRef.current)),
+      activeSlideId: activeSlideIdRef.current
+    };
+
+    setRedoStack(prev => [...prev, currentSnapshot]);
+    setUndoStack(newUndoStack);
+
+    const restoredSlides = previousSnapshot.slides;
+    const restoredActiveId = previousSnapshot.activeSlideId;
+
+    setSlidesRaw(restoredSlides);
+    safeStorage.setItem(cacheKey, restoredSlides);
+
+    const validActiveId = (restoredActiveId && restoredSlides.some(s => s.id === restoredActiveId))
+      ? restoredActiveId
+      : (restoredSlides[0]?.id || null);
+
+    setActiveSlideId(validActiveId);
+
+    const restoredSlide = restoredSlides.find(s => s.id === validActiveId);
+    if (restoredSlide) {
+      setLocalTitle(restoredSlide.title ?? '');
+      setLocalContent(restoredSlide.content ?? '');
+      setLocalNotes(restoredSlide.notes ?? '');
+    }
+
+    syncRestoredSlides(restoredSlides, currentSnapshot.slides);
+    addToast(t('action_undone'), 'info');
+
+    setTimeout(() => {
+      isHistoryActionRef.current = false;
+    }, 100);
+  }, [undoStack, cacheKey, setActiveSlideId, syncRestoredSlides, addToast, t]);
+
+  const handleRedo = useCallback(() => {
+    if (redoStack.length === 0) return;
+
+    isHistoryActionRef.current = true;
+    const nextSnapshot = redoStack[redoStack.length - 1];
+    const newRedoStack = redoStack.slice(0, redoStack.length - 1);
+
+    const currentSnapshot = {
+      slides: JSON.parse(JSON.stringify(slidesRef.current)),
+      activeSlideId: activeSlideIdRef.current
+    };
+
+    setUndoStack(prev => [...prev, currentSnapshot]);
+    setRedoStack(newRedoStack);
+
+    const restoredSlides = nextSnapshot.slides;
+    const restoredActiveId = nextSnapshot.activeSlideId;
+
+    setSlidesRaw(restoredSlides);
+    safeStorage.setItem(cacheKey, restoredSlides);
+
+    const validActiveId = (restoredActiveId && restoredSlides.some(s => s.id === restoredActiveId))
+      ? restoredActiveId
+      : (restoredSlides[0]?.id || null);
+
+    setActiveSlideId(validActiveId);
+
+    const restoredSlide = restoredSlides.find(s => s.id === validActiveId);
+    if (restoredSlide) {
+      setLocalTitle(restoredSlide.title ?? '');
+      setLocalContent(restoredSlide.content ?? '');
+      setLocalNotes(restoredSlide.notes ?? '');
+    }
+
+    syncRestoredSlides(restoredSlides, currentSnapshot.slides);
+    addToast(t('action_redone'), 'info');
+
+    setTimeout(() => {
+      isHistoryActionRef.current = false;
+    }, 100);
+  }, [redoStack, cacheKey, setActiveSlideId, syncRestoredSlides, addToast, t]);
+
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [isSavingToCloud, setIsSavingToCloud] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -442,6 +577,38 @@ export default function PitchDeckStudio({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isPresenterMode, slides.length]);
 
+  // GLOBAL UNDO / REDO KEYBOARD SHORTCUTS
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (isPresenterMode) return;
+      const target = e.target as HTMLElement | null;
+      const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+
+      const isCmdOrCtrl = e.metaKey || e.ctrlKey;
+      if (!isCmdOrCtrl) return;
+
+      if (e.key === 'z' || e.key === 'Z') {
+        if (e.shiftKey) {
+          e.preventDefault();
+          handleRedo();
+        } else {
+          if (!isInput) {
+            e.preventDefault();
+            handleUndo();
+          }
+        }
+      } else if (e.key === 'y' || e.key === 'Y') {
+        if (!isInput) {
+          e.preventDefault();
+          handleRedo();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [isPresenterMode, handleUndo, handleRedo]);
+
   const handleMouseMovePresenter = (e: React.MouseEvent) => {
     if (isPresenterMode && isLaserActive) {
       setLaserPos({ x: e.clientX, y: e.clientY });
@@ -451,6 +618,7 @@ export default function PitchDeckStudio({
   // TOOLBAR ACTION HANDLERS
   const handleLayoutChange = async (newLayout: Slide['layout']) => {
     if (!activeSlide) return;
+    pushHistorySnapshot();
     
     let updatedPayload = activeSlide.dataPayload || {};
     if (newLayout === 'two-images' && (!updatedPayload.images || updatedPayload.images.length === 0)) {
@@ -516,6 +684,7 @@ export default function PitchDeckStudio({
 
   const handleSetStamp = async (stampName: string) => {
     if (!activeSlide) return;
+    pushHistorySnapshot();
     const nextStamp = activeSlide.stamp === stampName ? '' : stampName;
     const updatedSlide = { ...activeSlide, stamp: nextStamp };
     setSlides(prev => prev.map(s => s.id === activeSlide.id ? updatedSlide : s));
@@ -532,6 +701,7 @@ export default function PitchDeckStudio({
   // INDIVIDUELLE SCHRIFTGRÖSSEN (TITEL VS. INHALT/TEXT)
   const handleTitleFontSizeChange = async (delta: number) => {
     if (!activeSlide) return;
+    pushHistorySnapshot();
     const currentFs = activeSlide.titleFontSize || 36;
     const newFs = Math.min(120, Math.max(14, currentFs + delta));
     const updatedSlide = { ...activeSlide, titleFontSize: newFs };
@@ -545,6 +715,7 @@ export default function PitchDeckStudio({
 
   const handleContentFontSizeChange = async (delta: number) => {
     if (!activeSlide) return;
+    pushHistorySnapshot();
     const currentFs = activeSlide.fontSize || 18;
     const newFs = Math.min(80, Math.max(10, currentFs + delta));
     const updatedSlide = { ...activeSlide, fontSize: newFs };
@@ -558,6 +729,7 @@ export default function PitchDeckStudio({
 
   const handleTitleFontWeightChange = async (weight: 'bold' | 'normal') => {
     if (!activeSlide) return;
+    pushHistorySnapshot();
     const updatedSlide: Slide = { ...activeSlide, titleFontWeight: weight };
     setSlides(prev => prev.map(s => s.id === activeSlide.id ? updatedSlide : s));
     try {
@@ -569,6 +741,7 @@ export default function PitchDeckStudio({
 
   const handleContentFontWeightChange = async (weight: 'bold' | 'normal') => {
     if (!activeSlide) return;
+    pushHistorySnapshot();
     const updatedSlide: Slide = { ...activeSlide, contentFontWeight: weight };
     setSlides(prev => prev.map(s => s.id === activeSlide.id ? updatedSlide : s));
     try {
@@ -580,6 +753,7 @@ export default function PitchDeckStudio({
 
   const handleDuplicateSlide = async () => {
     if (!activeSlide || !currentUser) return;
+    pushHistorySnapshot();
     const safeCompanyId = currentUser.companyId || currentUser.uid;
     const newId = `slide-${Date.now()}`;
     const hasTitle = !!activeSlide.title && activeSlide.title.trim().length > 0;
@@ -604,6 +778,7 @@ export default function PitchDeckStudio({
 
   // GENERIC PAYLOAD UPDATER FOR ALL SLIDE TYPES
   const updateSlidePayload = async (slideId: string, newPayload: any) => {
+    pushHistorySnapshot();
     setSlides(prev => prev.map(s => s.id === slideId ? { ...s, dataPayload: newPayload } : s));
     const target = slides.find(s => s.id === slideId);
     if (target) {
@@ -1105,6 +1280,15 @@ export default function PitchDeckStudio({
   }, [currentUser, projectId, importProjectId, targetId, isDemoMode, setActiveSlideId, setSlides]);
 
   const handleLocalUpdate = (field: 'title' | 'content' | 'notes', value: string) => {
+    if (!isTypingBurstRef.current) {
+      pushHistorySnapshot();
+      isTypingBurstRef.current = true;
+    }
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    typingTimerRef.current = setTimeout(() => {
+      isTypingBurstRef.current = false;
+    }, 1000);
+
     if (field === 'title') setLocalTitle(value);
     if (field === 'content') setLocalContent(value);
     if (field === 'notes') setLocalNotes(value);
@@ -2361,6 +2545,7 @@ export default function PitchDeckStudio({
 
   const handleAddSlide = async (layout: Slide['layout'] = 'split', title = t('new_slide'), dataPayload: any = null, imageUrl?: string, videoUrl?: string) => {
     if (!currentUser) return;
+    pushHistorySnapshot();
     const safeCompanyId = currentUser.companyId || currentUser.uid;
     const newId = `slide-${Date.now()}`;
     const isCleanImage = layout === 'full-image-clean';
@@ -2396,6 +2581,7 @@ export default function PitchDeckStudio({
   const handleDeleteSlide = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (!window.confirm(t('delete_slide_confirm'))) return;
+    pushHistorySnapshot();
     try { 
       await supabase.from('slides').delete().eq('id', id); 
       setSlides(prev => {
@@ -2403,13 +2589,44 @@ export default function PitchDeckStudio({
         if (activeSlideId === id) setActiveSlideId(remaining[0]?.id || null);
         return remaining;
       });
-      addToast(t('slide_deleted'), 'success');
+      addToast(t('slide_deleted_undoable'), 'success');
     } catch (error) { addToast(globalT('error'), "error"); }
+  };
+
+  // ACTIVE SLIDE DELETE HANDLER FOR HEADER ACTION BAR
+  const handleDeleteActiveSlide = async () => {
+    if (!activeSlide || slides.length === 0) return;
+    const slideTitle = activeSlide.title ? `"${activeSlide.title}"` : (currentLang === 'de' ? 'diese Folie' : 'this slide');
+    const confirmText = currentLang === 'de'
+      ? `Möchten Sie ${slideTitle} wirklich löschen?`
+      : `Are you sure you want to delete ${slideTitle}?`;
+    if (!window.confirm(confirmText)) return;
+
+    pushHistorySnapshot();
+    const idToDelete = activeSlide.id;
+    const remaining = slides.filter(s => s.id !== idToDelete);
+    const deletedIndex = slides.findIndex(s => s.id === idToDelete);
+    const nextActiveId = remaining.length > 0
+      ? (remaining[deletedIndex] ? remaining[deletedIndex].id : remaining[remaining.length - 1].id)
+      : null;
+
+    setSlides(remaining);
+    setActiveSlideId(nextActiveId);
+
+    try {
+      if (!isDemoMode && currentUser) {
+        await supabase.from('slides').delete().eq('id', idToDelete);
+      }
+      addToast(t('slide_deleted_undoable'), 'success');
+    } catch (err) {
+      console.warn("Delete active slide error:", err);
+    }
   };
 
   const handleClearAllSlides = async () => {
     if (slides.length === 0) return;
     if (!window.confirm(t('delete_all_confirm'))) return;
+    pushHistorySnapshot();
     try {
       await supabase.from('slides').delete().in('id', slides.map(s => s.id));
       setSlides([]); setActiveSlideId(null); addToast(t('deck_cleared'), 'success');
@@ -2421,6 +2638,7 @@ export default function PitchDeckStudio({
   const handleMoveSlide = async (id: string, direction: 'up' | 'down') => {
     const index = slides.findIndex(s => s.id === id);
     if (index === -1 || (direction === 'up' && index === 0) || (direction === 'down' && index === slides.length - 1)) return;
+    pushHistorySnapshot();
     const newSlides = [...slides];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
     [newSlides[index], newSlides[targetIndex]] = [newSlides[targetIndex], newSlides[index]];
@@ -2451,6 +2669,7 @@ export default function PitchDeckStudio({
     const targetIndex = slides.findIndex(s => s.id === dropTargetId);
     if (dragIndex === -1 || targetIndex === -1) return;
 
+    pushHistorySnapshot();
     const newSlides = [...slides];
     const [draggedItem] = newSlides.splice(dragIndex, 1);
     newSlides.splice(targetIndex, 0, draggedItem);
@@ -4881,19 +5100,51 @@ export default function PitchDeckStudio({
       {/* === MOBILE LAYOUT === */}
       <div className="lg:hidden flex flex-col w-full h-full bg-background overflow-hidden">
         
-        <header className="h-14 flex items-center justify-between px-4 border-b border-border bg-surface shrink-0 sticky top-0 z-50">
-          <div className="flex items-center gap-2">
+        <header className="h-14 flex items-center justify-between px-3 border-b border-border bg-surface shrink-0 sticky top-0 z-50 gap-1.5">
+          <div className="flex items-center gap-1.5">
             <button type="button" onClick={()=>setIsPreviewMode(!isPreviewMode)} className={cn("p-2 rounded-lg text-xs font-bold transition-all", isPreviewMode?"bg-purple-600 text-white":"text-text-muted hover:text-text-primary")}>
-              <Eye size={18}/>
+              <Eye size={17}/>
             </button>
             <button type="button" onClick={() => updateDeckSettings({ colorMode: deckSettings.colorMode === 'dark' ? 'light' : 'dark' })} className="p-2 bg-surface border border-border rounded-lg text-text-muted hover:text-text-primary">
-              {deckSettings.colorMode === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+              {deckSettings.colorMode === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
             </button>
+
+            {/* UNDO / REDO / DELETE BUTTON GROUP MOBILE */}
+            <div className="flex items-center gap-0.5 bg-background/80 border border-border rounded-lg p-0.5">
+              <button
+                type="button"
+                onClick={handleUndo}
+                disabled={undoStack.length === 0}
+                className="p-1.5 text-text-muted hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed"
+                title={t('undo_action')}
+              >
+                <Undo2 size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={handleRedo}
+                disabled={redoStack.length === 0}
+                className="p-1.5 text-text-muted hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed"
+                title={t('redo_action')}
+              >
+                <Redo2 size={14} />
+              </button>
+              <div className="w-px h-3.5 bg-border mx-0.5" />
+              <button
+                type="button"
+                onClick={handleDeleteActiveSlide}
+                disabled={!activeSlide || slides.length === 0}
+                className="p-1.5 text-red-400 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed"
+                title={t('delete_current_slide')}
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
              <ModuleGuideButton moduleId="pitch" compact className="h-7 px-2 text-[11px]" />
-             <span className="text-xs font-sans font-medium text-text-muted bg-surface border border-border px-2 py-1 rounded">{slides.findIndex(s=>s.id===activeSlideId) + 1} / {slides.length}</span>
-             <button type="button" onClick={onClose} className="p-2 bg-red-500/20 text-red-500 rounded-lg"><X size={18}/></button>
+             <span className="text-xs font-sans font-medium text-text-muted bg-surface border border-border px-1.5 py-1 rounded">{slides.findIndex(s=>s.id===activeSlideId) + 1} / {slides.length}</span>
+             <button type="button" onClick={onClose} className="p-2 bg-red-500/20 text-red-500 rounded-lg"><X size={17}/></button>
           </div>
         </header>
 
@@ -5472,9 +5723,45 @@ export default function PitchDeckStudio({
                 <span className="hidden xl:inline">{deckSettings.colorMode === 'light' ? t('light_mode') : t('dark_mode')}</span>
               </button>
 
+              {/* UNDO / REDO & DELETE BUTTON GROUP (NUR IN KOPFZEILE) */}
+              <div className="flex items-center gap-0.5 bg-background/80 border border-border/80 rounded-xl p-1 shadow-xs shrink-0">
+                <button
+                  type="button"
+                  onClick={handleUndo}
+                  disabled={undoStack.length === 0}
+                  className="p-1.5 rounded-lg text-text-muted hover:bg-surface hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center text-xs"
+                  title={t('undo_action')}
+                  aria-label={t('undo_action')}
+                >
+                  <Undo2 size={15} />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRedo}
+                  disabled={redoStack.length === 0}
+                  className="p-1.5 rounded-lg text-text-muted hover:bg-surface hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center text-xs"
+                  title={t('redo_action')}
+                  aria-label={t('redo_action')}
+                >
+                  <Redo2 size={15} />
+                </button>
+                <div className="w-px h-4 bg-border/80 mx-1" />
+                <button
+                  type="button"
+                  onClick={handleDeleteActiveSlide}
+                  disabled={!activeSlide || slides.length === 0}
+                  className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+                  title={t('delete_current_slide')}
+                  aria-label={t('delete_current_slide')}
+                >
+                  <Trash2 size={15} />
+                  <span className="hidden xl:inline text-[11px] font-sans">Löschen</span>
+                </button>
+              </div>
+
               {activeSlide && (
                 <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-border text-xs text-text-muted">
-                  <span className="font-semibold text-text-primary truncate max-w-[200px] lg:max-w-[320px]">
+                  <span className="font-semibold text-text-primary truncate max-w-[160px] lg:max-w-[280px]">
                     {activeSlide.title || (currentLang === 'de' ? 'Aktuelle Folie' : 'Current Slide')}
                   </span>
                   {activeSlide.stamp && (
