@@ -347,6 +347,31 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
     const tc = isDarkTheme ? "text-white" : "text-black";
     const isTitleBold = (slide.titleFontWeight || 'bold') !== 'normal';
     const isContentBold = slide.contentFontWeight === 'bold';
+
+    const renderCitationText = (text: string) => {
+      if (!text) return null;
+      const citationRegex = /(\[(?:S\.|Quelle|Dokument)[^\]]+\]|\((?:S\.|Quelle|Dokument)[^\)]+\))/gi;
+      const parts = text.split(citationRegex);
+      return parts.map((part, i) => {
+        if (citationRegex.test(part)) {
+          const clean = part.replace(/^[\(\[]/, '').replace(/[\)\]]$/, '').trim();
+          return (
+            <span
+              key={i}
+              className={cn(
+                "inline-flex items-center gap-1 px-1.5 py-0.5 mx-1 rounded-md text-[10px] font-mono font-bold tracking-tight align-baseline select-none",
+                isDarkTheme
+                  ? "bg-indigo-950/90 text-indigo-300 border border-indigo-700/60 shadow-xs"
+                  : "bg-indigo-100 text-indigo-900 border border-indigo-300 shadow-xs"
+              )}
+            >
+              {clean}
+            </span>
+          );
+        }
+        return part;
+      });
+    };
     
     if (slide.layout === 'full-image' || slide.layout === 'full-image-clean') {
       const isClean = slide.layout === 'full-image-clean' || !!slide.dataPayload?.hideTextOverlay;
@@ -938,66 +963,41 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
               ? "grid-cols-1 md:grid-cols-2" 
               : "grid-cols-1 md:grid-cols-3";
 
-            const renderCitationText = (text: string) => {
-              if (!text) return null;
-              const citationRegex = /(\[(?:S\.|Quelle|Dokument)[^\]]+\]|\((?:S\.|Quelle|Dokument)[^\)]+\))/gi;
-              const parts = text.split(citationRegex);
-              return parts.map((part, i) => {
-                if (citationRegex.test(part)) {
-                  const clean = part.replace(/^[\(\[]/, '').replace(/[\)\]]$/, '').trim();
-                  return (
-                    <span
-                      key={i}
-                      className={cn(
-                        "inline-flex items-center gap-1 px-1.5 py-0.5 mx-1 rounded-md text-[10px] font-mono font-bold tracking-tight align-baseline select-none",
-                        isDarkTheme
-                          ? "bg-indigo-950/90 text-indigo-300 border border-indigo-700/60 shadow-xs"
-                          : "bg-indigo-50 text-indigo-700 border border-indigo-200/80 shadow-xs"
-                      )}
-                    >
-                      {clean}
-                    </span>
-                  );
-                }
-                return part;
-              });
-            };
-
             return (
               <div className="w-full h-full flex flex-col justify-center gap-4 lg:gap-6 col-span-full py-2">
                 {slide.dataPayload?.keyMetric?.value && (
                   <div className={cn(
-                    "flex items-center justify-between gap-4 px-6 py-3.5 rounded-2xl border transition-all",
+                    "flex items-center justify-between gap-4 px-6 py-3.5 rounded-2xl border-2 transition-all shadow-md",
                     isDarkTheme
-                      ? "bg-gradient-to-r from-indigo-950/40 via-zinc-900/60 to-zinc-900/40 border-indigo-500/30 shadow-lg shadow-indigo-950/20 ring-1 ring-white/5"
-                      : "bg-gradient-to-r from-indigo-50/70 via-white to-slate-50 border-indigo-200/80 shadow-xs ring-1 ring-black/[0.02]"
+                      ? "bg-zinc-900/90 border-indigo-500/40 shadow-indigo-950/30 ring-1 ring-white/5"
+                      : "bg-white border-indigo-200 shadow-indigo-100/60 ring-1 ring-indigo-500/10"
                   )}>
                     <div className="flex items-baseline gap-4 flex-wrap">
                       <span 
                         className="text-3xl lg:text-4xl font-black tracking-tight font-sans tabular-nums"
-                        style={{ color: deckSettings.themeColor || '#6366f1' }}
+                        style={{ color: deckSettings.themeColor || '#4f46e5' }}
                       >
                         {slide.dataPayload.keyMetric.value}
                       </span>
                       <div className="flex flex-col">
                         <span className={cn(
                           "text-xs font-black uppercase tracking-wider",
-                          isDarkTheme ? "text-indigo-300" : "text-indigo-950"
+                          isDarkTheme ? "text-indigo-300" : "text-slate-900"
                         )}>
                           {slide.dataPayload.keyMetric.label}
                         </span>
                         {slide.dataPayload.sourceAnchor && (
-                          <span className="text-[10px] opacity-60 font-mono mt-0.5">
+                          <span className="text-[10px] text-slate-500 dark:text-zinc-400 font-mono mt-0.5">
                             Quelle: {slide.dataPayload.sourceAnchor}
                           </span>
                         )}
                       </div>
                     </div>
                     <div className={cn(
-                      "hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase",
+                      "hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black tracking-wide uppercase border",
                       isDarkTheme
-                        ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
-                        : "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                        ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/40"
+                        : "bg-indigo-100 text-indigo-900 border-indigo-300"
                     )}>
                       Key Metric
                     </div>
@@ -1009,25 +1009,29 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                     <div
                       key={idx}
                       className={cn(
-                        "p-6 rounded-2xl border transition-all flex flex-col justify-between shadow-md",
+                        "p-6 rounded-2xl border-2 transition-all flex flex-col justify-between shadow-lg",
                         isDarkTheme 
-                          ? "bg-zinc-900/85 border-zinc-800 shadow-black/40 backdrop-blur-md ring-1 ring-white/5" 
-                          : "bg-slate-50/95 border-slate-200/90 shadow-slate-200/50 ring-1 ring-black/[0.03] hover:border-slate-300"
+                          ? "bg-zinc-900/90 border-zinc-800 shadow-black/50 ring-1 ring-white/5" 
+                          : "bg-white border-slate-200 shadow-slate-200/60 ring-1 ring-slate-900/5 hover:border-indigo-300"
                       )}
                     >
                       <div>
                         {card.badge && (
                           <span 
-                            className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider mb-3"
-                            style={{ backgroundColor: `${deckSettings.themeColor || '#6366f1'}20`, color: deckSettings.themeColor || '#6366f1' }}
+                            className={cn(
+                              "inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider mb-3 border",
+                              isDarkTheme
+                                ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/40"
+                                : "bg-indigo-100 text-indigo-900 border-indigo-300"
+                            )}
                           >
                             {card.badge}
                           </span>
                         )}
-                        <h4 className={cn("text-base lg:text-lg font-bold mb-2 leading-snug", tc)}>
+                        <h4 className={cn("text-base lg:text-lg font-black mb-2 leading-snug", isDarkTheme ? "text-white" : "text-slate-950")}>
                           {card.title}
                         </h4>
-                        <p className={cn("text-xs lg:text-sm leading-relaxed whitespace-pre-wrap", isDarkTheme ? "text-zinc-300" : "text-zinc-700")}>
+                        <p className={cn("text-xs lg:text-sm leading-relaxed whitespace-pre-wrap font-normal", isDarkTheme ? "text-zinc-200" : "text-slate-800")}>
                           {renderCitationText(card.description)}
                         </p>
                       </div>
@@ -1042,26 +1046,29 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
           {slide.layout === 'stat-callout' && (
             <div className="w-full h-full flex flex-col justify-center items-center text-center col-span-full py-6">
               {slide.dataPayload?.kicker && (
-                <span className="text-xs font-black uppercase tracking-widest mb-4 px-3 py-1 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                <span className={cn(
+                  "text-xs font-black uppercase tracking-widest mb-4 px-3 py-1 rounded-full border",
+                  isDarkTheme ? "bg-purple-500/20 text-purple-300 border-purple-500/40" : "bg-purple-100 text-purple-900 border-purple-300"
+                )}>
                   {slide.dataPayload.kicker}
                 </span>
               )}
               {slide.dataPayload?.keyMetric?.value && (
                 <div 
                   className="text-7xl lg:text-8xl font-black tracking-tight font-sans tabular-nums my-2 drop-shadow-sm"
-                  style={{ color: deckSettings.themeColor }}
+                  style={{ color: deckSettings.themeColor || '#4f46e5' }}
                 >
                   {slide.dataPayload.keyMetric.value}
                 </div>
               )}
               {slide.dataPayload?.keyMetric?.label && (
-                <div className="text-xl lg:text-2xl font-bold opacity-80 max-w-xl mx-auto mb-6">
+                <div className={cn("text-xl lg:text-2xl font-black max-w-xl mx-auto mb-6", isDarkTheme ? "text-white" : "text-slate-950")}>
                   {slide.dataPayload.keyMetric.label}
                 </div>
               )}
               {slide.content && (
-                <p className="text-sm lg:text-base opacity-70 max-w-2xl mx-auto leading-relaxed">
-                  {slide.content}
+                <p className={cn("text-sm lg:text-base font-normal max-w-2xl mx-auto leading-relaxed", isDarkTheme ? "text-zinc-200" : "text-slate-800")}>
+                  {renderCitationText(slide.content)}
                 </p>
               )}
             </div>
@@ -1070,14 +1077,14 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
           {/* NOTEBOOKLM-STYLE: QUOTE STATEMENT */}
           {slide.layout === 'quote-statement' && (
             <div className="w-full h-full flex flex-col justify-center items-center text-center col-span-full p-8 max-w-4xl mx-auto">
-              <span className="text-6xl text-purple-500/30 font-serif leading-none select-none">“</span>
-              <blockquote className="text-2xl lg:text-3xl font-medium italic leading-relaxed my-4 opacity-90">
+              <span className="text-6xl text-purple-500/40 font-serif leading-none select-none">“</span>
+              <blockquote className={cn("text-2xl lg:text-3xl font-medium italic leading-relaxed my-4", isDarkTheme ? "text-white" : "text-slate-950")}>
                 {slide.dataPayload?.quote?.text || slide.content}
               </blockquote>
               {(slide.dataPayload?.quote?.author || slide.dataPayload?.quote?.source) && (
-                <div className="flex items-center gap-2 mt-4 text-sm font-bold tracking-wider uppercase opacity-70">
+                <div className={cn("flex items-center gap-2 mt-4 text-sm font-bold tracking-wider uppercase", isDarkTheme ? "text-zinc-300" : "text-slate-800")}>
                   <span>— {slide.dataPayload?.quote?.author}</span>
-                  {slide.dataPayload?.quote?.role && <span className="opacity-50 font-normal">({slide.dataPayload.quote.role})</span>}
+                  {slide.dataPayload?.quote?.role && <span className="opacity-70 font-normal">({slide.dataPayload.quote.role})</span>}
                 </div>
               )}
             </div>

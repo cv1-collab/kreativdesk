@@ -3803,6 +3803,31 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
     const isTitleBold = (activeSlide?.id === slide.id ? (activeSlide.titleFontWeight || 'bold') : (slide.titleFontWeight || 'bold')) !== 'normal';
     const isContentBold = (activeSlide?.id === slide.id ? (activeSlide.contentFontWeight || 'normal') : (slide.contentFontWeight || 'normal')) === 'bold';
 
+    const renderCitationText = (text: string) => {
+      if (!text) return null;
+      const citationRegex = /(\[(?:S\.|Quelle|Dokument)[^\]]+\]|\((?:S\.|Quelle|Dokument)[^\)]+\))/gi;
+      const parts = text.split(citationRegex);
+      return parts.map((part, i) => {
+        if (citationRegex.test(part)) {
+          const clean = part.replace(/^[\(\[]/, '').replace(/[\)\]]$/, '').trim();
+          return (
+            <span
+              key={i}
+              className={cn(
+                "inline-flex items-center gap-1 px-1.5 py-0.5 mx-1 rounded-md text-[10px] font-mono font-bold tracking-tight align-baseline select-none",
+                isDarkTheme
+                  ? "bg-indigo-950/90 text-indigo-300 border border-indigo-700/60 shadow-xs"
+                  : "bg-indigo-100 text-indigo-900 border border-indigo-300 shadow-xs"
+              )}
+            >
+              {clean}
+            </span>
+          );
+        }
+        return part;
+      });
+    };
+
     if (slide.layout === 'full-image' || slide.layout === 'full-image-clean') {
       const isClean = slide.layout === 'full-image-clean' || !!slide.dataPayload?.hideTextOverlay;
       const imageFit = slide.dataPayload?.imageFit || 'cover';
@@ -5254,40 +5279,15 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
               ? "grid-cols-1 md:grid-cols-2" 
               : "grid-cols-1 md:grid-cols-3";
 
-            const renderCitationText = (text: string) => {
-              if (!text) return null;
-              const citationRegex = /(\[(?:S\.|Quelle|Dokument)[^\]]+\]|\((?:S\.|Quelle|Dokument)[^\)]+\))/gi;
-              const parts = text.split(citationRegex);
-              return parts.map((part, i) => {
-                if (citationRegex.test(part)) {
-                  const clean = part.replace(/^[\(\[]/, '').replace(/[\)\]]$/, '').trim();
-                  return (
-                    <span
-                      key={i}
-                      className={cn(
-                        "inline-flex items-center gap-1 px-1.5 py-0.5 mx-1 rounded-md text-[10px] font-mono font-bold tracking-tight align-baseline select-none",
-                        isDarkTheme
-                          ? "bg-indigo-950/90 text-indigo-300 border border-indigo-700/60 shadow-xs"
-                          : "bg-indigo-50 text-indigo-700 border border-indigo-200/80 shadow-xs"
-                      )}
-                    >
-                      {clean}
-                    </span>
-                  );
-                }
-                return part;
-              });
-            };
-
             return (
               <div className="w-full h-full flex flex-col justify-center gap-4 lg:gap-6 col-span-full py-2">
                 {/* KEY METRIC BANNER */}
                 {(slide.dataPayload?.keyMetric || !isPreviewMode) && (
                   <div className={cn(
-                    "flex items-center justify-between gap-4 px-6 py-3.5 rounded-2xl border transition-all flex-wrap",
+                    "flex items-center justify-between gap-4 px-6 py-3.5 rounded-2xl border-2 transition-all flex-wrap shadow-md",
                     isDarkTheme
-                      ? "bg-gradient-to-r from-indigo-950/40 via-zinc-900/60 to-zinc-900/40 border-indigo-500/30 shadow-lg shadow-indigo-950/20 ring-1 ring-white/5"
-                      : "bg-gradient-to-r from-indigo-50/70 via-white to-slate-50 border-indigo-200/80 shadow-xs ring-1 ring-black/[0.02]"
+                      ? "bg-zinc-900/90 border-indigo-500/40 shadow-indigo-950/30 ring-1 ring-white/5"
+                      : "bg-white border-indigo-200 shadow-indigo-100/60 ring-1 ring-indigo-500/10"
                   )}>
                     {!isPreviewMode ? (
                       <div className="flex items-baseline gap-3 flex-wrap flex-1">
@@ -5297,14 +5297,14 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                           onChange={(e) => handleUpdateKeyMetric(slide.id, 'value', e.target.value)}
                           placeholder="+140% oder CHF 2.5M"
                           className="text-3xl lg:text-4xl font-black tracking-tight font-sans tabular-nums bg-transparent outline-none border-b border-transparent focus:border-indigo-500 w-56"
-                          style={{ color: deckSettings.themeColor || '#6366f1' }}
+                          style={{ color: deckSettings.themeColor || '#4f46e5' }}
                         />
                         <input
                           type="text"
                           value={slide.dataPayload?.keyMetric?.label || ''}
                           onChange={(e) => handleUpdateKeyMetric(slide.id, 'label', e.target.value)}
                           placeholder="Kennzahl Beschreibung (z. B. ROI / Kapazität)..."
-                          className={cn("text-xs font-bold uppercase tracking-widest bg-transparent outline-none border-b border-transparent focus:border-indigo-500 flex-1 min-w-[200px]", isDarkTheme ? "text-indigo-300" : "text-indigo-950")}
+                          className={cn("text-xs font-black uppercase tracking-widest bg-transparent outline-none border-b border-transparent focus:border-indigo-500 flex-1 min-w-[200px] placeholder:text-slate-400 dark:placeholder:text-zinc-500", isDarkTheme ? "text-indigo-300" : "text-slate-900")}
                         />
                       </div>
                     ) : (
@@ -5312,16 +5312,16 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                         <div className="flex items-baseline gap-4 flex-wrap">
                           <span 
                             className="text-3xl lg:text-4xl font-black tracking-tight font-sans tabular-nums"
-                            style={{ color: deckSettings.themeColor || '#6366f1' }}
+                            style={{ color: deckSettings.themeColor || '#4f46e5' }}
                           >
                             {slide.dataPayload.keyMetric.value}
                           </span>
                           <div className="flex flex-col">
-                            <span className={cn("text-xs font-black uppercase tracking-wider", isDarkTheme ? "text-indigo-300" : "text-indigo-950")}>
+                            <span className={cn("text-xs font-black uppercase tracking-wider", isDarkTheme ? "text-indigo-300" : "text-slate-900")}>
                               {slide.dataPayload.keyMetric.label}
                             </span>
                             {slide.dataPayload?.sourceAnchor && (
-                              <span className="text-[10px] opacity-60 font-mono mt-0.5">
+                              <span className="text-[10px] text-slate-500 dark:text-zinc-400 font-mono mt-0.5">
                                 Quelle: {slide.dataPayload.sourceAnchor}
                               </span>
                             )}
@@ -5331,10 +5331,10 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                     )}
                     <div className="flex items-center gap-2 ml-auto">
                       <div className={cn(
-                        "hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase",
+                        "hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black tracking-wide uppercase border",
                         isDarkTheme
-                          ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
-                          : "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                          ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/40"
+                          : "bg-indigo-100 text-indigo-900 border-indigo-300"
                       )}>
                         Key Metric
                       </div>
@@ -5342,9 +5342,14 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                         <button
                           type="button"
                           onClick={() => handleAddBentoCard(slide.id)}
-                          className="px-2.5 py-1 rounded-lg bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 text-[11px] font-bold flex items-center gap-1 border border-indigo-500/30 cursor-pointer"
+                          className={cn(
+                            "px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 border transition-all cursor-pointer shadow-xs",
+                            isDarkTheme
+                              ? "bg-indigo-500/25 hover:bg-indigo-500/35 text-indigo-300 border-indigo-500/40"
+                              : "bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-600"
+                          )}
                         >
-                          <Plus size={12} /> Karte hinzufügen
+                          <Plus size={13} /> Karte hinzufügen
                         </button>
                       )}
                     </div>
@@ -5357,10 +5362,10 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                     <div
                       key={cIdx}
                       className={cn(
-                        "p-5 rounded-2xl border transition-all flex flex-col justify-between shadow-md relative group/card",
+                        "p-5 rounded-2xl border-2 transition-all flex flex-col justify-between shadow-lg relative group/card",
                         isDarkTheme 
-                          ? "bg-zinc-900/85 border-zinc-800 shadow-black/40 backdrop-blur-md ring-1 ring-white/5" 
-                          : "bg-slate-50/95 border-slate-200/90 shadow-slate-200/50 ring-1 ring-black/[0.03] hover:border-slate-300"
+                          ? "bg-zinc-900/90 border-zinc-800 shadow-black/50 ring-1 ring-white/5" 
+                          : "bg-white border-slate-200 shadow-slate-200/60 ring-1 ring-slate-900/5 hover:border-indigo-300"
                       )}
                     >
                       {!isPreviewMode && (
@@ -5380,14 +5385,22 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                             value={card.badge || ''}
                             onChange={(e) => handleUpdateBentoCard(slide.id, cIdx, 'badge', e.target.value)}
                             placeholder="TAG / KATEGORIE"
-                            className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider mb-2.5 w-fit bg-transparent border border-border/50 outline-none"
-                            style={{ color: deckSettings.themeColor || '#6366f1' }}
+                            className={cn(
+                              "px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider mb-2.5 w-fit border outline-none transition-all",
+                              isDarkTheme
+                                ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/40"
+                                : "bg-indigo-100 text-indigo-900 border-indigo-300"
+                            )}
                           />
                         ) : (
                           card.badge && (
                             <span 
-                              className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider mb-3 w-fit"
-                              style={{ backgroundColor: `${deckSettings.themeColor || '#6366f1'}20`, color: deckSettings.themeColor || '#6366f1' }}
+                              className={cn(
+                                "inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider mb-3 w-fit border",
+                                isDarkTheme
+                                  ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/40"
+                                  : "bg-indigo-100 text-indigo-900 border-indigo-300"
+                              )}
                             >
                               {card.badge}
                             </span>
@@ -5400,10 +5413,13 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                             value={card.title || ''}
                             onChange={(e) => handleUpdateBentoCard(slide.id, cIdx, 'title', e.target.value)}
                             placeholder="Kernaussage / Überschrift..."
-                            className={cn("text-base font-bold mb-2 leading-snug bg-transparent outline-none border-b border-transparent focus:border-indigo-500", tc)}
+                            className={cn(
+                              "text-base font-black mb-2 leading-snug bg-transparent outline-none border-b border-transparent focus:border-indigo-500 placeholder:text-slate-400 dark:placeholder:text-zinc-500",
+                              isDarkTheme ? "text-white" : "text-slate-950"
+                            )}
                           />
                         ) : (
-                          <h4 className={cn("text-base font-bold mb-2 leading-snug", tc)}>
+                          <h4 className={cn("text-base font-black mb-2 leading-snug", isDarkTheme ? "text-white" : "text-slate-950")}>
                             {card.title}
                           </h4>
                         )}
@@ -5414,10 +5430,13 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                             value={card.description || ''}
                             onChange={(e) => handleUpdateBentoCard(slide.id, cIdx, 'description', e.target.value)}
                             placeholder="Prägnante Details und Kontextpunkte (z.B. mit [S. 16])..."
-                            className={cn("text-xs leading-relaxed opacity-75 bg-transparent outline-none resize-none border-b border-transparent focus:border-indigo-500 flex-1", tc)}
+                            className={cn(
+                              "text-xs leading-relaxed font-normal bg-transparent outline-none resize-none border-b border-transparent focus:border-indigo-500 flex-1 placeholder:text-slate-400 dark:placeholder:text-zinc-500",
+                              isDarkTheme ? "text-zinc-200" : "text-slate-800"
+                            )}
                           />
                         ) : (
-                          <p className={cn("text-xs leading-relaxed whitespace-pre-wrap", isDarkTheme ? "text-zinc-300" : "text-zinc-700")}>
+                          <p className={cn("text-xs lg:text-sm leading-relaxed whitespace-pre-wrap font-normal", isDarkTheme ? "text-zinc-200" : "text-slate-800")}>
                             {renderCitationText(card.description)}
                           </p>
                         )}
@@ -5438,11 +5457,21 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                   value={slide.dataPayload?.kicker || ''}
                   onChange={(e) => updateSlidePayload(slide.id, { ...slide.dataPayload, kicker: e.target.value })}
                   placeholder="KATEGORIE / KICKER"
-                  className="text-xs font-black uppercase tracking-widest mb-3 px-3 py-1 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 text-center outline-none"
+                  className={cn(
+                    "text-xs font-black uppercase tracking-widest mb-3 px-3 py-1 rounded-full text-center outline-none border transition-all",
+                    isDarkTheme
+                      ? "bg-purple-500/20 text-purple-300 border-purple-500/40"
+                      : "bg-purple-100 text-purple-900 border-purple-300"
+                  )}
                 />
               ) : (
                 slide.dataPayload?.kicker && (
-                  <span className="text-xs font-black uppercase tracking-widest mb-4 px-3 py-1 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                  <span className={cn(
+                    "text-xs font-black uppercase tracking-widest mb-4 px-3 py-1 rounded-full border",
+                    isDarkTheme
+                      ? "bg-purple-500/20 text-purple-300 border-purple-500/40"
+                      : "bg-purple-100 text-purple-900 border-purple-300"
+                  )}>
                     {slide.dataPayload.kicker}
                   </span>
                 )
@@ -5455,13 +5484,13 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                   onChange={(e) => handleUpdateKeyMetric(slide.id, 'value', e.target.value)}
                   placeholder="+140%"
                   className="text-7xl lg:text-8xl font-black tracking-tight font-sans tabular-nums my-2 text-center bg-transparent outline-none border-b border-transparent focus:border-purple-500 w-full max-w-lg mx-auto"
-                  style={{ color: deckSettings.themeColor }}
+                  style={{ color: deckSettings.themeColor || '#4f46e5' }}
                 />
               ) : (
                 slide.dataPayload?.keyMetric?.value && (
                   <div 
                     className="text-7xl lg:text-8xl font-black tracking-tight font-sans tabular-nums my-2 drop-shadow-sm"
-                    style={{ color: deckSettings.themeColor }}
+                    style={{ color: deckSettings.themeColor || '#4f46e5' }}
                   >
                     {slide.dataPayload.keyMetric.value}
                   </div>
@@ -5474,11 +5503,14 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                   value={slide.dataPayload?.keyMetric?.label || ''}
                   onChange={(e) => handleUpdateKeyMetric(slide.id, 'label', e.target.value)}
                   placeholder="Beschreibung der Kennzahl..."
-                  className={cn("text-xl lg:text-2xl font-bold opacity-80 max-w-xl mx-auto mb-4 text-center bg-transparent outline-none border-b border-transparent focus:border-purple-500 w-full", tc)}
+                  className={cn(
+                    "text-xl lg:text-2xl font-black max-w-xl mx-auto mb-4 text-center bg-transparent outline-none border-b border-transparent focus:border-purple-500 w-full placeholder:text-slate-400 dark:placeholder:text-zinc-500",
+                    isDarkTheme ? "text-white" : "text-slate-950"
+                  )}
                 />
               ) : (
                 slide.dataPayload?.keyMetric?.label && (
-                  <div className={cn("text-xl lg:text-2xl font-bold opacity-80 max-w-xl mx-auto mb-6", tc)}>
+                  <div className={cn("text-xl lg:text-2xl font-black max-w-xl mx-auto mb-6", isDarkTheme ? "text-white" : "text-slate-950")}>
                     {slide.dataPayload.keyMetric.label}
                   </div>
                 )
@@ -5489,12 +5521,15 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                   value={displayContent}
                   onChange={(e) => handleLocalUpdate('content', e.target.value)}
                   placeholder="Kernaussage oder Zitat..."
-                  className={cn("w-full max-w-2xl mx-auto bg-transparent outline-none resize-none text-center opacity-70 text-sm lg:text-base leading-relaxed border-b border-transparent focus:border-purple-500", tc)}
+                  className={cn(
+                    "w-full max-w-2xl mx-auto bg-transparent outline-none resize-none text-center font-normal text-sm lg:text-base leading-relaxed border-b border-transparent focus:border-purple-500 placeholder:text-slate-400 dark:placeholder:text-zinc-500",
+                    isDarkTheme ? "text-zinc-200" : "text-slate-800"
+                  )}
                 />
               ) : (
                 slide.content && (
-                  <p className={cn("text-sm lg:text-base opacity-70 max-w-2xl mx-auto leading-relaxed", tc)}>
-                    {slide.content}
+                  <p className={cn("text-sm lg:text-base font-normal max-w-2xl mx-auto leading-relaxed", isDarkTheme ? "text-zinc-200" : "text-slate-800")}>
+                    {renderCitationText(slide.content)}
                   </p>
                 )
               )}
@@ -5504,44 +5539,53 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
           {/* NOTEBOOKLM-STYLE: QUOTE STATEMENT */}
           {slide.layout === 'quote-statement' && (
             <div className="w-full h-full flex flex-col justify-center items-center text-center col-span-full p-8 max-w-4xl mx-auto">
-              <span className="text-6xl text-purple-500/30 font-serif leading-none select-none">“</span>
+              <span className="text-6xl text-purple-500/40 font-serif leading-none select-none">“</span>
               {!isPreviewMode ? (
                 <textarea
                   rows={3}
                   value={slide.dataPayload?.quote?.text || displayContent}
                   onChange={(e) => handleUpdateQuote(slide.id, 'text', e.target.value)}
                   placeholder="Leitsatz oder Zitat eingeben..."
-                  className={cn("w-full text-2xl lg:text-3xl font-medium italic leading-relaxed my-4 opacity-90 text-center bg-transparent outline-none resize-none border-b border-transparent focus:border-purple-500", tc)}
+                  className={cn(
+                    "w-full text-2xl lg:text-3xl font-medium italic leading-relaxed my-4 text-center bg-transparent outline-none resize-none border-b border-transparent focus:border-purple-500 placeholder:text-slate-400 dark:placeholder:text-zinc-500",
+                    isDarkTheme ? "text-white" : "text-slate-950"
+                  )}
                 />
               ) : (
-                <blockquote className={cn("text-2xl lg:text-3xl font-medium italic leading-relaxed my-4 opacity-90", tc)}>
+                <blockquote className={cn("text-2xl lg:text-3xl font-medium italic leading-relaxed my-4", isDarkTheme ? "text-white" : "text-slate-950")}>
                   {slide.dataPayload?.quote?.text || slide.content}
                 </blockquote>
               )}
 
               {!isPreviewMode ? (
                 <div className="flex items-center gap-3 mt-4 text-sm font-bold tracking-wider uppercase">
-                  <span className="opacity-50">—</span>
+                  <span className={isDarkTheme ? "text-zinc-500" : "text-slate-400"}>—</span>
                   <input
                     type="text"
                     value={slide.dataPayload?.quote?.author || ''}
                     onChange={(e) => handleUpdateQuote(slide.id, 'author', e.target.value)}
                     placeholder="Autor / Quelle..."
-                    className={cn("bg-transparent outline-none border-b border-transparent focus:border-purple-500 w-48 text-center", tc)}
+                    className={cn(
+                      "bg-transparent outline-none border-b border-transparent focus:border-purple-500 w-48 text-center font-bold",
+                      isDarkTheme ? "text-white" : "text-slate-950"
+                    )}
                   />
                   <input
                     type="text"
                     value={slide.dataPayload?.quote?.role || ''}
                     onChange={(e) => handleUpdateQuote(slide.id, 'role', e.target.value)}
                     placeholder="Funktion / Kontext..."
-                    className="bg-transparent outline-none border-b border-transparent focus:border-purple-500 opacity-60 w-48 text-center font-normal"
+                    className={cn(
+                      "bg-transparent outline-none border-b border-transparent focus:border-purple-500 w-48 text-center font-normal",
+                      isDarkTheme ? "text-zinc-400" : "text-slate-600"
+                    )}
                   />
                 </div>
               ) : (
                 (slide.dataPayload?.quote?.author || slide.dataPayload?.quote?.source) && (
-                  <div className={cn("flex items-center gap-2 mt-4 text-sm font-bold tracking-wider uppercase opacity-70", tc)}>
+                  <div className={cn("flex items-center gap-2 mt-4 text-sm font-bold tracking-wider uppercase", isDarkTheme ? "text-zinc-300" : "text-slate-800")}>
                     <span>— {slide.dataPayload?.quote?.author}</span>
-                    {slide.dataPayload?.quote?.role && <span className="opacity-50 font-normal">({slide.dataPayload.quote.role})</span>}
+                    {slide.dataPayload?.quote?.role && <span className="opacity-70 font-normal">({slide.dataPayload.quote.role})</span>}
                   </div>
                 )
               )}
@@ -7774,12 +7818,12 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
 
             <div className="space-y-4">
               {/* STATUS EXPLANATION */}
-              <div className="p-4 rounded-2xl bg-indigo-950/20 border border-indigo-500/25 text-xs text-indigo-200/90 leading-relaxed space-y-2">
-                <div className="font-bold flex items-center gap-1.5 text-indigo-300">
-                  <Bookmark size={14} /> Warum keine direkte NotebookLM-API?
+              <div className="p-4 rounded-2xl bg-indigo-50/90 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-500/30 text-xs text-slate-700 dark:text-indigo-200 leading-relaxed space-y-2">
+                <div className="font-bold flex items-center gap-1.5 text-indigo-700 dark:text-indigo-300 text-sm">
+                  <Bookmark size={15} className="text-indigo-600 dark:text-indigo-400" /> Warum keine direkte NotebookLM-API?
                 </div>
-                <p>
-                  Google stellt für <strong>NotebookLM</strong> (Gemini Notebook) absichtlich keine öffentliche Entwickler-REST-API zur Verfügung. Mit Kreativ Desk OS hast du jedoch den <strong>perfekten Workflow</strong>:
+                <p className="text-slate-600 dark:text-indigo-200/90">
+                  Google stellt für <strong className="text-slate-900 dark:text-white font-semibold">NotebookLM</strong> (Gemini Notebook) absichtlich keine öffentliche Entwickler-REST-API zur Verfügung. Mit Kreativ Desk OS hast du jedoch den <strong className="text-slate-900 dark:text-white font-semibold">perfekten Workflow</strong>:
                 </p>
               </div>
 
@@ -7787,7 +7831,7 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
               <div className="p-4 rounded-2xl bg-background border border-border flex items-center justify-between gap-4">
                 <div className="flex-1">
                   <div className="text-xs font-bold text-text-primary flex items-center gap-1.5">
-                    <FileText size={14} className="text-indigo-400" /> 1. Vollständiges Projekt-Dossier kopieren
+                    <FileText size={14} className="text-indigo-600 dark:text-indigo-400" /> 1. Vollständiges Projekt-Dossier kopieren
                   </div>
                   <div className="text-[11px] text-text-muted mt-0.5">
                     Generiert ein strukturiertes Markdown-Dossier aller Folien, Kennzahlen, Budgets & Notizen für die Zwischenablage.
@@ -7796,7 +7840,7 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                 <button
                   type="button"
                   onClick={handleCopyNotebookLMDossier}
-                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
                 >
                   <Copy size={13} /> Kopieren
                 </button>
@@ -7806,7 +7850,7 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
               <div className="p-4 rounded-2xl bg-background border border-border flex items-center justify-between gap-4">
                 <div className="flex-1">
                   <div className="text-xs font-bold text-text-primary flex items-center gap-1.5">
-                    <ExternalLink size={14} className="text-blue-400" /> 2. NotebookLM in Google öffnen
+                    <ExternalLink size={14} className="text-blue-600 dark:text-blue-400" /> 2. NotebookLM in Google öffnen
                   </div>
                   <div className="text-[11px] text-text-muted mt-0.5">
                     Öffnet notebooklm.google.com ➔ Klicke auf «+ Quelle hinzufügen» ➔ «Kopierter Text» und füge dein Dossier ein.
@@ -7816,7 +7860,7 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                   href="https://notebooklm.google.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-4 py-2.5 bg-surface hover:bg-surface-hover border border-border text-text-primary rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer flex items-center gap-1.5"
+                  className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
                 >
                   <ExternalLink size={13} /> Öffnen
                 </a>
@@ -7826,7 +7870,7 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
               <div className="p-4 rounded-2xl bg-background border border-border flex items-center justify-between gap-4">
                 <div className="flex-1">
                   <div className="text-xs font-bold text-text-primary flex items-center gap-1.5">
-                    <Palette size={14} className="text-purple-400" /> 3. NotebookLM Design-Theme aktivieren
+                    <Palette size={14} className="text-purple-600 dark:text-purple-400" /> 3. NotebookLM Design-Theme aktivieren
                   </div>
                   <div className="text-[11px] text-text-muted mt-0.5">
                     Schaltet dein aktuelles Pitch Deck sofort auf den dunklen Obsidian-Look mit Bento-Karten & Quellen-Zitaten um.
@@ -7839,17 +7883,18 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                     setIsNotebookLMModalOpen(false);
                     addToast('NotebookLM Theme aktiviert! Obsidian-Modus aktiv.', 'success');
                   }}
-                  className="px-4 py-2.5 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 text-purple-300 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer flex items-center gap-1.5"
+                  className="px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
                 >
                   <Sparkles size={13} /> Theme anwenden
                 </button>
               </div>
 
               {/* TIP: AUDIO OVERVIEW */}
-              <div className="p-3.5 rounded-xl bg-surface border border-border text-[11px] text-text-muted flex items-start gap-2.5">
-                <Radio size={16} className="text-emerald-400 shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-text-primary">Tipp: 2-Personen Audio-Podcast generieren:</strong> Sobald du das Dossier in NotebookLM eingefügt hast, klicke rechts im Notebook-Guide auf <em>«Audio Overview (Deep Dive)»</em>. NotebookLM generiert in 2 Minuten einen verblüffend lebendigen KI-Podcast über dein Projekt!
+              <div className="p-4 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-500/30 text-xs text-emerald-900 dark:text-emerald-200 flex items-start gap-3">
+                <Radio size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                <div className="leading-relaxed">
+                  <strong className="text-emerald-950 dark:text-emerald-100 font-bold block mb-0.5">Tipp: 2-Personen Audio-Podcast generieren:</strong>
+                  Sobald du das Dossier in NotebookLM eingefügt hast, klicke rechts im Notebook-Guide auf <em>«Audio Overview (Deep Dive)»</em>. NotebookLM generiert in 2 Minuten einen verblüffend lebendigen KI-Podcast über dein Projekt!
                 </div>
               </div>
             </div>
