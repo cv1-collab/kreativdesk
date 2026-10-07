@@ -17,7 +17,7 @@ import {
   Copy, Zap, Check, Edit3, Wand2, Compass, Layers3, Flame, Building2, Trees, Tag, StickyNote, Circle, RotateCcw,
   Sun, Moon, Sliders, Type as TypeIcon, AlignLeft, AlignCenter, AlignRight, ArrowRight,
   Video as VideoIcon, Globe, MessageSquare, CheckCircle2, ShieldCheck, Share2, PlusCircle, ExternalLink, AlertCircle, HelpCircle,
-  Undo2, Redo2, Bookmark, Radio
+  Undo2, Redo2
 } from 'lucide-react';
 import { exportDeckToPptx } from '../utils/pptxExportHelper';
 import { jsPDF } from 'jspdf';
@@ -464,9 +464,8 @@ export default function PitchDeckStudio({
   const [isExtractingPdf, setIsExtractingPdf] = useState(false);
   const aiDocumentInputRef = useRef<HTMLInputElement>(null);
   const [isFormatModalOpen, setIsFormatModalOpen] = useState(false);
-  const [isNotebookLMModalOpen, setIsNotebookLMModalOpen] = useState(false);
 
-  const handleCopyNotebookLMDossier = () => {
+  const handleCopyProjectDossier = () => {
     let md = `# PROJEKT DOSSIER: ${activeProject?.name || 'Kreativ Desk Projekt'}\n`;
     if (activeProject?.description) {
       md += `\n## Projekt-Beschreibung\n${activeProject.description}\n`;
@@ -491,7 +490,7 @@ export default function PitchDeckStudio({
     });
 
     navigator.clipboard.writeText(md);
-    addToast('NotebookLM Dossier kopiert! Alle Folien sind in der Zwischenablage.', 'success');
+    addToast('Projekt-Dossier kopiert! Alle Folien sind in der Zwischenablage.', 'success');
   };
   const [showExportShareMenu, setShowExportShareMenu] = useState(false);
   const [showInsertMenu, setShowInsertMenu] = useState(false);
@@ -4092,7 +4091,7 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
         {deckSettings.themeStyle === 'glassmorphism' && <div className="absolute -bottom-20 -left-20 w-[600px] h-[600px] rounded-full blur-[120px] opacity-25 pointer-events-none" style={{ backgroundColor: deckSettings.themeColor }}></div>}
         {deckSettings.themeStyle === 'architecture' && <div className="absolute top-3 right-4 font-sans font-semibold tracking-wider text-[9px] text-slate-400 opacity-60 pointer-events-none flex items-center gap-2">[ + ] SCALE 1:100 | SIA ARCHITECTURE</div>}
         {deckSettings.themeStyle === 'swiss' && <div className="absolute top-4 right-6 px-3 py-1 bg-red-600 text-white font-black text-[10px] tracking-widest uppercase pointer-events-none">SWISS GRAPHIC</div>}
-        {deckSettings.themeStyle === 'notebooklm' && <div className="absolute top-4 right-6 px-3 py-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 font-bold text-[9px] tracking-widest uppercase rounded-full pointer-events-none flex items-center gap-1.5"><Sparkles size={11} className="text-indigo-400" /> NOTEBOOKLM GROUNDED INTELLIGENCE</div>}
+        {deckSettings.themeStyle === 'notebooklm' && <div className="absolute top-4 right-6 px-3 py-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 font-bold text-[9px] tracking-widest uppercase rounded-full pointer-events-none flex items-center gap-1.5"><Sparkles size={11} className="text-indigo-400" /> OBSIDIAN BENTO ARCHITECTURE</div>}
 
         {/* KREATIV DESK BADGES / STEMPEL */}
         {slide.stamp && (
@@ -5924,7 +5923,7 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  {[ {id:'notebooklm',n:'NotebookLM (Obsidian)'},{id:'keynote',n:t('keynote')},{id:'scenography',n:t('scenography')},{id:'architecture',n:t('architecture')},{id:'swiss',n:t('swiss')},{id:'photography',n:t('photography')},{id:'neo-brutalism',n:t('neo_brutalism')},{id:'glassmorphism',n:t('glassmorphism')},{id:'cyberpunk',n:t('cyberpunk')},{id:'minimal-tech',n:t('minimal_tech')}].map(thm=>(
+                  {[ {id:'notebooklm',n:'Obsidian (Bento)'},{id:'keynote',n:t('keynote')},{id:'scenography',n:t('scenography')},{id:'architecture',n:t('architecture')},{id:'swiss',n:t('swiss')},{id:'photography',n:t('photography')},{id:'neo-brutalism',n:t('neo_brutalism')},{id:'glassmorphism',n:t('glassmorphism')},{id:'cyberpunk',n:t('cyberpunk')},{id:'minimal-tech',n:t('minimal_tech')}].map(thm=>(
                     <button type="button" key={thm.id} onClick={()=>updateDeckSettings({themeStyle:thm.id as any})} className={cn("p-4 rounded-xl border text-center transition-all text-xs font-bold cursor-pointer", deckSettings.themeStyle===thm.id?"bg-purple-500/20 border-purple-500 text-purple-700 dark:text-purple-300 shadow-sm":"bg-surface border-border text-text-primary hover:bg-black/5 dark:hover:bg-white/5")}>{thm.n}</button>
                   ))}
                 </div>
@@ -6061,7 +6060,7 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                   <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{t('master_templates')}</h3>
                 </div>
                 <div className="grid grid-cols-1 gap-1.5">
-                  {[ {id:'notebooklm',n:'NotebookLM (Obsidian)'},{id:'keynote',n:t('keynote')},{id:'scenography',n:t('scenography')},{id:'architecture',n:t('architecture')},{id:'swiss',n:t('swiss')},{id:'photography',n:t('photography')},{id:'neo-brutalism',n:t('neo_brutalism')},{id:'glassmorphism',n:t('glassmorphism')},{id:'cyberpunk',n:t('cyberpunk')},{id:'minimal-tech',n:t('minimal_tech')}].map(thm=>(
+                  {[ {id:'notebooklm',n:'Obsidian (Bento)'},{id:'keynote',n:t('keynote')},{id:'scenography',n:t('scenography')},{id:'architecture',n:t('architecture')},{id:'swiss',n:t('swiss')},{id:'photography',n:t('photography')},{id:'neo-brutalism',n:t('neo_brutalism')},{id:'glassmorphism',n:t('glassmorphism')},{id:'cyberpunk',n:t('cyberpunk')},{id:'minimal-tech',n:t('minimal_tech')}].map(thm=>(
                     <button type="button" key={thm.id} onClick={()=>updateDeckSettings({themeStyle:thm.id as any})} className={cn("w-full p-2.5 rounded-lg border text-left transition-all text-xs font-bold flex items-center justify-between", deckSettings.themeStyle===thm.id?"bg-purple-500/10 border-purple-500 text-purple-700 dark:text-purple-300 shadow-sm":"bg-background border-border text-text-primary hover:bg-black/5 dark:hover:bg-white/5")}>
                       <span>{thm.n}</span>
                       {deckSettings.themeStyle===thm.id && <Check size={12} className="text-purple-600 dark:text-purple-400" />}
@@ -6326,15 +6325,6 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
             </div>
 
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
-              <button 
-                type="button"
-                onClick={() => setIsNotebookLMModalOpen(true)}
-                className="px-2.5 sm:px-3 py-1.5 sm:py-2 bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/35 text-indigo-400 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm shrink-0 cursor-pointer font-sans"
-                title="Google NotebookLM Hub & Dossier-Export"
-              >
-                <Sparkles size={13} className="text-indigo-400" />
-                <span className="hidden lg:inline">NotebookLM Hub</span>
-              </button>
               <ModuleGuideButton moduleId="pitch" compact className="h-8 sm:h-9" />
               <button 
                 type="button" 
@@ -6403,6 +6393,21 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                           <div>
                             <div className="leading-tight">{t('export_presentation_dropdown')}</div>
                             <div className="text-[10px] font-normal text-text-muted mt-0.5">{t('export_presentation_sub')}</div>
+                          </div>
+                        </button>
+                        <button 
+                          type="button"
+                          disabled={slides.length === 0}
+                          onClick={() => {
+                            setShowExportShareMenu(false);
+                            handleCopyProjectDossier();
+                          }}
+                          className="w-full text-left px-3 py-2.5 text-xs font-bold flex items-center gap-2.5 text-text-primary hover:bg-emerald-500/10 hover:text-emerald-400 transition-colors border-t border-border/50 disabled:opacity-50 cursor-pointer"
+                        >
+                          <FileText size={15} className="text-emerald-500 shrink-0" />
+                          <div>
+                            <div className="leading-tight">{currentLang === 'de' ? 'Projekt-Dossier kopieren' : 'Copy Project Dossier'}</div>
+                            <div className="text-[10px] font-normal text-text-muted mt-0.5">{currentLang === 'de' ? 'Markdown aller Folien für KI & Notizen' : 'Markdown of all slides for AI & notes'}</div>
                           </div>
                         </button>
                       </motion.div>
@@ -7698,7 +7703,7 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
             <div className="space-y-2 p-3.5 rounded-xl border border-purple-500/30 bg-purple-500/5">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
-                  <FileText size={13} /> Quelldokument für Grounding (NotebookLM-Modus)
+                  <FileText size={13} /> Quelldokument für Grounding (Dossier-Modus)
                 </span>
                 {aiDocumentName && (
                   <button
@@ -7784,128 +7789,6 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
               <button type="button" onClick={() => handleGenerateAIDeck()} disabled={isGeneratingAIDeck || (!aiPromptInput.trim() && !aiDocumentText)} className="px-6 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold shadow-lg disabled:opacity-50 transition-all flex items-center gap-2">
                 {isGeneratingAIDeck ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
                 <span>{aiDocumentText ? 'Deck aus PDF generieren (Grounded)' : 'Deck generieren'}</span>
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
-
-      {/* NOTEBOOKLM INTEGRATION & BRIDGE MODAL */}
-      {isNotebookLMModalOpen && (
-        <div className="fixed inset-0 z-[150000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-indigo-500/40 rounded-3xl w-full max-w-xl shadow-2xl p-6 sm:p-7 space-y-6">
-            <div className="flex justify-between items-start border-b border-border/50 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
-                  <Sparkles size={20} />
-                </div>
-                <div>
-                  <h3 className="font-black text-lg flex items-center gap-2 text-text-primary">
-                    Google NotebookLM Integration
-                  </h3>
-                  <p className="text-xs text-text-muted mt-0.5">
-                    Verbinde dein Projekt mit Googles KI-Forschungs- und Audio-Podcast-Engine
-                  </p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setIsNotebookLMModalOpen(false)} 
-                className="text-text-muted hover:text-text-primary p-2 bg-background border border-border rounded-xl cursor-pointer"
-              >
-                <X size={18}/>
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {/* STATUS EXPLANATION */}
-              <div className="p-4 rounded-2xl bg-indigo-50/90 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-500/30 text-xs text-slate-700 dark:text-indigo-200 leading-relaxed space-y-2">
-                <div className="font-bold flex items-center gap-1.5 text-indigo-700 dark:text-indigo-300 text-sm">
-                  <Bookmark size={15} className="text-indigo-600 dark:text-indigo-400" /> Warum keine direkte NotebookLM-API?
-                </div>
-                <p className="text-slate-600 dark:text-indigo-200/90">
-                  Google stellt für <strong className="text-slate-900 dark:text-white font-semibold">NotebookLM</strong> (Gemini Notebook) absichtlich keine öffentliche Entwickler-REST-API zur Verfügung. Mit Kreativ Desk OS hast du jedoch den <strong className="text-slate-900 dark:text-white font-semibold">perfekten Workflow</strong>:
-                </p>
-              </div>
-
-              {/* ACTION 1: COPY DOSSIER */}
-              <div className="p-4 rounded-2xl bg-background border border-border flex items-center justify-between gap-4">
-                <div className="flex-1">
-                  <div className="text-xs font-bold text-text-primary flex items-center gap-1.5">
-                    <FileText size={14} className="text-indigo-600 dark:text-indigo-400" /> 1. Vollständiges Projekt-Dossier kopieren
-                  </div>
-                  <div className="text-[11px] text-text-muted mt-0.5">
-                    Generiert ein strukturiertes Markdown-Dossier aller Folien, Kennzahlen, Budgets & Notizen für die Zwischenablage.
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleCopyNotebookLMDossier}
-                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
-                >
-                  <Copy size={13} /> Kopieren
-                </button>
-              </div>
-
-              {/* ACTION 2: OPEN NOTEBOOKLM */}
-              <div className="p-4 rounded-2xl bg-background border border-border flex items-center justify-between gap-4">
-                <div className="flex-1">
-                  <div className="text-xs font-bold text-text-primary flex items-center gap-1.5">
-                    <ExternalLink size={14} className="text-blue-600 dark:text-blue-400" /> 2. NotebookLM in Google öffnen
-                  </div>
-                  <div className="text-[11px] text-text-muted mt-0.5">
-                    Öffnet notebooklm.google.com ➔ Klicke auf «+ Quelle hinzufügen» ➔ «Kopierter Text» und füge dein Dossier ein.
-                  </div>
-                </div>
-                <a
-                  href="https://notebooklm.google.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
-                >
-                  <ExternalLink size={13} /> Öffnen
-                </a>
-              </div>
-
-              {/* ACTION 3: APPLY NOTEBOOKLM OBSIDIAN THEME */}
-              <div className="p-4 rounded-2xl bg-background border border-border flex items-center justify-between gap-4">
-                <div className="flex-1">
-                  <div className="text-xs font-bold text-text-primary flex items-center gap-1.5">
-                    <Palette size={14} className="text-purple-600 dark:text-purple-400" /> 3. NotebookLM Design-Theme aktivieren
-                  </div>
-                  <div className="text-[11px] text-text-muted mt-0.5">
-                    Schaltet dein aktuelles Pitch Deck sofort auf den dunklen Obsidian-Look mit Bento-Karten & Quellen-Zitaten um.
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    updateDeckSettings({ themeStyle: 'notebooklm', colorMode: 'dark', themeColor: '#6366f1' });
-                    setIsNotebookLMModalOpen(false);
-                    addToast('NotebookLM Theme aktiviert! Obsidian-Modus aktiv.', 'success');
-                  }}
-                  className="px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
-                >
-                  <Sparkles size={13} /> Theme anwenden
-                </button>
-              </div>
-
-              {/* TIP: AUDIO OVERVIEW */}
-              <div className="p-4 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-500/30 text-xs text-emerald-900 dark:text-emerald-200 flex items-start gap-3">
-                <Radio size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-                <div className="leading-relaxed">
-                  <strong className="text-emerald-950 dark:text-emerald-100 font-bold block mb-0.5">Tipp: 2-Personen Audio-Podcast generieren:</strong>
-                  Sobald du das Dossier in NotebookLM eingefügt hast, klicke rechts im Notebook-Guide auf <em>«Audio Overview (Deep Dive)»</em>. NotebookLM generiert in 2 Minuten einen verblüffend lebendigen KI-Podcast über dein Projekt!
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-2 border-t border-border">
-              <button
-                type="button"
-                onClick={() => setIsNotebookLMModalOpen(false)}
-                className="px-4 py-2 bg-surface hover:bg-surface-hover border border-border text-text-primary rounded-xl text-xs font-bold transition-all cursor-pointer"
-              >
-                Schliessen
               </button>
             </div>
           </motion.div>
