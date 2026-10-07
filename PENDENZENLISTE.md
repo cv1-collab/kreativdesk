@@ -1,11 +1,42 @@
 # Kreativ Desk & interacTV — Status, Erfolge & Pendenzen
 
-**Datum:** 6. Oktober 2026  
-**Status:** 🟢 Alle Prüfungen grün (Vitest 82/82 grün in 15 Test-Dateien, TypeScript 0 Fehler `tsc --noEmit`, ESLint 0 Fehler, Production Build 100% fehlerfrei, 100% Schweizer Rechtschreibung), alle Module und Tools synchronisiert und live geschaltet (`https://www.kreativdesk.ch`).
+**Datum:** 7. Oktober 2026  
+**Status:** 🟢 Alle Prüfungen grün (Vitest 84/84 grün in 16 Test-Dateien, TypeScript 0 Fehler `tsc --noEmit`, ESLint 0 Fehler, Production Build 100% fehlerfrei, 100% Schweizer Rechtschreibung), alle Module und Tools synchronisiert und live geschaltet (`https://www.kreativdesk.ch`).
 
 ---
 
-## 🏆 Erfolgsliste von heute (6. Oktober 2026)
+## 🏆 Erfolgsliste von heute (7. Oktober 2026)
+
+### 0.000000000000000001 Google NotebookLM AI-Pitch-Deck Engine & Architektur-Rendering Pipeline Fix (7. Oktober 2026)
+* **Problemstellung & Benutzer-Anforderung:**
+  * Der Benutzer wünschte eine NotebookLM-ähnliche KI-Integration für Präsentationen im Kreativ Desk OS: Wie erreichen wir das High-End-Design moderner AI-Decks? Warum war die bisherige Generierung zu generisch und wie beheben wir Schwachstellen in den Architektur-Renderings (BIMViewer & Whiteboard)?
+* **Durchgeführte Implementierungen & Optimierungen:**
+  * **1. Echtes PDF-Grounding ([pdfToImageHelper.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/utils/pdfToImageHelper.ts)):**
+    * Neue Funktion `extractTextFromPdf` implementiert: Liest bis zu 30 Seiten aus beliebigen PDFs via PDF.js aus und strukturiert den Text seitenweise für den LLM-Kontext.
+    * Direkter PDF-Upload im KI-Präsentations-Generator von [PitchDeckStudio.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/PitchDeckStudio.tsx) integriert (Live-Seiten- und Zeichen-Zähler, Dokumenten-Badge, Reset-Option).
+  * **2. Redaktionelle Bento-Grid-Archetypen ([PitchDeckStudio.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/PitchDeckStudio.tsx), [PitchDeck.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/PitchDeck.tsx) & [pitchDeckHelpers.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/utils/pitchDeckHelpers.ts)):**
+    * Erweiterung des `Slide`-Interfaces um die Archetypen `cards-grid` (Bento-Cards & Key-Metric), `stat-callout` (Grosse Callout-Zahl mit Kernaussage) und `quote-statement` (Typografischer Leitsatz mit Zitat/Autor/Rolle).
+    * Deterministisches Rendering mit Zinc-Dark-Ästhetik, Accent-Glow-Borders und Schweizer Typografie.
+    * Volle Inline-Editierbarkeit im Editor-Modus (Karten hinzufügen/löschen, Badges, KPIs und Beschreibungen direkt anpassen).
+  * **3. Strukturierter Gemini 2.5 Flash Generator ([PitchDeckStudio.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/PitchDeckStudio.tsx)):**
+    * `handleGenerateAIDeck` überarbeitet: Erhält bei vorhandenem PDF den extrahierten Quelltext als harte Faktenbasis (Zero-Hallucination Grounding).
+    * LLM liefert typisiertes Bento-JSON-Schema mit Kennzahlen (`keyMetric`), Quellenangaben (`sourceAnchor`), Bento-Cards und Archetypen.
+    * Strikte Einhaltung der Schweizer Rechtschreibung (immer "ss", niemals "ß").
+  * **4. Geometrieerhalt & Denoising-Fix in 3D-Renderings ([BIMViewer.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/BIMViewer.tsx)):**
+    * Denoising-Stärke `styleStrength` von zerstörerischen `0.85` auf architektonisch kalibrierte `0.50` (bzw. `0.38` für Skizzen, `0.48` für Fotorealismus) gesenkt. Verhindert das Verzerren von Bauvolumen, Fluchten und Proportionen.
+    * Prompt-Engineering auf Architekturfotografie optimiert (24mm Tilt-Shift-Objektiv, Sichtbeton, Schweizer Lärchenholz, sanftes diffuses Tageslicht).
+  * **5. Solid-Background Canvas-Snapshot ([BIMCanvasViewport.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/bim/BIMCanvasViewport.tsx)):**
+    * Snapshot-Funktion composite-gerendert auf neutralen deckenden Hintergrund (`#f1f5f9`), wodurch schwarze Kanten und Rauschen durch Alpha-Transparenzen im Diffusionsmodell eliminiert werden.
+  * **6. Whiteboard Sketch-to-Image Optimierung ([Whiteboard.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/Whiteboard.tsx)):**
+    * Denoising auf `0.52` kalibriert und Prompts geschärft, um Handskizzen, Raumgeometrie und Fassadenkonturen der Nutzerzeichnung strikt beizubehalten.
+  * **7. PowerPoint & Keynote Native-Export ([pptxExportHelper.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/utils/pptxExportHelper.ts)):**
+    * Erweiterung des PPTX-Exporters um native Shapes und Formatierungen für `cards-grid` (Bento-Cards mit dynamischer Spaltenberechnung, Badges und Rahmen), `stat-callout` (Grossformatige KPI-Typografie mit 64pt Callouts) und `quote-statement` (Zitate mit Anführungszeichen und Quellenangabe). Beim Export nach PowerPoint/Keynote werden pixelgenaue, voll editierbare Folien im Bento-Stil generiert.
+* **Ergebnis der Verifikation:**
+  * **Vitest Unit- & Integrationstests:** 84/84 Tests bestanden (16 Suiten, neu inkl. [pitchDeckBentoLayout.test.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/tests/unit/pitchDeckBentoLayout.test.ts)).
+  * **TypeScript:** 0 Fehler (`tsc --noEmit`).
+  * **Production Build:** 100% fehlerfrei (`npm run build`).
+
+---
 
 ### 0.000000000000000000 Vollständiger System-Audit & Subsystem-Verifikation: API-Parität, Gemini AI, Stripe, Make.com, Supabase & Live-Produktion (6. Oktober 2026)
 * **Problemstellung & Benutzer-Anforderung:**

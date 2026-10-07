@@ -37,7 +37,20 @@ function SnapshotHelper() {
     (window as any).captureBimSnapshot = () => {
       try {
         gl.render(scene, camera);
-        return canvas.toDataURL('image/png');
+        const offCanvas = document.createElement('canvas');
+        offCanvas.width = canvas.width;
+        offCanvas.height = canvas.height;
+        const ctx = offCanvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = '#f1f5f9';
+          ctx.fillRect(0, 0, offCanvas.width, offCanvas.height);
+          ctx.drawImage(canvas, 0, 0);
+          const solidDataUrl = offCanvas.toDataURL('image/jpeg', 0.95);
+          offCanvas.width = 0;
+          offCanvas.height = 0;
+          return solidDataUrl;
+        }
+        return canvas.toDataURL('image/jpeg', 0.95);
       } catch (err) {
         console.warn('Snapshot capture warning:', err);
         return null;

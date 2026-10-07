@@ -26,7 +26,7 @@ interface Slide {
   order_index: number; 
   ownerId: string; 
   projectId?: string; 
-  layout?: 'title-only' | 'split' | 'image-focus' | 'video-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid' | 'chart-donut' | 'table-of-contents' | 'full-image' | 'full-image-clean' | 'two-images' | 'three-images'; 
+  layout?: 'title-only' | 'split' | 'image-focus' | 'video-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid' | 'chart-donut' | 'table-of-contents' | 'full-image' | 'full-image-clean' | 'two-images' | 'three-images' | 'cards-grid' | 'stat-callout' | 'quote-statement'; 
   fontSize?: number; 
   titleFontSize?: number;
   titleFontWeight?: 'bold' | 'normal';
@@ -926,6 +926,111 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                   </div>
                 ))}
              </div>
+          )}
+
+          {/* NOTEBOOKLM-STYLE: BENTO CARDS GRID */}
+          {slide.layout === 'cards-grid' && (
+            <div className="w-full h-full flex flex-col justify-center gap-6 col-span-full py-2">
+              {slide.dataPayload?.keyMetric && (
+                <div className="flex items-baseline gap-4 border-b border-border/40 pb-4">
+                  <span 
+                    className="text-5xl lg:text-6xl font-black tracking-tight font-sans tabular-nums"
+                    style={{ color: deckSettings.themeColor }}
+                  >
+                    {slide.dataPayload.keyMetric.value}
+                  </span>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold uppercase tracking-widest opacity-60">
+                      {slide.dataPayload.keyMetric.label}
+                    </span>
+                    {slide.dataPayload.sourceAnchor && (
+                      <span className="text-[10px] opacity-40 font-mono">
+                        Quelle: {slide.dataPayload.sourceAnchor}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className={cn(
+                "grid gap-4 w-full flex-1 items-stretch",
+                (slide.dataPayload?.cards?.length || 0) === 2 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1 md:grid-cols-3"
+              )}>
+                {(slide.dataPayload?.cards || []).map((card: any, idx: number) => (
+                  <div
+                    key={idx}
+                    className={cn(
+                      "p-6 rounded-2xl border transition-all flex flex-col justify-between shadow-lg",
+                      isDarkTheme 
+                        ? "bg-zinc-900/80 border-zinc-800 shadow-black/40 backdrop-blur-md" 
+                        : "bg-white/90 border-zinc-200/90 shadow-zinc-200/50"
+                    )}
+                  >
+                    <div>
+                      {card.badge && (
+                        <span 
+                          className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider mb-3"
+                          style={{ backgroundColor: `${deckSettings.themeColor}20`, color: deckSettings.themeColor }}
+                        >
+                          {card.badge}
+                        </span>
+                      )}
+                      <h4 className={cn("text-base lg:text-lg font-bold mb-2 leading-snug", tc)}>
+                        {card.title}
+                      </h4>
+                      <p className="text-xs lg:text-sm leading-relaxed opacity-75 whitespace-pre-wrap">
+                        {card.description}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* NOTEBOOKLM-STYLE: STAT CALLOUT */}
+          {slide.layout === 'stat-callout' && (
+            <div className="w-full h-full flex flex-col justify-center items-center text-center col-span-full py-6">
+              {slide.dataPayload?.kicker && (
+                <span className="text-xs font-black uppercase tracking-widest mb-4 px-3 py-1 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                  {slide.dataPayload.kicker}
+                </span>
+              )}
+              {slide.dataPayload?.keyMetric?.value && (
+                <div 
+                  className="text-7xl lg:text-8xl font-black tracking-tight font-sans tabular-nums my-2 drop-shadow-sm"
+                  style={{ color: deckSettings.themeColor }}
+                >
+                  {slide.dataPayload.keyMetric.value}
+                </div>
+              )}
+              {slide.dataPayload?.keyMetric?.label && (
+                <div className="text-xl lg:text-2xl font-bold opacity-80 max-w-xl mx-auto mb-6">
+                  {slide.dataPayload.keyMetric.label}
+                </div>
+              )}
+              {slide.content && (
+                <p className="text-sm lg:text-base opacity-70 max-w-2xl mx-auto leading-relaxed">
+                  {slide.content}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* NOTEBOOKLM-STYLE: QUOTE STATEMENT */}
+          {slide.layout === 'quote-statement' && (
+            <div className="w-full h-full flex flex-col justify-center items-center text-center col-span-full p-8 max-w-4xl mx-auto">
+              <span className="text-6xl text-purple-500/30 font-serif leading-none select-none">“</span>
+              <blockquote className="text-2xl lg:text-3xl font-medium italic leading-relaxed my-4 opacity-90">
+                {slide.dataPayload?.quote?.text || slide.content}
+              </blockquote>
+              {(slide.dataPayload?.quote?.author || slide.dataPayload?.quote?.source) && (
+                <div className="flex items-center gap-2 mt-4 text-sm font-bold tracking-wider uppercase opacity-70">
+                  <span>— {slide.dataPayload?.quote?.author}</span>
+                  {slide.dataPayload?.quote?.role && <span className="opacity-50 font-normal">({slide.dataPayload.quote.role})</span>}
+                </div>
+              )}
+            </div>
           )}
         </div>
         

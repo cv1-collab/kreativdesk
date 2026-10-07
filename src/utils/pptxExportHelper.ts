@@ -989,6 +989,271 @@ export async function exportDeckToPptx(
           }
         }
       }
+    } else if (layout === 'cards-grid') {
+      // NOTEBOOKLM BENTO: Cards Grid Layout
+      pptxSlide.addText(s.title || 'Executive Summary', {
+        x: 0.8,
+        y: titleY,
+        w: titleWidth,
+        h: 0.8,
+        fontSize: Math.min(s.titleFontSize || 28, 24),
+        bold: s.titleFontWeight !== 'normal',
+        color: titleColor,
+        valign: 'middle',
+        fontFace: fontFace
+      });
+
+      let contentStartY = 1.4;
+
+      // Key metric summary banner (if present)
+      if (s.dataPayload?.keyMetric?.value) {
+        pptxSlide.addText(s.dataPayload.keyMetric.value, {
+          x: 0.8,
+          y: contentStartY,
+          w: 4.0,
+          h: 0.65,
+          fontSize: 32,
+          bold: true,
+          color: accentColor,
+          fontFace: fontFace,
+          valign: 'top'
+        });
+
+        if (s.dataPayload?.keyMetric?.label) {
+          pptxSlide.addText(s.dataPayload.keyMetric.label.toUpperCase(), {
+            x: 0.8,
+            y: contentStartY + 0.62,
+            w: 8.0,
+            h: 0.3,
+            fontSize: 9.5,
+            bold: true,
+            color: mutedColor,
+            fontFace: fontFace,
+            valign: 'top'
+          });
+        }
+
+        if (s.dataPayload?.sourceAnchor) {
+          pptxSlide.addText(`Quelle: ${s.dataPayload.sourceAnchor}`, {
+            x: 8.0,
+            y: contentStartY + 0.62,
+            w: 4.5,
+            h: 0.3,
+            fontSize: 8.5,
+            color: mutedColor,
+            fontFace: fontFace,
+            align: 'right',
+            valign: 'top'
+          });
+        }
+
+        contentStartY += 1.1;
+      }
+
+      const cards: Array<{ title: string; description: string; badge?: string }> = s.dataPayload?.cards || [];
+      if (cards.length > 0) {
+        const totalW = 11.7;
+        const gap = 0.3;
+        const numCols = cards.length === 2 ? 2 : (cards.length === 4 ? 4 : 3);
+        const colW = (totalW - (numCols - 1) * gap) / numCols;
+        const cardH = 6.4 - contentStartY;
+
+        cards.slice(0, 4).forEach((card, idx) => {
+          const cardX = 0.8 + idx * (colW + gap);
+
+          // Card Box Background
+          pptxSlide.addShape(pptx.ShapeType.roundRect, {
+            x: cardX,
+            y: contentStartY,
+            w: colW,
+            h: cardH,
+            rectRadius: 0.15,
+            fill: { color: isDark ? '18181B' : 'F8FAFC' },
+            line: { color: isDark ? '27272A' : 'E2E8F0', width: 1.0 }
+          });
+
+          let cardInnerY = contentStartY + 0.25;
+
+          // Badge
+          if (card.badge) {
+            pptxSlide.addText(card.badge.toUpperCase(), {
+              x: cardX + 0.25,
+              y: cardInnerY,
+              w: colW - 0.5,
+              h: 0.3,
+              fontSize: 9,
+              bold: true,
+              color: accentColor,
+              fontFace: fontFace
+            });
+            cardInnerY += 0.35;
+          }
+
+          // Card Title
+          if (card.title) {
+            pptxSlide.addText(card.title, {
+              x: cardX + 0.25,
+              y: cardInnerY,
+              w: colW - 0.5,
+              h: 0.6,
+              fontSize: 13,
+              bold: true,
+              color: titleColor,
+              valign: 'top',
+              fontFace: fontFace
+            });
+            cardInnerY += 0.65;
+          }
+
+          // Card Description
+          if (card.description) {
+            pptxSlide.addText(card.description, {
+              x: cardX + 0.25,
+              y: cardInnerY,
+              w: colW - 0.5,
+              h: Math.max(cardH - (cardInnerY - contentStartY) - 0.25, 0.5),
+              fontSize: 10,
+              color: textColor,
+              valign: 'top',
+              lineSpacingMultiple: 1.25,
+              fontFace: fontFace
+            });
+          }
+        });
+      } else if (s.content) {
+        // Fallback text if no structured cards
+        const textObjects = parseContentToTextObjects(s.content, s.fontSize || 14, textColor, fontFace);
+        if (textObjects.length > 0) {
+          pptxSlide.addText(textObjects, {
+            x: 0.8,
+            y: contentStartY,
+            w: 11.7,
+            h: 6.4 - contentStartY,
+            valign: 'top'
+          });
+        }
+      }
+    } else if (layout === 'stat-callout') {
+      // NOTEBOOKLM BENTO: Large Stat / KPI Callout
+      const kicker = s.dataPayload?.kicker;
+      const statVal = s.dataPayload?.keyMetric?.value || '100%';
+      const statLabel = s.dataPayload?.keyMetric?.label || s.title;
+
+      let startY = 1.6;
+
+      if (kicker) {
+        pptxSlide.addText(kicker.toUpperCase(), {
+          x: 2.0,
+          y: startY,
+          w: 9.33,
+          h: 0.4,
+          fontSize: 11,
+          bold: true,
+          color: accentColor,
+          align: 'center',
+          fontFace: fontFace
+        });
+        startY += 0.5;
+      }
+
+      // Massive KPI Stat
+      pptxSlide.addText(statVal, {
+        x: 1.0,
+        y: startY,
+        w: 11.33,
+        h: 1.6,
+        fontSize: 64,
+        bold: true,
+        color: accentColor,
+        align: 'center',
+        valign: 'middle',
+        fontFace: fontFace
+      });
+      startY += 1.7;
+
+      // Stat Label
+      if (statLabel) {
+        pptxSlide.addText(statLabel, {
+          x: 2.0,
+          y: startY,
+          w: 9.33,
+          h: 0.8,
+          fontSize: 22,
+          bold: true,
+          color: titleColor,
+          align: 'center',
+          valign: 'top',
+          fontFace: fontFace
+        });
+        startY += 0.85;
+      }
+
+      // Context Description / Narrative
+      if (s.content) {
+        pptxSlide.addText(s.content, {
+          x: 2.5,
+          y: startY,
+          w: 8.33,
+          h: 1.5,
+          fontSize: 13,
+          color: textColor,
+          align: 'center',
+          valign: 'top',
+          lineSpacingMultiple: 1.25,
+          fontFace: fontFace
+        });
+      }
+    } else if (layout === 'quote-statement') {
+      // NOTEBOOKLM BENTO: Editorial Quote Statement
+      const quoteText = s.dataPayload?.quote?.text || s.content || s.title || '';
+      const quoteAuthor = s.dataPayload?.quote?.author;
+      const quoteRole = s.dataPayload?.quote?.role || s.dataPayload?.quote?.source;
+
+      // Decorative Quote Mark
+      pptxSlide.addText('“', {
+        x: 1.5,
+        y: 1.3,
+        w: 10.33,
+        h: 0.8,
+        fontSize: 56,
+        bold: true,
+        color: accentColor,
+        align: 'center',
+        valign: 'middle',
+        fontFace: 'Georgia'
+      });
+
+      // Quote Body
+      pptxSlide.addText(quoteText, {
+        x: 1.8,
+        y: 2.1,
+        w: 9.73,
+        h: 2.6,
+        fontSize: 22,
+        italic: true,
+        color: titleColor,
+        align: 'center',
+        valign: 'middle',
+        lineSpacingMultiple: 1.3,
+        fontFace: themeStyle === 'photography' ? 'Georgia' : fontFace
+      });
+
+      // Author & Role
+      if (quoteAuthor || quoteRole) {
+        const attribution = [quoteAuthor ? `— ${quoteAuthor}` : '', quoteRole ? `(${quoteRole})` : ''].filter(Boolean).join(' ');
+        pptxSlide.addText(attribution, {
+          x: 2.0,
+          y: 4.9,
+          w: 9.33,
+          h: 0.5,
+          fontSize: 13,
+          bold: true,
+          color: mutedColor,
+          align: 'center',
+          valign: 'top',
+          fontFace: fontFace
+        });
+      }
     } else {
       // Standard Content / Split Slide
       pptxSlide.addText(s.title || 'Folie ohne Titel', {

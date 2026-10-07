@@ -802,17 +802,23 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
 
       if (uploadedImageUrl) {
         try {
-          let styleStrength = 0.85;
-          if (activeStyle === 'sketch') styleStrength = 0.75;
-          if (activeStyle === 'cyberpunk') styleStrength = 0.88;
+          let styleStrength = 0.50; // Calibrated for strict architectural geometry and massing preservation
+          if (activeStyle === 'sketch') styleStrength = 0.38;
+          if (activeStyle === 'cyberpunk') styleStrength = 0.58;
+          if (activeStyle === 'photoreal') styleStrength = 0.48;
 
-          const prompt = renderPrompt 
-            ? `Transform this 3D architectural massing model into a high-end rendering. IMPORTANT RULES: 1. Keep the exact volume, structure and shape of the building in the image. 2. Add realistic architectural materials, glass windows, facades, and detailed textures. 3. Replace background with a photorealistic environment (sky, daylight, landscaping, trees, context). Style: ${renderPrompt}` 
-            : `Transform this 3D architectural massing model into a photorealistic modern building. Keep the exact shape and volume. Add architectural glass facades, realistic concrete/steel textures, daylight and natural environmental surroundings.`;
+          const basePrompt = renderPrompt || 'Modern architectural building, authentic materials, natural daylight';
+          const prompt = `Architectural competition visualization of ${basePrompt}. STICT RULE: Keep the exact 3D building volume, geometry, proportions, massing, perspective and structural lines from the image. Add realistic architectural materials (fair-faced concrete, Swiss larch timber slats, triple-glazed curtain facade), balanced soft ambient daylight, subtle glass reflections, natural surrounding landscape with pine trees. Shot on 24mm tilt-shift architectural lens, photorealistic 8K global illumination.`;
 
           const result: any = await fal.subscribe("fal-ai/flux/dev/image-to-image", {
-            input: { prompt, image_url: uploadedImageUrl, strength: styleStrength },
-            logs: true
+            input: { 
+              prompt, 
+              image_url: uploadedImageUrl, 
+              strength: styleStrength,
+              guidance_scale: 7.5,
+              num_inference_steps: 28
+            },
+            logs: false
           });
 
           if (result?.data?.images?.[0]?.url) {

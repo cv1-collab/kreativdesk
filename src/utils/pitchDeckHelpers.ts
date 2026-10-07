@@ -9,7 +9,7 @@ export interface Slide {
   ownerId: string; 
   companyId?: string; 
   projectId?: string; 
-  layout?: 'title-only' | 'split' | 'image-focus' | 'video-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid' | 'chart-donut' | 'table-of-contents' | 'budget-comparison' | 'full-image' | 'full-image-clean' | 'two-images' | 'three-images'; 
+  layout?: 'title-only' | 'split' | 'image-focus' | 'video-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid' | 'chart-donut' | 'table-of-contents' | 'budget-comparison' | 'full-image' | 'full-image-clean' | 'two-images' | 'three-images' | 'cards-grid' | 'stat-callout' | 'quote-statement'; 
   fontSize?: number; 
   titleFontSize?: number;
   titleFontWeight?: 'bold' | 'normal';

@@ -32,7 +32,7 @@ import { fetchSystemConfigJSON } from '../utils/configHelper';
 import { safeStorage } from '../utils/safeStorage';
 import { serializeSlideForDb, deserializeSlideFromDb, type Slide } from '../utils/pitchDeckHelpers';
 import ModuleGuideButton from './ModuleGuideButton';
-import { isPdfFile, getPdfDocumentInfo, convertPdfPageToImage, renderPdfThumbnail } from '../utils/pdfToImageHelper';
+import { isPdfFile, getPdfDocumentInfo, convertPdfPageToImage, renderPdfThumbnail, extractTextFromPdf } from '../utils/pdfToImageHelper';
 
 if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
   window.Buffer = { from: () => new Uint8Array(), isBuffer: () => false } as any;
@@ -458,6 +458,11 @@ export default function PitchDeckStudio({
   const [aiPromptInput, setAiPromptInput] = useState('');
   const [aiSlideCount, setAiSlideCount] = useState<number>(5);
   const [isGeneratingAIDeck, setIsGeneratingAIDeck] = useState(false);
+  const [aiDocumentText, setAiDocumentText] = useState<string>('');
+  const [aiDocumentName, setAiDocumentName] = useState<string>('');
+  const [aiDocumentPages, setAiDocumentPages] = useState<number>(0);
+  const [isExtractingPdf, setIsExtractingPdf] = useState(false);
+  const aiDocumentInputRef = useRef<HTMLInputElement>(null);
   const [isFormatModalOpen, setIsFormatModalOpen] = useState(false);
   const [showExportShareMenu, setShowExportShareMenu] = useState(false);
   const [showInsertMenu, setShowInsertMenu] = useState(false);
@@ -944,6 +949,84 @@ export default function PitchDeckStudio({
     updateSlidePayload(slideId, { ...slide.dataPayload, defects: newDefs });
   };
 
+  // BENTO CARDS & STATS EDIT HANDLERS (NOTEBOOKLM-STYLE)
+  const handleUpdateKeyMetric = (slideId: string, field: 'value' | 'label', value: string) => {
+    const slide = slides.find(s => s.id === slideId);
+    if (!slide) return;
+    const currentPayload = slide.dataPayload || {};
+    const keyMetric = { ...(currentPayload.keyMetric || { value: '', label: '' }), [field]: value };
+    updateSlidePayload(slideId, { ...currentPayload, keyMetric });
+  };
+
+  const handleUpdateBentoCard = (slideId: string, cardIdx: number, field: string, value: string) => {
+    const slide = slides.find(s => s.id === slideId);
+    if (!slide) return;
+    const currentPayload = slide.dataPayload || {};
+    const cards = [...(currentPayload.cards || [])];
+    if (!cards[cardIdx]) cards[cardIdx] = { title: '', description: '' };
+    cards[cardIdx] = { ...cards[cardIdx], [field]: value };
+    updateSlidePayload(slideId, { ...currentPayload, cards });
+  };
+
+  const handleAddBentoCard = (slideId: string) => {
+    const slide = slides.find(s => s.id === slideId);
+    if (!slide) return;
+    const currentPayload = slide.dataPayload || {};
+    const cards = [...(currentPayload.cards || [])];
+    cards.push({ badge: `Fokus ${cards.length + 1}`, title: 'Neue Kernaussage', description: 'Präziser Kontextpunkt ohne Füllwörter.' });
+    updateSlidePayload(slideId, { ...currentPayload, cards });
+  };
+
+  const handleDeleteBentoCard = (slideId: string, cardIdx: number) => {
+    const slide = slides.find(s => s.id === slideId);
+    if (!slide || !slide.dataPayload?.cards) return;
+    const newCards = slide.dataPayload.cards.filter((_: any, i: number) => i !== cardIdx);
+    updateSlidePayload(slideId, { ...slide.dataPayload, cards: newCards });
+  };
+
+  const handleUpdateQuote = (slideId: string, field: string, value: string) => {
+    const slide = slides.find(s => s.id === slideId);
+    if (!slide) return;
+    const currentPayload = slide.dataPayload || {};
+    const quote = { ...(currentPayload.quote || { text: '', author: '', role: '' }), [field]: value };
+    updateSlidePayload(slideId, { ...currentPayload, quote });
+  };
+
+  const handleAiDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!isPdfFile(file)) {
+      addToast('Bitte eine gültige PDF-Datei auswählen.', 'error');
+      return;
+    }
+    setIsExtractingPdf(true);
+    addToast(`Analysiere PDF "${file.name}"...`, 'info');
+    try {
+      const res = await extractTextFromPdf(file, 25);
+      if (!res.text) {
+        addToast('Kein Text im PDF gefunden (evtl. reines Bild-PDF).', 'info');
+        return;
+      }
+      setAiDocumentText(res.text);
+      setAiDocumentName(file.name);
+      setAiDocumentPages(res.pageCount);
+      addToast(`Dokument geladen! ${res.pageCount} Seiten analysiert (${res.text.length} Zeichen extrahiert).`, 'success');
+    } catch (err) {
+      console.error('Failed to extract PDF text:', err);
+      addToast('Fehler beim Auslesen des PDFs.', 'error');
+    } finally {
+      setIsExtractingPdf(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const handleRemoveAiDocument = () => {
+    setAiDocumentText('');
+    setAiDocumentName('');
+    setAiDocumentPages(0);
+    addToast('Quelldokument entfernt.', 'info');
+  };
+
   // 1-KLICK MASTER DECK BUNDLE GENERATOR
   const handleLoadMasterDeckBundle = async (bundleType: 'architecture' | 'luxury' | 'eco' | 'tech') => {
     if (!currentUser) return;
@@ -1058,22 +1141,84 @@ export default function PitchDeckStudio({
     const promptToUse = customPrompt || aiPromptInput;
     if (!promptToUse.trim()) return;
     setIsGeneratingAIDeck(true);
-    addToast('KI generiert Präsentation...', 'info');
+    addToast(aiDocumentText ? 'KI analysiert Quelldokument & entwirft High-End Deck...' : 'KI generiert High-End Präsentation...', 'info');
 
     try {
-      const prompt = `Erstelle ein professionelles Pitch-Deck für folgendes Thema / Briefing: "${promptToUse}".
-      Erstelle genau ${aiSlideCount} Folien.
-      Gib das Ergebnis als ein valides JSON-Array zurück. Jedes Objekt im Array hat genau folgende Struktur:
-      {
-        "title": "Foliene Titel",
-        "content": "Stichpunkte oder Fliesstext...",
-        "layout": "title-only" | "split" | "image-focus" | "text-only" | "data-budget" | "smart-calendar" | "defect-grid" | "team-grid" | "chart-donut",
-        "notes": "Referenten-Notiz für den Vortragenden...",
-        "dataPayload": optionales Objekt (z.B. { "budgetGroups": [...] } für budget, { "chartSegments": [ { "label": "BKP 1", "value": 65000, "color": "#3b82f6" } ] } für chart-donut, { "milestones": [...] } für calendar)
-      }
+      const groundingInstruction = aiDocumentText ? `
+QUELLDOKUMENT-GROUNDING (STRENGSTE PRIORITÄT):
+Das folgende Dokument ist die exklusive Faktenbasis für dieses Pitch-Deck:
+"""
+${aiDocumentText.slice(0, 45000)}
+"""
+REGELN FÜR DAS GROUNDING:
+1. Alle Kennzahlen, Daten, Zitate, Projektbeteiligten und Meilensteine MÜSSEN direkt aus dem Quelldokument stammen!
+2. Zitiere im Feld "sourceAnchor" die Seitennummer (z.B. "Dokument S. 04").
+3. Keine leeren Marketingfloskeln. Wenn eine Kennzahl im Dokument steht (z.B. CHF-Beträge, Quadratmeter, Termine), hebe sie als "keyMetric" hervor.
+` : `
+HINWEIS: Es wurde kein Quelldokument übergeben. Entwirf ein realistisches, professionelles Architekten- und Projekt-Deck mit präzisen Kennzahlen.
+`;
 
-      Verwende strikt Schweizer Rechtschreibung (immer "ss", niemals "ß").
-      Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array, ohne Markdown oder Einleitung!`;
+      const prompt = `Du bist ein weltklasse Creative Director & Senior Pitch Deck Stratege für Architektur- und Projekt-Präsentationen (Niveau Google NotebookLM & Apple Keynote).
+Erstelle für folgendes Thema / Briefing ein extrem hochwertiges, visuell starkes Pitch-Deck:
+"${promptToUse}".
+
+${groundingInstruction}
+
+Erstelle genau ${aiSlideCount} Folien.
+
+GIB DAS ERGEBNIS AUSSCHLIESSLICH ALS VALIDES JSON-ARRAY ZURÜCK:
+[
+  {
+    "title": "Prägnanter Folientitel (max. 6 Worte)",
+    "layout": "title-only" | "cards-grid" | "stat-callout" | "quote-statement" | "split" | "chart-donut" | "smart-calendar" | "data-budget",
+    "notes": "Referenten-Notiz für den Vortragenden...",
+    "content": "Kurze Kernaussage oder Begleittext...",
+    "dataPayload": {
+      "kicker": "KATEGORIE / KAPITEL",
+      "sourceAnchor": "Dokument S. 03",
+      "keyMetric": { "value": "+140% oder CHF 3.2M", "label": "Konkrete Kennzahl-Beschreibung" },
+      "cards": [
+        {
+          "badge": "Fokus 1",
+          "title": "Kernaussage",
+          "description": "Präziser Kontextpunkt ohne Füllwörter (max. 15 Worte)."
+        },
+        {
+          "badge": "Fokus 2",
+          "title": "Messbarer Mehrwert",
+          "description": "Konkrete Zahlen und Fakten aus dem Kontext."
+        },
+        {
+          "badge": "Fokus 3",
+          "title": "Handlungsempfehlung",
+          "description": "Nächster Schritt oder architektonische Lösung."
+        }
+      ],
+      "quote": {
+        "text": "Prägnanter Leitsatz oder Zitat aus der Quelle...",
+        "author": "Name oder Quelle",
+        "role": "Funktion / Kontext"
+      },
+      "chartSegments": [
+        { "label": "BKP 2 Rohbau", "value": 1450000, "color": "#3b82f6" },
+        { "label": "BKP 3 Ausbau", "value": 850000, "color": "#8b5cf6" }
+      ],
+      "milestones": [
+        { "title": "Vorprojekt & Bewilligung", "start": "2026-11-01", "end": "2027-02-28", "status": "Aktiv" }
+      ]
+    }
+  }
+]
+
+LAYOUT-REGELN:
+- Für Folie 1: Wähle "title-only" mit einem kraftvollen Kicker und Subtitel im content.
+- Für Analyse-, Strategie-, Konzept- und Themen-Folien: Wähle bevorzugt "cards-grid" (mit 2-3 Cards und einer KeyMetric) oder "stat-callout".
+- Für Kosten/Budget: Wähle "chart-donut" oder "data-budget".
+- Für Terminplan/Phasen: Wähle "smart-calendar".
+- Für Leitgedanken: Wähle "quote-statement".
+- Schreibe extrem prägnant. Kein Fliesstext-Müll, sondern visuelle Informationseinheiten.
+- Verwende strikt Schweizer Rechtschreibung (immer "ss", niemals "ß").
+Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
 
       const aiRes = await callGeminiAPI('gemini-2.5-flash', [{ text: prompt }]);
       const rawText = typeof aiRes === 'string' ? aiRes : (aiRes?.text || aiRes?.candidates?.[0]?.content?.parts?.[0]?.text || '');
@@ -1092,7 +1237,7 @@ export default function PitchDeckStudio({
           id: `slide-ai-${Date.now()}-${idx}`,
           title: s.title || `Folie ${idx + 1}`,
           content: s.content || '',
-          layout: s.layout || (idx === 0 ? 'title-only' : 'split'),
+          layout: s.layout || (idx === 0 ? 'title-only' : 'cards-grid'),
           notes: s.notes || '',
           dataPayload: s.dataPayload || null,
           fontSize: 18,
@@ -1110,7 +1255,7 @@ export default function PitchDeckStudio({
         if (newSlideObjects.length > 0) setActiveSlideId(newSlideObjects[0].id);
         setIsAiGeneratorOpen(false);
         setAiPromptInput('');
-        addToast(`${newSlideObjects.length} KI-Folien erfolgreich generiert!`, 'success');
+        addToast(`${newSlideObjects.length} High-End Präsentations-Folien erfolgreich generiert!`, 'success');
       }
     } catch (err) {
       console.error("AI Deck Generation Error:", err);
@@ -2555,9 +2700,24 @@ export default function PitchDeckStudio({
       layout === 'full-image' ? { imageFit: 'cover', imageScale: 100, overlayOpacity: 40, imagePosition: 'center', textPosition: 'bottom-left' } :
       layout === 'two-images' ? { images: ['', ''], captions: ['Vorher / Bestand', 'Nachher / Realisierung'], splitRatio: 50, displayMode: 'side-by-side', maskAspect: 'cover', maskRadius: 16 } :
       layout === 'three-images' ? { images: ['', '', ''], captions: ['Perspektive 1', 'Perspektive 2', 'Perspektive 3'], galleryMode: 'columns', maskAspect: 'cover', maskRadius: 16 } :
+      layout === 'cards-grid' ? {
+        keyMetric: { value: '+140%', label: 'Messbarer Mehrwert / ROI' },
+        cards: [
+          { badge: 'Fokus 1', title: 'Kernaussage & Vision', description: 'Präziser Kontextpunkt ohne Füllwörter.' },
+          { badge: 'Fokus 2', title: 'Messbare Effizienz', description: 'Konkrete Zahlen und Fakten aus dem Kontext.' },
+          { badge: 'Fokus 3', title: 'Handlungsempfehlung', description: 'Nächster Schritt oder architektonische Lösung.' }
+        ]
+      } :
+      layout === 'stat-callout' ? {
+        kicker: 'PROJEKT KENNZAHL',
+        keyMetric: { value: 'CHF 2.4M', label: 'Gesamtinvestition / Einsparung' }
+      } :
+      layout === 'quote-statement' ? {
+        quote: { text: 'Gute Architektur entsteht im Dialog zwischen Präzision und Ästhetik.', author: 'Leitgedanke', role: 'Projekt-Vision' }
+      } :
       null
     );
-    const initialContent = (layout === 'full-image' || layout === 'full-image-clean' || layout === 'two-images' || layout === 'three-images') ? '' : t('type_text_here');
+    const initialContent = (layout === 'full-image' || layout === 'full-image-clean' || layout === 'two-images' || layout === 'three-images' || layout === 'cards-grid') ? '' : t('type_text_here');
     const newSlide: Slide = {
       id: newId, title: slideTitle, content: initialContent, order_index: slides.length, 
       ownerId: currentUser.uid, companyId: safeCompanyId, projectId: targetId, 
@@ -5045,6 +5205,263 @@ export default function PitchDeckStudio({
               </div>
             </div>
           )}
+
+          {/* NOTEBOOKLM-STYLE: BENTO CARDS GRID */}
+          {slide.layout === 'cards-grid' && (
+            <div className="w-full h-full flex flex-col justify-center gap-4 lg:gap-6 col-span-full py-2">
+              {/* KEY METRIC BANNER */}
+              {(slide.dataPayload?.keyMetric || !isPreviewMode) && (
+                <div className="flex items-baseline gap-4 border-b border-border/40 pb-3 flex-wrap">
+                  {!isPreviewMode ? (
+                    <div className="flex items-baseline gap-3 flex-wrap flex-1">
+                      <input
+                        type="text"
+                        value={slide.dataPayload?.keyMetric?.value || ''}
+                        onChange={(e) => handleUpdateKeyMetric(slide.id, 'value', e.target.value)}
+                        placeholder="+140% oder CHF 2.5M"
+                        className="text-4xl lg:text-5xl font-black tracking-tight font-sans tabular-nums bg-transparent outline-none border-b border-transparent focus:border-purple-500 w-64"
+                        style={{ color: deckSettings.themeColor }}
+                      />
+                      <input
+                        type="text"
+                        value={slide.dataPayload?.keyMetric?.label || ''}
+                        onChange={(e) => handleUpdateKeyMetric(slide.id, 'label', e.target.value)}
+                        placeholder="Kennzahl Beschreibung..."
+                        className={cn("text-xs font-bold uppercase tracking-widest bg-transparent outline-none border-b border-transparent focus:border-purple-500 flex-1 min-w-[200px]", tc)}
+                      />
+                    </div>
+                  ) : (
+                    slide.dataPayload?.keyMetric?.value && (
+                      <div className="flex items-baseline gap-4">
+                        <span 
+                          className="text-4xl lg:text-5xl font-black tracking-tight font-sans tabular-nums"
+                          style={{ color: deckSettings.themeColor }}
+                        >
+                          {slide.dataPayload.keyMetric.value}
+                        </span>
+                        <div className="flex flex-col">
+                          <span className="text-xs font-bold uppercase tracking-widest opacity-60">
+                            {slide.dataPayload.keyMetric.label}
+                          </span>
+                          {slide.dataPayload?.sourceAnchor && (
+                            <span className="text-[10px] opacity-40 font-mono">
+                              Quelle: {slide.dataPayload.sourceAnchor}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  )}
+                  {!isPreviewMode && (
+                    <button
+                      type="button"
+                      onClick={() => handleAddBentoCard(slide.id)}
+                      className="px-2.5 py-1 rounded-lg bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 text-[11px] font-bold flex items-center gap-1 border border-purple-500/30 cursor-pointer ml-auto"
+                    >
+                      <Plus size={12} /> Karte hinzufügen
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* BENTO CARDS */}
+              <div className={cn(
+                "grid gap-4 w-full flex-1 items-stretch",
+                (slide.dataPayload?.cards?.length || 0) === 2 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1 md:grid-cols-3"
+              )}>
+                {(slide.dataPayload?.cards || []).map((card: any, cIdx: number) => (
+                  <div
+                    key={cIdx}
+                    className={cn(
+                      "p-5 rounded-2xl border transition-all flex flex-col justify-between shadow-lg relative group/card",
+                      isDarkTheme 
+                        ? "bg-zinc-900/80 border-zinc-800 shadow-black/40 backdrop-blur-md" 
+                        : "bg-white/90 border-zinc-200/90 shadow-zinc-200/50"
+                    )}
+                  >
+                    {!isPreviewMode && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteBentoCard(slide.id, cIdx)}
+                        className="absolute top-2 right-2 p-1.5 text-red-400 hover:text-red-500 opacity-0 group-hover/card:opacity-100 transition-opacity bg-black/40 rounded-full cursor-pointer z-20"
+                        title="Karte entfernen"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    )}
+                    <div className="flex-1 flex flex-col">
+                      {!isPreviewMode ? (
+                        <input
+                          type="text"
+                          value={card.badge || ''}
+                          onChange={(e) => handleUpdateBentoCard(slide.id, cIdx, 'badge', e.target.value)}
+                          placeholder="TAG / KATEGORIE"
+                          className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider mb-2.5 w-fit bg-transparent border border-border/50 outline-none"
+                          style={{ color: deckSettings.themeColor }}
+                        />
+                      ) : (
+                        card.badge && (
+                          <span 
+                            className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider mb-3 w-fit"
+                            style={{ backgroundColor: `${deckSettings.themeColor}20`, color: deckSettings.themeColor }}
+                          >
+                            {card.badge}
+                          </span>
+                        )
+                      )}
+
+                      {!isPreviewMode ? (
+                        <input
+                          type="text"
+                          value={card.title || ''}
+                          onChange={(e) => handleUpdateBentoCard(slide.id, cIdx, 'title', e.target.value)}
+                          placeholder="Kernaussage / Überschrift..."
+                          className={cn("text-base font-bold mb-2 leading-snug bg-transparent outline-none border-b border-transparent focus:border-purple-500", tc)}
+                        />
+                      ) : (
+                        <h4 className={cn("text-base font-bold mb-2 leading-snug", tc)}>
+                          {card.title}
+                        </h4>
+                      )}
+
+                      {!isPreviewMode ? (
+                        <textarea
+                          rows={3}
+                          value={card.description || ''}
+                          onChange={(e) => handleUpdateBentoCard(slide.id, cIdx, 'description', e.target.value)}
+                          placeholder="Prägnante Details und Kontextpunkte..."
+                          className={cn("text-xs leading-relaxed opacity-75 bg-transparent outline-none resize-none border-b border-transparent focus:border-purple-500 flex-1", tc)}
+                        />
+                      ) : (
+                        <p className={cn("text-xs leading-relaxed opacity-75 whitespace-pre-wrap", tc)}>
+                          {card.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* NOTEBOOKLM-STYLE: STAT CALLOUT */}
+          {slide.layout === 'stat-callout' && (
+            <div className="w-full h-full flex flex-col justify-center items-center text-center col-span-full py-6">
+              {!isPreviewMode ? (
+                <input
+                  type="text"
+                  value={slide.dataPayload?.kicker || ''}
+                  onChange={(e) => updateSlidePayload(slide.id, { ...slide.dataPayload, kicker: e.target.value })}
+                  placeholder="KATEGORIE / KICKER"
+                  className="text-xs font-black uppercase tracking-widest mb-3 px-3 py-1 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 text-center outline-none"
+                />
+              ) : (
+                slide.dataPayload?.kicker && (
+                  <span className="text-xs font-black uppercase tracking-widest mb-4 px-3 py-1 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                    {slide.dataPayload.kicker}
+                  </span>
+                )
+              )}
+
+              {!isPreviewMode ? (
+                <input
+                  type="text"
+                  value={slide.dataPayload?.keyMetric?.value || ''}
+                  onChange={(e) => handleUpdateKeyMetric(slide.id, 'value', e.target.value)}
+                  placeholder="+140%"
+                  className="text-7xl lg:text-8xl font-black tracking-tight font-sans tabular-nums my-2 text-center bg-transparent outline-none border-b border-transparent focus:border-purple-500 w-full max-w-lg mx-auto"
+                  style={{ color: deckSettings.themeColor }}
+                />
+              ) : (
+                slide.dataPayload?.keyMetric?.value && (
+                  <div 
+                    className="text-7xl lg:text-8xl font-black tracking-tight font-sans tabular-nums my-2 drop-shadow-sm"
+                    style={{ color: deckSettings.themeColor }}
+                  >
+                    {slide.dataPayload.keyMetric.value}
+                  </div>
+                )
+              )}
+
+              {!isPreviewMode ? (
+                <input
+                  type="text"
+                  value={slide.dataPayload?.keyMetric?.label || ''}
+                  onChange={(e) => handleUpdateKeyMetric(slide.id, 'label', e.target.value)}
+                  placeholder="Beschreibung der Kennzahl..."
+                  className={cn("text-xl lg:text-2xl font-bold opacity-80 max-w-xl mx-auto mb-4 text-center bg-transparent outline-none border-b border-transparent focus:border-purple-500 w-full", tc)}
+                />
+              ) : (
+                slide.dataPayload?.keyMetric?.label && (
+                  <div className={cn("text-xl lg:text-2xl font-bold opacity-80 max-w-xl mx-auto mb-6", tc)}>
+                    {slide.dataPayload.keyMetric.label}
+                  </div>
+                )
+              )}
+
+              {!isPreviewMode ? (
+                <textarea
+                  value={displayContent}
+                  onChange={(e) => handleLocalUpdate('content', e.target.value)}
+                  placeholder="Kernaussage oder Zitat..."
+                  className={cn("w-full max-w-2xl mx-auto bg-transparent outline-none resize-none text-center opacity-70 text-sm lg:text-base leading-relaxed border-b border-transparent focus:border-purple-500", tc)}
+                />
+              ) : (
+                slide.content && (
+                  <p className={cn("text-sm lg:text-base opacity-70 max-w-2xl mx-auto leading-relaxed", tc)}>
+                    {slide.content}
+                  </p>
+                )
+              )}
+            </div>
+          )}
+
+          {/* NOTEBOOKLM-STYLE: QUOTE STATEMENT */}
+          {slide.layout === 'quote-statement' && (
+            <div className="w-full h-full flex flex-col justify-center items-center text-center col-span-full p-8 max-w-4xl mx-auto">
+              <span className="text-6xl text-purple-500/30 font-serif leading-none select-none">“</span>
+              {!isPreviewMode ? (
+                <textarea
+                  rows={3}
+                  value={slide.dataPayload?.quote?.text || displayContent}
+                  onChange={(e) => handleUpdateQuote(slide.id, 'text', e.target.value)}
+                  placeholder="Leitsatz oder Zitat eingeben..."
+                  className={cn("w-full text-2xl lg:text-3xl font-medium italic leading-relaxed my-4 opacity-90 text-center bg-transparent outline-none resize-none border-b border-transparent focus:border-purple-500", tc)}
+                />
+              ) : (
+                <blockquote className={cn("text-2xl lg:text-3xl font-medium italic leading-relaxed my-4 opacity-90", tc)}>
+                  {slide.dataPayload?.quote?.text || slide.content}
+                </blockquote>
+              )}
+
+              {!isPreviewMode ? (
+                <div className="flex items-center gap-3 mt-4 text-sm font-bold tracking-wider uppercase">
+                  <span className="opacity-50">—</span>
+                  <input
+                    type="text"
+                    value={slide.dataPayload?.quote?.author || ''}
+                    onChange={(e) => handleUpdateQuote(slide.id, 'author', e.target.value)}
+                    placeholder="Autor / Quelle..."
+                    className={cn("bg-transparent outline-none border-b border-transparent focus:border-purple-500 w-48 text-center", tc)}
+                  />
+                  <input
+                    type="text"
+                    value={slide.dataPayload?.quote?.role || ''}
+                    onChange={(e) => handleUpdateQuote(slide.id, 'role', e.target.value)}
+                    placeholder="Funktion / Kontext..."
+                    className="bg-transparent outline-none border-b border-transparent focus:border-purple-500 opacity-60 w-48 text-center font-normal"
+                  />
+                </div>
+              ) : (
+                (slide.dataPayload?.quote?.author || slide.dataPayload?.quote?.source) && (
+                  <div className={cn("flex items-center gap-2 mt-4 text-sm font-bold tracking-wider uppercase opacity-70", tc)}>
+                    <span>— {slide.dataPayload?.quote?.author}</span>
+                    {slide.dataPayload?.quote?.role && <span className="opacity-50 font-normal">({slide.dataPayload.quote.role})</span>}
+                  </div>
+                )
+              )}
+            </div>
+          )}
         </div>
         
         <div className="h-[10%] flex flex-row items-end justify-between border-t border-black/10 pb-2 z-10 shrink-0 mt-4">
@@ -5197,6 +5614,9 @@ export default function PitchDeckStudio({
                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden flex flex-col gap-2 mt-2">
                          <button type="button" onClick={() => handleAddSlide('full-image-clean', '')} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-emerald-500/40 text-emerald-400 hover:bg-surface-hover flex items-center gap-3"><ImageIcon size={16}/> {t('full_image_clean_slide')} (Nur Bild & Fusszeile)</button>
                          <button type="button" onClick={() => handleAddSlide('full-image', t('full_image_slide'))} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-purple-500/40 text-purple-400 hover:bg-surface-hover flex items-center gap-3"><Maximize2 size={16}/> {t('full_image_slide')} (Mit Titel-Overlay)</button>
+                         <button type="button" onClick={() => handleAddSlide('cards-grid', 'Kernaussagen & Mehrwert')} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-purple-500/40 text-purple-400 hover:bg-surface-hover flex items-center gap-3"><LayoutDashboard size={16}/> Bento-Cards & Key-Metric</button>
+                         <button type="button" onClick={() => handleAddSlide('stat-callout', 'Projekt-Kennzahl')} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-border hover:bg-surface-hover flex items-center gap-3"><TrendingUp size={16}/> Grosse Zahl & Callout</button>
+                         <button type="button" onClick={() => handleAddSlide('quote-statement', 'Leitsatz & Zitat')} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-border hover:bg-surface-hover flex items-center gap-3"><MessageSquare size={16}/> Zitat & Leitsatz</button>
                          <button type="button" onClick={() => handleAddSlide('title-only', t('new_vision'))} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-border hover:bg-surface-hover flex items-center gap-3"><Type size={16}/> {t('title_slide')}</button>
                          <button type="button" onClick={() => handleAddSlide('split', t('new_topic'))} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-border hover:bg-surface-hover flex items-center gap-3"><Columns size={16}/> {t('text_and_image')}</button>
                          <button type="button" onClick={() => handleAddSlide('two-images', t('two_images_slide'))} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-border hover:bg-surface-hover flex items-center gap-3"><Layers size={16}/> {t('two_images_slide')} (Dual)</button>
@@ -5662,6 +6082,9 @@ export default function PitchDeckStudio({
                     <div className="px-3 py-1 text-[9px] font-bold text-text-muted uppercase tracking-widest">{t('standard_layouts')}</div>
                     <button type="button" onClick={() => { handleAddSlide('full-image-clean', ''); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-emerald-400 hover:bg-emerald-500/10 flex items-center gap-2"><ImageIcon size={14} className="text-emerald-400"/> {t('full_image_clean_slide')} (Nur Bild)</button>
                     <button type="button" onClick={() => { handleAddSlide('full-image', t('full_image_slide')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-purple-400 hover:bg-purple-500/10 flex items-center gap-2"><Maximize2 size={14} className="text-purple-400"/> {t('full_image_slide')} (Titel-Overlay)</button>
+                    <button type="button" onClick={() => { handleAddSlide('cards-grid', 'Kernaussagen & Mehrwert'); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-purple-400 hover:bg-purple-500/10 flex items-center gap-2"><LayoutDashboard size={14} className="text-purple-400"/> Bento-Cards & Key-Metric</button>
+                    <button type="button" onClick={() => { handleAddSlide('stat-callout', 'Projekt-Kennzahl'); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><TrendingUp size={14}/> Grosse Zahl & Callout</button>
+                    <button type="button" onClick={() => { handleAddSlide('quote-statement', 'Leitsatz & Zitat'); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><MessageSquare size={14}/> Zitat & Leitsatz</button>
                     <button type="button" onClick={() => { handleAddSlide('title-only', t('new_vision')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><Type size={14}/> {t('title_slide')}</button>
                     <button type="button" onClick={() => { handleAddSlide('split', t('new_topic')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><Columns size={14}/> {t('text_and_image')}</button>
                     <button type="button" onClick={() => { handleAddSlide('two-images', t('two_images_slide')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><Layers size={14}/> {t('two_images_slide')} (Dual)</button>
@@ -7133,6 +7556,67 @@ export default function PitchDeckStudio({
               </div>
             </div>
 
+            {/* NOTEBOOKLM-STYLE: PDF GROUNDING UPLOAD */}
+            <div className="space-y-2 p-3.5 rounded-xl border border-purple-500/30 bg-purple-500/5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
+                  <FileText size={13} /> Quelldokument für Grounding (NotebookLM-Modus)
+                </span>
+                {aiDocumentName && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveAiDocument}
+                    className="text-[10px] text-red-400 hover:text-red-300 font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    <Trash2 size={11} /> Entfernen
+                  </button>
+                )}
+              </div>
+
+              {aiDocumentName ? (
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-surface border border-purple-500/40 text-xs">
+                  <div className="flex items-center gap-2 truncate">
+                    <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+                    <span className="font-bold truncate text-text-primary">{aiDocumentName}</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 shrink-0 font-sans tabular-nums">
+                      {aiDocumentPages} Seiten ({aiDocumentText.length.toLocaleString('de-CH')} Zeichen)
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <input
+                    ref={aiDocumentInputRef}
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    onChange={handleAiDocumentUpload}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => aiDocumentInputRef.current?.click()}
+                    disabled={isExtractingPdf}
+                    className="w-full py-2.5 px-3 rounded-lg border-2 border-dashed border-purple-500/30 hover:border-purple-500/60 bg-purple-500/5 hover:bg-purple-500/10 text-xs font-bold text-purple-300 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  >
+                    {isExtractingPdf ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin text-purple-400" />
+                        <span>Analysiere PDF-Seiten & extrahiere Text...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload size={14} className="text-purple-400" />
+                        <span>PDF hochladen (Baubeschrieb, Kostenvoranschlag, SIA-Bericht)</span>
+                      </>
+                    )}
+                  </button>
+                  <p className="text-[10px] text-text-muted mt-1">
+                    Exakte Fakten, Kennzahlen und Zitate werden direkt aus deinem PDF entnommen – ohne Halluzinationen.
+                  </p>
+                </div>
+              )}
+            </div>
+
             <textarea
               rows={4}
               value={aiPromptInput}
@@ -7159,9 +7643,9 @@ export default function PitchDeckStudio({
 
             <div className="flex justify-end gap-3 pt-3 border-t border-border/50">
               <button type="button" onClick={() => setIsAiGeneratorOpen(false)} className="px-4 py-2 text-xs font-bold text-text-muted hover:text-text-primary">Abbrechen</button>
-              <button type="button" onClick={() => handleGenerateAIDeck()} disabled={isGeneratingAIDeck || !aiPromptInput.trim()} className="px-6 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold shadow-lg disabled:opacity-50 transition-all flex items-center gap-2">
+              <button type="button" onClick={() => handleGenerateAIDeck()} disabled={isGeneratingAIDeck || (!aiPromptInput.trim() && !aiDocumentText)} className="px-6 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold shadow-lg disabled:opacity-50 transition-all flex items-center gap-2">
                 {isGeneratingAIDeck ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-                <span>Deck generieren</span>
+                <span>{aiDocumentText ? 'Deck aus PDF generieren (Grounded)' : 'Deck generieren'}</span>
               </button>
             </div>
           </motion.div>

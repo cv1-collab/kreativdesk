@@ -239,3 +239,46 @@ export const renderPdfThumbnail = async (
   canvas.height = 0;
   return dataUrl;
 };
+
+/**
+ * Extract clean, structured text from a PDF file/blob/URL for grounded AI prompts.
+ * Iterates through pages and formats text with page boundaries.
+ */
+export const extractTextFromPdf = async (
+  pdfSource: Blob | File | string,
+  maxPages: number = 30
+): Promise<{ text: string; pageCount: number }> => {
+  const pdfjs = await loadPdfJs();
+  let loadingTask: any;
+
+  if (typeof pdfSource === 'string') {
+    loadingTask = pdfjs.getDocument(pdfSource);
+  } else {
+    const arrayBuffer = await (pdfSource as Blob).arrayBuffer();
+    loadingTask = pdfjs.getDocument({ data: arrayBuffer });
+  }
+
+  const pdfDoc = await loadingTask.promise;
+  const pageCount = pdfDoc.numPages || 1;
+  const pagesToScan = Math.min(pageCount, maxPages);
+  let aggregatedText = '';
+
+  for (let pageNum = 1; pageNum <= pagesToScan; pageNum++) {
+    const page = await pdfDoc.getPage(pageNum);
+    const content = await page.getTextContent();
+    const pageText = content.items
+      .map((item: any) => item.str || '')
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (pageText) {
+      aggregatedText += `\n[--- DOKUMENT-SEITE ${pageNum} / ${pageCount} ---]\n${pageText}\n`;
+    }
+  }
+
+  return {
+    text: aggregatedText.trim(),
+    pageCount,
+  };
+};

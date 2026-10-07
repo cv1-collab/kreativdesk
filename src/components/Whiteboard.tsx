@@ -2061,14 +2061,16 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
       // Step 2: Attempt fal.ai image-to-image if available
       if (uploadedImageUrl) {
         try {
-          let styleStrength = 0.75;
-          if (activeStyle === 'colorize') styleStrength = 0.4;
-          if (activeStyle === 'sketch') styleStrength = 0.5;
-          if (activeStyle === 'comic') styleStrength = 0.65;
+          let styleStrength = 0.52;
+          if (activeStyle === 'colorize') styleStrength = 0.38;
+          if (activeStyle === 'sketch') styleStrength = 0.45;
+          if (activeStyle === 'comic') styleStrength = 0.58;
+
+          const architecturalSketchPrompt = `Transform this hand-drawn architectural sketch into a finished professional design. STRICT RULE: Preserve the composition, geometry, contours, and room layout from the sketch. Description: ${visionPrompt}. Authentic architectural materials, balanced soft daylight, realistic glass reflections, clean aesthetic.`;
 
           const response = await fal.subscribe("fal-ai/flux/dev/image-to-image", {
             input: {
-              prompt: visionPrompt,
+              prompt: architecturalSketchPrompt,
               image_url: uploadedImageUrl,
               strength: styleStrength,
             },
@@ -2086,7 +2088,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
 
       // Step 3: High-Performance Flux AI Engine Fallback (Instant & Reliable)
       if (!finalImageUrl) {
-        const cleanPrompt = `${visionPrompt}, high resolution concept design, ${activeStyle} style, 8k quality`;
+        const cleanPrompt = `Architectural visualization based on sketch: ${visionPrompt}, preserving spatial layout and elevations, authentic materials, ${activeStyle} style, soft ambient illumination, crisp architectural rendering`;
         const seed = Math.floor(Math.random() * 1000000);
         finalImageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(cleanPrompt)}?width=1024&height=1024&seed=${seed}&nologo=true&model=flux`;
       }
