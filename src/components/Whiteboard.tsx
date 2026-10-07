@@ -14,6 +14,7 @@ import { cn } from '../utils';
 import { safeRequestFullscreen, safeExitFullscreen, isFullscreenActive, addFullscreenChangeListener } from '../utils/fullscreen';
 import { callGeminiAPI } from '../utils/geminiClient';
 import { fal } from "@fal-ai/client";
+import { requestAIRender } from '../utils/aiRenderService';
 
 import { supabase } from '../lib/supabase';
 import { queryClient } from '../lib/queryClient';
@@ -2005,109 +2006,52 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
     if (!renderPrompt.trim()) return addToast('Bitte Prompt eingeben.', 'info');
     setIsRendering(true);
     try {
-      let uploadedImageUrl: string | undefined = undefined;
-      
-      if (sketchDataUrl && currentUser) {
-        try {
-          const safeCompanyId = currentUser.companyId || (currentUser as any)?.company_id || currentUser.uid;
-          const fetchRes = await fetch(sketchDataUrl);
-          const blob = await fetchRes.blob();
-          const fileName = `${safeCompanyId}/whiteboardExports/${currentUser.uid}/tmp_${Date.now()}.png`;
-          const { error: upErr } = await supabase.storage.from('avatars').upload(fileName, blob, { upsert: true });
-          if (!upErr) {
-            const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
-            uploadedImageUrl = data.publicUrl;
-          }
-        } catch (e) {
-          console.warn("Storage upload failed for AI rendering:", e);
-        }
+      if (!sketchDataUrl) throw new Error("Keine Skizze vorhanden.");
+
+      let styleStrength = 0.55;
+      let promptStyleText = '';
+
+      if (activeStyle === 'comic') {
+        styleStrength = 0.62;
+        promptStyleText = 'Vibrant colorful comic book illustration, dynamic ink line art, expressive character design, clean comic art styling';
+      } else if (activeStyle === 'sketch') {
+        styleStrength = 0.40;
+        promptStyleText = 'Detailed fine-liner architectural sketch, clean pencil hatching, professional blueprint drawing';
+      } else if (activeStyle === 'colorize') {
+        styleStrength = 0.35;
+        promptStyleText = 'Colorized architectural render, preserving the exact hand-drawn contour lines with authentic materials';
+      } else {
+        styleStrength = 0.52;
+        promptStyleText = 'High-end realistic architectural concept design, authentic materials, natural soft daylight, crisp 8k visualization';
       }
 
-      // Step 1: Multimodal Sketch Analysis via Gemini Vision API
-      let visionPrompt = renderPrompt.trim();
-      if (sketchDataUrl) {
-        try {
-          const base64Data = sketchDataUrl.includes(',') ? sketchDataUrl.split(',')[1] : sketchDataUrl;
-          const geminiPromptText = `You are an expert AI concept artist and architect.
-Analyze this hand-drawn whiteboard sketch image carefully.
-User requested style: "${activeStyle}".
-User specific prompt: "${renderPrompt.trim()}".
+      const fullPrompt = `${promptStyleText}. Subject and details: ${renderPrompt.trim()}. STRICT RULE: Follow the shapes, contours, perspective and layout of the drawing. High quality, finished masterpiece.`;
 
-Task:
-1. Identify all subjects, facial features, character traits, shapes, or architectural elements drawn in the sketch image.
-2. Formulate a rich, descriptive 2-3 sentence English image generation prompt for an AI model (Flux/Stable Diffusion).
-3. Combine the exact drawn subjects from the sketch with the requested style ("${activeStyle}") and user intent ("${renderPrompt.trim()}").
-4. Make sure to describe a fully rendered, high quality finished visual asset rather than just raw pencil sketch lines.
-Output ONLY the final English prompt text string without quotes or preamble.`;
-
-          const aiVisionRes = await callGeminiAPI('gemini-2.5-flash', [
-            { inlineData: { data: base64Data, mimeType: 'image/png' } },
-            { text: geminiPromptText }
-          ]);
-
-          const parsedText = typeof aiVisionRes === 'string' 
-            ? aiVisionRes 
-            : (aiVisionRes?.text || aiVisionRes?.candidates?.[0]?.content?.parts?.[0]?.text);
-          if (parsedText && parsedText.trim().length > 5) {
-            visionPrompt = parsedText.trim().replace(/^["'`]|["'`]$/g, '');
-          }
-        } catch (visionErr) {
-          console.warn("Gemini vision analysis for sketch failed, using user prompt:", visionErr);
-        }
-      }
-
-      let finalImageUrl = '';
-
-      // Step 2: Attempt fal.ai image-to-image if available
-      if (uploadedImageUrl) {
-        try {
-          let styleStrength = 0.52;
-          if (activeStyle === 'colorize') styleStrength = 0.38;
-          if (activeStyle === 'sketch') styleStrength = 0.45;
-          if (activeStyle === 'comic') styleStrength = 0.58;
-
-          const architecturalSketchPrompt = `Transform this hand-drawn architectural sketch into a finished professional design. STRICT RULE: Preserve the composition, geometry, contours, and room layout from the sketch. Description: ${visionPrompt}. Authentic architectural materials, balanced soft daylight, realistic glass reflections, clean aesthetic.`;
-
-          const response = await fal.subscribe("fal-ai/flux/dev/image-to-image", {
-            input: {
-              prompt: architecturalSketchPrompt,
-              image_url: uploadedImageUrl,
-              strength: styleStrength,
-            },
-            logs: false,
-          }) as any;
-
-          const responseData = response?.data || response;
-          if (responseData?.images && responseData.images.length > 0 && responseData.images[0].url) {
-            finalImageUrl = responseData.images[0].url;
-          }
-        } catch (falErr) {
-          console.warn("fal.ai API proxy subscription error, switching to Flux renderer:", falErr);
-        }
-      }
-
-      // Step 3: High-Performance Flux AI Engine Fallback (Instant & Reliable)
-      if (!finalImageUrl) {
-        const cleanPrompt = `Architectural visualization based on sketch: ${visionPrompt}, preserving spatial layout and elevations, authentic materials, ${activeStyle} style, soft ambient illumination, crisp architectural rendering`;
-        const seed = Math.floor(Math.random() * 1000000);
-        finalImageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(cleanPrompt)}?width=1024&height=1024&seed=${seed}&nologo=true&model=flux`;
-      }
-
-      // Step 4: Validate and Preload Image
-      await new Promise((resolve, reject) => {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.src = finalImageUrl;
-        img.onload = resolve;
-        img.onerror = reject;
+      const renderRes = await requestAIRender({
+        prompt: fullPrompt,
+        image: sketchDataUrl,
+        strength: styleStrength,
+        style: activeStyle as any
       });
 
-      setRenderedImage(finalImageUrl);
-      addToast('Design erfolgreich generiert!', 'success');
+      if (!renderRes.success || !renderRes.imageUrl) {
+        throw new Error(renderRes.error || 'Fehler bei der Bildgenerierung.');
+      }
 
+      // Preload image
+      await new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = renderRes.imageUrl!;
+        img.onload = resolve;
+        img.onerror = resolve; // Continue even if preload fails
+      });
+
+      setRenderedImage(renderRes.imageUrl);
+      addToast('Design erfolgreich generiert!', 'success');
     } catch (error: any) {
       console.error("AI Render API Error:", error);
-      addToast('Fehler bei der Bildgenerierung. Bitte erstelle erneut einen Versuch.', 'error');
+      addToast(error?.message || 'Fehler bei der Bildgenerierung. Bitte erneut versuchen.', 'error');
       setRenderedImage(null);
     } finally {
       setIsRendering(false);

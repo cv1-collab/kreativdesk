@@ -323,6 +323,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
       case 'glassmorphism': return 'font-sans bg-gradient-to-br from-white/60 to-white/30 backdrop-blur-3xl text-zinc-800 border border-white/50 shadow-[0_8px_32px_rgba(0,0,0,0.1)] rounded-3xl';
       case 'cyberpunk': return 'font-mono bg-[#050505] text-zinc-100 border-l-[6px] shadow-[0_0_40px_rgba(0,0,0,0.5)]';
       case 'minimal-tech': return 'font-sans bg-[#fafafa] text-zinc-800 border border-zinc-200 shadow-sm rounded-2xl';
+      case 'notebooklm': return 'font-sans bg-[#0b0f19] text-zinc-100 border border-indigo-500/30 shadow-[0_0_50px_rgba(99,102,241,0.15)] rounded-2xl';
       case 'keynote': default: return 'font-sans bg-white text-zinc-900 shadow-xl border border-zinc-200 rounded-xl';
     }
   };
@@ -342,7 +343,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
   };
 
   const renderSlideContent = (slide: Slide) => {
-    const isDarkTheme = ['photography', 'scenography', 'cyberpunk'].includes(deckSettings.themeStyle);
+    const isDarkTheme = ['photography', 'scenography', 'cyberpunk', 'notebooklm'].includes(deckSettings.themeStyle);
     const tc = isDarkTheme ? "text-white" : "text-black";
     const isTitleBold = (slide.titleFontWeight || 'bold') !== 'normal';
     const isContentBold = slide.contentFontWeight === 'bold';
@@ -929,64 +930,113 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
           )}
 
           {/* NOTEBOOKLM-STYLE: BENTO CARDS GRID */}
-          {slide.layout === 'cards-grid' && (
-            <div className="w-full h-full flex flex-col justify-center gap-6 col-span-full py-2">
-              {slide.dataPayload?.keyMetric && (
-                <div className="flex items-baseline gap-4 border-b border-border/40 pb-4">
-                  <span 
-                    className="text-5xl lg:text-6xl font-black tracking-tight font-sans tabular-nums"
-                    style={{ color: deckSettings.themeColor }}
-                  >
-                    {slide.dataPayload.keyMetric.value}
-                  </span>
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold uppercase tracking-widest opacity-60">
-                      {slide.dataPayload.keyMetric.label}
-                    </span>
-                    {slide.dataPayload.sourceAnchor && (
-                      <span className="text-[10px] opacity-40 font-mono">
-                        Quelle: {slide.dataPayload.sourceAnchor}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
+          {slide.layout === 'cards-grid' && (() => {
+            const cardCount = slide.dataPayload?.cards?.length || 0;
+            const gridClass = cardCount === 1 
+              ? "grid-cols-1 max-w-xl mx-auto" 
+              : cardCount === 2 || cardCount === 4 
+              ? "grid-cols-1 md:grid-cols-2" 
+              : "grid-cols-1 md:grid-cols-3";
 
-              <div className={cn(
-                "grid gap-4 w-full flex-1 items-stretch",
-                (slide.dataPayload?.cards?.length || 0) === 2 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1 md:grid-cols-3"
-              )}>
-                {(slide.dataPayload?.cards || []).map((card: any, idx: number) => (
-                  <div
-                    key={idx}
-                    className={cn(
-                      "p-6 rounded-2xl border transition-all flex flex-col justify-between shadow-lg",
-                      isDarkTheme 
-                        ? "bg-zinc-900/80 border-zinc-800 shadow-black/40 backdrop-blur-md" 
-                        : "bg-white/90 border-zinc-200/90 shadow-zinc-200/50"
-                    )}
-                  >
-                    <div>
-                      {card.badge && (
-                        <span 
-                          className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider mb-3"
-                          style={{ backgroundColor: `${deckSettings.themeColor}20`, color: deckSettings.themeColor }}
-                        >
-                          {card.badge}
-                        </span>
+            const renderCitationText = (text: string) => {
+              if (!text) return null;
+              const citationRegex = /(\[(?:S\.|Quelle|Dokument)[^\]]+\]|\((?:S\.|Quelle|Dokument)[^\)]+\))/gi;
+              const parts = text.split(citationRegex);
+              return parts.map((part, i) => {
+                if (citationRegex.test(part)) {
+                  const clean = part.replace(/^[\(\[]/, '').replace(/[\)\]]$/, '').trim();
+                  return (
+                    <span
+                      key={i}
+                      className={cn(
+                        "inline-flex items-center gap-1 px-1.5 py-0.5 mx-1 rounded-md text-[10px] font-mono font-bold tracking-tight align-baseline select-none",
+                        isDarkTheme
+                          ? "bg-indigo-950/90 text-indigo-300 border border-indigo-700/60 shadow-xs"
+                          : "bg-indigo-50 text-indigo-700 border border-indigo-200/80 shadow-xs"
                       )}
-                      <h4 className={cn("text-base lg:text-lg font-bold mb-2 leading-snug", tc)}>
-                        {card.title}
-                      </h4>
-                      <p className="text-xs lg:text-sm leading-relaxed opacity-75 whitespace-pre-wrap">
-                        {card.description}
-                      </p>
+                    >
+                      {clean}
+                    </span>
+                  );
+                }
+                return part;
+              });
+            };
+
+            return (
+              <div className="w-full h-full flex flex-col justify-center gap-4 lg:gap-6 col-span-full py-2">
+                {slide.dataPayload?.keyMetric?.value && (
+                  <div className={cn(
+                    "flex items-center justify-between gap-4 px-6 py-3.5 rounded-2xl border transition-all",
+                    isDarkTheme
+                      ? "bg-gradient-to-r from-indigo-950/40 via-zinc-900/60 to-zinc-900/40 border-indigo-500/30 shadow-lg shadow-indigo-950/20 ring-1 ring-white/5"
+                      : "bg-gradient-to-r from-indigo-50/70 via-white to-slate-50 border-indigo-200/80 shadow-xs ring-1 ring-black/[0.02]"
+                  )}>
+                    <div className="flex items-baseline gap-4 flex-wrap">
+                      <span 
+                        className="text-3xl lg:text-4xl font-black tracking-tight font-sans tabular-nums"
+                        style={{ color: deckSettings.themeColor || '#6366f1' }}
+                      >
+                        {slide.dataPayload.keyMetric.value}
+                      </span>
+                      <div className="flex flex-col">
+                        <span className={cn(
+                          "text-xs font-black uppercase tracking-wider",
+                          isDarkTheme ? "text-indigo-300" : "text-indigo-950"
+                        )}>
+                          {slide.dataPayload.keyMetric.label}
+                        </span>
+                        {slide.dataPayload.sourceAnchor && (
+                          <span className="text-[10px] opacity-60 font-mono mt-0.5">
+                            Quelle: {slide.dataPayload.sourceAnchor}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className={cn(
+                      "hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase",
+                      isDarkTheme
+                        ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
+                        : "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                    )}>
+                      Key Metric
                     </div>
                   </div>
-                ))}
+                )}
+
+                <div className={cn("grid gap-4 w-full flex-1 items-stretch", gridClass)}>
+                  {(slide.dataPayload?.cards || []).map((card: any, idx: number) => (
+                    <div
+                      key={idx}
+                      className={cn(
+                        "p-6 rounded-2xl border transition-all flex flex-col justify-between shadow-md",
+                        isDarkTheme 
+                          ? "bg-zinc-900/85 border-zinc-800 shadow-black/40 backdrop-blur-md ring-1 ring-white/5" 
+                          : "bg-slate-50/95 border-slate-200/90 shadow-slate-200/50 ring-1 ring-black/[0.03] hover:border-slate-300"
+                      )}
+                    >
+                      <div>
+                        {card.badge && (
+                          <span 
+                            className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider mb-3"
+                            style={{ backgroundColor: `${deckSettings.themeColor || '#6366f1'}20`, color: deckSettings.themeColor || '#6366f1' }}
+                          >
+                            {card.badge}
+                          </span>
+                        )}
+                        <h4 className={cn("text-base lg:text-lg font-bold mb-2 leading-snug", tc)}>
+                          {card.title}
+                        </h4>
+                        <p className={cn("text-xs lg:text-sm leading-relaxed whitespace-pre-wrap", isDarkTheme ? "text-zinc-300" : "text-zinc-700")}>
+                          {renderCitationText(card.description)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* NOTEBOOKLM-STYLE: STAT CALLOUT */}
           {slide.layout === 'stat-callout' && (

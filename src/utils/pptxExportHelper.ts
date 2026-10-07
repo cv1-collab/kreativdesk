@@ -23,7 +23,7 @@ export interface PptxDeckSettings {
   footerText?: string;
   themeColor?: string;
   colorMode?: 'dark' | 'light';
-  themeStyle?: 'keynote' | 'architecture' | 'photography' | 'scenography' | 'swiss' | 'neo-brutalism' | 'glassmorphism' | 'cyberpunk' | 'minimal-tech';
+  themeStyle?: 'keynote' | 'architecture' | 'photography' | 'scenography' | 'swiss' | 'neo-brutalism' | 'glassmorphism' | 'cyberpunk' | 'minimal-tech' | 'notebooklm';
   transitionEffect?: string;
 }
 

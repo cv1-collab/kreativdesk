@@ -6,6 +6,7 @@ import getUserStatus from './_handlers/get-user-status.js';
 import generate from './_handlers/generate.js';
 import generateImage from './_handlers/generate-image.js';
 import embed from './_handlers/embed.js';
+import renderImage from './_handlers/render-image.js';
 import falProxy from './_handlers/fal-proxy.js';
 import proposalAiChat from './_handlers/proposal-ai-chat.js';
 import emailSend from './_handlers/email-send.js';
@@ -39,6 +40,8 @@ const handlers: Record<string, RouteHandler> = {
   'get-user-status': getUserStatus,
   'generate': generate,
   'generate-image': generateImage,
+  'render-image': renderImage,
+  'render/image': renderImage,
   'embed': embed,
   'fal/proxy': falProxy,
   'fal-proxy': falProxy,

@@ -44,6 +44,7 @@ import { BIMCanvasViewport } from './bim/BIMCanvasViewport';
 import ModuleGuideButton from './ModuleGuideButton';
 
 import { fal } from "@fal-ai/client";
+import { requestAIRender } from '../utils/aiRenderService';
 
 fal.config({
   proxyUrl: "/api/fal/proxy",
@@ -770,88 +771,32 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
 
       if (!dataUrl) throw new Error("Kein 3D-Snapshot vorhanden.");
 
-      let generatedUrl: string | null = null;
-      let uploadedImageUrl: string | undefined = undefined;
+      let styleStrength = 0.50; // Calibrated for strict architectural geometry and massing preservation
+      if (activeStyle === 'sketch') styleStrength = 0.38;
+      if (activeStyle === 'cyberpunk') styleStrength = 0.58;
+      if (activeStyle === 'photoreal') styleStrength = 0.48;
 
-      const safeCompanyId = currentUser?.companyId || currentUser?.uid || 'global';
-      const safeUserId = currentUser?.uid || 'anonymous';
-      try {
-        const fetchRes = await fetch(dataUrl);
-        const blob = await fetchRes.blob();
+      const basePrompt = renderPrompt || 'Modern architectural building, authentic materials, natural daylight';
+      const prompt = `Architectural competition visualization of ${basePrompt}. STRICT RULE: Keep the exact 3D building volume, geometry, proportions, massing, perspective and structural lines from the image. Add realistic architectural materials (fair-faced concrete, Swiss larch timber slats, triple-glazed curtain facade), balanced soft ambient daylight, subtle glass reflections, natural surrounding landscape with pine trees. Shot on 24mm tilt-shift architectural lens, photorealistic 8K global illumination.`;
 
-        // 1. Direct high-speed upload to FAL Storage (ultra-reliable)
-        try {
-          uploadedImageUrl = await fal.storage.upload(blob);
-          console.log("[FAL] Direct storage upload succeeded:", uploadedImageUrl);
-        } catch (falStorageErr) {
-          console.warn("[FAL] fal.storage.upload fallback to Supabase:", falStorageErr);
-        }
+      const renderRes = await requestAIRender({
+        prompt,
+        image: dataUrl,
+        strength: styleStrength,
+        style: activeStyle as any
+      });
 
-        // 2. Supabase Storage fallback
-        if (!uploadedImageUrl) {
-          const fileName = `${safeCompanyId}/whiteboardExports/${safeUserId}/tmp_3d_${Date.now()}.png`;
-          const { error: upErr } = await supabase.storage.from('avatars').upload(fileName, blob, { upsert: true });
-          if (!upErr) {
-            const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
-            uploadedImageUrl = data.publicUrl;
-          }
-        }
-      } catch (e) {
-        console.warn("Snapshot upload preparation failed:", e);
+      if (!renderRes.success || !renderRes.imageUrl) {
+        throw new Error(renderRes.error || t('error_generating_render'));
       }
 
-      if (uploadedImageUrl) {
-        try {
-          let styleStrength = 0.50; // Calibrated for strict architectural geometry and massing preservation
-          if (activeStyle === 'sketch') styleStrength = 0.38;
-          if (activeStyle === 'cyberpunk') styleStrength = 0.58;
-          if (activeStyle === 'photoreal') styleStrength = 0.48;
-
-          const basePrompt = renderPrompt || 'Modern architectural building, authentic materials, natural daylight';
-          const prompt = `Architectural competition visualization of ${basePrompt}. STICT RULE: Keep the exact 3D building volume, geometry, proportions, massing, perspective and structural lines from the image. Add realistic architectural materials (fair-faced concrete, Swiss larch timber slats, triple-glazed curtain facade), balanced soft ambient daylight, subtle glass reflections, natural surrounding landscape with pine trees. Shot on 24mm tilt-shift architectural lens, photorealistic 8K global illumination.`;
-
-          const result: any = await fal.subscribe("fal-ai/flux/dev/image-to-image", {
-            input: { 
-              prompt, 
-              image_url: uploadedImageUrl, 
-              strength: styleStrength,
-              guidance_scale: 7.5,
-              num_inference_steps: 28
-            },
-            logs: false
-          });
-
-          if (result?.data?.images?.[0]?.url) {
-            generatedUrl = result.data.images[0].url;
-          } else if (result?.images?.[0]?.url) {
-            generatedUrl = result.images[0].url;
-          }
-        } catch (falErr) {
-          console.warn("fal.ai call failed/unconfigured, using AI Vision canvas fallback:", falErr);
-        }
-      }
-
-      if (generatedUrl) {
-        const imageRes = await fetch(generatedUrl);
-        const blob = await imageRes.blob();
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setGeneratedImage(reader.result as string);
-          setGeneratedImageUrl(generatedUrl);
-          setIsRendering(false);
-        };
-        reader.readAsDataURL(blob);
-      } else {
-        // Fallback rendering using enhanced architectural shader canvas
-        const enhancedImage = await generateEnhancedSnapshotFallback(dataUrl, activeStyle);
-        setGeneratedImage(enhancedImage);
-        setGeneratedImageUrl(enhancedImage);
-        setIsRendering(false);
-        addToast('KI Rendering erfolgreich erstellt!', 'success');
-      }
+      setGeneratedImage(renderRes.imageUrl);
+      setGeneratedImageUrl(renderRes.imageUrl);
+      addToast('KI Rendering erfolgreich erstellt!', 'success');
     } catch (error: any) { 
       console.error("AI Render error:", error);
-      addToast(t('error_generating_render'), "error"); 
+      addToast(error?.message || t('error_generating_render'), "error"); 
+    } finally {
       setIsRendering(false);
     }
   };

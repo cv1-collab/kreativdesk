@@ -57,7 +57,7 @@ export interface SmartProposal {
   attachments: ProposalAttachment[];
   legalDocuments?: ProposalLegalDoc[]; // AGB, Werkverträge, Kooperationsverträge, NDA
   paymentMilestones?: PaymentMilestone[]; // SIA 102 / 108 / 118 Zahlungsplan
-  themeStyle: 'keynote' | 'architecture' | 'photography' | 'scenography' | 'swiss' | 'neo-brutalism' | 'glassmorphism' | 'cyberpunk' | 'minimal-tech';
+  themeStyle: 'keynote' | 'architecture' | 'photography' | 'scenography' | 'swiss' | 'neo-brutalism' | 'glassmorphism' | 'cyberpunk' | 'minimal-tech' | 'notebooklm';
   themeColor: string;
   colorMode?: 'dark' | 'light' | 'auto';
   slides: any[];

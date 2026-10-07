@@ -17,7 +17,7 @@ import {
   Copy, Zap, Check, Edit3, Wand2, Compass, Layers3, Flame, Building2, Trees, Tag, StickyNote, Circle, RotateCcw,
   Sun, Moon, Sliders, Type as TypeIcon, AlignLeft, AlignCenter, AlignRight, ArrowRight,
   Video as VideoIcon, Globe, MessageSquare, CheckCircle2, ShieldCheck, Share2, PlusCircle, ExternalLink, AlertCircle, HelpCircle,
-  Undo2, Redo2
+  Undo2, Redo2, Bookmark, Radio
 } from 'lucide-react';
 import { exportDeckToPptx } from '../utils/pptxExportHelper';
 import { jsPDF } from 'jspdf';
@@ -188,7 +188,7 @@ interface DeckSettings {
   logoUrl: string; 
   footerText: string; 
   themeColor: string; 
-  themeStyle: 'keynote' | 'architecture' | 'photography' | 'scenography' | 'swiss' | 'neo-brutalism' | 'glassmorphism' | 'cyberpunk' | 'minimal-tech'; 
+  themeStyle: 'keynote' | 'architecture' | 'photography' | 'scenography' | 'swiss' | 'neo-brutalism' | 'glassmorphism' | 'cyberpunk' | 'minimal-tech' | 'notebooklm'; 
   colorMode: 'dark' | 'light';
   transitionEffect?: 'fade' | 'slide' | 'zoom';
 }
@@ -464,6 +464,35 @@ export default function PitchDeckStudio({
   const [isExtractingPdf, setIsExtractingPdf] = useState(false);
   const aiDocumentInputRef = useRef<HTMLInputElement>(null);
   const [isFormatModalOpen, setIsFormatModalOpen] = useState(false);
+  const [isNotebookLMModalOpen, setIsNotebookLMModalOpen] = useState(false);
+
+  const handleCopyNotebookLMDossier = () => {
+    let md = `# PROJEKT DOSSIER: ${activeProject?.name || 'Kreativ Desk Projekt'}\n`;
+    if (activeProject?.description) {
+      md += `\n## Projekt-Beschreibung\n${activeProject.description}\n`;
+    }
+    md += `\n## Pitch Deck & Konzept-Folien (${slides.length} Folien)\n\n`;
+    slides.forEach((s, idx) => {
+      md += `### Folie ${idx + 1}: ${s.title}\n`;
+      if (s.dataPayload?.kicker) md += `**Kategorie:** ${s.dataPayload.kicker}\n`;
+      if (s.content) md += `**Inhalt:** ${s.content}\n`;
+      if (s.dataPayload?.keyMetric?.value) {
+        md += `**Kennzahl:** ${s.dataPayload.keyMetric.value} (${s.dataPayload.keyMetric.label || ''})\n`;
+      }
+      if (s.dataPayload?.cards && s.dataPayload.cards.length > 0) {
+        md += `**Schwerpunkte & Details:**\n`;
+        s.dataPayload.cards.forEach((c: any) => {
+          md += `- **${c.title}**${c.badge ? ` [${c.badge}]` : ''}: ${c.description || ''}\n`;
+        });
+      }
+      if (s.notes) md += `*Referenten-Notiz:* ${s.notes}\n`;
+      if (s.dataPayload?.sourceAnchor) md += `*Quelle:* ${s.dataPayload.sourceAnchor}\n`;
+      md += `\n---\n\n`;
+    });
+
+    navigator.clipboard.writeText(md);
+    addToast('NotebookLM Dossier kopiert! Alle Folien sind in der Zwischenablage.', 'success');
+  };
   const [showExportShareMenu, setShowExportShareMenu] = useState(false);
   const [showInsertMenu, setShowInsertMenu] = useState(false);
   const [showTypoFlyout, setShowTypoFlyout] = useState(false);
@@ -1210,9 +1239,14 @@ GIB DAS ERGEBNIS AUSSCHLIESSLICH ALS VALIDES JSON-ARRAY ZURÜCK:
   }
 ]
 
-LAYOUT-REGELN:
+LAYOUT-REGELN & NOTEBOOKLM QUALITÄT:
 - Für Folie 1: Wähle "title-only" mit einem kraftvollen Kicker und Subtitel im content.
-- Für Analyse-, Strategie-, Konzept- und Themen-Folien: Wähle bevorzugt "cards-grid" (mit 2-3 Cards und einer KeyMetric) oder "stat-callout".
+- Für "cards-grid":
+  * Generiere IMMER genau 2 Karten, genau 3 Karten oder genau 4 Karten (2x2 Grid). Niemals 1 oder 5 asymmetrische Karten.
+  * keyMetric: NUR FÜR ECHTE QUANTITATIVE KENNZAHLEN (z. B. '+140%', 'CHF 2.5M', '60 Zoll', '12 Monate', '85%'). NIEMALS Datumsangaben (wie '1.12.25' oder '2026') als keyMetric.value verwenden! Wenn keine quantitative Kennzahl vorliegt, setze keyMetric auf null.
+  * sourceAnchor: Präzise Quellenangabe, z. B. 'Dokument S. 16'.
+  * Zitate im Text: Markiere Quellenstellen in card.description direkt mit [S. 16] oder [S. 12, 14].
+- Für Kennzahlen-Fokus: Wähle "stat-callout" (nur für echte messbare KPIs).
 - Für Kosten/Budget: Wähle "chart-donut" oder "data-budget".
 - Für Terminplan/Phasen: Wähle "smart-calendar".
 - Für Leitgedanken: Wähle "quote-statement".
@@ -3708,6 +3742,10 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
         return isLight
           ? 'font-sans bg-[#f5f2eb] text-[#2d3728] border border-[#d6cfc0] shadow-sm rounded-2xl'
           : 'font-sans bg-[#1b2218] text-[#e3ded3] border border-[#3b4735] shadow-sm rounded-2xl';
+      case 'notebooklm': 
+        return isLight
+          ? 'font-sans bg-slate-50 text-slate-900 border border-indigo-200/80 shadow-2xl rounded-2xl ring-1 ring-indigo-500/10'
+          : 'font-sans bg-[#0c0f17] text-zinc-100 border border-indigo-500/30 shadow-[0_0_60px_rgba(99,102,241,0.18)] rounded-2xl ring-1 ring-white/5';
       case 'keynote': default: 
         return isLight
           ? 'font-sans bg-gradient-to-br from-slate-50 via-slate-100 to-indigo-50 text-slate-900 border border-slate-200 shadow-2xl rounded-2xl'
@@ -3753,7 +3791,7 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
 
   const renderSlideContent = (slide: Slide) => {
     const isLightMode = deckSettings.colorMode === 'light';
-    const isDarkTheme = !isLightMode && ['photography', 'scenography', 'cyberpunk', 'architecture', 'keynote', 'glassmorphism'].includes(deckSettings.themeStyle);
+    const isDarkTheme = !isLightMode && ['photography', 'scenography', 'cyberpunk', 'architecture', 'keynote', 'glassmorphism', 'notebooklm'].includes(deckSettings.themeStyle);
     const tc = isDarkTheme ? "text-white" : "text-slate-900";
     
     const displayTitle = activeSlide?.id === slide.id ? localTitle : (slide.title ?? '');
@@ -4029,6 +4067,7 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
         {deckSettings.themeStyle === 'glassmorphism' && <div className="absolute -bottom-20 -left-20 w-[600px] h-[600px] rounded-full blur-[120px] opacity-25 pointer-events-none" style={{ backgroundColor: deckSettings.themeColor }}></div>}
         {deckSettings.themeStyle === 'architecture' && <div className="absolute top-3 right-4 font-sans font-semibold tracking-wider text-[9px] text-slate-400 opacity-60 pointer-events-none flex items-center gap-2">[ + ] SCALE 1:100 | SIA ARCHITECTURE</div>}
         {deckSettings.themeStyle === 'swiss' && <div className="absolute top-4 right-6 px-3 py-1 bg-red-600 text-white font-black text-[10px] tracking-widest uppercase pointer-events-none">SWISS GRAPHIC</div>}
+        {deckSettings.themeStyle === 'notebooklm' && <div className="absolute top-4 right-6 px-3 py-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 font-bold text-[9px] tracking-widest uppercase rounded-full pointer-events-none flex items-center gap-1.5"><Sparkles size={11} className="text-indigo-400" /> NOTEBOOKLM GROUNDED INTELLIGENCE</div>}
 
         {/* KREATIV DESK BADGES / STEMPEL */}
         {slide.stamp && (
@@ -5207,142 +5246,188 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
           )}
 
           {/* NOTEBOOKLM-STYLE: BENTO CARDS GRID */}
-          {slide.layout === 'cards-grid' && (
-            <div className="w-full h-full flex flex-col justify-center gap-4 lg:gap-6 col-span-full py-2">
-              {/* KEY METRIC BANNER */}
-              {(slide.dataPayload?.keyMetric || !isPreviewMode) && (
-                <div className="flex items-baseline gap-4 border-b border-border/40 pb-3 flex-wrap">
-                  {!isPreviewMode ? (
-                    <div className="flex items-baseline gap-3 flex-wrap flex-1">
-                      <input
-                        type="text"
-                        value={slide.dataPayload?.keyMetric?.value || ''}
-                        onChange={(e) => handleUpdateKeyMetric(slide.id, 'value', e.target.value)}
-                        placeholder="+140% oder CHF 2.5M"
-                        className="text-4xl lg:text-5xl font-black tracking-tight font-sans tabular-nums bg-transparent outline-none border-b border-transparent focus:border-purple-500 w-64"
-                        style={{ color: deckSettings.themeColor }}
-                      />
-                      <input
-                        type="text"
-                        value={slide.dataPayload?.keyMetric?.label || ''}
-                        onChange={(e) => handleUpdateKeyMetric(slide.id, 'label', e.target.value)}
-                        placeholder="Kennzahl Beschreibung..."
-                        className={cn("text-xs font-bold uppercase tracking-widest bg-transparent outline-none border-b border-transparent focus:border-purple-500 flex-1 min-w-[200px]", tc)}
-                      />
-                    </div>
-                  ) : (
-                    slide.dataPayload?.keyMetric?.value && (
-                      <div className="flex items-baseline gap-4">
-                        <span 
-                          className="text-4xl lg:text-5xl font-black tracking-tight font-sans tabular-nums"
-                          style={{ color: deckSettings.themeColor }}
-                        >
-                          {slide.dataPayload.keyMetric.value}
-                        </span>
-                        <div className="flex flex-col">
-                          <span className="text-xs font-bold uppercase tracking-widest opacity-60">
-                            {slide.dataPayload.keyMetric.label}
-                          </span>
-                          {slide.dataPayload?.sourceAnchor && (
-                            <span className="text-[10px] opacity-40 font-mono">
-                              Quelle: {slide.dataPayload.sourceAnchor}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  )}
-                  {!isPreviewMode && (
-                    <button
-                      type="button"
-                      onClick={() => handleAddBentoCard(slide.id)}
-                      className="px-2.5 py-1 rounded-lg bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 text-[11px] font-bold flex items-center gap-1 border border-purple-500/30 cursor-pointer ml-auto"
+          {slide.layout === 'cards-grid' && (() => {
+            const cardCount = slide.dataPayload?.cards?.length || 0;
+            const gridClass = cardCount === 1 
+              ? "grid-cols-1 max-w-xl mx-auto" 
+              : cardCount === 2 || cardCount === 4 
+              ? "grid-cols-1 md:grid-cols-2" 
+              : "grid-cols-1 md:grid-cols-3";
+
+            const renderCitationText = (text: string) => {
+              if (!text) return null;
+              const citationRegex = /(\[(?:S\.|Quelle|Dokument)[^\]]+\]|\((?:S\.|Quelle|Dokument)[^\)]+\))/gi;
+              const parts = text.split(citationRegex);
+              return parts.map((part, i) => {
+                if (citationRegex.test(part)) {
+                  const clean = part.replace(/^[\(\[]/, '').replace(/[\)\]]$/, '').trim();
+                  return (
+                    <span
+                      key={i}
+                      className={cn(
+                        "inline-flex items-center gap-1 px-1.5 py-0.5 mx-1 rounded-md text-[10px] font-mono font-bold tracking-tight align-baseline select-none",
+                        isDarkTheme
+                          ? "bg-indigo-950/90 text-indigo-300 border border-indigo-700/60 shadow-xs"
+                          : "bg-indigo-50 text-indigo-700 border border-indigo-200/80 shadow-xs"
+                      )}
                     >
-                      <Plus size={12} /> Karte hinzufügen
-                    </button>
-                  )}
-                </div>
-              )}
+                      {clean}
+                    </span>
+                  );
+                }
+                return part;
+              });
+            };
 
-              {/* BENTO CARDS */}
-              <div className={cn(
-                "grid gap-4 w-full flex-1 items-stretch",
-                (slide.dataPayload?.cards?.length || 0) === 2 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1 md:grid-cols-3"
-              )}>
-                {(slide.dataPayload?.cards || []).map((card: any, cIdx: number) => (
-                  <div
-                    key={cIdx}
-                    className={cn(
-                      "p-5 rounded-2xl border transition-all flex flex-col justify-between shadow-lg relative group/card",
-                      isDarkTheme 
-                        ? "bg-zinc-900/80 border-zinc-800 shadow-black/40 backdrop-blur-md" 
-                        : "bg-white/90 border-zinc-200/90 shadow-zinc-200/50"
-                    )}
-                  >
-                    {!isPreviewMode && (
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteBentoCard(slide.id, cIdx)}
-                        className="absolute top-2 right-2 p-1.5 text-red-400 hover:text-red-500 opacity-0 group-hover/card:opacity-100 transition-opacity bg-black/40 rounded-full cursor-pointer z-20"
-                        title="Karte entfernen"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    )}
-                    <div className="flex-1 flex flex-col">
-                      {!isPreviewMode ? (
+            return (
+              <div className="w-full h-full flex flex-col justify-center gap-4 lg:gap-6 col-span-full py-2">
+                {/* KEY METRIC BANNER */}
+                {(slide.dataPayload?.keyMetric || !isPreviewMode) && (
+                  <div className={cn(
+                    "flex items-center justify-between gap-4 px-6 py-3.5 rounded-2xl border transition-all flex-wrap",
+                    isDarkTheme
+                      ? "bg-gradient-to-r from-indigo-950/40 via-zinc-900/60 to-zinc-900/40 border-indigo-500/30 shadow-lg shadow-indigo-950/20 ring-1 ring-white/5"
+                      : "bg-gradient-to-r from-indigo-50/70 via-white to-slate-50 border-indigo-200/80 shadow-xs ring-1 ring-black/[0.02]"
+                  )}>
+                    {!isPreviewMode ? (
+                      <div className="flex items-baseline gap-3 flex-wrap flex-1">
                         <input
                           type="text"
-                          value={card.badge || ''}
-                          onChange={(e) => handleUpdateBentoCard(slide.id, cIdx, 'badge', e.target.value)}
-                          placeholder="TAG / KATEGORIE"
-                          className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider mb-2.5 w-fit bg-transparent border border-border/50 outline-none"
-                          style={{ color: deckSettings.themeColor }}
+                          value={slide.dataPayload?.keyMetric?.value || ''}
+                          onChange={(e) => handleUpdateKeyMetric(slide.id, 'value', e.target.value)}
+                          placeholder="+140% oder CHF 2.5M"
+                          className="text-3xl lg:text-4xl font-black tracking-tight font-sans tabular-nums bg-transparent outline-none border-b border-transparent focus:border-indigo-500 w-56"
+                          style={{ color: deckSettings.themeColor || '#6366f1' }}
                         />
-                      ) : (
-                        card.badge && (
+                        <input
+                          type="text"
+                          value={slide.dataPayload?.keyMetric?.label || ''}
+                          onChange={(e) => handleUpdateKeyMetric(slide.id, 'label', e.target.value)}
+                          placeholder="Kennzahl Beschreibung (z. B. ROI / Kapazität)..."
+                          className={cn("text-xs font-bold uppercase tracking-widest bg-transparent outline-none border-b border-transparent focus:border-indigo-500 flex-1 min-w-[200px]", isDarkTheme ? "text-indigo-300" : "text-indigo-950")}
+                        />
+                      </div>
+                    ) : (
+                      slide.dataPayload?.keyMetric?.value && (
+                        <div className="flex items-baseline gap-4 flex-wrap">
                           <span 
-                            className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider mb-3 w-fit"
-                            style={{ backgroundColor: `${deckSettings.themeColor}20`, color: deckSettings.themeColor }}
+                            className="text-3xl lg:text-4xl font-black tracking-tight font-sans tabular-nums"
+                            style={{ color: deckSettings.themeColor || '#6366f1' }}
                           >
-                            {card.badge}
+                            {slide.dataPayload.keyMetric.value}
                           </span>
-                        )
-                      )}
-
-                      {!isPreviewMode ? (
-                        <input
-                          type="text"
-                          value={card.title || ''}
-                          onChange={(e) => handleUpdateBentoCard(slide.id, cIdx, 'title', e.target.value)}
-                          placeholder="Kernaussage / Überschrift..."
-                          className={cn("text-base font-bold mb-2 leading-snug bg-transparent outline-none border-b border-transparent focus:border-purple-500", tc)}
-                        />
-                      ) : (
-                        <h4 className={cn("text-base font-bold mb-2 leading-snug", tc)}>
-                          {card.title}
-                        </h4>
-                      )}
-
-                      {!isPreviewMode ? (
-                        <textarea
-                          rows={3}
-                          value={card.description || ''}
-                          onChange={(e) => handleUpdateBentoCard(slide.id, cIdx, 'description', e.target.value)}
-                          placeholder="Prägnante Details und Kontextpunkte..."
-                          className={cn("text-xs leading-relaxed opacity-75 bg-transparent outline-none resize-none border-b border-transparent focus:border-purple-500 flex-1", tc)}
-                        />
-                      ) : (
-                        <p className={cn("text-xs leading-relaxed opacity-75 whitespace-pre-wrap", tc)}>
-                          {card.description}
-                        </p>
+                          <div className="flex flex-col">
+                            <span className={cn("text-xs font-black uppercase tracking-wider", isDarkTheme ? "text-indigo-300" : "text-indigo-950")}>
+                              {slide.dataPayload.keyMetric.label}
+                            </span>
+                            {slide.dataPayload?.sourceAnchor && (
+                              <span className="text-[10px] opacity-60 font-mono mt-0.5">
+                                Quelle: {slide.dataPayload.sourceAnchor}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    )}
+                    <div className="flex items-center gap-2 ml-auto">
+                      <div className={cn(
+                        "hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase",
+                        isDarkTheme
+                          ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
+                          : "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                      )}>
+                        Key Metric
+                      </div>
+                      {!isPreviewMode && (
+                        <button
+                          type="button"
+                          onClick={() => handleAddBentoCard(slide.id)}
+                          className="px-2.5 py-1 rounded-lg bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 text-[11px] font-bold flex items-center gap-1 border border-indigo-500/30 cursor-pointer"
+                        >
+                          <Plus size={12} /> Karte hinzufügen
+                        </button>
                       )}
                     </div>
                   </div>
-                ))}
+                )}
+
+                {/* BENTO CARDS */}
+                <div className={cn("grid gap-4 w-full flex-1 items-stretch", gridClass)}>
+                  {(slide.dataPayload?.cards || []).map((card: any, cIdx: number) => (
+                    <div
+                      key={cIdx}
+                      className={cn(
+                        "p-5 rounded-2xl border transition-all flex flex-col justify-between shadow-md relative group/card",
+                        isDarkTheme 
+                          ? "bg-zinc-900/85 border-zinc-800 shadow-black/40 backdrop-blur-md ring-1 ring-white/5" 
+                          : "bg-slate-50/95 border-slate-200/90 shadow-slate-200/50 ring-1 ring-black/[0.03] hover:border-slate-300"
+                      )}
+                    >
+                      {!isPreviewMode && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteBentoCard(slide.id, cIdx)}
+                          className="absolute top-2 right-2 p-1.5 text-red-400 hover:text-red-500 opacity-0 group-hover/card:opacity-100 transition-opacity bg-black/40 rounded-full cursor-pointer z-20"
+                          title="Karte entfernen"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      )}
+                      <div className="flex-1 flex flex-col">
+                        {!isPreviewMode ? (
+                          <input
+                            type="text"
+                            value={card.badge || ''}
+                            onChange={(e) => handleUpdateBentoCard(slide.id, cIdx, 'badge', e.target.value)}
+                            placeholder="TAG / KATEGORIE"
+                            className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider mb-2.5 w-fit bg-transparent border border-border/50 outline-none"
+                            style={{ color: deckSettings.themeColor || '#6366f1' }}
+                          />
+                        ) : (
+                          card.badge && (
+                            <span 
+                              className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider mb-3 w-fit"
+                              style={{ backgroundColor: `${deckSettings.themeColor || '#6366f1'}20`, color: deckSettings.themeColor || '#6366f1' }}
+                            >
+                              {card.badge}
+                            </span>
+                          )
+                        )}
+
+                        {!isPreviewMode ? (
+                          <input
+                            type="text"
+                            value={card.title || ''}
+                            onChange={(e) => handleUpdateBentoCard(slide.id, cIdx, 'title', e.target.value)}
+                            placeholder="Kernaussage / Überschrift..."
+                            className={cn("text-base font-bold mb-2 leading-snug bg-transparent outline-none border-b border-transparent focus:border-indigo-500", tc)}
+                          />
+                        ) : (
+                          <h4 className={cn("text-base font-bold mb-2 leading-snug", tc)}>
+                            {card.title}
+                          </h4>
+                        )}
+
+                        {!isPreviewMode ? (
+                          <textarea
+                            rows={3}
+                            value={card.description || ''}
+                            onChange={(e) => handleUpdateBentoCard(slide.id, cIdx, 'description', e.target.value)}
+                            placeholder="Prägnante Details und Kontextpunkte (z.B. mit [S. 16])..."
+                            className={cn("text-xs leading-relaxed opacity-75 bg-transparent outline-none resize-none border-b border-transparent focus:border-indigo-500 flex-1", tc)}
+                          />
+                        ) : (
+                          <p className={cn("text-xs leading-relaxed whitespace-pre-wrap", isDarkTheme ? "text-zinc-300" : "text-zinc-700")}>
+                            {renderCitationText(card.description)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* NOTEBOOKLM-STYLE: STAT CALLOUT */}
           {slide.layout === 'stat-callout' && (
@@ -5795,7 +5880,7 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  {[ {id:'keynote',n:t('keynote')},{id:'scenography',n:t('scenography')},{id:'architecture',n:t('architecture')},{id:'swiss',n:t('swiss')},{id:'photography',n:t('photography')},{id:'neo-brutalism',n:t('neo_brutalism')},{id:'glassmorphism',n:t('glassmorphism')},{id:'cyberpunk',n:t('cyberpunk')},{id:'minimal-tech',n:t('minimal_tech')}].map(thm=>(
+                  {[ {id:'notebooklm',n:'NotebookLM (Obsidian)'},{id:'keynote',n:t('keynote')},{id:'scenography',n:t('scenography')},{id:'architecture',n:t('architecture')},{id:'swiss',n:t('swiss')},{id:'photography',n:t('photography')},{id:'neo-brutalism',n:t('neo_brutalism')},{id:'glassmorphism',n:t('glassmorphism')},{id:'cyberpunk',n:t('cyberpunk')},{id:'minimal-tech',n:t('minimal_tech')}].map(thm=>(
                     <button type="button" key={thm.id} onClick={()=>updateDeckSettings({themeStyle:thm.id as any})} className={cn("p-4 rounded-xl border text-center transition-all text-xs font-bold cursor-pointer", deckSettings.themeStyle===thm.id?"bg-purple-500/20 border-purple-500 text-purple-700 dark:text-purple-300 shadow-sm":"bg-surface border-border text-text-primary hover:bg-black/5 dark:hover:bg-white/5")}>{thm.n}</button>
                   ))}
                 </div>
@@ -5932,7 +6017,7 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                   <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{t('master_templates')}</h3>
                 </div>
                 <div className="grid grid-cols-1 gap-1.5">
-                  {[ {id:'keynote',n:t('keynote')},{id:'scenography',n:t('scenography')},{id:'architecture',n:t('architecture')},{id:'swiss',n:t('swiss')},{id:'photography',n:t('photography')},{id:'neo-brutalism',n:t('neo_brutalism')},{id:'glassmorphism',n:t('glassmorphism')},{id:'cyberpunk',n:t('cyberpunk')},{id:'minimal-tech',n:t('minimal_tech')}].map(thm=>(
+                  {[ {id:'notebooklm',n:'NotebookLM (Obsidian)'},{id:'keynote',n:t('keynote')},{id:'scenography',n:t('scenography')},{id:'architecture',n:t('architecture')},{id:'swiss',n:t('swiss')},{id:'photography',n:t('photography')},{id:'neo-brutalism',n:t('neo_brutalism')},{id:'glassmorphism',n:t('glassmorphism')},{id:'cyberpunk',n:t('cyberpunk')},{id:'minimal-tech',n:t('minimal_tech')}].map(thm=>(
                     <button type="button" key={thm.id} onClick={()=>updateDeckSettings({themeStyle:thm.id as any})} className={cn("w-full p-2.5 rounded-lg border text-left transition-all text-xs font-bold flex items-center justify-between", deckSettings.themeStyle===thm.id?"bg-purple-500/10 border-purple-500 text-purple-700 dark:text-purple-300 shadow-sm":"bg-background border-border text-text-primary hover:bg-black/5 dark:hover:bg-white/5")}>
                       <span>{thm.n}</span>
                       {deckSettings.themeStyle===thm.id && <Check size={12} className="text-purple-600 dark:text-purple-400" />}
@@ -6197,6 +6282,15 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
             </div>
 
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
+              <button 
+                type="button"
+                onClick={() => setIsNotebookLMModalOpen(true)}
+                className="px-2.5 sm:px-3 py-1.5 sm:py-2 bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/35 text-indigo-400 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm shrink-0 cursor-pointer font-sans"
+                title="Google NotebookLM Hub & Dossier-Export"
+              >
+                <Sparkles size={13} className="text-indigo-400" />
+                <span className="hidden lg:inline">NotebookLM Hub</span>
+              </button>
               <ModuleGuideButton moduleId="pitch" compact className="h-8 sm:h-9" />
               <button 
                 type="button" 
@@ -7646,6 +7740,127 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
               <button type="button" onClick={() => handleGenerateAIDeck()} disabled={isGeneratingAIDeck || (!aiPromptInput.trim() && !aiDocumentText)} className="px-6 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold shadow-lg disabled:opacity-50 transition-all flex items-center gap-2">
                 {isGeneratingAIDeck ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
                 <span>{aiDocumentText ? 'Deck aus PDF generieren (Grounded)' : 'Deck generieren'}</span>
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* NOTEBOOKLM INTEGRATION & BRIDGE MODAL */}
+      {isNotebookLMModalOpen && (
+        <div className="fixed inset-0 z-[150000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-indigo-500/40 rounded-3xl w-full max-w-xl shadow-2xl p-6 sm:p-7 space-y-6">
+            <div className="flex justify-between items-start border-b border-border/50 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
+                  <Sparkles size={20} />
+                </div>
+                <div>
+                  <h3 className="font-black text-lg flex items-center gap-2 text-text-primary">
+                    Google NotebookLM Integration
+                  </h3>
+                  <p className="text-xs text-text-muted mt-0.5">
+                    Verbinde dein Projekt mit Googles KI-Forschungs- und Audio-Podcast-Engine
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsNotebookLMModalOpen(false)} 
+                className="text-text-muted hover:text-text-primary p-2 bg-background border border-border rounded-xl cursor-pointer"
+              >
+                <X size={18}/>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* STATUS EXPLANATION */}
+              <div className="p-4 rounded-2xl bg-indigo-950/20 border border-indigo-500/25 text-xs text-indigo-200/90 leading-relaxed space-y-2">
+                <div className="font-bold flex items-center gap-1.5 text-indigo-300">
+                  <Bookmark size={14} /> Warum keine direkte NotebookLM-API?
+                </div>
+                <p>
+                  Google stellt für <strong>NotebookLM</strong> (Gemini Notebook) absichtlich keine öffentliche Entwickler-REST-API zur Verfügung. Mit Kreativ Desk OS hast du jedoch den <strong>perfekten Workflow</strong>:
+                </p>
+              </div>
+
+              {/* ACTION 1: COPY DOSSIER */}
+              <div className="p-4 rounded-2xl bg-background border border-border flex items-center justify-between gap-4">
+                <div className="flex-1">
+                  <div className="text-xs font-bold text-text-primary flex items-center gap-1.5">
+                    <FileText size={14} className="text-indigo-400" /> 1. Vollständiges Projekt-Dossier kopieren
+                  </div>
+                  <div className="text-[11px] text-text-muted mt-0.5">
+                    Generiert ein strukturiertes Markdown-Dossier aller Folien, Kennzahlen, Budgets & Notizen für die Zwischenablage.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopyNotebookLMDossier}
+                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+                >
+                  <Copy size={13} /> Kopieren
+                </button>
+              </div>
+
+              {/* ACTION 2: OPEN NOTEBOOKLM */}
+              <div className="p-4 rounded-2xl bg-background border border-border flex items-center justify-between gap-4">
+                <div className="flex-1">
+                  <div className="text-xs font-bold text-text-primary flex items-center gap-1.5">
+                    <ExternalLink size={14} className="text-blue-400" /> 2. NotebookLM in Google öffnen
+                  </div>
+                  <div className="text-[11px] text-text-muted mt-0.5">
+                    Öffnet notebooklm.google.com ➔ Klicke auf «+ Quelle hinzufügen» ➔ «Kopierter Text» und füge dein Dossier ein.
+                  </div>
+                </div>
+                <a
+                  href="https://notebooklm.google.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2.5 bg-surface hover:bg-surface-hover border border-border text-text-primary rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <ExternalLink size={13} /> Öffnen
+                </a>
+              </div>
+
+              {/* ACTION 3: APPLY NOTEBOOKLM OBSIDIAN THEME */}
+              <div className="p-4 rounded-2xl bg-background border border-border flex items-center justify-between gap-4">
+                <div className="flex-1">
+                  <div className="text-xs font-bold text-text-primary flex items-center gap-1.5">
+                    <Palette size={14} className="text-purple-400" /> 3. NotebookLM Design-Theme aktivieren
+                  </div>
+                  <div className="text-[11px] text-text-muted mt-0.5">
+                    Schaltet dein aktuelles Pitch Deck sofort auf den dunklen Obsidian-Look mit Bento-Karten & Quellen-Zitaten um.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    updateDeckSettings({ themeStyle: 'notebooklm', colorMode: 'dark', themeColor: '#6366f1' });
+                    setIsNotebookLMModalOpen(false);
+                    addToast('NotebookLM Theme aktiviert! Obsidian-Modus aktiv.', 'success');
+                  }}
+                  className="px-4 py-2.5 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 text-purple-300 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Sparkles size={13} /> Theme anwenden
+                </button>
+              </div>
+
+              {/* TIP: AUDIO OVERVIEW */}
+              <div className="p-3.5 rounded-xl bg-surface border border-border text-[11px] text-text-muted flex items-start gap-2.5">
+                <Radio size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="text-text-primary">Tipp: 2-Personen Audio-Podcast generieren:</strong> Sobald du das Dossier in NotebookLM eingefügt hast, klicke rechts im Notebook-Guide auf <em>«Audio Overview (Deep Dive)»</em>. NotebookLM generiert in 2 Minuten einen verblüffend lebendigen KI-Podcast über dein Projekt!
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-border">
+              <button
+                type="button"
+                onClick={() => setIsNotebookLMModalOpen(false)}
+                className="px-4 py-2 bg-surface hover:bg-surface-hover border border-border text-text-primary rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                Schliessen
               </button>
             </div>
           </motion.div>
