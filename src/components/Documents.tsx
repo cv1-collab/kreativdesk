@@ -25,6 +25,7 @@ import { uploadFileWithFallback, deleteFileFromStorage } from '../utils/cloudSto
 import { sendNotification } from '../lib/notifications';
 import { safeStorage } from '../utils/safeStorage';
 import ModuleGuideButton from './ModuleGuideButton';
+import { getFileCategory } from '../utils/documentClassifier';
 
 const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
   en: { 
@@ -439,37 +440,6 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
   const [isStudioOpen, setIsStudioOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const getFileCategory = (item: any): '3d' | 'cad' | 'image' | 'pdf' | 'archive' | 'template' | 'general' => {
-    const name = (item.name || '').toLowerCase();
-    const fileUrl = item.url || item.file_url || '';
-    
-    // 3D / BIM / Blender Models
-    if (/\.(fbx|obj|blend|ifc|gltf|glb|stl|dae|3ds|step|stp)$/i.test(name)) {
-      return '3d';
-    }
-    // CAD Pläne
-    if (/\.(dwg|dxf)$/i.test(name)) {
-      return 'cad';
-    }
-    // Bilder
-    if (item.type?.startsWith('image/') || /\.(png|jpe?g|webp|svg|gif|bmp|tiff)$/i.test(name)) {
-      return 'image';
-    }
-    // PDF Dokumente
-    if (item.type === 'application/pdf' || name.endsWith('.pdf') || fileUrl.includes('.pdf') || fileUrl.startsWith('data:application/pdf')) {
-      return 'pdf';
-    }
-    // Archive
-    if (/\.(zip|rar|7z|tar|gz)$/i.test(name)) {
-      return 'archive';
-    }
-    // Echte Vorlagen / Text-Dokumente
-    if (item.type === 'vorlage' || name.endsWith('.txt') || name.endsWith('.md') || fileUrl.startsWith('data:text')) {
-      return 'template';
-    }
-    return 'general';
-  };
 
   const getFileBadgeAndIcon = (item: any) => {
     const category = getFileCategory(item);
