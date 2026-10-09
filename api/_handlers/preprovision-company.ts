@@ -32,7 +32,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       max_seats: maxSeats || 1,
       used_seats: 1,
       created_at: now
-    }).select().single();
+    }).select().maybeSingle();
 
     if (compErr || !company) throw (compErr || new Error('Failed to create company'));
     const companyId = company.id;
@@ -46,7 +46,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       role: 'owner',
       status: 'pending',
       created_at: now
-    }).select().single();
+    }).select().maybeSingle();
 
     if (inviteErr || !ceoInvite) throw (inviteErr || new Error('Failed to create CEO invite'));
 
@@ -72,7 +72,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       name,
       is_folder: true,
       category: 'company',
-      project_id: 'global',
+      project_id: null,
       folder_id: 'root',
       company_id: companyId,
       created_at: now
@@ -88,7 +88,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         status: 'in_progress',
         company_id: companyId,
         created_at: now
-      }).select().single();
+      }).select().maybeSingle();
 
       if (project) {
         await supabaseAdmin.from('defects').insert([

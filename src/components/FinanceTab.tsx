@@ -92,8 +92,11 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
     e.stopPropagation();
     if (window.confirm(t('confirm_delete'))) {
       try {
-        await supabase.from('transactions').delete().eq('id', id);
-        await supabase.from('time_entries').delete().eq('id', id);
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+        if (isUuid) {
+          await supabase.from('transactions').delete().eq('id', id);
+          await supabase.from('time_entries').delete().eq('id', id);
+        }
         setTransactions(prev => prev.filter(tx => tx.id !== id));
         addToast(t('entry_deleted'), "success");
       } catch (e) {
@@ -127,11 +130,14 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
     if (window.confirm(`Möchtest du wirklich ${selectedIds.length} ausgewählte Einträge unwiderruflich löschen?`)) {
       try {
         const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
-        let query = supabase.from('transactions').delete().in('id', selectedIds);
-        if (safeCompanyId) {
-          query = query.eq('company_id', safeCompanyId);
+        const validUuids = selectedIds.filter(id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
+        if (validUuids.length > 0) {
+          let query = supabase.from('transactions').delete().in('id', validUuids);
+          if (safeCompanyId) {
+            query = query.eq('company_id', safeCompanyId);
+          }
+          await query;
         }
-        await query;
         setTransactions(prev => prev.filter(tx => !selectedIds.includes(tx.id)));
         setSelectedIds([]);
         addToast(`${selectedIds.length} Einträge erfolgreich gelöscht!`, 'success');

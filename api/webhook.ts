@@ -53,7 +53,7 @@ export default async function handler(req: any, res: any) {
           .from('profiles')
           .select('company_id')
           .eq('id', uid)
-          .single();
+          .maybeSingle();
 
         if (profile?.company_id) {
           let newMaxSeats = 1;

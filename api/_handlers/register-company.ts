@@ -115,7 +115,7 @@ export default async function handler(req: any, res: any) {
             created_at: now
           })
           .select()
-          .single();
+          .maybeSingle();
 
         if (compErr || !newComp) throw (compErr || new Error('Failed to create company'));
         assignedCompanyId = newComp.id;

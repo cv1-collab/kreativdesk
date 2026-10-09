@@ -123,7 +123,7 @@ export default async function handler(req: any, res: any) {
               created_at: timestamp.toISOString()
             })
             .select()
-            .single();
+            .maybeSingle();
 
           if (!compErr && newComp) {
             targetCompanyId = newComp.id;

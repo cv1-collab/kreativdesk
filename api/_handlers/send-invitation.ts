@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { verifyAuth } from '../_auth.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS headers
@@ -15,6 +16,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    const authUser = await verifyAuth(req);
+    if (!authUser) {
+      return res.status(401).json({ error: 'Unauthorized: Authentication required to send invitations' });
+    }
+
     const { title, date, time, description, meetingLink, recipients, senderName, companyId, language, type } = req.body || {};
 
     if (!title || !recipients || (Array.isArray(recipients) && recipients.length === 0)) {

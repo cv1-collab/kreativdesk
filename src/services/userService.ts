@@ -41,10 +41,9 @@ export const offboardCompanyUser = async (userId: string, companyId?: string | n
     await supabase.from('company_users').delete().eq('id', userId);
     await supabase.from('company_users').delete().eq('user_id', userId);
 
-    // 2. User-Profil von der Firma entkoppeln und ggf. löschen (Profiles)
+    // 2. User-Profil von der Firma entkoppeln (Profiles)
     if (companyId) {
       await supabase.from('profiles').update({ company_id: null, role: 'guest' }).eq('id', userId).eq('company_id', companyId);
-      await supabase.from('profiles').delete().eq('id', userId).eq('company_id', companyId);
       await supabase.from('company_users').delete().eq('id', userId).eq('company_id', companyId);
       await supabase.from('company_users').delete().eq('user_id', userId).eq('company_id', companyId);
       await supabase.from('project_members').delete().eq('user_id', userId).eq('company_id', companyId);
@@ -61,7 +60,7 @@ export const offboardCompanyUser = async (userId: string, companyId?: string | n
       // 3. Belegte Lizenzen (used_seats) der Firma neu berechnen und freigeben
       await syncCompanySeats(companyId);
     } else {
-      await supabase.from('profiles').delete().eq('id', userId);
+      await supabase.from('profiles').update({ company_id: null, role: 'guest' }).eq('id', userId);
       await supabase.from('project_members').delete().eq('user_id', userId);
     }
 

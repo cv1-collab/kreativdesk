@@ -3,6 +3,8 @@
  * Connects directly to Fal Flux Dev image-to-image with server proxy and direct fallback.
  */
 
+import { supabase } from '../lib/supabase';
+
 interface RenderOptions {
   prompt: string;
   image: string; // base64 data URL
@@ -72,11 +74,17 @@ export async function requestAIRender(options: RenderOptions): Promise<RenderRes
 
     // 1. Primary: Server Proxy (/api/render-image)
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
       const response = await fetch('/api/render-image', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify({
           prompt: options.prompt,
           image: optimizedImage,

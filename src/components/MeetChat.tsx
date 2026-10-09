@@ -1059,6 +1059,8 @@ export default function MeetChat() {
     try {
       const eventId = `evt-${Date.now()}`;
       const targetProjectId = projectId || activeProjectId || 'internal';
+      const isUuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const cleanProjectId = (targetProjectId && targetProjectId !== 'internal' && targetProjectId !== 'global' && isUuidRegex.test(targetProjectId)) ? targetProjectId : null;
       const meetingId = generatedMeetingId || `meet-${Date.now()}`;
       const meetingLink = `/project/${targetProjectId}/meet?join=${meetingId}`;
       const allParticipants = [
@@ -1132,7 +1134,7 @@ export default function MeetChat() {
           end_date: newCallEvent.date || new Date().toISOString().split('T')[0],
           location: meetingLink || '',
           company_id: safeCompanyId,
-          project_id: targetProjectId,
+          project_id: cleanProjectId,
           created_at: new Date().toISOString()
         };
 
@@ -1165,9 +1167,15 @@ export default function MeetChat() {
 
         // 1. Call Vercel / API Serverless Email Endpoint
         try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const inviteHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+          if (session?.access_token) {
+            inviteHeaders['Authorization'] = `Bearer ${session.access_token}`;
+          }
+
           await fetch('/api/send-invitation', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: inviteHeaders,
             body: JSON.stringify({
               title: newCallEvent.title,
               date: newCallEvent.date,

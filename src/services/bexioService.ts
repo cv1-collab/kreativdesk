@@ -5,6 +5,7 @@
  */
 
 import { safeStorage } from '../utils/safeStorage';
+import { supabase } from '../lib/supabase';
 
 export interface BexioContactPayload {
   contact_type_id: 1 | 2; // 1 = Company, 2 = Person
@@ -91,9 +92,15 @@ export async function testBexioConnection(apiToken?: string): Promise<{ success:
       return { success: false, message: 'Kein API-Token hinterlegt' };
     }
 
+    const { data: { session } } = await supabase.auth.getSession();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+
     const response = await fetch('/api/bexio/test-connection', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ apiToken: token })
     });
 
@@ -189,9 +196,15 @@ export async function syncLeadsToBexio(leads: any[]): Promise<{ success: boolean
   }
 
   try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+
     const response = await fetch('/api/bexio/sync-leads', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         leads,
         apiToken: config.apiToken

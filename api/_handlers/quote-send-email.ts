@@ -16,26 +16,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { recipientEmail, quoteData } = req.body || {};
 
-    if (!recipientEmail || !quoteData) {
-      return res.status(400).json({ error: 'Missing recipientEmail or quoteData' });
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!recipientEmail || typeof recipientEmail !== 'string' || !emailRegex.test(recipientEmail.trim()) || !quoteData) {
+      return res.status(400).json({ error: 'Missing or invalid recipientEmail or quoteData' });
     }
+
+    const cleanRecipientEmail = recipientEmail.trim();
+    const cleanQuoteNumber = String(quoteData.quoteNumber || 'Angebot').replace(/[^\w-]/g, '');
+    const cleanCustomerName = String(quoteData.customer?.name || '').replace(/[<>&"]/g, '');
+    const cleanTotal = Number(quoteData.totalCHF) || 0;
 
     const resendKey = process.env.RESEND_API_KEY;
     let sentLive = false;
 
     if (resendKey) {
       try {
-        const emailSubject = `Auftragsbestätigung ${quoteData.quoteNumber} | Kreativ Desk OS`;
+        const emailSubject = `Auftragsbestätigung ${cleanQuoteNumber} | Kreativ Desk OS`;
         const emailHtml = `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px;">
             <h2 style="color: #0f172a; margin-top: 0;">Vielen Dank für Ihren Auftrag!</h2>
             <p style="color: #334155; font-size: 15px; line-height: 1.6;">
-              Guten Tag ${quoteData.customer?.name || ''},<br><br>
-              Wir bestätigen hiermit den erfolgreichen digitalen Abschluss für das Angebot <strong>${quoteData.quoteNumber}</strong>.
+              Guten Tag ${cleanCustomerName},<br><br>
+              Wir bestätigen hiermit den erfolgreichen digitalen Abschluss für das Angebot <strong>${cleanQuoteNumber}</strong>.
             </p>
             <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin: 20px 0;">
               <p style="margin: 4px 0; color: #64748b; font-size: 14px;">Auftragssumme:</p>
-              <p style="margin: 0; font-size: 24px; font-weight: bold; color: #0f172a;">CHF ${(quoteData.totalCHF || 0).toLocaleString('de-CH', { minimumFractionDigits: 2 })}</p>
+              <p style="margin: 0; font-size: 24px; font-weight: bold; color: #0f172a;">CHF ${cleanTotal.toLocaleString('de-CH', { minimumFractionDigits: 2 })}</p>
               <p style="margin: 8px 0 0 0; color: #10b981; font-size: 13px; font-weight: bold;">Status: DIGITAL SIGNIERT & ANGENOMMEN</p>
             </div>
             <p style="color: #64748b; font-size: 13px;">
@@ -54,7 +60,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           },
           body: JSON.stringify({
             from: 'Kreativ Desk <onboarding@resend.dev>',
-            to: recipientEmail,
+            to: cleanRecipientEmail,
             subject: emailSubject,
             html: emailHtml
           })

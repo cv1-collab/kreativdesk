@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { verifyAuth } from '../_auth.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -18,6 +19,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!to || !subject || !html) {
       return res.status(400).json({ error: 'Missing required fields: to, subject, html' });
+    }
+
+    if (!apiKey) {
+      const authUser = await verifyAuth(req);
+      if (!authUser) {
+        return res.status(401).json({ error: 'Unauthorized: Authentication required to send emails' });
+      }
     }
 
     const effectiveApiKey = apiKey || process.env.RESEND_API_KEY;

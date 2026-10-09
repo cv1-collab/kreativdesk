@@ -398,9 +398,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         const safeCompanyId = currentUser?.companyId || currentUser?.uid;
         
         await offboardCompanyUser(contactId, safeCompanyId);
-        
         await supabase.from('company_users').delete().eq('id', contactId);
-        await supabase.from('profiles').delete().eq('id', contactId);
         
         await logAuditAction({
           action: 'USER_REMOVED',
@@ -487,7 +485,6 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         await Promise.all(deletableIds.map(async (id) => {
           await offboardCompanyUser(id, safeCompanyId);
           await supabase.from('company_users').delete().eq('id', id);
-          await supabase.from('profiles').delete().eq('id', id);
         }));
         
         setCrmUsers((prev: any[]) => prev.filter(u => !deletableIds.includes(u.id)));

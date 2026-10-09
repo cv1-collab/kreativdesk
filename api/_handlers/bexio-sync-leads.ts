@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { verifyAuth } from '../_auth.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -14,6 +15,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    const authUser = await verifyAuth(req);
+    if (!authUser) {
+      return res.status(401).json({ success: false, syncedCount: 0, errors: ['Nicht authentifiziert'] });
+    }
+
     const { leads = [], apiToken } = req.body || {};
 
     if (!apiToken) {

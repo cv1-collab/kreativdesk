@@ -205,7 +205,7 @@ async function startServer() {
             owner_id: userId
           })
           .select()
-          .single();
+          .maybeSingle();
 
         const newProfileData = {
           id: userId,
@@ -952,7 +952,7 @@ Verwende ausschliesslich Schweizer Rechtschreibung (immer "ss", niemals "ß").`;
         max_seats: maxSeats || 1,
         used_seats: 1,
         created_at: now
-      }).select().single();
+      }).select().maybeSingle();
 
       if (compErr || !company) throw (compErr || new Error('Failed to create company'));
       const companyId = company.id;
@@ -965,7 +965,7 @@ Verwende ausschliesslich Schweizer Rechtschreibung (immer "ss", niemals "ß").`;
         role: 'owner',
         status: 'pending',
         created_at: now
-      }).select().single();
+      }).select().maybeSingle();
 
       if (inviteErr || !ceoInvite) throw (inviteErr || new Error('Failed to create CEO invite'));
 

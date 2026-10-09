@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { verifyAuth } from '../_auth.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -14,6 +15,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    const user = await verifyAuth(req);
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized: Authentication required' });
+    }
+
     const { prompt, image, strength = 0.55, guidance_scale = 7.5, style = 'photoreal' } = req.body || {};
     if (!image || typeof image !== 'string') {
       return res.status(400).json({ error: 'Missing required base64 image' });

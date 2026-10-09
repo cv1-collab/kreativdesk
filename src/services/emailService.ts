@@ -5,6 +5,7 @@
 
 import { getCompanySettings } from './companySettingsService';
 import { safeStorage } from '../utils/safeStorage';
+import { supabase } from '../lib/supabase';
 
 export interface EmailDispatchPayload {
   to: string;
@@ -126,9 +127,15 @@ export async function sendAcceptanceConfirmationEmail(payload: EmailDispatchPayl
   // Wenn ein Live API-Key hinterlegt ist, senden wir über Backend-Route
   if (config.apiKey && config.apiKey.length > 5) {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
       const res = await fetch('/api/email/send', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           provider: config.provider,
           apiKey: config.apiKey,

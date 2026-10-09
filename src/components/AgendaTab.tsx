@@ -640,7 +640,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
     if (!timeEntryForm.projectId || finalHours <= 0) { addToast('Bitte Projekt und Stunden angeben.', 'error'); return; }
 
     try {
-      const entryId = `time-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+      const entryId = crypto.randomUUID();
       const newEntryObj = {
         id: entryId,
         user_id: targetUserId,
@@ -676,16 +676,19 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
       } catch (backupErr) {}
 
       // 3. Insert into Supabase time_entries
-      await supabase.from('time_entries').insert({
-        id: entryId,
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(entryId);
+      const cleanEntryProjId = (newEntryObj.project_id && newEntryObj.project_id !== 'global' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(newEntryObj.project_id)) ? newEntryObj.project_id : null;
+      const teInsertPayload: any = {
         user_id: newEntryObj.user_id,
-        project_id: newEntryObj.project_id,
+        project_id: cleanEntryProjId,
         date: newEntryObj.date,
         hours: finalHours,
         description: newEntryObj.description,
         created_at: newEntryObj.created_at,
         company_id: safeCompanyId
-      });
+      };
+      if (isUuid) teInsertPayload.id = entryId;
+      await supabase.from('time_entries').insert(teInsertPayload);
 
       // 4. Trigger Notification Bell
       const targetProj = safeProjects.find(p => p.id === timeEntryForm.projectId);
@@ -746,6 +749,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
     }
     const safeCompanyId = currentUser.companyId || currentUser.uid;
     const targetProjectId = newEvent.projectId || 'global';
+    const cleanCalendarProjectId = (newEvent.projectId && newEvent.projectId !== 'global' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(newEvent.projectId)) ? newEvent.projectId : null;
 
     try {
       const callMeetingId = newEvent.type === 'call' ? (generatedMeetingId || `meet-${Date.now()}`) : null;
@@ -789,7 +793,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         end_date: newEvent.date || new Date().toISOString().split('T')[0],
         location: meetingLink || '',
         company_id: safeCompanyId,
-        project_id: targetProjectId,
+        project_id: cleanCalendarProjectId,
         created_at: new Date().toISOString()
       };
 
@@ -877,9 +881,15 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
 
         // 1. Call Vercel / API Serverless Email Endpoint
         try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const inviteHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+          if (session?.access_token) {
+            inviteHeaders['Authorization'] = `Bearer ${session.access_token}`;
+          }
+
           await fetch('/api/send-invitation', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: inviteHeaders,
             body: JSON.stringify({
               title: newEvent.title,
               date: newEvent.date,
@@ -951,9 +961,12 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
 
   const handleUpdateCalendarEvent = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedEvent || (!selectedEvent.projectId && !selectedEvent.project_id)) return;
+    if (!selectedEvent) return;
     const safeCompanyId = currentUser?.companyId || currentUser?.uid;
-    const projId = selectedEvent.projectId || selectedEvent.project_id || 'global';
+    const rawProjId = selectedEvent.projectId || selectedEvent.project_id;
+    const isUuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const cleanProjId = (rawProjId && rawProjId !== 'global' && isUuidRegex.test(rawProjId)) ? rawProjId : null;
+    const projId = cleanProjId || 'global';
 
     let meetingLink = selectedEvent.meetingLink || selectedEvent.meeting_link || null;
 
@@ -986,14 +999,18 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         description: descParts,
         start_date: selectedEvent.date,
         end_date: selectedEvent.date,
-        project_id: projId,
+        project_id: cleanProjId,
         location: meetingLink || ''
       };
 
-      const { data: updatedEvent, error } = await supabase.from('calendar_events').update(dbUpdateData).eq('id', selectedEvent.id).select().maybeSingle();
-
-      if (error) {
-        console.warn("Calendar event update warning:", error);
+      let updatedEvent: any = null;
+      if (selectedEvent.id && isUuidRegex.test(selectedEvent.id)) {
+        const { data: upData, error } = await supabase.from('calendar_events').update(dbUpdateData).eq('id', selectedEvent.id).select().maybeSingle();
+        if (error) {
+          console.warn("Calendar event update warning:", error);
+        } else {
+          updatedEvent = upData;
+        }
       }
       const finalUpdated = {
         ...(updatedEvent || { ...selectedEvent, ...dbUpdateData }),
@@ -1040,7 +1057,10 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         });
 
         // 2. Aus Supabase calendar_events löschen
-        await supabase.from('calendar_events').delete().eq('id', eventId);
+        const isUuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (isUuidRegex.test(eventId)) {
+          await supabase.from('calendar_events').delete().eq('id', eventId);
+        }
 
         // 3. Aus documents Backup entfernen
         if (safeCompanyId) {
@@ -1066,9 +1086,12 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
     e.preventDefault();
     const safeCompanyId = currentUser?.companyId || currentUser?.uid;
     const eventId = e.dataTransfer.getData('text/plain');
+    const isUuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (eventId) {
       try {
-        await supabase.from('calendar_events').update({ start_date: newDateStr, end_date: newDateStr }).eq('id', eventId);
+        if (isUuidRegex.test(eventId)) {
+          await supabase.from('calendar_events').update({ start_date: newDateStr, end_date: newDateStr }).eq('id', eventId);
+        }
         setCalendarEvents(prev => {
           const next = prev.map(ev => ev.id === eventId ? { ...ev, date: newDateStr, event_date: newDateStr, start_date: newDateStr } : ev);
           if (safeCompanyId) {
@@ -1210,7 +1233,10 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         });
 
         // 2. Aus Supabase time_entries löschen
-        await supabase.from('time_entries').delete().eq('id', entryId);
+        const isUuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (isUuidRegex.test(entryId)) {
+          await supabase.from('time_entries').delete().eq('id', entryId);
+        }
 
         // 3. Aus documents Backup entfernen
         if (safeCompanyId) {
