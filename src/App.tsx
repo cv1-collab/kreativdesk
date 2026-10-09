@@ -14,7 +14,7 @@ import Screensaver from './components/Screensaver';
 import ErrorBoundary from './components/ErrorBoundary';
 
 // Context-Provider
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ProjectProvider } from './contexts/ProjectContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { LanguageProvider } from './contexts/LanguageContext';
@@ -25,20 +25,40 @@ import { AIProvider } from './contexts/AIContext';
 import { TourProvider } from './contexts/TourContext';
 import ProductTour from './components/ProductTour';
 import { GlobalVideoPlayer } from './components/GlobalVideoPlayer';
+import { safeSessionStorage } from './utils/safeStorage';
 
 function lazyWithRetry<T extends React.ComponentType<any>>(
   componentImport: () => Promise<{ default: T }>
-) {
-  return lazy(async () => {
+): React.LazyExoticComponent<T> {
+  return lazy(async (): Promise<{ default: T }> => {
     try {
-      const component = await componentImport();
-      sessionStorage.removeItem('page_has_reloaded_for_chunk');
-      return component;
+      const module = (await componentImport()) as any;
+      if (!module) {
+        throw new Error('Dynamic module import resolved to undefined');
+      }
+
+      // Safe access to sessionStorage in case of SecurityError in sandbox/crawlers
+      safeSessionStorage.removeItem('page_has_reloaded_for_chunk');
+
+      // Handle ESM, CJS and direct component returns robustly
+      if (module && typeof module === 'object' && 'default' in module && module.default) {
+        return module as { default: T };
+      }
+      if (typeof module === 'function') {
+        return { default: module as unknown as T };
+      }
+      if (module && typeof module === 'object' && (module as any).default) {
+        return { default: (module as any).default };
+      }
+
+      throw new Error('Imported module does not contain a valid React default export');
     } catch (error: any) {
       console.warn("[Chunk Load Error] Retrying / reloading page for fresh assets...", error);
-      const pageHasAlreadyBeenReloaded = sessionStorage.getItem('page_has_reloaded_for_chunk');
+
+      const pageHasAlreadyBeenReloaded = safeSessionStorage.getItem('page_has_reloaded_for_chunk') === 'true';
+
       if (!pageHasAlreadyBeenReloaded) {
-        sessionStorage.setItem('page_has_reloaded_for_chunk', 'true');
+        safeSessionStorage.setItem('page_has_reloaded_for_chunk', 'true');
         window.location.reload();
         return new Promise<{ default: T }>(() => { });
       }
@@ -111,15 +131,30 @@ function RecoveryRedirectGuard({ children }: { children: React.ReactNode }) {
     scrubLocalStorageFileUrls();
     initBrandColor();
     const fullUrl = window.location.href;
-    const isRecovery = fullUrl.includes('type=recovery') || fullUrl.includes('type%3Drecovery') || sessionStorage.getItem('is_password_recovery') === 'true';
+    const isRecovery = fullUrl.includes('type=recovery') || fullUrl.includes('type%3Drecovery') || safeSessionStorage.getItem('is_password_recovery') === 'true';
 
     if (isRecovery && !window.location.pathname.startsWith('/reset-password')) {
-      sessionStorage.setItem('is_password_recovery', 'true');
+      safeSessionStorage.setItem('is_password_recovery', 'true');
       window.location.href = `/reset-password${window.location.search}${window.location.hash}`;
     }
   }, []);
 
   return <>{children}</>;
+}
+
+function AuthenticatedOverlays() {
+  const { currentUser } = useAuth();
+  if (!currentUser) return null;
+  return (
+    <>
+      <Suspense fallback={null}>
+        <AIConcierge />
+      </Suspense>
+      <Suspense fallback={null}>
+        <ProductTour />
+      </Suspense>
+    </>
+  );
 }
 
 export default function App() {
@@ -138,12 +173,7 @@ export default function App() {
                         <MaintenanceGuard>
                           <Screensaver />
 
-                          <Suspense fallback={null}>
-                            <AIConcierge />
-                          </Suspense>
-                          <Suspense fallback={null}>
-                            <ProductTour />
-                          </Suspense>
+                          <AuthenticatedOverlays />
                           <Suspense fallback={null}>
                             <CookieBanner />
                           </Suspense>

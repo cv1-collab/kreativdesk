@@ -67,3 +67,33 @@ describe('safeStorage Utility', () => {
     expect(success).toBe(false);
   });
 });
+
+describe('safeSessionStorage Utility', () => {
+  beforeEach(() => {
+    mockStorage.clear();
+    (global as any).window.sessionStorage = mockStorage;
+    vi.restoreAllMocks();
+  });
+
+  it('gibt Fallback zurück, wenn der Key nicht existiert', async () => {
+    const { safeSessionStorage } = await import('../../src/utils/safeStorage');
+    const result = safeSessionStorage.getItem('nonexistent', 'fallback');
+    expect(result).toBe('fallback');
+  });
+
+  it('stürzt nicht ab, wenn sessionStorage den Zugriff verweigert (z.B. SecurityError in Sandbox)', async () => {
+    const { safeSessionStorage } = await import('../../src/utils/safeStorage');
+    vi.spyOn(mockStorage, 'getItem').mockImplementation(() => {
+      throw new Error('SecurityError: Access is denied for this document');
+    });
+    const result = safeSessionStorage.getItem('any_key', 'fallback_safe');
+    expect(result).toBe('fallback_safe');
+  });
+
+  it('schreibt und liest Session-Werte sicher', async () => {
+    const { safeSessionStorage } = await import('../../src/utils/safeStorage');
+    safeSessionStorage.setItem('test_session', 'active_123');
+    expect(safeSessionStorage.getString('test_session')).toBe('active_123');
+  });
+});
+

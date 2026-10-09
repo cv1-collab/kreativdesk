@@ -5,10 +5,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLocation } from 'react-router-dom';
 import { Wrench } from 'lucide-react';
 import { motion } from 'motion/react';
+import { safeSessionStorage } from '../utils/safeStorage';
 
 export default function MaintenanceGuard({ children }: { children: React.ReactNode }) {
   const [isMaintenance, setIsMaintenance] = useState(false);
-  const [bypassUnlocked, setBypassUnlocked] = useState(() => sessionStorage.getItem('maintenance_bypass') === 'true');
+  const [bypassUnlocked, setBypassUnlocked] = useState(() => safeSessionStorage.getItem('maintenance_bypass') === 'true');
   const [showPinModal, setShowPinModal] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState('');
@@ -77,7 +78,7 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
     const cleanPin = pinInput.trim();
     // Sichere Prüfung: Nur Super Admin Kennwort oder konfigurierter Admin-Schlüssel
     if (cleanPin === 'KD-ADMIN-2026' || cleanPin === 'Carlo-Vescio-Master-2026') {
-      sessionStorage.setItem('maintenance_bypass', 'true');
+      safeSessionStorage.setItem('maintenance_bypass', 'true');
       setBypassUnlocked(true);
       setShowPinModal(false);
       setPinError('');

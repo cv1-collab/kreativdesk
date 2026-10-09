@@ -23,10 +23,14 @@ if (typeof window !== 'undefined') {
   };
 
   const attemptReload = () => {
-    const lastReload = Number(sessionStorage.getItem('chunk_reload_timestamp') || '0');
-    const now = Date.now();
-    if (now - lastReload > 30000) {
-      sessionStorage.setItem('chunk_reload_timestamp', String(now));
+    try {
+      const lastReload = Number(sessionStorage.getItem('chunk_reload_timestamp') || '0');
+      const now = Date.now();
+      if (now - lastReload > 30000) {
+        sessionStorage.setItem('chunk_reload_timestamp', String(now));
+        window.location.reload();
+      }
+    } catch {
       window.location.reload();
     }
   };

@@ -130,3 +130,94 @@ export const safeStorage: ISafeStorage = {
     }
   }
 };
+
+export const safeSessionStorage: ISafeStorage = {
+  getItem<T = string>(key: string, fallback?: T): any {
+    if (typeof window === 'undefined' || !window.sessionStorage) {
+      return fallback !== undefined ? fallback : null;
+    }
+    try {
+      const raw = window.sessionStorage.getItem(key);
+      if (raw === null || raw === undefined) {
+        return fallback !== undefined ? fallback : null;
+      }
+      if (fallback === undefined) {
+        return raw;
+      }
+      if (typeof fallback !== 'string') {
+        try {
+          return JSON.parse(raw) as T;
+        } catch {
+          return fallback;
+        }
+      }
+      return raw as unknown as T;
+    } catch {
+      return fallback !== undefined ? fallback : null;
+    }
+  },
+
+  getJSON<T = any>(key: string, fallback?: T): T {
+    if (typeof window === 'undefined' || !window.sessionStorage) {
+      return (fallback !== undefined ? fallback : null) as unknown as T;
+    }
+    try {
+      const raw = window.sessionStorage.getItem(key);
+      if (raw === null || raw === undefined) {
+        return (fallback !== undefined ? fallback : null) as unknown as T;
+      }
+      try {
+        return JSON.parse(raw) as T;
+      } catch {
+        return (fallback !== undefined ? fallback : null) as unknown as T;
+      }
+    } catch {
+      return (fallback !== undefined ? fallback : null) as unknown as T;
+    }
+  },
+
+  getString(key: string, fallback: string = ''): string {
+    if (typeof window === 'undefined' || !window.sessionStorage) {
+      return fallback;
+    }
+    try {
+      const val = window.sessionStorage.getItem(key);
+      return val !== null ? val : fallback;
+    } catch {
+      return fallback;
+    }
+  },
+
+  setItem(key: string, value: any): boolean {
+    if (typeof window === 'undefined' || !window.sessionStorage) {
+      return false;
+    }
+    try {
+      const stringified = typeof value === 'string' ? value : JSON.stringify(value);
+      window.sessionStorage.setItem(key, stringified);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  setJson(key: string, value: any): boolean {
+    return safeSessionStorage.setItem(key, value);
+  },
+
+  setJSON(key: string, value: any): boolean {
+    return safeSessionStorage.setItem(key, value);
+  },
+
+  removeItem(key: string): void {
+    if (typeof window === 'undefined' || !window.sessionStorage) {
+      return;
+    }
+    try {
+      window.sessionStorage.removeItem(key);
+    } catch {
+      // Safe ignore
+    }
+  }
+};
+

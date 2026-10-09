@@ -38,10 +38,14 @@ export class ErrorBoundary extends Component<Props, State> {
       msg.includes('importing a module script failed') ||
       msg.includes('is not a valid javascript mime type')
     ) {
-      const lastReload = Number(sessionStorage.getItem('chunk_reload_timestamp') || '0');
-      const now = Date.now();
-      if (now - lastReload > 10000) {
-        sessionStorage.setItem('chunk_reload_timestamp', String(now));
+      try {
+        const lastReload = Number(sessionStorage.getItem('chunk_reload_timestamp') || '0');
+        const now = Date.now();
+        if (now - lastReload > 10000) {
+          sessionStorage.setItem('chunk_reload_timestamp', String(now));
+          window.location.reload();
+        }
+      } catch {
         window.location.reload();
       }
     }

@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import SystemHandbookModal from './SystemHandbookModal';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
+
+const SystemHandbookModal = lazy(() => import('./SystemHandbookModal'));
 
 export default function GlobalSystemHandbookModal() {
   const [isOpen, setIsOpen] = useState(false);
@@ -13,9 +14,11 @@ export default function GlobalSystemHandbookModal() {
   if (!isOpen) return null;
 
   return (
-    <SystemHandbookModal
-      isOpen={isOpen}
-      onClose={() => setIsOpen(false)}
-    />
+    <Suspense fallback={null}>
+      <SystemHandbookModal
+        isOpen={isOpen}
+        onClose={() => setIsOpen(false)}
+      />
+    </Suspense>
   );
 }

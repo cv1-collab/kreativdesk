@@ -118,12 +118,24 @@ export default defineConfig(({ mode }) => {
       },
       rollupOptions: {
         output: {
-          manualChunks: {
-            'vendor-core': ['react', 'react-dom', 'react-router-dom'],
-            'vendor-supabase': ['@supabase/supabase-js'],
-            'vendor-ui': ['lucide-react', 'clsx', 'tailwind-merge'],
-            'vendor-3d': ['three', '@react-three/fiber', '@react-three/drei'],
-            'vendor-charts': ['recharts']
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (
+                id.includes('/react/') ||
+                id.includes('/react-dom/') ||
+                id.includes('/react-router') ||
+                id.includes('/scheduler/') ||
+                id.includes('/use-sync-external-store/')
+              ) {
+                return 'vendor-core';
+              }
+              if (id.includes('@supabase')) {
+                return 'vendor-supabase';
+              }
+              if (id.includes('lucide-react') || id.includes('clsx') || id.includes('tailwind-merge')) {
+                return 'vendor-ui';
+              }
+            }
           }
         }
       },
