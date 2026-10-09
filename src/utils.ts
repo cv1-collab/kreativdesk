@@ -10,6 +10,17 @@ export function sanitizeUrl(url?: string | null): string {
   const trimmed = url.trim();
   const lower = trimmed.toLowerCase();
   
+  // Strict XSS & Protocol Injection Guard
+  if (
+    lower.startsWith('javascript:') ||
+    lower.startsWith('vbscript:') ||
+    lower.startsWith('data:text/html') ||
+    lower.startsWith('data:text/javascript') ||
+    lower.startsWith('data:application/javascript')
+  ) {
+    return '';
+  }
+  
   if (lower.includes('file:') || lower.includes('/users/') || lower.includes('/desktop/')) {
     if (lower.includes('demo-assets/')) {
       const parts = trimmed.split(/demo-assets\//i);
