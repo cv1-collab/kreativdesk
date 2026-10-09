@@ -7,6 +7,25 @@
 
 ## 🏆 Erfolgsliste von heute (9. Oktober 2026)
 
+### 0.000000000000000006 Vollständiges Code-Qualitäts- & Linter-Audit: ESLint 0 Fehler / 0 Warnungen, Vite Fast-Refresh & Hook-Stabilität (9. Oktober 2026)
+* **Problemstellung & Benutzer-Frage («wo haben wir noch fehler im system?»):**
+  * Im Rahmen der ganzheitlichen Fehlerprüfung wurde der gesamte Codebase-Linter (`npm run lint`), der TypeScript-Compiler (`tsc --noEmit`) und das Vitest-Testpaket ausgeführt.
+  * **ESLint-Fehler:** 8 Syntax-Fehler bezüglich unnötiger Regex-Escapes (`no-useless-escape`) in [PitchDeck.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/PitchDeck.tsx) und [PitchDeckStudio.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/PitchDeckStudio.tsx).
+  * **Hook-Warnung:** Fehlende Abhängigkeit im `useEffect` von [PitchDeckStudio.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/PitchDeckStudio.tsx) (`activeSlide`).
+  * **Vite Fast-Refresh Warnungen:** `PlanEditorViewer.tsx` und `SmartProposalLandingPage.tsx` exportierten Nicht-Komponenten-Konstanten (`SWISS_TRADES`, `PROPOSAL_TITLE_TRANSLATIONS`), wodurch React Fast Refresh im Entwicklungsmodus nicht isoliert arbeiten konnte.
+* **Durchgeführte Implementierungen:**
+  * **1. Bereinigung der Regex-Ausdrücke:** Bereinigung der Zeichenklassen in [PitchDeck.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/PitchDeck.tsx) und [PitchDeckStudio.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/PitchDeckStudio.tsx) (Entfernung redundanter Backslashes in `[^)]` und `^[([\]]`).
+  * **2. Hook-Abhängigkeiten synchronisiert:** `activeSlide` im `useEffect` von [PitchDeckStudio.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/PitchDeckStudio.tsx) sauber eingebunden.
+  * **3. Modulare Architektur für Titel-Übersetzungen:** Auslagerung von `PROPOSAL_TITLE_TRANSLATIONS` und `translateProposalTitle` in das dedizierte Hilfsmodul [proposalTranslationHelper.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/utils/proposalTranslationHelper.ts).
+  * **4. Kapselung interner Konstanten:** `SWISS_TRADES` in [PlanEditorViewer.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/PlanEditorViewer.tsx) als modulintern definiert.
+* **Ergebnis der Verifikation:**
+  * `eslint`: **0 Fehler, 0 Warnungen** (100% sauber).
+  * `tsc --noEmit`: **0 Fehler**.
+  * `vitest run`: **84 von 84 Tests bestanden** in allen 16 Test-Dateien.
+  * `npm run build`: In 14.52s mit Exit-Code 0 erfolgreich abgeschlossen.
+
+---
+
 ### 0.000000000000000005 Systemweites Datei- & Format-Audit: 3D FBX/Blender/STL Viewer-Support, PDF-Belegleser & Whiteboard-Pläne (9. Oktober 2026)
 * **Problemstellung & Benutzer-Frage («wo haben wir noch solche fehler im system?»):**
   * Im Anschluss an die Behebung der fehlerhaften Zuordnung von 3D-Dateien zu Briefvorlagen wurde das gesamte System auf weitere Format-Brüche, stumme Ladeabbrüche und fehlerhafte Datei-Renderer durchleuchtet.

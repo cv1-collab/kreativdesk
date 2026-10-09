@@ -139,7 +139,7 @@ const TOOL_LABELS: Record<string, { de: string; en: string }> = {
 type ToolType = 'pan' | 'defect' | 'zone' | 'text' | 'pen' | 'measure' | 'polygon' | 'titleblock' | 'rect' | 'circle' | 'scalebar' | 'image';
 type LineStyle = 'solid' | 'dashed' | 'dotted';
 
-export const SWISS_TRADES = [
+const SWISS_TRADES = [
   'Baumeister',
   'Gipser / Maler',
   'Elektro',

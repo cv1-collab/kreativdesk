@@ -1392,7 +1392,7 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
       setLocalContent(activeSlide.content ?? '');
       setLocalNotes(activeSlide.notes ?? '');
     }
-  }, [activeSlide?.id]); 
+  }, [activeSlide]); 
 
   useEffect(() => {
     const safeCompanyId = currentUser?.companyId || currentUser?.uid;
@@ -3804,11 +3804,11 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
 
     const renderCitationText = (text: string) => {
       if (!text) return null;
-      const citationRegex = /(\[(?:S\.|Quelle|Dokument)[^\]]+\]|\((?:S\.|Quelle|Dokument)[^\)]+\))/gi;
+      const citationRegex = /(\[(?:S\.|Quelle|Dokument)[^\]]+\]|\((?:S\.|Quelle|Dokument)[^)]+\))/gi;
       const parts = text.split(citationRegex);
       return parts.map((part, i) => {
         if (citationRegex.test(part)) {
-          const clean = part.replace(/^[\(\[]/, '').replace(/[\)\]]$/, '').trim();
+          const clean = part.replace(/^[([]/, '').replace(/[)\]]$/, '').trim();
           return (
             <span
               key={i}

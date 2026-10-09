@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { translateProposalTitle, PROPOSAL_TITLE_TRANSLATIONS } from '../../src/components/SmartProposalLandingPage';
+import { translateProposalTitle, PROPOSAL_TITLE_TRANSLATIONS } from '../../src/utils/proposalTranslationHelper';
 
 describe('Proposal Landing Page Title Translation', () => {
   it('translates standard "Projekt-Präsentation" across DE, FR, EN correctly', () => {
