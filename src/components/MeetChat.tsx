@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom';
 import {
   Video, Mic, MicOff, MonitorUp, PhoneOff, MessageSquare, Send, Sparkles, Mail,
-  Paperclip, Loader2, PenTool, FileText, ChevronRight, FileCheck, X, Trash2, Eraser, Phone, Calendar, Clock, Monitor, Users, Copy, CheckCircle2, PhoneCall, PhoneForwarded, MonitorOff, Link as LinkIcon, VideoOff, Captions, UserPlus, UserCheck, Download, History, Image, Move
+  Paperclip, Loader2, PenTool, FileText, ChevronRight, FileCheck, X, Trash2, Eraser, Phone, Calendar, Clock, Monitor, Users, Copy, CheckCircle2, PhoneCall, PhoneForwarded, MonitorOff, Link as LinkIcon, VideoOff, Captions, UserPlus, UserCheck, Download, History, Image, Move, AlertTriangle
 } from 'lucide-react';
 import { downloadICSFile } from '../utils/icsGenerator';
 import { cn, sanitizeUrl } from '../utils';
@@ -27,7 +27,10 @@ const RemoteVideo = ({ stream, peerName }: { stream: MediaStream; peerName?: str
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const videoRef = useRef<HTMLVideoElement>(null);
   const [needsUserClick, setNeedsUserClick] = useState(false);
-  const [hasVideoTrack, setHasVideoTrack] = useState(true);
+  const [hasVideoTrack, setHasVideoTrack] = useState(() => {
+    const vTracks = stream?.getVideoTracks?.() || [];
+    return vTracks.length > 0 && vTracks.some(t => t.enabled);
+  });
 
   useEffect(() => {
     const video = videoRef.current;
@@ -35,11 +38,14 @@ const RemoteVideo = ({ stream, peerName }: { stream: MediaStream; peerName?: str
 
     const checkTracks = () => {
       const vTracks = stream.getVideoTracks();
-      setHasVideoTrack(vTracks.length > 0 && vTracks.some(t => t.enabled));
+      const hasActive = vTracks.length > 0 && vTracks.some(t => t.enabled && t.readyState !== 'ended');
+      setHasVideoTrack(hasActive);
     };
     checkTracks();
 
-    video.srcObject = stream;
+    if (video.srcObject !== stream) {
+      video.srcObject = stream;
+    }
     video.play().catch(err => {
       if (err?.name !== 'AbortError') {
         console.warn("Remote video play note:", err);
@@ -51,7 +57,9 @@ const RemoteVideo = ({ stream, peerName }: { stream: MediaStream; peerName?: str
 
     const handleTrackUpdate = () => {
       if (video) {
-        video.srcObject = stream;
+        if (video.srcObject !== stream) {
+          video.srcObject = stream;
+        }
         video.play().catch(() => {});
       }
       checkTracks();
@@ -59,6 +67,16 @@ const RemoteVideo = ({ stream, peerName }: { stream: MediaStream; peerName?: str
 
     stream.onaddtrack = handleTrackUpdate;
     stream.onremovetrack = handleTrackUpdate;
+
+    stream.getTracks().forEach(track => {
+      track.onmute = handleTrackUpdate;
+      track.onunmute = handleTrackUpdate;
+      track.onended = handleTrackUpdate;
+    });
+
+    video.onloadedmetadata = () => {
+      handleTrackUpdate();
+    };
 
     const unlockAudio = () => {
       if (video && video.muted) {
@@ -69,9 +87,21 @@ const RemoteVideo = ({ stream, peerName }: { stream: MediaStream; peerName?: str
     window.addEventListener('click', unlockAudio, { once: true });
     window.addEventListener('touchstart', unlockAudio, { once: true });
 
+    // Periodischer Sicherheits-Check falls der Browser den Video-Track asynchron zuschaltet
+    const interval = setInterval(checkTracks, 800);
+
     return () => {
+      clearInterval(interval);
       stream.onaddtrack = null;
       stream.onremovetrack = null;
+      stream.getTracks().forEach(track => {
+        track.onmute = null;
+        track.onunmute = null;
+        track.onended = null;
+      });
+      if (video) {
+        video.onloadedmetadata = null;
+      }
       window.removeEventListener('click', unlockAudio);
       window.removeEventListener('touchstart', unlockAudio);
     };
@@ -214,7 +244,7 @@ export default function MeetChat() {
   const {
     localStream, remoteStreams, peerInfo, screenStream, isMicOn, isCamOn, isScreenSharing,
     callStatus, callId, joinCallId, setJoinCallId, startCall, joinCall, hangUp,
-    toggleMic, toggleCam, toggleScreenShare, setIsMinimized, isInCall, setIsChatOpen
+    toggleMic, toggleCam, toggleScreenShare, setIsMinimized, isInCall, setIsChatOpen, iceWarning
   } = useVideoCall();
 
   const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid || '';
@@ -335,9 +365,29 @@ export default function MeetChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mainVideoRef = useRef<HTMLDivElement>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
+  const soloLocalVideoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bgFileInputRef = useRef<HTMLInputElement>(null);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
+
+  // Synchronisiere den lokalen Stream zuverlässig auf beide Videoelemente (Solo-Vollbild und Bild-in-Bild)
+  const remoteStreamsCount = Object.keys(remoteStreams).length;
+  useEffect(() => {
+    if (localStream) {
+      if (soloLocalVideoRef.current && soloLocalVideoRef.current.srcObject !== localStream) {
+        soloLocalVideoRef.current.srcObject = localStream;
+        soloLocalVideoRef.current.play().catch(e => {
+          if (e?.name !== 'AbortError') console.warn("Solo video play warning:", e);
+        });
+      }
+      if (localVideoRef.current && localVideoRef.current.srcObject !== localStream) {
+        localVideoRef.current.srcObject = localStream;
+        localVideoRef.current.play().catch(e => {
+          if (e?.name !== 'AbortError') console.warn("PiP video play warning:", e);
+        });
+      }
+    }
+  }, [localStream, isInCall, remoteStreamsCount]);
 
   const [showBgModal, setShowBgModal] = useState(false);
   const [bgMode, setBgMode] = useState<'none' | 'blur' | 'preset' | 'custom' | 'screensaver'>(() => (safeStorage.getItem('meetchat_bg_mode') as any) || 'none');
@@ -1527,6 +1577,14 @@ export default function MeetChat() {
                 <div className="w-full h-full relative bg-black overflow-hidden rounded-2xl md:rounded-3xl">
                   <div ref={mainVideoRef} className="absolute inset-0 bg-transparent z-0" />
 
+                  {/* Netzwerk-Hinweis bei Firewall- oder NAT-Verbindungshemmung */}
+                  {iceWarning && (
+                    <div className="absolute top-16 left-1/2 -translate-x-1/2 z-40 max-w-lg w-[calc(100%-2rem)] px-4 py-2.5 bg-amber-500/95 text-slate-950 rounded-xl shadow-2xl backdrop-blur-md border border-amber-300 flex items-center gap-2.5 text-xs font-semibold animate-in fade-in slide-in-from-top-2">
+                      <AlertTriangle size={18} className="shrink-0 text-slate-950" />
+                      <span className="flex-1">{iceWarning}</span>
+                    </div>
+                  )}
+
                   <div className={cn("absolute inset-0 z-10 grid gap-1.5 p-1.5 overflow-hidden",
                     Object.keys(remoteStreams).length === 0 ? "grid-cols-1 grid-rows-1" :
                     Object.keys(remoteStreams).length === 1 ? "grid-cols-1 grid-rows-1" :
@@ -1540,92 +1598,137 @@ export default function MeetChat() {
                         <RemoteVideo stream={stream} peerName={peerInfo[peerId]?.name} />
                       </div>
                     ))}
+                    {/* Solo-Modus: Wenn noch keine weiteren Teilnehmer im Raum sind, wird das eigene Kamerabild gross im Zentrum angezeigt */}
                     {Object.keys(remoteStreams).length === 0 && (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-text-muted">
-                        <Loader2 size={40} className="animate-spin mb-4 text-accent-ai" />
-                        <p className="font-bold text-sm tracking-widest uppercase text-white">{t('waiting_for_participants')}</p>
-                        <p className="text-xs text-text-muted mt-1">{t('sync_notice')}</p>
-                      </div>
-                    )}
-                  </div>
+                      <div className="w-full h-full relative overflow-hidden bg-zinc-950 flex items-center justify-center rounded-2xl">
+                        {(bgMode === 'preset' || bgMode === 'custom' || bgMode === 'screensaver') && (
+                          <div
+                            className="absolute inset-0 bg-cover bg-center z-0 transition-all duration-300"
+                            style={{
+                              backgroundImage: `url(${bgMode === 'custom' ? customBgImage : bgMode === 'screensaver' ? screensaverBg : bgImageUrl})`
+                            }}
+                          />
+                        )}
+                        <video
+                          ref={soloLocalVideoRef}
+                          autoPlay
+                          playsInline
+                          muted
+                          className={cn(
+                            "w-full h-full object-cover relative z-10 transition-all duration-300",
+                            !isScreenSharing && "transform -scale-x-100",
+                            (bgMode === 'preset' || bgMode === 'custom' || bgMode === 'screensaver') && "opacity-90",
+                            !isCamOn && "opacity-0 pointer-events-none"
+                          )}
+                          style={bgMode === 'blur' ? { filter: `blur(${bgBlurAmount})` } : undefined}
+                        />
 
-                  {/* Lokales Bild-in-Bild Vorschaufenster (unten rechts neben Call verlassen) */}
-                  <div className={cn(
-                    "absolute w-36 aspect-video sm:w-44 sm:aspect-video md:w-48 md:aspect-video bg-zinc-900 rounded-2xl overflow-hidden border border-white/20 shadow-2xl shadow-black/80 ring-1 ring-black/40 z-30 group transition-all duration-300 pointer-events-auto",
-                    previewCornerClasses[previewCorner]
-                  )}>
-                    {(bgMode === 'preset' || bgMode === 'custom' || bgMode === 'screensaver') && (
-                      <div
-                        className="absolute inset-0 bg-cover bg-center z-0 transition-all duration-300"
-                        style={{
-                          backgroundImage: `url(${bgMode === 'custom' ? customBgImage : bgMode === 'screensaver' ? screensaverBg : bgImageUrl})`
-                        }}
-                      />
-                    )}
-                    <video
-                      ref={(el) => {
-                        localVideoRef.current = el;
-                        if (el && localStream && el.srcObject !== localStream) {
-                          el.srcObject = localStream;
-                          el.play().catch(e => console.log("Local video play err:", e));
-                        }
-                      }}
-                      autoPlay
-                      playsInline
-                      muted
-                      className={cn(
-                        "w-full h-full object-cover relative z-10 transition-all duration-300",
-                        !isScreenSharing && "transform -scale-x-100",
-                        (bgMode === 'preset' || bgMode === 'custom' || bgMode === 'screensaver') && "opacity-90",
-                        !isCamOn && "opacity-0 pointer-events-none"
-                      )}
-                      style={bgMode === 'blur' ? { filter: `blur(${bgBlurAmount})` } : undefined}
-                    />
+                        {/* Fallback wenn Kamera aus ist */}
+                        {!isCamOn && (
+                          <div className="absolute inset-0 z-15 flex flex-col items-center justify-center bg-gradient-to-br from-zinc-900 to-slate-950 text-white">
+                            <div className="w-20 h-20 rounded-full bg-accent-ai/20 border-2 border-accent-ai/50 flex items-center justify-center font-bold text-accent-ai text-2xl mb-3 shadow-lg">
+                              {currentUser?.name?.charAt(0)?.toUpperCase() || 'D'}
+                            </div>
+                            <span className="text-sm font-semibold text-white/90">{currentUser?.name || 'Du'}</span>
+                            <span className="text-xs text-text-muted mt-1">{t('camera_off')}</span>
+                          </div>
+                        )}
 
-                    {/* Fallback wenn Kamera aus ist */}
-                    {!isCamOn && (
-                      <div className="absolute inset-0 z-15 flex flex-col items-center justify-center bg-gradient-to-br from-zinc-900 to-slate-950 text-white">
-                        <div className="w-9 h-9 rounded-full bg-accent-ai/20 border border-accent-ai/50 flex items-center justify-center font-bold text-accent-ai text-xs mb-1">
-                          {currentUser?.name?.charAt(0)?.toUpperCase() || 'D'}
+                        {/* Elegantes Status-Overlay: Warte auf Teilnehmer */}
+                        <div className="absolute top-4 left-4 z-20 flex items-center gap-2 px-3 py-1.5 bg-black/75 backdrop-blur-md rounded-xl border border-white/10 shadow-lg">
+                          <span className="relative flex h-2.5 w-2.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                          </span>
+                          <span className="text-xs font-bold text-white tracking-wide">
+                            {currentLang === 'de' ? 'Live im Raum • Warte auf Teilnehmer...' : 'Live in room • Waiting for participants...'}
+                          </span>
+                          <button
+                            onClick={() => handleQuickInvite('copy')}
+                            className="ml-2 px-2.5 py-1 bg-accent-ai hover:bg-accent-ai/90 text-white text-[11px] font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer shadow-sm active:scale-95"
+                            title={t('copy_link')}
+                          >
+                            {copiedLink ? <CheckCircle2 size={12} className="text-white" /> : <Copy size={12} />}
+                            <span>{copiedLink ? (currentLang === 'de' ? 'Kopiert!' : 'Copied!') : (currentLang === 'de' ? 'Link kopieren' : 'Copy Link')}</span>
+                          </button>
                         </div>
-                        <span className="text-[10px] text-text-muted font-medium">{t('camera_off')}</span>
                       </div>
                     )}
-
-                    <div className="absolute bottom-2 left-2 z-20 px-2 py-0.5 bg-black/75 backdrop-blur-md rounded-md border border-white/15 text-[10px] font-bold text-white/90 pointer-events-none flex items-center gap-1.5 shadow-sm">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                      {t('you')}
-                    </div>
-                    <div className="absolute top-2 right-2 z-20 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const nextCorner: Record<PreviewCorner, PreviewCorner> = {
-                            'bottom-right': 'bottom-left',
-                            'bottom-left': 'top-left',
-                            'top-left': 'top-right',
-                            'top-right': 'bottom-right'
-                          };
-                          const n = nextCorner[previewCorner];
-                          setPreviewCorner(n);
-                          safeStorage.setItem('meetchat_preview_corner', n);
-                        }}
-                        className="p-1.5 bg-black/70 backdrop-blur-md text-white rounded-lg hover:bg-black/90 cursor-pointer border border-white/10"
-                        title={currentLang === 'de' ? 'Vorschau-Position wechseln (unten-rechts / oben-rechts / oben-links / unten-links)' : 'Switch preview position (bottom-right / top-right / top-left / bottom-left)'}
-                      >
-                        <Move size={13} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowBgModal(true)}
-                        className="p-1.5 bg-black/70 backdrop-blur-md text-white rounded-lg hover:bg-black/90 cursor-pointer border border-white/10"
-                        title={currentLang === 'de' ? 'Hintergrund wechseln' : 'Change background'}
-                      >
-                        <Image size={13} />
-                      </button>
-                    </div>
                   </div>
+
+                  {/* Lokales Bild-in-Bild Vorschaufenster (nur eingeblendet, sobald andere Teilnehmer im Raum sind) */}
+                  {Object.keys(remoteStreams).length > 0 && (
+                    <div className={cn(
+                      "absolute w-36 aspect-video sm:w-44 sm:aspect-video md:w-48 md:aspect-video bg-zinc-900 rounded-2xl overflow-hidden border border-white/20 shadow-2xl shadow-black/80 ring-1 ring-black/40 z-30 group transition-all duration-300 pointer-events-auto",
+                      previewCornerClasses[previewCorner]
+                    )}>
+                      {(bgMode === 'preset' || bgMode === 'custom' || bgMode === 'screensaver') && (
+                        <div
+                          className="absolute inset-0 bg-cover bg-center z-0 transition-all duration-300"
+                          style={{
+                            backgroundImage: `url(${bgMode === 'custom' ? customBgImage : bgMode === 'screensaver' ? screensaverBg : bgImageUrl})`
+                          }}
+                        />
+                      )}
+                      <video
+                        ref={localVideoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className={cn(
+                          "w-full h-full object-cover relative z-10 transition-all duration-300",
+                          !isScreenSharing && "transform -scale-x-100",
+                          (bgMode === 'preset' || bgMode === 'custom' || bgMode === 'screensaver') && "opacity-90",
+                          !isCamOn && "opacity-0 pointer-events-none"
+                        )}
+                        style={bgMode === 'blur' ? { filter: `blur(${bgBlurAmount})` } : undefined}
+                      />
+
+                      {/* Fallback wenn Kamera aus ist */}
+                      {!isCamOn && (
+                        <div className="absolute inset-0 z-15 flex flex-col items-center justify-center bg-gradient-to-br from-zinc-900 to-slate-950 text-white">
+                          <div className="w-9 h-9 rounded-full bg-accent-ai/20 border border-accent-ai/50 flex items-center justify-center font-bold text-accent-ai text-xs mb-1">
+                            {currentUser?.name?.charAt(0)?.toUpperCase() || 'D'}
+                          </div>
+                          <span className="text-[10px] text-text-muted font-medium">{t('camera_off')}</span>
+                        </div>
+                      )}
+
+                      <div className="absolute bottom-2 left-2 z-20 px-2 py-0.5 bg-black/75 backdrop-blur-md rounded-md border border-white/15 text-[10px] font-bold text-white/90 pointer-events-none flex items-center gap-1.5 shadow-sm">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                        {t('you')}
+                      </div>
+                      <div className="absolute top-2 right-2 z-20 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const nextCorner: Record<PreviewCorner, PreviewCorner> = {
+                              'bottom-right': 'bottom-left',
+                              'bottom-left': 'top-left',
+                              'top-left': 'top-right',
+                              'top-right': 'bottom-right'
+                            };
+                            const n = nextCorner[previewCorner];
+                            setPreviewCorner(n);
+                            safeStorage.setItem('meetchat_preview_corner', n);
+                          }}
+                          className="p-1.5 bg-black/70 backdrop-blur-md text-white rounded-lg hover:bg-black/90 cursor-pointer border border-white/10"
+                          title={currentLang === 'de' ? 'Vorschau-Position wechseln (unten-rechts / oben-rechts / oben-links / unten-links)' : 'Switch preview position (bottom-right / top-right / top-left / bottom-left)'}
+                        >
+                          <Move size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowBgModal(true)}
+                          className="p-1.5 bg-black/70 backdrop-blur-md text-white rounded-lg hover:bg-black/90 cursor-pointer border border-white/10"
+                          title={currentLang === 'de' ? 'Hintergrund wechseln' : 'Change background'}
+                        >
+                          <Image size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1.5 md:gap-3 bg-slate-900/90 backdrop-blur-xl border border-slate-700/60 p-2 md:p-2.5 rounded-2xl shadow-2xl z-30 pointer-events-auto max-w-[calc(100%-2rem)]">
                     <button onClick={toggleMic} className={cn("p-2.5 md:p-3 rounded-xl transition-all border", isMicOn ? "bg-slate-800 hover:bg-slate-700 text-white border-slate-700" : "bg-red-600 hover:bg-red-500 text-white border-red-500 shadow-lg shadow-red-500/20")} title={currentLang === 'de' ? 'Mikrofon' : 'Microphone'}>{isMicOn ? <Mic size={18} /> : <MicOff size={18} />}</button>

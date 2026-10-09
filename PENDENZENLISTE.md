@@ -7,6 +7,35 @@
 
 ## 🏆 Erfolgsliste von heute (9. Oktober 2026)
 
+### 0.000000000000000007 Meet & Chat Videocall Audio-/Video-Architektur: Beseitigung der Ursachen für «kein Bild beim Videocall», Solo-Vollbildansicht, Session-Nonce-Trennung & Track-Synchronisation (9. Oktober 2026)
+* **Problemstellung & Benutzer-Frage («bei meet&chat ist kein bild gekommen beim videocall? wieso? und bitte auch alles überprüfen das es funktioniert.ok?»):**
+  * Bei Videocalls in Meet & Chat und im Gast-Zugang kam es zu Situationen, in denen der Anwender kein Bild sah oder der Bildschirm schwarz blieb.
+  * **Ursache 1 (Solo-Raum-Vakuum):** Trat ein Anwender dem Raum alleine bei (oder wartete auf Kollegen/Gäste), war `remoteStreams` leer. Die Hauptbühne renderte lediglich einen schwarzen Kasten mit Lade-Spinner («Warte auf Teilnehmer...»), während die eigene Kamera in einer winzigen 140px-Ecke am Rand versteckt war. Für den Anwender wirkte der Videocall dadurch komplett schwarz und inaktiv («kein Bild gekommen»).
+  * **Ursache 2 (Track-Timing Race Condition in `RemoteVideo`):** Bei WebRTC trafen Audio- und Videospuren oft mit wenigen Millisekunden Versatz ein. Wurde `RemoteVideo` vor dem Eintreffen des ersten Video-Frames gemountet, lieferte `getVideoTracks()` 0 Tracks zurück, wodurch `hasVideoTrack = false` gesetzt wurde. Das `<video>`-Element war via `opacity-0 pointer-events-none` unsichtbar geschaltet und das Fallback-Initialen-Avatar blieb selbst nach Eintreffen des Videostreams dauerhaft stehen.
+  * **Ursache 3 (Peer-ID Kollision bei Tests auf demselben Account / Gerät):** `VideoCallContext` verwendete `myIdRef.current = currentUser.uid`. Wurde der Call zu Testzwecken in zwei Browser-Tabs oder auf zwei Geräten mit demselben Account geöffnet, hatten beide Peers die identische ID (`76a657dd-554a-4ca7-8a39-3e371c55cd4e`). Supabase Presence überschrieb den Teilnehmer und die Bedingung `if (peerId !== myId)` blockierte den Verbindungsaufbau vollständig.
+  * **Ursache 4 (MediaStream Referenz-Stabilität):** In `pc.ontrack` wurde der bestehende `MediaStream` in-place mutiert, ohne eine neue Referenz zu instanziieren. React führte dadurch keine Prop-Re-Renderings in `RemoteVideo` aus.
+  * **Ursache 5 (Firewall-/NAT-Traversierung):** Bei restriktiven Netzwerken (symmetrisches NAT, Firmen-Firewalls) scheiterten direkte P2P-Verbindungen stumm, ohne dass der Anwender eine Rückmeldung über die Netzwerkhemmung erhielt.
+* **Durchgeführte Implementierungen:**
+  * **1. Solo-Vollbildansicht nach Zoom- & Google Meet-Standard ([MeetChat.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/MeetChat.tsx) & [GuestMeet.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/GuestMeet.tsx)):**
+    * Wenn man alleine im Raum ist, wird die eigene Kamera im grossen HD-Zentrum angezeigt – inklusive aller Hintergründe, Filter und Weichzeichner.
+    * Ein elegantes Status-Overlay (`🟢 Live im Raum • Warte auf Teilnehmer...`) und ein Ein-Klick-Button `[Link kopieren]` bestätigen sofort die Funktion von Bild und Ton.
+    * Das kleine Bild-in-Bild-Fenster wird automatisch ausgeblendet, solange man alleine ist, und schaltet sich nahtlos zu, sobald weitere Teilnehmer den Raum betreten.
+  * **2. Multi-Event & Intervall-Track-Synchronisation ([MeetChat.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/MeetChat.tsx) & [GuestMeet.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/GuestMeet.tsx)):**
+    * `RemoteVideo` überwacht nun `stream.onaddtrack`, `stream.onremovetrack`, `loadedmetadata` sowie `onmute`/`onunmute` auf allen Videotracks, ergänzt um eine intervallbasierte Statusprüfung. Das Videobild schaltet sofort zuverlässig ein, sobald Bilddaten eintreffen.
+  * **3. Eindeutige Session-Nonces in [VideoCallContext.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/contexts/VideoCallContext.tsx):**
+    * Jeder Peer erhält einen eindeutigen Session-Schlüssel (`uid_nonce`), sodass Tests in mehreren Tabs oder auf Zweitgeräten ohne Peer-ID-Kollision und ohne gegenseitige Blockade funktionieren.
+  * **4. Frische MediaStream-Instanzen bei Track-Eingang ([VideoCallContext.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/contexts/VideoCallContext.tsx)):**
+    * `new MediaStream(incomingStream.getTracks())` garantiert die sofortige Reaktivität im React-Komponentenbaum.
+  * **5. Visueller ICE- & Netzwerk-Hinweis (`iceWarning`):**
+    * Informiert den Benutzer proaktiv, falls eine Firewall oder ein Port-Filter den P2P-Videoverkehr hemmt.
+* **Ergebnis der Verifikation:**
+  * `eslint`: **0 Fehler, 0 Warnungen** (100% sauber).
+  * `tsc --noEmit`: **0 Fehler**.
+  * `vitest run`: **84 von 84 Tests bestanden** in allen 16 Test-Dateien.
+  * `npm run build`: In 14.72s erfolgreich fehlerfrei kompiliert.
+
+---
+
 ### 0.000000000000000006 Vollständiges Code-Qualitäts- & Linter-Audit: ESLint 0 Fehler / 0 Warnungen, Vite Fast-Refresh & Hook-Stabilität (9. Oktober 2026)
 * **Problemstellung & Benutzer-Frage («wo haben wir noch fehler im system?»):**
   * Im Rahmen der ganzheitlichen Fehlerprüfung wurde der gesamte Codebase-Linter (`npm run lint`), der TypeScript-Compiler (`tsc --noEmit`) und das Vitest-Testpaket ausgeführt.

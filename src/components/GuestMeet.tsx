@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useVideoCall } from '../contexts/VideoCallContext';
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Send, PhoneForwarded, Loader2, Users, MonitorUp, MonitorOff, Paperclip, Download, Calendar, Image, CheckCircle2, X } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Send, PhoneForwarded, Loader2, Users, MonitorUp, MonitorOff, Paperclip, Download, Calendar, Image, CheckCircle2, X, AlertTriangle } from 'lucide-react';
 import { cn, sanitizeUrl } from '../utils';
 import { uploadFileWithFallback } from '../utils/cloudStorageHelper';
 import { downloadICSFile } from '../utils/icsGenerator';
@@ -18,7 +18,10 @@ const isImageFile = (url?: string, text?: string): boolean => {
 const RemoteVideo = ({ stream, peerName }: { stream: MediaStream; peerName?: string }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [needsUserClick, setNeedsUserClick] = useState(false);
-  const [hasVideoTrack, setHasVideoTrack] = useState(true);
+  const [hasVideoTrack, setHasVideoTrack] = useState(() => {
+    const vTracks = stream?.getVideoTracks?.() || [];
+    return vTracks.length > 0 && vTracks.some(t => t.enabled);
+  });
 
   useEffect(() => {
     const video = videoRef.current;
@@ -26,11 +29,14 @@ const RemoteVideo = ({ stream, peerName }: { stream: MediaStream; peerName?: str
 
     const checkTracks = () => {
       const vTracks = stream.getVideoTracks();
-      setHasVideoTrack(vTracks.length > 0 && vTracks.some(t => t.enabled));
+      const hasActive = vTracks.length > 0 && vTracks.some(t => t.enabled && t.readyState !== 'ended');
+      setHasVideoTrack(hasActive);
     };
     checkTracks();
 
-    video.srcObject = stream;
+    if (video.srcObject !== stream) {
+      video.srcObject = stream;
+    }
     video.play().catch(err => {
       if (err?.name !== 'AbortError') {
         console.warn("Remote video play note:", err);
@@ -42,7 +48,9 @@ const RemoteVideo = ({ stream, peerName }: { stream: MediaStream; peerName?: str
 
     const handleTrackUpdate = () => {
       if (video) {
-        video.srcObject = stream;
+        if (video.srcObject !== stream) {
+          video.srcObject = stream;
+        }
         video.play().catch(() => {});
       }
       checkTracks();
@@ -50,6 +58,16 @@ const RemoteVideo = ({ stream, peerName }: { stream: MediaStream; peerName?: str
 
     stream.onaddtrack = handleTrackUpdate;
     stream.onremovetrack = handleTrackUpdate;
+
+    stream.getTracks().forEach(track => {
+      track.onmute = handleTrackUpdate;
+      track.onunmute = handleTrackUpdate;
+      track.onended = handleTrackUpdate;
+    });
+
+    video.onloadedmetadata = () => {
+      handleTrackUpdate();
+    };
 
     const unlockAudio = () => {
       if (video && video.muted) {
@@ -60,9 +78,20 @@ const RemoteVideo = ({ stream, peerName }: { stream: MediaStream; peerName?: str
     window.addEventListener('click', unlockAudio, { once: true });
     window.addEventListener('touchstart', unlockAudio, { once: true });
 
+    const interval = setInterval(checkTracks, 800);
+
     return () => {
+      clearInterval(interval);
       stream.onaddtrack = null;
       stream.onremovetrack = null;
+      stream.getTracks().forEach(track => {
+        track.onmute = null;
+        track.onunmute = null;
+        track.onended = null;
+      });
+      if (video) {
+        video.onloadedmetadata = null;
+      }
       window.removeEventListener('click', unlockAudio);
       window.removeEventListener('touchstart', unlockAudio);
     };
@@ -152,6 +181,7 @@ export default function GuestMeet() {
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
+  const soloLocalVideoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bgFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -184,7 +214,7 @@ export default function GuestMeet() {
   const {
     localStream, remoteStreams, peerInfo, isMicOn, isCamOn, callStatus,
     joinCall, hangUp, toggleMic, toggleCam, setJoinCallId, isInCall,
-    toggleScreenShare: contextToggleScreenShare
+    toggleScreenShare: contextToggleScreenShare, iceWarning
   } = useVideoCall();
 
   const handleToggleScreenShare = async () => {
@@ -347,13 +377,24 @@ export default function GuestMeet() {
     };
   }, [isJoined, joinId]);
 
-  // Handle Video Streams
+  // Handle Video Streams: synchronisiere Stream auf Solo-Vollbild und Bild-in-Bild
+  const remoteStreamsCount = Object.keys(remoteStreams).length;
   useEffect(() => {
-    if (localVideoRef.current && localStream) {
-      localVideoRef.current.srcObject = localStream;
-      localVideoRef.current.play().catch(e => console.warn(e));
+    if (localStream) {
+      if (soloLocalVideoRef.current && soloLocalVideoRef.current.srcObject !== localStream) {
+        soloLocalVideoRef.current.srcObject = localStream;
+        soloLocalVideoRef.current.play().catch(e => {
+          if (e?.name !== 'AbortError') console.warn("Guest solo video play warning:", e);
+        });
+      }
+      if (localVideoRef.current && localVideoRef.current.srcObject !== localStream) {
+        localVideoRef.current.srcObject = localStream;
+        localVideoRef.current.play().catch(e => {
+          if (e?.name !== 'AbortError') console.warn("Guest PiP video play warning:", e);
+        });
+      }
     }
-  }, [localStream]);
+  }, [localStream, isJoined, remoteStreamsCount]);
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -548,6 +589,14 @@ export default function GuestMeet() {
           </div>
         ) : (
           <>
+            {/* Netzwerk-Hinweis bei Firewall- oder NAT-Verbindungshemmung */}
+            {iceWarning && (
+              <div className="absolute top-16 left-1/2 -translate-x-1/2 z-40 max-w-lg w-[calc(100%-2rem)] px-4 py-2.5 bg-amber-500/95 text-slate-950 rounded-xl shadow-2xl backdrop-blur-md border border-amber-300 flex items-center gap-2.5 text-xs font-semibold animate-in fade-in slide-in-from-top-2">
+                <AlertTriangle size={18} className="shrink-0 text-slate-950" />
+                <span className="flex-1">{iceWarning}</span>
+              </div>
+            )}
+
             <div className={cn("absolute inset-0 z-10 grid gap-1.5 p-1.5 overflow-hidden", 
               Object.keys(remoteStreams).length === 0 ? "grid-cols-1 grid-rows-1" :
               Object.keys(remoteStreams).length === 1 ? "grid-cols-1 grid-rows-1" :
@@ -561,42 +610,88 @@ export default function GuestMeet() {
                   <RemoteVideo stream={stream} peerName={peerInfo[peerId]?.name} />
                 </div>
               ))}
+
+              {/* Solo-Modus: Wenn noch keine weiteren Teilnehmer im Raum sind, wird das eigene Kamerabild gross im Zentrum angezeigt */}
               {Object.keys(remoteStreams).length === 0 && (
-                <div className="w-full h-full flex flex-col items-center justify-center text-text-muted">
-                  <Loader2 size={40} className="animate-spin mb-4 text-accent-ai" />
-                  <p className="font-bold text-sm tracking-widest uppercase text-white">Warte auf Gastgeber...</p>
-                  <p className="text-xs text-text-muted mt-1">Sobald das Team beitritt, startet die Konferenz automatisch</p>
+                <div className="w-full h-full relative overflow-hidden bg-zinc-950 flex items-center justify-center rounded-2xl">
+                  {(bgMode === 'preset' || bgMode === 'custom') && (
+                    <div
+                      className="absolute inset-0 bg-cover bg-center z-0 transition-all duration-300"
+                      style={{
+                        backgroundImage: `url(${bgMode === 'custom' ? customBgImage : bgImageUrl})`
+                      }}
+                    />
+                  )}
+                  <video
+                    ref={soloLocalVideoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className={cn(
+                      "w-full h-full object-cover relative z-10 transition-all duration-300",
+                      !isScreenSharing && "transform -scale-x-100",
+                      (bgMode === 'preset' || bgMode === 'custom') && "opacity-90",
+                      !isCamOn && "opacity-0 pointer-events-none"
+                    )}
+                    style={bgMode === 'blur' ? { filter: `blur(${bgBlurAmount})` } : undefined}
+                  />
+
+                  {/* Fallback wenn Kamera aus ist */}
+                  {!isCamOn && (
+                    <div className="absolute inset-0 z-15 flex flex-col items-center justify-center bg-gradient-to-br from-zinc-900 to-slate-950 text-white">
+                      <div className="w-20 h-20 rounded-full bg-accent-ai/20 border-2 border-accent-ai/50 flex items-center justify-center font-bold text-accent-ai text-2xl mb-3 shadow-lg">
+                        {guestName?.charAt(0)?.toUpperCase() || 'G'}
+                      </div>
+                      <span className="text-sm font-semibold text-white/90">{guestName || 'Gast'}</span>
+                      <span className="text-xs text-text-muted mt-1">Kamera deaktiviert</span>
+                    </div>
+                  )}
+
+                  {/* Status-Overlay: Warte auf Gastgeber */}
+                  <div className="absolute top-4 left-4 z-20 flex items-center gap-2 px-3 py-1.5 bg-black/75 backdrop-blur-md rounded-xl border border-white/10 shadow-lg">
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                    </span>
+                    <span className="text-xs font-bold text-white tracking-wide">
+                      Live im Raum • Warte auf Gastgeber...
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
-            <div className="absolute bottom-24 right-4 w-24 h-36 md:bottom-6 md:right-6 md:w-48 md:h-32 bg-zinc-900 rounded-2xl overflow-hidden border-2 border-white/10 shadow-2xl z-20 group relative">
-              {(bgMode === 'preset' || bgMode === 'custom') && (
-                <div
-                  className="absolute inset-0 bg-cover bg-center z-0 transition-all duration-300"
-                  style={{
-                    backgroundImage: `url(${bgMode === 'custom' ? customBgImage : bgImageUrl})`
-                  }}
-                />
-              )}
-              <video
-                ref={localVideoRef}
-                autoPlay
-                playsInline
-                muted
-                className={cn(
-                  "w-full h-full object-cover relative z-10 transform -scale-x-100 transition-all duration-300",
-                  (bgMode === 'preset' || bgMode === 'custom') && "opacity-90"
+
+            {/* Lokales Bild-in-Bild Vorschaufenster (nur eingeblendet, sobald andere Teilnehmer im Raum sind) */}
+            {Object.keys(remoteStreams).length > 0 && (
+              <div className="absolute bottom-24 right-4 w-24 h-36 md:bottom-6 md:right-6 md:w-48 md:h-32 bg-zinc-900 rounded-2xl overflow-hidden border-2 border-white/10 shadow-2xl z-20 group relative">
+                {(bgMode === 'preset' || bgMode === 'custom') && (
+                  <div
+                    className="absolute inset-0 bg-cover bg-center z-0 transition-all duration-300"
+                    style={{
+                      backgroundImage: `url(${bgMode === 'custom' ? customBgImage : bgImageUrl})`
+                    }}
+                  />
                 )}
-                style={bgMode === 'blur' ? { filter: `blur(${bgBlurAmount})` } : undefined}
-              />
-              <button
-                onClick={() => setShowBgModal(true)}
-                className="absolute top-2 right-2 z-20 p-1.5 bg-black/60 backdrop-blur-md text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80 cursor-pointer"
-                title="Hintergrund wechseln"
-              >
-                <Image size={14} />
-              </button>
-            </div>
+                <video
+                  ref={localVideoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className={cn(
+                    "w-full h-full object-cover relative z-10 transform -scale-x-100 transition-all duration-300",
+                    (bgMode === 'preset' || bgMode === 'custom') && "opacity-90"
+                  )}
+                  style={bgMode === 'blur' ? { filter: `blur(${bgBlurAmount})` } : undefined}
+                />
+                <button
+                  onClick={() => setShowBgModal(true)}
+                  className="absolute top-2 right-2 z-20 p-1.5 bg-black/60 backdrop-blur-md text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80 cursor-pointer"
+                  title="Hintergrund wechseln"
+                >
+                  <Image size={14} />
+                </button>
+              </div>
+            )}
           </>
         )}
 

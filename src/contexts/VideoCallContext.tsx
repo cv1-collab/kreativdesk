@@ -72,6 +72,7 @@ interface VideoCallContextType {
 
   incomingCall: IncomingCall | null;
   setIncomingCall: (call: IncomingCall | null) => void;
+  iceWarning: string | null;
 }
 
 const VideoCallContext = createContext<VideoCallContextType | undefined>(undefined);
@@ -103,11 +104,13 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [isMinimized, setIsMinimized] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
+  const [iceWarning, setIceWarning] = useState<string | null>(null);
 
   const isInCall = callStatus !== 'idle';
   
-  // Mesh Network Refs
-  const [initialMyId] = useState(() => `guest_${Math.random().toString(36).substring(2, 9)}`);
+  // Mesh Network Refs - Jede Browser-Session erhält einen eindeutigen Nonce zur Vermeidung von Peer-Kollisionen bei Multi-Tab/Multi-Device-Tests
+  const sessionNonceRef = useRef<string>(Math.random().toString(36).substring(2, 8));
+  const [initialMyId] = useState(() => `guest_${sessionNonceRef.current}`);
   const myIdRef = useRef<string>(initialMyId);
   const pcsRef = useRef<Record<string, RTCPeerConnection>>({});
   const pcsRemoteStreamsRef = useRef<Record<string, MediaStream>>({});
@@ -116,7 +119,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   useEffect(() => {
     if (currentUser?.uid) {
-      myIdRef.current = currentUser.uid;
+      myIdRef.current = `${currentUser.uid}_${sessionNonceRef.current}`;
     }
   }, [currentUser]);
 
@@ -357,14 +360,18 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       } else {
         const existing = pcsRemoteStreamsRef.current[peerId];
         if (existing) {
-          existing.addTrack(event.track);
+          if (!existing.getTracks().some(t => t.id === event.track.id)) {
+            existing.addTrack(event.track);
+          }
           incomingStream = existing;
         } else {
           incomingStream = new MediaStream([event.track]);
         }
       }
       pcsRemoteStreamsRef.current[peerId] = incomingStream;
-      setRemoteStreams(prev => ({ ...prev, [peerId]: incomingStream }));
+      // Neue MediaStream-Instanz garantiert sofortige React-Aktualisierung in RemoteVideo-Komponenten
+      const freshStream = new MediaStream(incomingStream.getTracks());
+      setRemoteStreams(prev => ({ ...prev, [peerId]: freshStream }));
     };
 
     pc.onicecandidate = (event) => {
@@ -387,6 +394,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     pc.oniceconnectionstatechange = async () => {
       if (pc.iceConnectionState === 'failed') {
         console.warn(`[WebRTC] ICE Connection failed for ${peerId}, attempting ICE restart...`);
+        setIceWarning('Direkte Verbindung zwischen den Geräten wird vom Router/Firewall (Symmetrische NAT) blockiert. Es wird eine automatische Wiederverbindung versucht.');
         try {
           if (typeof (pc as any).restartIce === 'function') {
             (pc as any).restartIce();
@@ -410,6 +418,8 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         } catch (e) {
           console.error("ICE restart error:", e);
         }
+      } else if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+        setIceWarning(null);
       } else if (pc.iceConnectionState === 'closed') {
         cleanUpPeer(peerId);
       } else if (pc.iceConnectionState === 'disconnected') {
@@ -700,6 +710,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setCallId(''); 
     setJoinCallId(''); 
     setIsMinimized(false);
+    setIceWarning(null);
   };
 
   const hangUpRef = useRef(hangUp);
@@ -717,7 +728,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     <VideoCallContext.Provider value={{
       localStream, remoteStreams, peerInfo, screenStream, isMicOn, isCamOn, isScreenSharing,
       callStatus, callId, joinCallId, setJoinCallId, startCall, joinCall, hangUp, toggleMic, toggleCam, toggleScreenShare,
-      isInCall, isMinimized, setIsMinimized, isChatOpen, setIsChatOpen, incomingCall, setIncomingCall
+      isInCall, isMinimized, setIsMinimized, isChatOpen, setIsChatOpen, incomingCall, setIncomingCall, iceWarning
     }}>
       {children}
     </VideoCallContext.Provider>
