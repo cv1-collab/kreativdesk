@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useProject } from '../contexts/ProjectContext';
@@ -314,6 +314,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
   const { currentUser } = useAuth();
   const queryClient = useQueryClient();
   const { addToast } = useToast();
+  const navigate = useNavigate();
   const { projects = [], activeProjectId, isDemoMode } = useProject() as any;
   const { language, t: globalT } = useLanguage();
   const { hasPermission } = usePermissions();
@@ -439,21 +440,174 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const getFileCategory = (item: any): '3d' | 'cad' | 'image' | 'pdf' | 'archive' | 'template' | 'general' => {
+    const name = (item.name || '').toLowerCase();
+    const fileUrl = item.url || item.file_url || '';
+    
+    // 3D / BIM / Blender Models
+    if (/\.(fbx|obj|blend|ifc|gltf|glb|stl|dae|3ds|step|stp)$/i.test(name)) {
+      return '3d';
+    }
+    // CAD Pläne
+    if (/\.(dwg|dxf)$/i.test(name)) {
+      return 'cad';
+    }
+    // Bilder
+    if (item.type?.startsWith('image/') || /\.(png|jpe?g|webp|svg|gif|bmp|tiff)$/i.test(name)) {
+      return 'image';
+    }
+    // PDF Dokumente
+    if (item.type === 'application/pdf' || name.endsWith('.pdf') || fileUrl.includes('.pdf') || fileUrl.startsWith('data:application/pdf')) {
+      return 'pdf';
+    }
+    // Archive
+    if (/\.(zip|rar|7z|tar|gz)$/i.test(name)) {
+      return 'archive';
+    }
+    // Echte Vorlagen / Text-Dokumente
+    if (item.type === 'vorlage' || name.endsWith('.txt') || name.endsWith('.md') || fileUrl.startsWith('data:text')) {
+      return 'template';
+    }
+    return 'general';
+  };
+
+  const getFileBadgeAndIcon = (item: any) => {
+    const category = getFileCategory(item);
+    const isNew = item.type === 'vorlage' || (new Date().getTime() - new Date(item.created_at || 0).getTime() < 86400000);
+    switch (category) {
+      case '3d':
+        return {
+          category,
+          isNew,
+          icon: <Box size={20} />,
+          iconBg: 'bg-cyan-500/10 text-cyan-600',
+          badgeText: '3D MODELL',
+          badgeClass: 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30',
+          actionBtn: 'Im 3D-Viewer öffnen'
+        };
+      case 'cad':
+        return {
+          category,
+          isNew,
+          icon: <FileText size={20} />,
+          iconBg: 'bg-indigo-500/10 text-indigo-600',
+          badgeText: 'CAD PLAN',
+          badgeClass: 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30',
+          actionBtn: 'CAD-Plan öffnen'
+        };
+      case 'image':
+        return {
+          category,
+          isNew,
+          icon: <ImageIcon size={20} />,
+          iconBg: 'bg-emerald-500/10 text-emerald-600',
+          badgeText: 'BILD',
+          badgeClass: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30',
+          actionBtn: 'Bild öffnen'
+        };
+      case 'pdf':
+        return {
+          category,
+          isNew,
+          icon: <FileText size={20} />,
+          iconBg: 'bg-red-500/10 text-red-600',
+          badgeText: 'PDF',
+          badgeClass: 'bg-red-500/15 text-red-700 dark:text-red-300 border border-red-500/30',
+          actionBtn: 'PDF öffnen'
+        };
+      case 'archive':
+        return {
+          category,
+          isNew,
+          icon: <Archive size={20} />,
+          iconBg: 'bg-purple-500/10 text-purple-600',
+          badgeText: 'ARCHIV',
+          badgeClass: 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30',
+          actionBtn: 'Herunterladen'
+        };
+      case 'template':
+        return {
+          category,
+          isNew,
+          icon: <FileText size={20} />,
+          iconBg: 'bg-amber-500/10 text-amber-600',
+          badgeText: 'VORLAGE',
+          badgeClass: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30',
+          actionBtn: 'Im Studio bearbeiten'
+        };
+      default:
+        return {
+          category,
+          isNew,
+          icon: <FileText size={20} />,
+          iconBg: 'bg-blue-500/10 text-blue-500',
+          badgeText: null,
+          badgeClass: '',
+          actionBtn: 'Herunterladen'
+        };
+    }
+  };
+
+  const handleFileClick = (item: any) => {
+    const category = getFileCategory(item);
+    const rawProjId = selectedProjectId || propProjectId || routeProjectId || activeProjectId;
+
+    // Nur echte Vorlagen / editierbare Briefe im DocumentStudioModal öffnen!
+    if (category === 'template') {
+      handleOpenInStudio(item);
+      return;
+    }
+
+    // 3D / BIM / Blender:
+    if (category === '3d') {
+      if (rawProjId && rawProjId !== 'global') {
+        navigate(`/project/${rawProjId}/bim`);
+        addToast(`3D-Modell "${item.name}" im 3D Viewer (BIM) geöffnet!`, 'success');
+        return;
+      }
+      handleDownloadFile(item);
+      return;
+    }
+
+    // CAD Pläne:
+    if (category === 'cad') {
+      if (rawProjId && rawProjId !== 'global') {
+        navigate(`/project/${rawProjId}/plans`);
+        addToast(`CAD-Plan "${item.name}" im Plan-Viewer geöffnet!`, 'success');
+        return;
+      }
+      handleDownloadFile(item);
+      return;
+    }
+
+    // Bilder:
+    if (category === 'image') {
+      const url = item.url || item.file_url;
+      if (url && typeof window !== 'undefined') {
+        window.open(url, '_blank', 'noopener,noreferrer');
+        return;
+      }
+      handleDownloadFile(item);
+      return;
+    }
+
+    // PDFs, Archive, Office & sonstige Binärdateien direkt herunterladen:
+    handleDownloadFile(item);
+  };
+
   const handleOpenInStudio = (item: any) => {
     if (isExternalPartner) {
       handleDownloadFile(item);
       return;
     }
-    const fileUrl = item.url || item.file_url;
-    const isPdf = item.type === 'application/pdf' || 
-                  item.name?.toLowerCase().endsWith('.pdf') || 
-                  (fileUrl && (fileUrl.includes('.pdf') || fileUrl.startsWith('data:application/pdf')));
-
-    if (isPdf) {
-      handleDownloadFile(item);
+    const category = getFileCategory(item);
+    // Verhindere, dass 3D-Dateien, CAD-Pläne, Bilder oder PDFs als Briefvorlage geöffnet werden!
+    if (category !== 'template') {
+      handleFileClick(item);
       return;
     }
 
+    const fileUrl = item.url || item.file_url;
     let textContent = '';
     if (fileUrl && fileUrl.startsWith('data:text')) {
       try {
@@ -1679,10 +1833,11 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
                 {/* Render Files with Checkboxes */}
                 {sortedFiles.map(item => {
                   const isSelected = selectedDocIds.includes(item.id);
+                  const fileInfo = getFileBadgeAndIcon(item);
                   return (
                     <div
                       key={item.id}
-                      onClick={() => handleOpenInStudio(item)}
+                      onClick={() => handleFileClick(item)}
                       className={cn(
                         "bg-background border p-4 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between gap-3 group relative",
                         isSelected ? "border-blue-500 bg-blue-500/5 ring-2 ring-blue-500/20" : "border-border/70 hover:border-blue-500/50"
@@ -1702,8 +1857,8 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
                             )}
                           </button>
 
-                          <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-                            <FileText size={20} />
+                          <div className={cn("p-2.5 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105", fileInfo.iconBg)}>
+                            {fileInfo.icon}
                           </div>
                         </div>
 
@@ -1730,9 +1885,14 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
                       </div>
 
                       <div>
-                        <div className="font-bold text-sm text-text-primary line-clamp-2 group-hover:text-blue-500 transition-colors flex items-center gap-1.5">
-                          {item.name}
-                          {(item.type === 'vorlage' || (new Date().getTime() - new Date(item.created_at || 0).getTime() < 86400000)) && (
+                        <div className="font-bold text-sm text-text-primary line-clamp-2 group-hover:text-blue-500 transition-colors flex items-center gap-1.5 flex-wrap">
+                          <span>{item.name}</span>
+                          {fileInfo.badgeText && (
+                            <span className={cn("text-[9px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 rounded", fileInfo.badgeClass)}>
+                              {fileInfo.badgeText}
+                            </span>
+                          )}
+                          {fileInfo.isNew && !fileInfo.badgeText && (
                             <span className="text-[9px] uppercase tracking-widest font-black px-1.5 py-0.5 bg-red-500 text-white rounded animate-pulse">🔴 NEU</span>
                           )}
                         </div>
@@ -1741,12 +1901,22 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
                         </div>
                       </div>
 
-                      {!isExternalPartner && (item.type === 'vorlage' || item.name?.endsWith('.txt') || (item.url && item.url.startsWith('data:'))) && (
+                      {!isExternalPartner && (
                         <button
-                          onClick={(e) => { e.stopPropagation(); handleOpenInStudio(item); }}
-                          className="w-full mt-1 py-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-lg border border-amber-500/20 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                          onClick={(e) => { e.stopPropagation(); handleFileClick(item); }}
+                          className={cn(
+                            "w-full mt-1 py-1.5 rounded-lg border font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer",
+                            fileInfo.category === 'template' 
+                              ? "bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border-amber-500/20"
+                              : fileInfo.category === '3d'
+                                ? "bg-cyan-500/10 text-cyan-600 hover:bg-cyan-500/20 border-cyan-500/20"
+                                : fileInfo.category === 'cad'
+                                  ? "bg-indigo-500/10 text-indigo-600 hover:bg-indigo-500/20 border-indigo-500/20"
+                                  : "bg-surface text-text-primary hover:bg-background border-border/60"
+                          )}
                         >
-                          <Edit3 size={12} /> Im Studio bearbeiten
+                          {fileInfo.category === 'template' ? <Edit3 size={12} /> : fileInfo.category === '3d' ? <Box size={12} /> : <Download size={12} />}
+                          {fileInfo.actionBtn}
                         </button>
                       )}
                     </div>
@@ -1786,6 +1956,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
 
                 {sortedFiles.map(item => {
                   const isSelected = selectedDocIds.includes(item.id);
+                  const fileInfo = getFileBadgeAndIcon(item);
                   return (
                     <div 
                       key={item.id} 
@@ -1793,7 +1964,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
                         "py-3 px-4 flex items-center justify-between transition-colors rounded-xl group cursor-pointer",
                         isSelected ? "bg-blue-500/10 border-l-4 border-blue-500" : "hover:bg-background/60"
                       )}
-                      onClick={() => handleOpenInStudio(item)}
+                      onClick={() => handleFileClick(item)}
                     >
                       <div className="flex items-center gap-3">
                         <button
@@ -1808,11 +1979,18 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
                           )}
                         </button>
 
-                        <FileText className="text-blue-500 shrink-0" size={22} />
+                        <div className={cn("p-1.5 rounded-lg shrink-0", fileInfo.iconBg)}>
+                          {fileInfo.icon}
+                        </div>
                         <div>
-                          <div className="font-bold text-sm text-text-primary flex items-center gap-2">
-                            {item.name}
-                            {(item.type === 'vorlage' || (new Date().getTime() - new Date(item.created_at || 0).getTime() < 86400000)) && (
+                          <div className="font-bold text-sm text-text-primary flex items-center gap-2 flex-wrap">
+                            <span>{item.name}</span>
+                            {fileInfo.badgeText && (
+                              <span className={cn("text-[9px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 rounded", fileInfo.badgeClass)}>
+                                {fileInfo.badgeText}
+                              </span>
+                            )}
+                            {fileInfo.isNew && !fileInfo.badgeText && (
                               <span className="text-[10px] uppercase tracking-widest font-black px-2 py-0.5 bg-red-500 text-white rounded-md animate-pulse flex items-center gap-1">
                                 🔴 NEU
                               </span>
@@ -1825,13 +2003,23 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
                       </div>
 
                       <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                        {!isExternalPartner && (item.type === 'vorlage' || item.name?.endsWith('.txt') || (item.url && item.url.startsWith('data:'))) && (
+                        {!isExternalPartner && (
                           <button 
-                            onClick={() => handleOpenInStudio(item)} 
-                            className="px-3 py-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors rounded-lg border border-amber-500/20 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm"
-                            title="Im Brief- & Dokumenten-Studio bearbeiten"
+                            onClick={() => handleFileClick(item)} 
+                            className={cn(
+                              "px-3 py-1.5 transition-colors rounded-lg border font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm",
+                              fileInfo.category === 'template' 
+                                ? "bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border-amber-500/20"
+                                : fileInfo.category === '3d'
+                                  ? "bg-cyan-500/10 text-cyan-600 hover:bg-cyan-500/20 border-cyan-500/20"
+                                  : fileInfo.category === 'cad'
+                                    ? "bg-indigo-500/10 text-indigo-600 hover:bg-indigo-500/20 border-indigo-500/20"
+                                    : "bg-surface text-text-primary hover:bg-background border-border/60"
+                            )}
+                            title={fileInfo.actionBtn}
                           >
-                            <Edit3 size={14} /> <span className="hidden sm:inline">Im Studio bearbeiten</span>
+                            {fileInfo.category === 'template' ? <Edit3 size={14} /> : fileInfo.category === '3d' ? <Box size={14} /> : <Download size={14} />}
+                            <span className="hidden sm:inline">{fileInfo.actionBtn}</span>
                           </button>
                         )}
 

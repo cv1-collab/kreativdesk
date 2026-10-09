@@ -7,6 +7,25 @@
 
 ## 🏆 Erfolgsliste von heute (9. Oktober 2026)
 
+### 0.000000000000000004 Digitale Bauakte: Intelligente Dateityp-Erkennung (3D/CAD/Media vs. Vorlage) & WebRTC-Server Bereinigung (9. Oktober 2026)
+* **Problemstellung & Benutzer-Rückmeldung:**
+  * In der digitalen Bauakte (`/documents`) öffneten sich 3D-Modelle (wie `PHGR_Chur_Erdgeschoss_3D.fbx` oder Blender-Dateien), CAD-Pläne und Mediendateien beim Anklicken fälschlicherweise im **Brief- und Dokumentenstudio** (`DocumentStudioModal` / DIN-A4 Live-Blatt WYSIWYG) mit Empfängeradresse und Standard-Briefvorlagentext.
+  * Browser-Warnung `WebRTC: Using five or more STUN/TURN servers slows down discovery` und Fehler `WebRTC: ICE failed, your TURN server appears to be broken` durch einen überlasteten/unzuverlässigen öffentlichen OpenRelay-Fallback.
+* **Durchgeführte Implementierungen:**
+  * **1. Intelligente Dateitypen-Unterscheidung & Direkt-Navigation ([Documents.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/Documents.tsx)):**
+    * Neue Funktionen `getFileCategory` und `getFileBadgeAndIcon` implementiert: Erkennt 3D-Modelle (`.fbx`, `.blend`, `.ifc`, `.obj`, `.gltf`, `.glb`, `.stl`), CAD-Pläne (`.dwg`, `.dxf`), Bilder, PDFs, Archive und Text-Vorlagen.
+    * Klick auf ein 3D-Modell in einem Projekt navigiert nun direkt in den **3D Viewer (BIM)** (`/project/${id}/bim`) oder startet den Download – es wird **keine** Briefvorlage mehr geöffnet.
+    * Klick auf einen CAD-Plan öffnet den Plan-Viewer (`/project/${id}/plans`).
+    * Das Brief- und Dokumentenstudio (`DocumentStudioModal`) wird ab sofort **nur noch für echte Vorlagen** (`item.type === 'vorlage'`, `.txt`, `.md`) geöffnet.
+    * Spezifische Badges (`3D MODELL`, `CAD PLAN`, `BILD`, `PDF`, `VORLAGE`) und individuelle Icons (`Box`, `ImageIcon`, etc.) in Kachel- und Listenansicht.
+  * **2. WebRTC STUN/TURN-Bereinigung ([VideoCallContext.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/contexts/VideoCallContext.tsx)):**
+    * Entfernung des unzuverlässigen öffentlichen OpenRelay-Fallbacks, der die Meldung `your TURN server appears to be broken` verursachte und die 5-Server-Obergrenze sprengte.
+    * Saubere Konfiguration mit 2 stabilen STUN-Servern (Google + Cloudflare), TURN-Relay rein über dedizierte `.env`-Konfiguration (`VITE_TURN_URL`, `VITE_TURN_USERNAME`, `VITE_TURN_CREDENTIAL`).
+* **Ergebnis der Verifikation:**
+  * TypeScript 0 Fehler (`tsc --noEmit`), Production Build 100% fehlerfrei.
+
+---
+
 ### 0.000000000000000003 WebRTC Video Meetings: STUN/TURN-Optimierung, NAT-Traversal & Connection Resilience (9. Oktober 2026)
 * **Problemstellung & Konsolen-Fehleranalyse:**
   * Warnung `WebRTC: Using five or more STUN/TURN servers slows down discovery` im Browser aufgrund von 6 redundanten STUN-Servern.

@@ -26,17 +26,6 @@ const getIceConfiguration = (): RTCConfiguration => {
       username: customTurnUsername,
       credential: customTurnCredential
     });
-  } else {
-    // Standard Metered OpenRelay Fallback to allow WebRTC calls across symmetric NATs, firewalls and mobile networks
-    iceServers.push({
-      urls: [
-        'turn:openrelay.metered.ca:80',
-        'turn:openrelay.metered.ca:443',
-        'turns:openrelay.metered.ca:443?transport=tcp'
-      ],
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
-    });
   }
 
   return {
