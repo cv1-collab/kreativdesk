@@ -26,7 +26,7 @@ if (typeof window !== 'undefined') {
     try {
       const lastReload = Number(sessionStorage.getItem('chunk_reload_timestamp') || '0');
       const now = Date.now();
-      if (now - lastReload > 30000) {
+      if (now - lastReload > 10000) {
         sessionStorage.setItem('chunk_reload_timestamp', String(now));
         window.location.reload();
       }
@@ -51,9 +51,10 @@ if (typeof window !== 'undefined') {
     }
   });
 
-  window.addEventListener('vite:preloadError', (event) => {
-    event.preventDefault();
-    console.warn('[Vite Preload Error] Neuer Build verfügbar, aktualisiere Seite...');
+  window.addEventListener('vite:preloadError', (event: any) => {
+    console.warn('[Vite Preload Error] Neuer Build verfügbar, aktualisiere Seite...', event?.payload);
+    // Absichtlich KEIN event.preventDefault(), damit das Dynamic-Import-Promise fehlschlägt
+    // und von React / lazyWithRetry ordentlich abgefangen werden kann statt undefined zurückzugeben.
     attemptReload();
   });
 }
