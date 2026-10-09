@@ -169,9 +169,9 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     fetchCompanyUsers();
     fetchProjectDetails();
 
-    const safeCompanyId = currentUser.companyId || currentUser.uid;
+    const safeCompanyId = getSafeCompanyId();
     const channel = supabase
-      .channel('schema-db-changes')
+      .channel(`schema-db-changes-${safeCompanyId || 'global'}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, () => {
         fetchProjects();
         queryClient.invalidateQueries({ queryKey: [PROJECTS_QUERY_KEY] });
@@ -190,7 +190,12 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'defects' }, () => {
         fetchProjectDetails();
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'time_entries', filter: `company_id=eq.${safeCompanyId}` }, () => {
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'time_entries', 
+        filter: safeCompanyId ? `company_id=eq.${safeCompanyId}` : undefined 
+      }, () => {
         fetchProjectDetails();
       })
       .subscribe();
@@ -200,7 +205,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         supabase.removeChannel(channel).catch(() => {});
       }
     };
-  }, [currentUser, fetchProjects, fetchCompanyUsers, fetchProjectDetails]);
+  }, [currentUser, getSafeCompanyId, fetchProjects, fetchCompanyUsers, fetchProjectDetails]);
 
   const refreshAllData = useCallback(async () => {
     await Promise.all([

@@ -412,7 +412,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           mySessionId = `sess_${deviceTypeKey}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
           safeStorage.setItem(`kreativ_session_id_${deviceTypeKey}_${user.id}`, mySessionId);
           try {
-            await supabase.from('profiles').update({ updated_at: new Date().toISOString() }).eq('id', user.id);
+            await (supabase.from('profiles') as any).update({ [deviceTypeKey]: mySessionId, updated_at: new Date().toISOString() }).eq('id', user.id);
           } catch (_) {}
         } else {
           const currentRemoteSession = profile[deviceTypeKey];
@@ -420,7 +420,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             mySessionId = `sess_${deviceTypeKey}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
             safeStorage.setItem(`kreativ_session_id_${deviceTypeKey}_${user.id}`, mySessionId);
             try {
-              await supabase.from('profiles').update({ updated_at: new Date().toISOString() }).eq('id', user.id);
+              await (supabase.from('profiles') as any).update({ [deviceTypeKey]: mySessionId, updated_at: new Date().toISOString() }).eq('id', user.id);
+            } catch (_) {}
+          } else if (!currentRemoteSession) {
+            try {
+              await (supabase.from('profiles') as any).update({ [deviceTypeKey]: mySessionId, updated_at: new Date().toISOString() }).eq('id', user.id);
             } catch (_) {}
           }
         }
@@ -477,7 +481,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const resolvedCompanyName = (isSuperUser && previewCompanyName) || companyData?.name || 'Workspace';
         const userPlan = isInvitedUser ? (targetPlan || resolvedCompanyPlan) : (resolvedCompanyPlan || 'Free Trial');
 
-        const newProfile = {
+        const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const deviceTypeKey = isMobileDevice ? 'active_mobile_session_id' : 'active_desktop_session_id';
+        const initialSessionId = `sess_${deviceTypeKey}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        safeStorage.setItem(`kreativ_session_id_${deviceTypeKey}_${user.id}`, initialSessionId);
+
+        const newProfile: any = {
           id: user.id,
           email: user.email || '',
           name: userName,
@@ -486,10 +495,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           plan: userPlan,
           has_active_subscription: true,
           trial_ends_at: (isInvitedUser || isSuperUser) ? null : trialEndDate.toISOString(),
-          has_seen_tour: false
+          has_seen_tour: false,
+          [deviceTypeKey]: initialSessionId
         };
 
-        await supabase.from('profiles').upsert(newProfile);
+        await (supabase.from('profiles') as any).upsert(newProfile);
 
         const appUser: AppUser = {
           id: user.id,
@@ -560,7 +570,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const deviceTypeKey = isMobileDevice ? 'active_mobile_session_id' : 'active_desktop_session_id';
     const deviceTypeName = isMobileDevice ? 'Mobilgerät (Smartphone/iPad)' : 'Computer (Laptop/Desktop)';
 
-    const mySessionId = safeStorage.getItem(`kreativ_session_id_${deviceTypeKey}_${currentUser.id}`);
+    const mySessionId = safeStorage.getString(`kreativ_session_id_${deviceTypeKey}_${currentUser.id}`);
     if (!mySessionId) return;
 
     const channel = supabase
@@ -604,6 +614,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (currentUser?.id) {
       safeStorage.removeItem(`kreativ_session_id_active_desktop_session_id_${currentUser.id}`);
       safeStorage.removeItem(`kreativ_session_id_active_mobile_session_id_${currentUser.id}`);
+      try {
+        const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const deviceTypeKey = isMobileDevice ? 'active_mobile_session_id' : 'active_desktop_session_id';
+        await (supabase.from('profiles') as any).update({ [deviceTypeKey]: null }).eq('id', currentUser.id);
+      } catch (_) {}
     }
     await supabase.auth.signOut();
     setCurrentUser(null);

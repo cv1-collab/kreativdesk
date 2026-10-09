@@ -32,18 +32,18 @@ export const AIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [warnings, setWarnings] = useState<AIWarning[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const addWarning = (warning: Omit<AIWarning, 'id' | 'timestamp'>) => {
+  const addWarning = React.useCallback((warning: Omit<AIWarning, 'id' | 'timestamp'>) => {
     const newWarning: AIWarning = {
       ...warning,
-      id: `ai-warn-${Date.now()}`,
+      id: `ai-warn-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       timestamp: new Date().toISOString()
     };
     setWarnings(prev => [newWarning, ...prev]);
-  };
+  }, []);
 
-  const dismissWarning = (id: string) => {
+  const dismissWarning = React.useCallback((id: string) => {
     setWarnings(prev => prev.filter(w => w.id !== id));
-  };
+  }, []);
 
   return (
     <AIContext.Provider value={{ warnings, addWarning, dismissWarning, isProcessing, setIsProcessing }}>

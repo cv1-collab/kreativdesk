@@ -89,9 +89,13 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const { addToast } = useToast();
   
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
+  localStreamRef.current = localStream;
   const [remoteStreams, setRemoteStreams] = useState<Record<string, MediaStream>>({});
   const [peerInfo, setPeerInfo] = useState<Record<string, { name: string; avatar?: string }>>({});
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
+  const screenStreamRef = useRef<MediaStream | null>(null);
+  screenStreamRef.current = screenStream;
   
   const [isMicOn, setIsMicOn] = useState(true);
   const [isCamOn, setIsCamOn] = useState(true);
@@ -697,8 +701,10 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     pcsRemoteStreamsRef.current = {};
     iceCandidateQueueRef.current = {};
 
-    if (localStream) localStream.getTracks().forEach(t => t.stop());
-    if (screenStream) screenStream.getTracks().forEach(t => t.stop());
+    const activeLocal = localStreamRef.current || localStream;
+    if (activeLocal) activeLocal.getTracks().forEach(t => t.stop());
+    const activeScreen = screenStreamRef.current || screenStream;
+    if (activeScreen) activeScreen.getTracks().forEach(t => t.stop());
     Object.values(remoteStreams).forEach(stream => stream.getTracks().forEach(t => t.stop()));
     
     setLocalStream(null); 
