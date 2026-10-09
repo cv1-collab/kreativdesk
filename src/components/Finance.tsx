@@ -39,6 +39,7 @@ import { DOCUMENTS_QUERY_KEY } from '../hooks/queries/useDocumentsQuery';
 import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 import { notifyNewDocument } from '../utils/documentNotificationHelper';
 import { demoTemplates } from '../utils/demoTemplates';
+import { isPdfFile, convertPdfPageToImage } from '../utils/pdfToImageHelper';
 import {
   Currency,
   CurrencyMode,
@@ -1484,6 +1485,18 @@ export default function Finance() {
   const processReceiptFiles = async (filesList: File[]) => {
     if (!filesList.length) return;
     for (const file of filesList) {
+      if (isPdfFile(file)) {
+        try {
+          addToast('PDF-Beleg erkannt. Wird für Belegleser aufbereitet...', 'info');
+          const converted = await convertPdfPageToImage(file, 1);
+          setIncomingReceipts(prev => [...prev, converted.dataUrl]);
+          const base64Data = converted.dataUrl.split(',')[1];
+          await processImageWithAI(base64Data, null, 'image/jpeg');
+          continue;
+        } catch (pdfErr) {
+          console.warn('PDF conversion failed, falling back to standard file reader:', pdfErr);
+        }
+      }
       const reader = new FileReader();
       reader.onloadend = async () => {
         if (reader.result) {
@@ -3756,21 +3769,33 @@ export default function Finance() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-2.5 overflow-y-auto custom-scrollbar pr-1 pb-2">
-                    {incomingReceipts.map((src, i) => (
-                      <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-border shadow-sm group">
-                        <img src={sanitizeUrl(src)} className="w-full h-full object-cover" alt="Beleg" />
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setIncomingReceipts(incomingReceipts.filter((_, idx) => idx !== i));
-                          }}
-                          className="absolute top-1.5 right-1.5 p-1.5 bg-black/70 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    ))}
+                    {incomingReceipts.map((src, i) => {
+                      const isPdf = typeof src === 'string' && (src.startsWith('data:application/pdf') || src.toLowerCase().includes('.pdf'));
+                      return (
+                        <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-border shadow-sm group bg-background/50">
+                          {isPdf ? (
+                            <div className="w-full h-full flex flex-col items-center justify-center bg-red-500/10 text-red-500 p-2 text-center select-none">
+                              <FileText size={26} className="text-red-500 mb-1" />
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400">PDF Beleg</span>
+                              <span className="text-[9px] text-text-muted truncate max-w-full px-1">Dokument</span>
+                            </div>
+                          ) : (
+                            <img src={sanitizeUrl(src)} className="w-full h-full object-cover" alt="Beleg" />
+                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setIncomingReceipts(incomingReceipts.filter((_, idx) => idx !== i));
+                            }}
+                            className="absolute top-1.5 right-1.5 p-1.5 bg-black/70 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500 cursor-pointer"
+                            title="Beleg entfernen"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

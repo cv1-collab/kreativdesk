@@ -66,7 +66,7 @@ const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
     error_saving_defect: 'Error saving defect.', ai_audit_complete: 'AI Audit complete.',
     error_generating_render: 'Error generating render.', render_saved: 'Render saved!',
     error_saving_cloud: 'Error saving to cloud.', fbx_optimization_info: 'FBX models will be automatically optimized in the cloud.',
-    unsupported_format: 'Unsupported format. Please use IFC, OBJ, GLTF, DAE or DWG.',
+    unsupported_format: 'Unsupported format. Please use IFC, OBJ, GLTF, GLB, DAE, FBX, STL, BLEND or DWG.',
     model_saved: 'Model saved!', error_processing_model: 'Error processing model.',
     enter_new_name: 'Enter new name:', confirm_delete_model: 'Are you sure you want to delete this model?',
     layer_arch: 'Architecture', layer_tga: 'MEP / HVAC', layer_fire: 'Fire Safety', layer_struct: 'Structure',
@@ -75,7 +75,7 @@ const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
     measurement_mode: 'Measurement Mode', exploded_view: 'Exploded View', ai_site_tour: 'AI Site Tour',
     floor_up: 'Floor Up', floor_down: 'Floor Down', download_screenshot: 'Screenshot', fullscreen: 'Fullscreen',
     model_library: 'Model Library', rename: 'Rename', upload_model: 'Upload Model',
-    supported_3d_formats: 'Supported: IFC, OBJ, GLTF, DAE, DWG, FBX', model_layers: 'Model Layers',
+    supported_3d_formats: 'Supported: IFC, OBJ, GLTF, GLB, DAE, FBX, STL, BLEND, DWG', model_layers: 'Model Layers',
     layer_import_native: 'Layer structure is imported natively from the {type} file.',
     selected_object: 'Selected Object', click_anywhere_defect: 'Click anywhere on the model to place a defect pin.',
     clear_all_pins: 'Clear all pins', click_point_start: 'Click to set start point',
@@ -103,7 +103,7 @@ const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
     error_saving_defect: 'Fehler beim Speichern des Mangels.', ai_audit_complete: 'KI Audit abgeschlossen.',
     error_generating_render: 'Fehler beim Generieren des Renderings.', render_saved: 'Rendering gespeichert!',
     error_saving_cloud: 'Fehler beim Speichern in der Cloud.', fbx_optimization_info: 'FBX-Modelle werden in der Cloud automatisch optimiert.',
-    unsupported_format: 'Nicht unterstütztes Format. Bitte IFC, OBJ, GLTF, DAE oder DWG verwenden.',
+    unsupported_format: 'Nicht unterstütztes Format. Bitte IFC, OBJ, GLTF, GLB, DAE, FBX, STL, BLEND oder DWG verwenden.',
     model_saved: 'Modell gespeichert!', error_processing_model: 'Fehler bei der Modellverarbeitung.',
     enter_new_name: 'Neuen Namen eingeben:', confirm_delete_model: 'Möchtest du dieses Modell wirklich löschen?',
     layer_arch: 'Architektur', layer_tga: 'TGA / HLK', layer_fire: 'Brandschutz', layer_struct: 'Tragwerk',
@@ -112,7 +112,7 @@ const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
     measurement_mode: 'Messwerkzeug', exploded_view: 'Explosionsansicht', ai_site_tour: 'KI Baustellen-Tour',
     floor_up: 'Stockwerk hoch', floor_down: 'Stockwerk runter', download_screenshot: 'Screenshot', fullscreen: 'Vollbild',
     model_library: 'Modell-Bibliothek', rename: 'Umbenennen', upload_model: 'Modell hochladen',
-    supported_3d_formats: 'Unterstützt: IFC, OBJ, GLTF, DAE, DWG, FBX', model_layers: 'Modell-Ebenen',
+    supported_3d_formats: 'Unterstützt: IFC, OBJ, GLTF, GLB, DAE, FBX, STL, BLEND, DWG', model_layers: 'Modell-Ebenen',
     layer_import_native: 'Ebenenstruktur wird nativ aus der {type}-Datei importiert.',
     selected_object: 'Ausgewähltes Objekt', click_anywhere_defect: 'Klicke auf das Modell, um einen Mangel-Pin zu setzen.',
     clear_all_pins: 'Alle Pins löschen', click_point_start: 'Klicke für Startpunkt',
@@ -140,7 +140,7 @@ const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
     error_saving_defect: 'Erreur lors de l\'enregistrement du défaut.', ai_audit_complete: 'Audit IA terminé.',
     error_generating_render: 'Erreur lors de la génération du rendu.', render_saved: 'Rendu enregistré !',
     error_saving_cloud: 'Erreur d\'enregistrement sur le cloud.', fbx_optimization_info: 'Les modèles FBX seront automatiquement optimisés dans le cloud.',
-    unsupported_format: 'Format non pris en charge. Veuillez utiliser IFC, OBJ, GLTF, DAE ou DWG.',
+    unsupported_format: 'Format non pris en charge. Veuillez utiliser IFC, OBJ, GLTF, GLB, DAE, FBX, STL, BLEND ou DWG.',
     model_saved: 'Modèle enregistré !', error_processing_model: 'Erreur lors du traitement du modèle.',
     enter_new_name: 'Entrer un nouveau nom :', confirm_delete_model: 'Voulez-vous vraiment supprimer ce modèle ?',
     layer_arch: 'Architecture', layer_tga: 'MEP / CVC', layer_fire: 'Protection incendie', layer_struct: 'Structure',
@@ -149,7 +149,7 @@ const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
     measurement_mode: 'Outil de mesure', exploded_view: 'Vue éclatée', ai_site_tour: 'Visite de chantier IA',
     floor_up: 'Étage supérieur', floor_down: 'Étage inférieur', download_screenshot: 'Capture d\'écran', fullscreen: 'Plein écran',
     model_library: 'Bibliothèque de modèles', rename: 'Renommer', upload_model: 'Télécharger un modèle',
-    supported_3d_formats: 'Pris en charge : IFC, OBJ, GLTF, DAE, DWG, FBX', model_layers: 'Calques du modèle',
+    supported_3d_formats: 'Pris en charge : IFC, OBJ, GLTF, GLB, DAE, FBX, STL, BLEND, DWG', model_layers: 'Calques du modèle',
     layer_import_native: 'La structure des calques est importée nativement depuis le fichier {type}.',
     selected_object: 'Objet sélectionné', click_anywhere_defect: 'Cliquez n\'importe où sur le modèle pour placer une épingle de défaut.',
     clear_all_pins: 'Effacer toutes les épingles', click_point_start: 'Cliquez pour le point de départ',
@@ -934,10 +934,14 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
     }
     
     const fileExt = file.name.split('.').pop()?.toLowerCase();
-    if (!['ifc', 'obj', 'gltf', 'glb', 'dae', 'dwg', 'fbx'].includes(fileExt || '')) {
+    if (!['ifc', 'obj', 'gltf', 'glb', 'dae', 'dwg', 'fbx', 'stl', 'blend'].includes(fileExt || '')) {
       addToast(t('unsupported_format'), 'error');
       event.target.value = ''; 
       return;
+    }
+
+    if (fileExt === 'blend') {
+      addToast('Blender-Datei (.blend) empfangen. Hinweis: Für WebGL-Streaming im Browser via "Datei > Exportieren > glTF (.glb) oder FBX" bereitstellen.', 'info');
     }
 
     setIsUploading(true);
@@ -1024,7 +1028,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
             id="upload-model-header" 
             type="file" 
             onChange={handleFileUpload} 
-            accept=".ifc,.obj,.gltf,.glb,.dae,.dwg,.fbx" 
+            accept=".ifc,.obj,.gltf,.glb,.dae,.dwg,.fbx,.stl,.blend" 
             className="hidden" 
             disabled={isUploading} 
           />
@@ -1059,7 +1063,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
                {isUploading ? <Loader2 size={16} className="animate-spin pointer-events-none" /> : <UploadCloud size={16} className="pointer-events-none" />} 
                <span className="pointer-events-none">{t('upload_model')}</span>
              </button>
-             <input type="file" ref={mainInputRef} onChange={handleFileUpload} accept=".ifc,.obj,.gltf,.glb,.dae,.dwg,.fbx" className="hidden" disabled={isUploading} />
+             <input type="file" ref={mainInputRef} onChange={handleFileUpload} accept=".ifc,.obj,.gltf,.glb,.dae,.dwg,.fbx,.stl,.blend" className="hidden" disabled={isUploading} />
           </div>
         </div>
       </div>

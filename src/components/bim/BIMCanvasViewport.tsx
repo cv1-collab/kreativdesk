@@ -6,6 +6,8 @@ import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { ColladaLoader } from 'three/examples/jsm/loaders/ColladaLoader.js';
+import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import { IFCLoader } from 'web-ifc-three/IFCLoader';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
@@ -295,6 +297,111 @@ function DaeModel({ url, onClick }: { url: string; onClick: (e: any) => void }) 
   );
 }
 
+function FbxModel({ url, onClick }: { url: string; onClick: (e: any) => void }) {
+  const fbx = useLoader(FBXLoader, url);
+  const { scene, scale } = React.useMemo(() => {
+    if (!fbx) return { scene: null, scale: 1 };
+    const cloned = fbx.clone(true);
+    cloned.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(cloned);
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const calculatedScale = maxDim > 0 ? 8 / maxDim : 1;
+
+    cloned.traverse((child: any) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        if (child.material) {
+          if (Array.isArray(child.material)) {
+            child.material = child.material.map((m: any) => {
+              const mat = m.clone();
+              mat.side = THREE.DoubleSide;
+              return mat;
+            });
+          } else {
+            child.material = child.material.clone();
+            child.material.side = THREE.DoubleSide;
+          }
+        }
+      }
+    });
+
+    return { scene: cloned, scale: calculatedScale };
+  }, [fbx]);
+
+  if (!scene) return null;
+  return (
+    <group scale={[scale, scale, scale]}>
+      <Center>
+        <primitive object={scene} onClick={onClick} />
+      </Center>
+    </group>
+  );
+}
+
+function StlModel({ url, onClick }: { url: string; onClick: (e: any) => void }) {
+  const geometry = useLoader(STLLoader, url);
+  const { mesh, scale } = React.useMemo(() => {
+    if (!geometry) return { mesh: null, scale: 1 };
+    geometry.computeVertexNormals();
+    geometry.computeBoundingBox();
+    const box = geometry.boundingBox || new THREE.Box3();
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const calculatedScale = maxDim > 0 ? 8 / maxDim : 1;
+
+    const material = new THREE.MeshStandardMaterial({
+      color: 0x94a3b8,
+      metalness: 0.15,
+      roughness: 0.55,
+      side: THREE.DoubleSide,
+    });
+
+    const meshObj = new THREE.Mesh(geometry, material);
+    meshObj.castShadow = true;
+    meshObj.receiveShadow = true;
+    return { mesh: meshObj, scale: calculatedScale };
+  }, [geometry]);
+
+  if (!mesh) return null;
+  return (
+    <group scale={[scale, scale, scale]}>
+      <Center>
+        <primitive object={mesh} onClick={onClick} />
+      </Center>
+    </group>
+  );
+}
+
+function BlendPlaceholder({ fileName }: { fileName?: string }) {
+  return (
+    <group position={[0, 0, 0]}>
+      <DreiBox args={[6, 3, 6]}>
+        <meshStandardMaterial color="#f97316" wireframe transparent opacity={0.35} />
+      </DreiBox>
+      <Html position={[0, 2.5, 0]} center>
+        <div className="bg-surface/95 backdrop-blur-xl p-5 border border-orange-500/40 rounded-2xl shadow-2xl text-xs font-sans text-text-primary text-center max-w-sm space-y-2 pointer-events-auto">
+          <div className="flex items-center justify-center gap-2 text-orange-500 font-bold text-sm">
+            <span>🟠 Blender Quelldatei (.blend)</span>
+          </div>
+          <p className="text-text-secondary text-[11px] leading-relaxed">
+            {fileName ? <strong>{fileName}</strong> : 'Blender-Dateien'} können im WebGL-Browser nicht direkt gerendert werden (proprietärer Binär-Dump).
+          </p>
+          <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-3 text-[11px] text-left text-orange-300">
+            <strong>💡 In 10 Sekunden exportieren:</strong>
+            <ol className="list-decimal list-inside mt-1.5 space-y-1 text-[11px]">
+              <li>Datei in Blender öffnen</li>
+              <li>Menü: <code>Datei &gt; Exportieren &gt; glTF 2.0 (.glb)</code> oder <code>FBX (.fbx)</code></li>
+              <li>Exportierte Datei hier hochladen für sofortige 3D-Ansicht!</li>
+            </ol>
+          </div>
+        </div>
+      </Html>
+    </group>
+  );
+}
+
 function DwgModel({ onClick, t }: { onClick: (e: any) => void; t: (k: string) => string }) {
   return (
     <group onClick={onClick}>
@@ -347,6 +454,9 @@ function UploadedModelViewer({
   if (tType === 'obj') return <ObjModel url={url} onClick={handleClick} />;
   if (tType === 'gltf' || tType === 'glb') return <GltfModel url={url} onClick={handleClick} />;
   if (tType === 'dae') return <DaeModel url={url} onClick={handleClick} />;
+  if (tType === 'fbx') return <FbxModel url={url} onClick={handleClick} />;
+  if (tType === 'stl') return <StlModel url={url} onClick={handleClick} />;
+  if (tType === 'blend') return <BlendPlaceholder fileName={url?.split('/').pop()} />;
   if (tType === 'dwg') return <DwgModel onClick={handleClick} t={t} />;
   return null;
 }

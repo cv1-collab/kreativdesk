@@ -20,6 +20,7 @@ import { callGeminiAPI } from '../utils/geminiClient';
 import { cn, sanitizeUrl } from '../utils';
 import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 import { notifyNewDocument } from '../utils/documentNotificationHelper';
+import { isPdfFile, convertPdfPageToImage } from '../utils/pdfToImageHelper';
 
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
 
@@ -438,6 +439,18 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
     for (const file of files) {
+      if (isPdfFile(file)) {
+        try {
+          addToast('PDF-Beleg erkannt. Wird analysiert...', 'info');
+          const converted = await convertPdfPageToImage(file, 1);
+          setOpCostReceipts(prev => [...prev, converted.dataUrl]);
+          const base64Data = converted.dataUrl.split(',')[1];
+          await processImageWithAI(base64Data, null, 'image/jpeg');
+          continue;
+        } catch (pdfErr) {
+          console.warn('PDF conversion failed in OpCostStudio:', pdfErr);
+        }
+      }
       const reader = new FileReader();
       reader.onloadend = async () => {
         if (reader.result) {
@@ -843,17 +856,27 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
 
                   {/* Thumbnail Grid */}
                   <div className="grid grid-cols-2 gap-2.5">
-                    {opCostReceipts.map((src, index) => (
-                      <div key={index} className="aspect-square rounded-xl border border-border/70 bg-background relative group overflow-hidden shadow-xs">
-                        <img src={sanitizeUrl(src)} className="w-full h-full object-cover" />
-                        <button 
-                          onClick={() => setOpCostReceipts(opCostReceipts.filter((_, i) => i !== index))} 
-                          className="absolute inset-0 bg-red-500/85 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                        >
-                          <Trash2 size={20} />
-                        </button>
-                      </div>
-                    ))}
+                    {opCostReceipts.map((src, index) => {
+                      const isPdf = typeof src === 'string' && (src.startsWith('data:application/pdf') || src.toLowerCase().includes('.pdf'));
+                      return (
+                        <div key={index} className="aspect-square rounded-xl border border-border/70 bg-background relative group overflow-hidden shadow-xs">
+                          {isPdf ? (
+                            <div className="w-full h-full flex flex-col items-center justify-center bg-sky-500/10 text-sky-500 p-2 text-center select-none">
+                              <FileText size={24} className="text-sky-500 mb-1" />
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">PDF Beleg</span>
+                            </div>
+                          ) : (
+                            <img src={sanitizeUrl(src)} className="w-full h-full object-cover" />
+                          )}
+                          <button 
+                            onClick={() => setOpCostReceipts(opCostReceipts.filter((_, i) => i !== index))} 
+                            className="absolute inset-0 bg-red-500/85 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                          >
+                            <Trash2 size={20} />
+                          </button>
+                        </div>
+                      );
+                    })}
 
                     {/* Camera Button */}
                     <button 

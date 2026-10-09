@@ -7,6 +7,30 @@
 
 ## 🏆 Erfolgsliste von heute (9. Oktober 2026)
 
+### 0.000000000000000005 Systemweites Datei- & Format-Audit: 3D FBX/Blender/STL Viewer-Support, PDF-Belegleser & Whiteboard-Pläne (9. Oktober 2026)
+* **Problemstellung & Benutzer-Frage («wo haben wir noch solche fehler im system?»):**
+  * Im Anschluss an die Behebung der fehlerhaften Zuordnung von 3D-Dateien zu Briefvorlagen wurde das gesamte System auf weitere Format-Brüche, stumme Ladeabbrüche und fehlerhafte Datei-Renderer durchleuchtet.
+  * **Fund 1 (3D BIM Viewer):** In `BIMViewer.tsx` war `.fbx` im Upload-Filter erlaubt, in `BIMCanvasViewport.tsx` (`UploadedModelViewer`) fehlte jedoch der FBX-Loader vollständig (`tType === 'fbx'` gab `null` zurück). FBX-Modelle (wie `PHGR_Chur_Erdgeschoss_3D.fbx`) blieben dadurch unsichtbar / leer.
+  * **Fund 2 (Blender-Dateien):** Rohe `.blend`-Dateien sind Binär-Dumps der internen C-Speicherstrukturen von Blender und können in keinem WebGL-Browser direkt gerendert werden. Es fehlte ein klarer 3D-Hinweis zur 10-Sekunden-Konvertierung nach `.glb` oder `.fbx`.
+  * **Fund 3 (Finanzen, Spesen & Betriebskosten):** In `Finance.tsx`, `ExpenseReport.tsx` und `OpCostStudio.tsx` war `accept="image/*,application/pdf"` gesetzt. Wurde ein PDF-Beleg hochgeladen, wurde er in ein HTML-`<img>`-Tag gerendert, was im Browser fehlschlägt (defektes/leeres Bild).
+  * **Fund 4 (Whiteboard):** Das Whiteboard erlaubte den Upload von PDF-Plänen, übergab diese aber an `new window.Image().src`, was bei PDFs stumm abbrach.
+* **Durchgeführte Implementierungen & Optimierungen:**
+  * **1. Nativer FBX- & STL-Support im 3D-Viewer ([BIMCanvasViewport.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/bim/BIMCanvasViewport.tsx) & [BIMViewer.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/BIMViewer.tsx)):**
+    * Three.js `FBXLoader` und `STLLoader` implementiert mit Auto-Fit-Centering, Normalen-Neuberechnung und DoubleSide-Materialien. FBX-Dateien rendern nun nativ und voll responsiv im Browser.
+    * Interaktiver 3D-Infokörper (`BlendPlaceholder`) für `.blend`-Dateien: Informiert den Architekten direkt im 3D-Viewport mit einer Kurzanleitung, wie das Modell in Blender via *Datei > Exportieren > glTF 2.0 (.glb) oder FBX (.fbx)* für Echtzeit-Streaming bereitgestellt wird.
+  * **2. PDF-Beleg-Konvertierung & Kartenvorschau ([Finance.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/Finance.tsx), [ExpenseReport.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/ExpenseReport.tsx), [OpCostStudio.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/OpCostStudio.tsx)):**
+    * PDF-Belege werden beim Upload automatisch via `convertPdfPageToImage(file, 1)` als hochauflösendes JPG gerastert.
+    * Das Vorschaubild zeigt sofort die echte erste Seite des Belegs und die KI liest Rechnungsbetrag, Firma und Datum fehlerfrei aus.
+    * Für gespeicherte PDF-URLs wird in der Galerie ein roter PDF-Dokument-Badge mit `FileText`-Icon dargestellt statt eines fehlerhaften `<img>`.
+  * **3. PDF-Pläne im Whiteboard ([Whiteboard.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/Whiteboard.tsx)):**
+    * Beim Upload eines PDF-Plans wird Seite 1 automatisch in ein Bild umgewandelt und nahtlos als skalierbare Ebene auf der Konva-Zeichenfläche platziert.
+  * **4. PDF-Sofortansicht in der Bauakte ([Documents.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/Documents.tsx)):**
+    * Klick auf ein PDF in der Bauakte öffnet das Dokument direkt im neuen Browser-Tab zur sofortigen Ansicht (integrierter PDF-Viewer), statt einen Download zu erzwingen.
+* **Ergebnis der Verifikation:**
+  * Production Build (`npm run build`) in 16.18s mit Exit-Code 0 erfolgreich abgeschlossen.
+
+---
+
 ### 0.000000000000000004 Digitale Bauakte: Intelligente Dateityp-Erkennung (3D/CAD/Media vs. Vorlage) & WebRTC-Server Bereinigung (9. Oktober 2026)
 * **Problemstellung & Benutzer-Rückmeldung:**
   * In der digitalen Bauakte (`/documents`) öffneten sich 3D-Modelle (wie `PHGR_Chur_Erdgeschoss_3D.fbx` oder Blender-Dateien), CAD-Pläne und Mediendateien beim Anklicken fälschlicherweise im **Brief- und Dokumentenstudio** (`DocumentStudioModal` / DIN-A4 Live-Blatt WYSIWYG) mit Empfängeradresse und Standard-Briefvorlagentext.

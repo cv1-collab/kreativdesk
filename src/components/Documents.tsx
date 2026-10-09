@@ -591,7 +591,18 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
       return;
     }
 
-    // PDFs, Archive, Office & sonstige Binärdateien direkt herunterladen:
+    // PDFs (im Browser-Tab zur Ansicht öffnen statt Download erzwingen):
+    if (category === 'pdf') {
+      const url = item.url || item.file_url;
+      if (url && typeof window !== 'undefined') {
+        window.open(url, '_blank', 'noopener,noreferrer');
+        return;
+      }
+      handleDownloadFile(item);
+      return;
+    }
+
+    // Archive, Office & sonstige Binärdateien direkt herunterladen:
     handleDownloadFile(item);
   };
 

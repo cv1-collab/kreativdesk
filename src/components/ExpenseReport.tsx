@@ -22,6 +22,7 @@ import { notifyNewDocument } from '../utils/documentNotificationHelper';
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
 
 import { Currency, getCurrencyPreference, formatCurrency } from '../utils/currencyManager';
+import { isPdfFile, convertPdfPageToImage } from '../utils/pdfToImageHelper';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: { expense_studio: 'Expense Studio', employee: 'Employee', date: 'Date', project_assignment: 'Project Assignment', global_expenses: 'Global Expenses (No Project)', category: 'Category', purpose_merchant: 'Purpose / Merchant', amount: 'Amount', add_position: 'Add Position', receipts_photos: 'Receipts / Photos', attached: 'attached', upload_document: 'Upload Document', live_scan: 'Live Scan', total: 'Total', save_book: 'Save & Book', cancel: 'Cancel', analyzing_ai: 'AI is analyzing...', take_photo: 'Take Photo', select: 'Select...', description: 'Description', generate_pdf: 'Generate PDF & Book', save_error: 'Error saving', ai_failed: 'AI receipt analysis failed', ext_costs_booked: 'Expenses successfully booked' },
@@ -297,10 +298,22 @@ export default function ExpenseReport({ onClose, onSave, initialCurrency }: Expe
     }
   };
 
-  const handleLocalImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLocalImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
-    files.forEach(file => {
+    for (const file of files) {
+      if (isPdfFile(file)) {
+        try {
+          addToast('PDF-Beleg erkannt. Wird analysiert...', 'info');
+          const converted = await convertPdfPageToImage(file, 1);
+          setReceipts(prev => [...prev, converted.dataUrl]);
+          const base64Data = converted.dataUrl.split(',')[1];
+          await processImageWithAI(base64Data, null, 'image/jpeg');
+          continue;
+        } catch (pdfErr) {
+          console.warn('PDF conversion failed in ExpenseReport:', pdfErr);
+        }
+      }
       const reader = new FileReader();
       reader.onloadend = async () => {
         if (reader.result) {
@@ -311,7 +324,7 @@ export default function ExpenseReport({ onClose, onSave, initialCurrency }: Expe
         }
       };
       reader.readAsDataURL(file);
-    });
+    }
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -528,21 +541,31 @@ export default function ExpenseReport({ onClose, onSave, initialCurrency }: Expe
                     Angehängte Belege ({receipts.length})
                   </div>
                   <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
-                    {receipts.map((src, index) => (
-                      <div key={index} className="aspect-square rounded-xl border border-border bg-background relative group overflow-hidden shadow-sm">
-                        <img src={src} alt="Beleg" className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <button
-                            type="button"
-                            onClick={() => setReceipts(receipts.filter((_, i) => i !== index))}
-                            className="p-2 bg-red-500 text-white rounded-lg hover:scale-110 transition-transform shadow-md"
-                            title="Beleg entfernen"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                    {receipts.map((src, index) => {
+                      const isPdf = typeof src === 'string' && (src.startsWith('data:application/pdf') || src.toLowerCase().includes('.pdf'));
+                      return (
+                        <div key={index} className="aspect-square rounded-xl border border-border bg-background relative group overflow-hidden shadow-sm">
+                          {isPdf ? (
+                            <div className="w-full h-full flex flex-col items-center justify-center bg-red-500/10 text-red-500 p-2 text-center select-none">
+                              <FileText size={24} className="text-red-500 mb-1" />
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400">PDF</span>
+                            </div>
+                          ) : (
+                            <img src={src} alt="Beleg" className="w-full h-full object-cover" />
+                          )}
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <button
+                              type="button"
+                              onClick={() => setReceipts(receipts.filter((_, i) => i !== index))}
+                              className="p-2 bg-red-500 text-white rounded-lg hover:scale-110 transition-transform shadow-md cursor-pointer"
+                              title="Beleg entfernen"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}

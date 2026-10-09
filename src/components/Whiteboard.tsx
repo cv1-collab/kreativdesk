@@ -21,6 +21,7 @@ import { queryClient } from '../lib/queryClient';
 import { DOCUMENTS_QUERY_KEY } from '../hooks/queries/useDocumentsQuery';
 import { safeStorage } from '../utils/safeStorage';
 import { uploadFileWithFallback } from '../utils/cloudStorageHelper';
+import { isPdfFile, convertPdfPageToImage } from '../utils/pdfToImageHelper';
 
 fal.config({
   proxyUrl: "/api/fal/proxy",
@@ -1417,7 +1418,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
 
   const [textPrompt, setTextPrompt] = useState<{ isOpen: boolean, x: number, y: number, value: string } | null>(null);
 
-  // +++ FIX 1.7: Cloud Storage Upload anstatt Base64 +++
+  // +++ FIX 1.7: Cloud Storage Upload & PDF/Image Rasterization +++
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isDemo) {
       addToast('Bild-Upload ist in der Demo-Vorschau geschützt.', 'info');
@@ -1430,15 +1431,24 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
 
     setIsUploadingMedia(true);
     try {
-      const downloadUrl = await uploadFileWithFallback(file, file.name, safeCompanyId, 'whiteboardBackgrounds');
+      let fileToUpload = file;
+      if (isPdfFile(file)) {
+        addToast('PDF-Plan erkannt. Konvertiere Seite 1 für Whiteboard...', 'info');
+        const converted = await convertPdfPageToImage(file, 1, {
+          baseFileName: file.name.replace(/\.pdf$/i, '')
+        });
+        fileToUpload = converted.file;
+      }
+      const downloadUrl = await uploadFileWithFallback(fileToUpload, fileToUpload.name, safeCompanyId, 'whiteboardBackgrounds');
       if (downloadUrl) {
-        addImageToCanvas(downloadUrl, file.name.replace(/\.[^/.]+$/, ""));
+        addImageToCanvas(downloadUrl, fileToUpload.name.replace(/\.[^/.]+$/, ""));
+        addToast('Grafik/Plan erfolgreich ins Whiteboard eingefügt!', 'success');
       } else {
         addToast('Fehler beim Einfügen des Bildes.', 'error');
       }
     } catch (error) {
-      console.error("Error uploading image:", error);
-      addToast('Fehler beim Einfügen des Bildes.', 'error');
+      console.error("Error uploading image/PDF to Whiteboard:", error);
+      addToast('Fehler beim Einfügen des Bildes/PDF-Plans.', 'error');
     } finally {
       setIsUploadingMedia(false);
       // Reset input, damit das gleiche Bild erneut gewählt werden kann falls nötig
