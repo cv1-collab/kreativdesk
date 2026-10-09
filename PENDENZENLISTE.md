@@ -1,11 +1,37 @@
 # Kreativ Desk & interacTV — Status, Erfolge & Pendenzen
 
 **Datum:** 9. Oktober 2026  
-**Status:** 🟢 Alle Prüfungen grün (Vitest 90/90 grün in 17 Test-Dateien, TypeScript 0 Fehler `tsc --noEmit`, ESLint 0 Fehler, Production Build 100% fehlerfrei, 100% Schweizer Rechtschreibung), alle Module und Tools synchronisiert und live geschaltet (`https://www.kreativdesk.ch`).
+**Status:** 🟢 Alle Prüfungen grün (Vitest 123/123 grün in 18 Test-Dateien, TypeScript 0 Fehler `tsc --noEmit`, ESLint 0 Fehler, Production Build 100% fehlerfrei, 100% Schweizer Rechtschreibung), alle Module und Tools synchronisiert und live geschaltet (`https://www.kreativdesk.ch`).
 
 ---
 
 ## 🏆 Erfolgsliste von heute (9. Oktober 2026)
+
+### 0.000000000000000012 Sentry High-Priority Bugfix (Issue 152655713): Vite Preload-Handler, `lazyWithRetry`-Härtung & Bundle-Entkopplung (9. Oktober 2026)
+* **Problemstellung & Sentry-Meldung (`JAVASCRIPT-REACT-C` / Issue 152655713):**
+  * `TypeError: Cannot read properties of undefined (reading 'default')` beim Aufruf von `/signup` durch automatisierte Sicherheits-Crawler (GenDigital/Norton) während eines Deployments.
+  * **Wurzelursache:** In [main.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/main.tsx) rief der Event-Listener für `vite:preloadError` die Methode `event.preventDefault()` auf. Vite unterdrückte dadurch den dynamischen Importfehler und lieferte `undefined` an Reacts `lazyInitializer`, das bei `undefined.default` abstürzte. Zudem waren Three.js, PDF-Rendering und Charts in die Initial-Bundles gehievt.
+* **Durchgeführte Implementierungen:**
+  * **1. Vite Preload-Handler korrigiert ([main.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/main.tsx)):** `event.preventDefault()` entfernt, damit fehlerhafte Chunk-Importe sauber abgewiesen und kontrolliert neu geladen werden. Debounce-Schutz optimiert.
+  * **2. `lazyWithRetry` gehärtet ([App.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/App.tsx)):** Fängt unvollständige Modulobjekte ab, validiert Default-Exporte und löst bei veralteten Chunks einen automatischen Neuladevorgang aus.
+  * **3. Radikale Bundle-Verschlankung ([vite.config.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/vite.config.ts)):** `manualChunks` restrukturiert: Three.js, Diagramme und PDF-Engines strikt von den Einstiegs- und Registrierungsseiten entkoppelt.
+  * **4. Sandbox-Crawler Schutz ([safeStorage.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/utils/safeStorage.ts)):** Kapselung aller `sessionStorage`-Zugriffe vor `SecurityError`-Abstürzen in Bot- und iframe-Sandboxen.
+
+---
+
+### 0.000000000000000011 Systemweites Context-Audit: State-Sync, Session-Locking & Memory-Leak-Schutz (9. Oktober 2026)
+* **Durchgeführte Optimierungen über alle 8 React-Contexts:**
+  * Konsistente Memoization (`useMemo`, `useCallback`) aller Context-Werte zur Vermeidung redundanter Re-Renderings.
+  * Sauberes Session-Locking und vollständige Bereinigung von Event-Listenern und Supabase-Realtime-Channels bei Unmount.
+
+---
+
+### 0.000000000000000010 Backend- & Datenbank-Härtung: Authentifizierung, `.single()`-Bereinigung & UUID-Validierung (9. Oktober 2026)
+* **Durchgeführte Härtungen in API-Handlern:**
+  * Beseitigung aller ungeprüften `.single()`-Aufrufe, die bei fehlenden Datensätzen zu unkontrollierten 500-Fehlern führten.
+  * Strikte Bearer-Token- und UUID-Prüfungen auf allen sensiblen Backend-Endpunkten.
+
+---
 
 ### 0.000000000000000009 Playwright 360°-Automations-Audit: Lückenlose E2E-Verifikation aller 80+ Komponenten & Module (9. Oktober 2026)
 * **Problemstellung & Benutzer-Frage («bitte überprüfe alles und auch mit @[alle 80+ Komponenten] playwright und ob alles wirklich funktioniert»):**

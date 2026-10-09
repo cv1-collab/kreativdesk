@@ -40,7 +40,7 @@ async function deleteSingleUserCascade(uid: string, email?: string | null) {
     await supabaseAdmin.from('time_entries').delete().eq('user_id', uid);
     try {
       await supabaseAdmin.from('defects').update({ owner_id: null }).eq('owner_id', uid);
-    } catch (_) {}
+    } catch (_) { }
 
     // 3. Delete from company_users (by user_id, row id, and email)
     await supabaseAdmin.from('company_users').delete().eq('user_id', uid);
@@ -83,7 +83,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const token = authHeader.split('Bearer ')[1];
     const { data: { user: requestingUser }, error: authErr } = await supabaseAdmin.auth.getUser(token);
-    
+
     if (authErr || !requestingUser) {
       return res.status(401).json({ error: 'Invalid token' });
     }
