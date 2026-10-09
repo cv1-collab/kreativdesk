@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
 import {
@@ -9,6 +9,8 @@ import {
   FinancialLedgerSummary,
 } from '../../services/financialLedgerService';
 
+const EMPTY_TRANSACTIONS: TransactionItem[] = [];
+
 export const FINANCIAL_QUERY_KEY = 'financial_ledger';
 
 export function useFinancialQuery(companyId?: string | null, selectedYear = 'all') {
@@ -18,11 +20,10 @@ export function useFinancialQuery(companyId?: string | null, selectedYear = 'all
 
   const query = useQuery({
     queryKey,
-    queryFn: async (): Promise<{ transactions: TransactionItem[]; summary: FinancialLedgerSummary }> => {
+    queryFn: async (): Promise<{ transactions: TransactionItem[] }> => {
       if (!companyId) {
         return {
           transactions: [],
-          summary: calculateFinancialLedger([]),
         };
       }
 
@@ -63,11 +64,9 @@ export function useFinancialQuery(companyId?: string | null, selectedYear = 'all
       const timeTxs = convertTimeEntriesToTransactions((timesData || []) as RawTimeEntry[]);
 
       const allTransactions = [...baseTxs, ...timeTxs];
-      const summary = calculateFinancialLedger(allTransactions, selectedYear);
 
       return {
         transactions: allTransactions,
-        summary,
       };
     },
     enabled: !!companyId,
@@ -106,12 +105,15 @@ export function useFinancialQuery(companyId?: string | null, selectedYear = 'all
     queryClient.invalidateQueries({ queryKey: [FINANCIAL_QUERY_KEY] });
   };
 
-  const data = query.data || { transactions: [], summary: calculateFinancialLedger([]) };
+  const transactions = query.data?.transactions ?? EMPTY_TRANSACTIONS;
+  const summary: FinancialLedgerSummary = useMemo(() => {
+    return calculateFinancialLedger(transactions, selectedYear);
+  }, [transactions, selectedYear]);
 
   return {
     ...query,
-    transactions: data.transactions,
-    summary: data.summary,
+    transactions,
+    summary,
     isLoadingFinancial: query.isLoading,
     invalidateFinancial: invalidate,
   };

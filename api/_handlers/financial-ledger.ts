@@ -1,14 +1,10 @@
-import { verifyAuth } from '../_auth.js';
+import { verifyAuth, supabaseAdmin } from '../_auth.js';
 import {
   calculateFinancialLedger,
   convertTimeEntriesToTransactions,
   TransactionItem,
   RawTimeEntry,
 } from '../../src/services/financialLedgerService.js';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST' && req.method !== 'GET') {
@@ -28,11 +24,7 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ error: 'Missing companyId parameter' });
     }
 
-    if (!supabaseUrl || !serviceKey) {
-      return res.status(500).json({ error: 'Supabase credentials not configured on server' });
-    }
-
-    const supabase = createClient(supabaseUrl, serviceKey);
+    const supabase = supabaseAdmin;
 
     // Multi-tenant authorization check:
     const isSuperAdmin = (authUser as any).isSuperAdmin || (authUser as any).role === 'super_admin';

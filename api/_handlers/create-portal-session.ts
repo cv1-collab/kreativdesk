@@ -14,20 +14,21 @@ export default async function handler(req: any, res: any) {
     
     // Authentifizierung prüfen
     const authUser = await verifyAuth(req);
+    if (!authUser) {
+      return res.status(401).json({ error: 'Unauthorized: Authentication required' });
+    }
+
     const { customerId: bodyCustomerId, returnUrl } = req.body || {};
 
-    let targetCustomerId = bodyCustomerId;
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('stripe_customer_id')
+      .eq('id', authUser.id)
+      .maybeSingle();
 
-    if (authUser) {
-      const { data: profile } = await supabaseAdmin
-        .from('profiles')
-        .select('stripe_customer_id')
-        .eq('id', authUser.id)
-        .maybeSingle();
-
-      if (profile?.stripe_customer_id) {
-        targetCustomerId = profile.stripe_customer_id;
-      }
+    let targetCustomerId = profile?.stripe_customer_id;
+    if ((authUser as any).isSuperAdmin && bodyCustomerId) {
+      targetCustomerId = bodyCustomerId;
     }
 
     if (!targetCustomerId) {

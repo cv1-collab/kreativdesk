@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 export type PlanName = 'Starter' | 'Pro' | 'Team Starter' | 'Expert' | 'Studio' | 'Agency' | 'Enterprise' | 'Free Trial';
@@ -81,14 +82,17 @@ export const PLAN_LIMITS: Record<PlanName, SubscriptionLimits> = {
 export function useSubscriptionLimits() {
   const { currentUser } = useAuth();
   const rawPlan = currentUser?.companyPlan || currentUser?.plan || 'Free Trial';
-  let plan = rawPlan as PlanName;
-  if (rawPlan.includes('Trial')) {
-    plan = 'Free Trial';
-  } else if (rawPlan.includes('Workspace') || !PLAN_LIMITS[plan]) {
-    plan = 'Enterprise';
-  }
-  
-  const limits = PLAN_LIMITS[plan] || PLAN_LIMITS['Enterprise'] || PLAN_LIMITS['Free Trial'];
 
-  return { limits, currentPlan: plan };
+  return useMemo(() => {
+    let plan = rawPlan as PlanName;
+    if (rawPlan.includes('Trial')) {
+      plan = 'Free Trial';
+    } else if (rawPlan.includes('Workspace') || !PLAN_LIMITS[plan]) {
+      plan = 'Enterprise';
+    }
+    
+    const limits = PLAN_LIMITS[plan] || PLAN_LIMITS['Enterprise'] || PLAN_LIMITS['Free Trial'];
+
+    return { limits, currentPlan: plan };
+  }, [rawPlan]);
 }

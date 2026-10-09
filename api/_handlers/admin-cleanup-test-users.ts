@@ -93,7 +93,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(403).json({ error: 'Forbidden: Nur Super-Admins dürfen Testnutzer bereinigen.' });
     }
 
-    const { userId, userEmail, cleanAllTestUsers = true, targetUserIds = [] } = req.body || {};
+    const { userId, userEmail, targetUserIds = [] } = req.body || {};
 
     // 2. Case A: Single user deletion
     if (userId) {
@@ -129,7 +129,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const emailLower = (u.email || '').toLowerCase().trim();
       if (SUPER_ADMIN_EMAILS.includes(emailLower)) continue;
 
-      if (cleanAllTestUsers || isTestUser(emailLower)) {
+      if (isTestUser(emailLower)) {
         const ok = await deleteSingleUserCascade(u.id, emailLower);
         if (ok) {
           deletedUserIds.add(u.id);
@@ -144,7 +144,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (SUPER_ADMIN_EMAILS.includes(emailLower)) continue;
       if (deletedUserIds.has(p.id)) continue;
 
-      if (cleanAllTestUsers || isTestUser(emailLower)) {
+      if (isTestUser(emailLower)) {
         await deleteSingleUserCascade(p.id, emailLower);
         deletedUserIds.add(p.id);
         deletedEmails.push(emailLower);
@@ -156,7 +156,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const emailLower = (cu.email || '').toLowerCase().trim();
       if (SUPER_ADMIN_EMAILS.includes(emailLower)) continue;
 
-      if (cleanAllTestUsers || isTestUser(emailLower)) {
+      if (isTestUser(emailLower)) {
         await supabaseAdmin.from('company_users').delete().eq('id', cu.id);
         if (emailLower) {
           await supabaseAdmin.from('invites').delete().ilike('email', emailLower);

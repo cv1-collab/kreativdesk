@@ -36,7 +36,7 @@ export default async function handler(req: any, res: any) {
       .from('profiles')
       .select('*')
       .eq('id', uid)
-      .single();
+      .maybeSingle();
 
     // ==========================================
     // SZENARIO A: NEUER USER (ONBOARDING)
@@ -87,6 +87,7 @@ export default async function handler(req: any, res: any) {
             }
             await supabaseAdmin.from('company_users').insert({
               company_id: targetCompanyId,
+              user_id: uid,
               name: email?.split('@')[0] || 'Teammitglied',
               email: email?.toLowerCase(),
               role: targetRole,

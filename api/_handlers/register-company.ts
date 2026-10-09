@@ -76,6 +76,7 @@ export default async function handler(req: any, res: any) {
           }
           await supabaseAdmin.from('company_users').insert({
             company_id: assignedCompanyId,
+            user_id: uid,
             name: email.split('@')[0] || 'Teammitglied',
             email: email.toLowerCase(),
             role: assignedRole,

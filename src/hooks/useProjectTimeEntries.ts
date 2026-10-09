@@ -82,7 +82,9 @@ export function useProjectTimeEntries() {
   const addTimeEntry = useCallback(async (entryData: any, safeCompanyId: string, currentUserId: string) => {
     if (!safeCompanyId || !currentUserId) return;
 
-    const tId = entryData.id || `time-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+    const tId = entryData.id || (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' 
+      ? crypto.randomUUID() 
+      : `time-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`);
     const newEntry: TimeEntry = {
       id: tId,
       userId: entryData.userId || entryData.user_id || currentUserId,
@@ -114,16 +116,20 @@ export function useProjectTimeEntries() {
     }
 
     try {
-      await supabase.from('time_entries').insert({
-        id: newEntry.id,
+      const isIdUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(newEntry.id);
+      const dbPayload: any = {
         user_id: newEntry.userId,
-        project_id: newEntry.projectId,
+        project_id: newEntry.projectId && newEntry.projectId !== 'global' ? newEntry.projectId : null,
         date: newEntry.date,
         hours: newEntry.hours,
         description: newEntry.description,
         company_id: safeCompanyId,
         created_at: new Date().toISOString()
-      });
+      };
+      if (isIdUuid) {
+        dbPayload.id = newEntry.id;
+      }
+      await supabase.from('time_entries').insert(dbPayload);
     } catch (err) {
       console.warn('addTimeEntry insert warning:', err);
     }
