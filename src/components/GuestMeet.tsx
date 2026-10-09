@@ -32,7 +32,9 @@ const RemoteVideo = ({ stream, peerName }: { stream: MediaStream; peerName?: str
 
     video.srcObject = stream;
     video.play().catch(err => {
-      console.warn("Remote video play note:", err);
+      if (err?.name !== 'AbortError') {
+        console.warn("Remote video play note:", err);
+      }
       video.muted = true;
       video.play().catch(() => {});
       setNeedsUserClick(true);

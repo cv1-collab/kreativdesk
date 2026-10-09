@@ -1,11 +1,33 @@
 # Kreativ Desk & interacTV — Status, Erfolge & Pendenzen
 
-**Datum:** 7. Oktober 2026  
+**Datum:** 9. Oktober 2026  
 **Status:** 🟢 Alle Prüfungen grün (Vitest 84/84 grün in 16 Test-Dateien, TypeScript 0 Fehler `tsc --noEmit`, ESLint 0 Fehler, Production Build 100% fehlerfrei, 100% Schweizer Rechtschreibung), alle Module und Tools synchronisiert und live geschaltet (`https://www.kreativdesk.ch`).
 
 ---
 
-## 🏆 Erfolgsliste von heute (7. Oktober 2026)
+## 🏆 Erfolgsliste von heute (9. Oktober 2026)
+
+### 0.000000000000000003 WebRTC Video Meetings: STUN/TURN-Optimierung, NAT-Traversal & Connection Resilience (9. Oktober 2026)
+* **Problemstellung & Konsolen-Fehleranalyse:**
+  * Warnung `WebRTC: Using five or more STUN/TURN servers slows down discovery` im Browser aufgrund von 6 redundanten STUN-Servern.
+  * Kritischer Fehler `WebRTC: ICE failed, add a TURN server and see about:webrtc for more details` bei Anrufen über Mobilfunk (4G/5G / CGNAT), Firewalls oder symmetrische NATs mangels TURN-Relay.
+  * Endlosschleife bei `ICE restart`, da ohne Relay kein alternativer Verbindungsweg existierte und kein Offer-Renegotiation-Broadcast stattfand.
+  * Harmloser, aber störender `DOMException: The fetching process... was aborted by the user agent at the user's request` (AbortError) beim Trennen von Videostreams in PiP und GuestMeet.
+* **Durchgeführte Implementierungen:**
+  * **1. Konsolidierung & TURN-Relay ([VideoCallContext.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/contexts/VideoCallContext.tsx)):**
+    * STUN-Server auf 2 schnelle Server (Google + Cloudflare) reduziert zur Beseitigung der Browser-Warnung.
+    * Automatischer TURN-Fallback (Metered OpenRelay via UDP, TCP und TLS Port 443) integriert, wodurch Video- und Audio-Calls auch über strikte Firewalls und Mobilfunknetze verlässlich zustande kommen.
+    * Optionale Konfiguration eigener Production-TURN-Server via `.env` (`VITE_TURN_URL`, `VITE_TURN_USERNAME`, `VITE_TURN_CREDENTIAL`) ermöglicht und in [`.env.example`](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/.env.example) dokumentiert.
+  * **2. Robuster ICE-Restart-Ablauf ([VideoCallContext.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/contexts/VideoCallContext.tsx)):**
+    * Bei `iceConnectionState === 'failed'` sendet der Offering-Peer nun automatisch ein re-negotiated Offer mit `{ iceRestart: true }` über den Supabase Realtime Signaling-Kanal.
+  * **3. Bereinigung der Play-Exceptions ([GlobalVideoPlayer.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/GlobalVideoPlayer.tsx) & [GuestMeet.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/GuestMeet.tsx)):**
+    * `AbortError` beim Verwerfen oder Aktualisieren von Mediastreams wird gezielt abgefangen, um unnötige Log-Warnungen zu eliminieren.
+* **Ergebnis der Verifikation:**
+  * TypeScript 0 Fehler (`tsc --noEmit`), Vite Production Build 100% erfolgreich.
+
+---
+
+## 🏆 Erfolgsliste der Vortage
 
 ### 0.000000000000000002 Pitch Deck Studio: White-Labeling, Brand-Souveränität & High-Contrast Light Mode (7. Oktober 2026)
 * **Problemstellung & Benutzer-Anforderung:**

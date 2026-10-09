@@ -12,7 +12,9 @@ const RemoteVideo = ({ stream }: { stream: MediaStream }) => {
     if (video && stream) {
       video.srcObject = stream;
       video.play().catch(e => {
-        console.warn("Global PiP remote video play note:", e);
+        if (e?.name !== 'AbortError') {
+          console.warn("Global PiP remote video play note:", e);
+        }
         video.muted = true;
         video.play().catch(() => {});
       });

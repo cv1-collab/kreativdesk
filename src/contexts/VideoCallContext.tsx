@@ -6,17 +6,46 @@ import { useToast } from './ToastContext';
 import { supabase } from '../lib/supabase';
 import { safeStorage } from '../utils/safeStorage';
 
-const servers: RTCConfiguration = {
-  iceServers: [
+const getIceConfiguration = (): RTCConfiguration => {
+  const iceServers: RTCIceServer[] = [
     { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' },
-    { urls: 'stun:stun3.l.google.com:19302' },
-    { urls: 'stun:stun4.l.google.com:19302' },
     { urls: 'stun:stun.cloudflare.com:3478' }
-  ],
-  iceCandidatePoolSize: 10
+  ];
+
+  // Optional custom TURN server via environment variables
+  const customTurnUrl = (import.meta.env.VITE_TURN_URL || import.meta.env.VITE_TURN_SERVER_URL || '') as string;
+  const customTurnUsername = (import.meta.env.VITE_TURN_USERNAME || '') as string;
+  const customTurnCredential = (import.meta.env.VITE_TURN_CREDENTIAL || import.meta.env.VITE_TURN_PASSWORD || '') as string;
+
+  if (customTurnUrl && customTurnUsername && customTurnCredential) {
+    const urls = customTurnUrl.includes(',')
+      ? customTurnUrl.split(',').map(u => u.trim()).filter(Boolean)
+      : customTurnUrl;
+    iceServers.push({
+      urls,
+      username: customTurnUsername,
+      credential: customTurnCredential
+    });
+  } else {
+    // Standard Metered OpenRelay Fallback to allow WebRTC calls across symmetric NATs, firewalls and mobile networks
+    iceServers.push({
+      urls: [
+        'turn:openrelay.metered.ca:80',
+        'turn:openrelay.metered.ca:443',
+        'turns:openrelay.metered.ca:443?transport=tcp'
+      ],
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    });
+  }
+
+  return {
+    iceServers,
+    iceCandidatePoolSize: 10
+  };
 };
+
+const servers: RTCConfiguration = getIceConfiguration();
 
 interface IncomingCall {
   id: string;
@@ -366,12 +395,28 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
     };
 
-    pc.oniceconnectionstatechange = () => {
+    pc.oniceconnectionstatechange = async () => {
       if (pc.iceConnectionState === 'failed') {
         console.warn(`[WebRTC] ICE Connection failed for ${peerId}, attempting ICE restart...`);
         try {
           if (typeof (pc as any).restartIce === 'function') {
             (pc as any).restartIce();
+          }
+          if (myIdRef.current < peerId && activeChannelRef.current) {
+            const offer = await pc.createOffer({ iceRestart: true });
+            await pc.setLocalDescription(offer);
+            activeChannelRef.current.send({
+              type: 'broadcast',
+              event: 'signal',
+              payload: {
+                from: myIdRef.current,
+                fromName: getMyDisplayName(),
+                fromAvatar: getMyAvatar(),
+                to: peerId,
+                type: 'offer',
+                offer: { sdp: offer.sdp, type: offer.type }
+              }
+            });
           }
         } catch (e) {
           console.error("ICE restart error:", e);
