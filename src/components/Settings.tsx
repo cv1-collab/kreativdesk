@@ -189,9 +189,27 @@ export default function Settings() {
       if (upErr) throw upErr;
       const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
       const photoURL = pubData.publicUrl;
-      await supabase.from('profiles').update({ photo_url: photoURL, avatar: photoURL, updated_at: new Date().toISOString() } as any).eq('id', currentUser.uid);
+      // Update Auth user metadata
+      try {
+        await supabase.auth.updateUser({ data: { avatar_url: photoURL, photoURL } });
+      } catch (authErr) {
+        console.warn('Auth metadata update warning:', authErr);
+      }
+
+      // Update profiles if columns exist
+      try {
+        await supabase.from('profiles').update({ photo_url: photoURL, avatar: photoURL, updated_at: new Date().toISOString() } as any).eq('id', currentUser.uid);
+      } catch (profErr) {
+        console.warn('Profiles table update warning:', profErr);
+      }
+
+      // Update company_users
       if (currentUser?.email) {
-        await supabase.from('company_users').update({ avatar: photoURL } as any).eq('email', currentUser.email);
+        try {
+          await supabase.from('company_users').update({ photo_url: photoURL, avatar: photoURL } as any).eq('email', currentUser.email);
+        } catch (cuErr) {
+          console.warn('company_users update warning:', cuErr);
+        }
       }
       if (photoURL) safeStorage.setItem(`avatar_${currentUser.uid}`, photoURL);
       if (updateCurrentUser) {
@@ -199,6 +217,7 @@ export default function Settings() {
       }
       addToast(t('upload_success'), 'success');
     } catch (error) {
+      console.error('Photo upload error:', error);
       addToast(t('upload_failed'), 'error');
     } finally {
       setIsUploadingPhoto(false);
@@ -210,9 +229,22 @@ export default function Settings() {
     if (!currentUser) return;
     setIsUploadingPhoto(true);
     try {
-      await supabase.from('profiles').update({ photo_url: null, avatar: null, updated_at: new Date().toISOString() } as any).eq('id', currentUser.uid);
+      try {
+        await supabase.auth.updateUser({ data: { avatar_url: null, photoURL: null } });
+      } catch (authErr) {
+        console.warn('Auth metadata clear warning:', authErr);
+      }
+      try {
+        await supabase.from('profiles').update({ photo_url: null, avatar: null, updated_at: new Date().toISOString() } as any).eq('id', currentUser.uid);
+      } catch (profErr) {
+        console.warn('Profiles table clear warning:', profErr);
+      }
       if (currentUser?.email) {
-        await supabase.from('company_users').update({ avatar: null } as any).eq('email', currentUser.email);
+        try {
+          await supabase.from('company_users').update({ photo_url: null, avatar: null } as any).eq('email', currentUser.email);
+        } catch (cuErr) {
+          console.warn('company_users clear warning:', cuErr);
+        }
       }
       safeStorage.removeItem(`avatar_${currentUser.uid}`);
       if (updateCurrentUser) {

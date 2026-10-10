@@ -404,4 +404,11 @@ CREATE INDEX IF NOT EXISTS idx_smart_proposals_status ON public.smart_proposals 
 CREATE INDEX IF NOT EXISTS idx_video_calls_room_name ON public.video_calls (room_name);
 CREATE INDEX IF NOT EXISTS idx_chat_messages_call_id ON public.chat_messages (call_id);
 
+-------------------------------------------------------------------------------
+-- 7. SCHEMA HARDENING & PROFILE COMPATIBILITY
+-------------------------------------------------------------------------------
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS photo_url text;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS avatar text;
+ALTER TABLE IF EXISTS public.company_users ADD COLUMN IF NOT EXISTS avatar text;
+
 COMMIT;

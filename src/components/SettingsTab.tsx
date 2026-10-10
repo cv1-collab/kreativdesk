@@ -1820,10 +1820,29 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
       const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
       const photoUrl = pubData.publicUrl;
 
-      await (supabase.from('profiles').update({ photo_url: photoUrl } as any) as any).eq('id', currentUser.uid);
-      if (currentUser?.email) {
-        await supabase.from('company_users').update({ avatar: photoUrl } as any).eq('email', currentUser.email);
+      // Update Auth user metadata
+      try {
+        await supabase.auth.updateUser({ data: { avatar_url: photoUrl, photoURL: photoUrl } });
+      } catch (authErr) {
+        console.warn('Auth metadata update warning:', authErr);
       }
+
+      // Update profiles if table/columns exist
+      try {
+        await (supabase.from('profiles').update({ photo_url: photoUrl, avatar: photoUrl } as any) as any).eq('id', currentUser.uid);
+      } catch (profErr) {
+        console.warn('Profiles table update warning:', profErr);
+      }
+
+      // Update company_users
+      if (currentUser?.email) {
+        try {
+          await supabase.from('company_users').update({ photo_url: photoUrl, avatar: photoUrl } as any).eq('email', currentUser.email);
+        } catch (cuErr) {
+          console.warn('company_users update warning:', cuErr);
+        }
+      }
+      safeStorage.setItem(`avatar_${currentUser.uid}`, photoUrl);
       if (updateCurrentUser) {
         updateCurrentUser({ photoURL: photoUrl } as any);
       }
@@ -1841,9 +1860,22 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
     if (!currentUser) return;
     setIsUploadingAvatar(true);
     try {
-      await (supabase.from('profiles').update({ photo_url: null, avatar: null } as any) as any).eq('id', currentUser.uid);
+      try {
+        await supabase.auth.updateUser({ data: { avatar_url: null, photoURL: null } });
+      } catch (authErr) {
+        console.warn('Auth metadata clear warning:', authErr);
+      }
+      try {
+        await (supabase.from('profiles').update({ photo_url: null, avatar: null } as any) as any).eq('id', currentUser.uid);
+      } catch (profErr) {
+        console.warn('Profiles clear warning:', profErr);
+      }
       if (currentUser?.email) {
-        await supabase.from('company_users').update({ avatar: null } as any).eq('email', currentUser.email);
+        try {
+          await supabase.from('company_users').update({ photo_url: null, avatar: null } as any).eq('email', currentUser.email);
+        } catch (cuErr) {
+          console.warn('company_users clear warning:', cuErr);
+        }
       }
       safeStorage.removeItem(`avatar_${currentUser.uid}`);
       if (updateCurrentUser) {
