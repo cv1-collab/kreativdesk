@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { sanitizeUrl } from '../utils';
 
 export type PlanType = 'Starter' | 'Pro' | 'Team Starter' | 'Expert' | 'Studio' | 'Agency' | 'Enterprise';
 export type BillingInterval = 'month' | 'year';
@@ -36,7 +37,12 @@ export const initiateSubscriptionCheckout = async (planName: PlanType, interval:
     if (!response.ok) throw new Error('Checkout API Fehler');
     
     const resData = await response.json();
-    if (resData.url) window.location.assign(resData.url);
+    if (resData.url) {
+      const safe = sanitizeUrl(resData.url);
+      if (safe && (safe.startsWith('https://') || safe.startsWith('/'))) {
+        window.location.assign(safe);
+      }
+    }
   } catch (error) {
     console.error('Fehler:', error);
     throw error;
@@ -58,7 +64,12 @@ export const openCustomerPortal = async (stripeCustomerId: string) => {
     });
     if (!response.ok) throw new Error('Portal API Fehler');
     const resData = await response.json();
-    if (resData.url) window.location.assign(resData.url);
+    if (resData.url) {
+      const safe = sanitizeUrl(resData.url);
+      if (safe && (safe.startsWith('https://') || safe.startsWith('/'))) {
+        window.location.assign(safe);
+      }
+    }
   } catch (error) {
     console.error('Fehler:', error);
     throw error;

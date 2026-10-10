@@ -16,17 +16,16 @@ export default async function handler(req: any, res: any) {
     
     // 1. Authentifizierten User aus Token verifizieren
     const authUser = await verifyAuth(req);
-    
+    if (!authUser) {
+      return res.status(401).json({ error: 'Unauthorized: Authentication required to create checkout session' });
+    }
+
     const { planName = 'Pro', priceId } = req.body || {};
-    const uid = authUser?.id || (authUser as any)?.uid || req.body?.uid;
-    const email = authUser?.email || req.body?.email;
+    const uid = authUser.id;
+    const email = authUser.email;
 
     if (!priceId) {
       return res.status(400).json({ error: 'Missing priceId' });
-    }
-
-    if (!uid) {
-      return res.status(401).json({ error: 'Unauthorized: User ID required for subscription' });
     }
 
     const domainURL = req.headers.origin || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://www.kreativdesk.ch'));

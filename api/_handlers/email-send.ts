@@ -21,11 +21,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Missing required fields: to, subject, html' });
     }
 
-    if (!apiKey) {
-      const authUser = await verifyAuth(req);
-      if (!authUser) {
-        return res.status(401).json({ error: 'Unauthorized: Authentication required to send emails' });
-      }
+    const authUser = await verifyAuth(req);
+    if (!authUser) {
+      return res.status(401).json({ error: 'Unauthorized: Authentication required to send emails' });
     }
 
     const effectiveApiKey = apiKey || process.env.RESEND_API_KEY;

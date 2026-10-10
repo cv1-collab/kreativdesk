@@ -7,6 +7,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { Lock, ArrowLeft, CheckCircle2, Loader2, Layers, Sun, Moon } from 'lucide-react';
 import PasswordInput from './common/PasswordInput';
 import { calculatePasswordStrength, mapAuthErrorMessage } from '../utils/passwordValidation';
+import { safeStorage } from '../utils/safeStorage';
 
 export default function ResetPassword() {
   const [password, setPassword] = useState('');
@@ -73,7 +74,7 @@ export default function ResetPassword() {
 
       if (error) throw error;
 
-      sessionStorage.removeItem('is_password_recovery');
+      safeStorage.session.removeItem('is_password_recovery');
       setSuccess(true);
       addToast(isGerman ? 'Passwort erfolgreich geändert!' : 'Password successfully updated!', 'success');
 

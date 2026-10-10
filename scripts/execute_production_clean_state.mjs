@@ -56,11 +56,20 @@ async function runProductionCleanState() {
   // ------------------------------------------------------------------------
   // 1. SUPABASE AUTH: ÜBERPRÜFUNG & BEREINIGUNG
   // ------------------------------------------------------------------------
-  console.log("\n[1/7] Überprüfe und bereinige Supabase Auth Benutzer...");
-  const { data: { users }, error: listErr } = await supabaseAdmin.auth.admin.listUsers();
-  if (listErr) {
-    console.error("Fehler beim Abrufen der Auth-Nutzer:", listErr);
-    process.exit(1);
+  console.log("\n[1/7] Überprüfe und bereinige Supabase Auth Benutzer (mit Pagination)...");
+  let users = [];
+  let page = 1;
+  const perPage = 1000;
+  while (true) {
+    const { data, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+    if (listErr) {
+      console.error("Fehler beim Abrufen der Auth-Nutzer:", listErr);
+      process.exit(1);
+    }
+    const batch = data?.users || [];
+    users.push(...batch);
+    if (batch.length < perPage) break;
+    page++;
   }
 
   const adminUsersMap = {};

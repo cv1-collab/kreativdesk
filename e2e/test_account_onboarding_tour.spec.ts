@@ -9,11 +9,24 @@ const supabaseAdmin = createClient(supabaseUrl, serviceKey);
 
 test.describe('Test Account: Full Onboarding, Tour Guide, Login & Email Verification Suite', () => {
 
+  async function findUserByEmail(email: string) {
+    let page = 1;
+    const perPage = 1000;
+    while (true) {
+      const res = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+      const users = res.data?.users || [];
+      const found = users.find(u => u.email?.toLowerCase() === email.toLowerCase());
+      if (found) return found;
+      if (users.length < perPage) break;
+      page++;
+    }
+    return null;
+  }
+
   test.beforeAll(async () => {
     if (!serviceKey) return;
     try {
-      const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
-      const existingUser = users.find(u => u.email?.toLowerCase() === AGENT_TEST_ACCOUNT.email.toLowerCase());
+      const existingUser = await findUserByEmail(AGENT_TEST_ACCOUNT.email);
       if (!existingUser) {
         const { data: created } = await supabaseAdmin.auth.admin.createUser({
           email: AGENT_TEST_ACCOUNT.email,
@@ -44,8 +57,7 @@ test.describe('Test Account: Full Onboarding, Tour Guide, Login & Email Verifica
   test.afterAll(async () => {
     if (!serviceKey) return;
     try {
-      const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
-      const testUser = users.find(u => u.email?.toLowerCase() === AGENT_TEST_ACCOUNT.email.toLowerCase());
+      const testUser = await findUserByEmail(AGENT_TEST_ACCOUNT.email);
       if (testUser) {
         await supabaseAdmin.from('profiles').delete().eq('id', testUser.id);
         await supabaseAdmin.auth.admin.deleteUser(testUser.id);

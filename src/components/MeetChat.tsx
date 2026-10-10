@@ -1344,12 +1344,19 @@ export default function MeetChat() {
 
     setIsSendingEmail(true);
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       if (parsedEmails.length > 0) {
         await Promise.allSettled(
           parsedEmails.map(email =>
             fetch('/api/send-invite-webhook', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers,
               body: JSON.stringify({
                 to: email,
                 email,
@@ -1367,7 +1374,7 @@ export default function MeetChat() {
       } else if (targetEmail.trim()) {
         await fetch('/api/send-invite-webhook', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({
             to: targetEmail.trim(),
             email: targetEmail.trim(),

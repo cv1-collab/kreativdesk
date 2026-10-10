@@ -438,7 +438,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
     if (!projectId || !activeModelId || !safeCompanyId) return;
 
     if (activeModelId === 'default') {
-      const cached = sessionStorage.getItem(`bim_cache_${projectId}_default`);
+      const cached = safeStorage.session.getString(`bim_cache_${projectId}_default`);
       if (cached) {
         try {
           const parsed = JSON.parse(cached);
@@ -527,7 +527,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
         })),
         measurePoints: measurePoints.map(p => ({ x: p.x, y: p.y, z: p.z }))
       };
-      sessionStorage.setItem(`bim_cache_${projectId}_default`, JSON.stringify(cacheData));
+      safeStorage.session.setItem(`bim_cache_${projectId}_default`, JSON.stringify(cacheData));
     }
   }, [defectPins, measurePoints, activeModelId, projectId]);
 

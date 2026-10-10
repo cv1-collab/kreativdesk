@@ -7,12 +7,23 @@ const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabaseAdmin = createClient(supabaseUrl, serviceKey);
 
 async function listAllUsers() {
-  const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
-  if (error) console.error(error);
-  else {
-    console.log("Current Auth Users in Supabase:");
-    users.forEach(u => console.log(`- ID: ${u.id} | Email: ${u.email}`));
+  let allUsers = [];
+  let page = 1;
+  const perPage = 1000;
+  while (true) {
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+    if (error) {
+      console.error("Error listing users:", error);
+      return;
+    }
+    const users = data?.users || [];
+    allUsers.push(...users);
+    if (users.length < perPage) break;
+    page++;
   }
+
+  console.log(`Current Auth Users in Supabase (Total: ${allUsers.length}):`);
+  allUsers.forEach(u => console.log(`- ID: ${u.id} | Email: ${u.email} | Created: ${u.created_at}`));
 }
 
 listAllUsers();

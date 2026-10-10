@@ -103,10 +103,10 @@ export default function Login() {
           : 'Confirmation email sent! Please verify your email before logging in.');
       }
 
-      const conflictReason = sessionStorage.getItem('auth_conflict_reason');
+      const conflictReason = safeStorage.session.getString('auth_conflict_reason');
       if (conflictReason) {
         setError(conflictReason);
-        sessionStorage.removeItem('auth_conflict_reason');
+        safeStorage.session.removeItem('auth_conflict_reason');
       }
     } catch (e) {}
   }, [currentLang]);

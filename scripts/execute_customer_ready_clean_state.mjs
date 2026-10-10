@@ -41,11 +41,20 @@ async function runCustomerReadyCleanState() {
   // ------------------------------------------------------------------------
   // 1. AUTH USERS VALIDATION & AGENT ACCOUNT ENSURANCE
   // ------------------------------------------------------------------------
-  console.log("\n[1/8] Überprüfe Supabase Auth Benutzer...");
-  const { data: { users }, error: listErr } = await supabaseAdmin.auth.admin.listUsers();
-  if (listErr) {
-    console.error("Fehler beim Abrufen der Auth-Nutzer:", listErr);
-    process.exit(1);
+  console.log("\n[1/8] Überprüfe Supabase Auth Benutzer (mit Pagination)...");
+  let users = [];
+  let page = 1;
+  const perPage = 1000;
+  while (true) {
+    const { data, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+    if (listErr) {
+      console.error("Fehler beim Abrufen der Auth-Nutzer:", listErr);
+      process.exit(1);
+    }
+    const batch = data?.users || [];
+    users.push(...batch);
+    if (batch.length < perPage) break;
+    page++;
   }
 
   const adminUsersMap = {};

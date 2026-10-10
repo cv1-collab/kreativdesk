@@ -1,5 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Home, ChevronDown, ChevronUp } from 'lucide-react';
+import { safeSessionStorage } from '../utils/safeStorage';
 
 interface Props {
   children: ReactNode;
@@ -39,10 +40,10 @@ export class ErrorBoundary extends Component<Props, State> {
       msg.includes('is not a valid javascript mime type')
     ) {
       try {
-        const lastReload = Number(sessionStorage.getItem('chunk_reload_timestamp') || '0');
+        const lastReload = Number(safeSessionStorage.getString('chunk_reload_timestamp', '0'));
         const now = Date.now();
         if (now - lastReload > 10000) {
-          sessionStorage.setItem('chunk_reload_timestamp', String(now));
+          safeSessionStorage.setItem('chunk_reload_timestamp', String(now));
           window.location.reload();
         }
       } catch {

@@ -10,15 +10,26 @@ export default async function handler(req: any, res: any) {
     const user = await verifyAuth(req);
     const { model, contents, config, isPublic } = req.body || {};
     if (!user && !isPublic) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      return res.status(401).json({ error: 'Unauthorized: Authentication required' });
     }
+
+    // Safety guard for unauthenticated public requests (Landing Page / Public Lead Form)
+    if (!user && isPublic) {
+      const payloadLength = typeof contents === 'string' ? contents.length : JSON.stringify(contents || '').length;
+      if (payloadLength > 25000) {
+        return res.status(400).json({ error: 'Payload too large for public requests' });
+      }
+    }
+
     const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || process.env.GOOGLE_AI_KEY;
     if (!apiKey) {
       return res.status(500).json({ error: 'Gemini API key not configured on server' });
     }
     
     const ai = new GoogleGenAI({ apiKey });
-    const safeModel = (!model || model.includes('2.0') || model.includes('1.5')) ? 'gemini-2.5-flash' : model;
+    const safeModel = (!user && isPublic) 
+      ? 'gemini-2.5-flash' 
+      : ((!model || model.includes('2.0') || model.includes('1.5')) ? 'gemini-2.5-flash' : model);
 
     let safeContents = contents;
     if (typeof contents === 'string') {

@@ -8,6 +8,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { checkIsSuperAdmin } from '../../config/admins';
 import { offboardCompanyUser } from '../../services/userService';
 import { useAuth } from '../../contexts/AuthContext';
+import { safeStorage } from '../../utils/safeStorage';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -76,8 +77,8 @@ export default function AdminUsersTab() {
   const handleImpersonateWorkspace = (user: any) => {
     const companyId = user.company_id || user.companyId || user.id;
     const companyName = user.company_name || user.companyName || user.name || user.email || 'Workspace';
-    sessionStorage.setItem('admin_preview_company_id', companyId);
-    sessionStorage.setItem('admin_preview_company_name', companyName);
+    safeStorage.session.setItem('admin_preview_company_id', companyId);
+    safeStorage.session.setItem('admin_preview_company_name', companyName);
     addToast(`Mandanten-Vorschau aktiviert für: ${companyName}`, 'info');
     window.location.href = '/app';
   };

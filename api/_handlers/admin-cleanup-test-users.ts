@@ -32,7 +32,28 @@ async function deleteSingleUserCascade(uid: string, email?: string | null) {
   }
 
   try {
-    // 1. Unlink any company ownership
+    // 1. Check and clean any test companies owned by this user
+    try {
+      const { data: ownedCompanies } = await supabaseAdmin.from('companies').select('id, name').eq('owner_id', uid);
+      if (ownedCompanies && ownedCompanies.length > 0) {
+        const tables = [
+          'projects', 'time_entries', 'defects', 'documents', 'leads', 
+          'company_users', 'invites', 'notifications', 'smart_proposals',
+          'cad_plans', 'slides', 'transactions', 'calendar_events', 
+          'chat_messages', 'company_settings', 'audio_notes', 'whiteboard_exports',
+          'project_tasks', 'project_members', 'project_schedules', 'audit_logs',
+          'knowledge_docs', 'embeddings', 'goals'
+        ];
+        for (const comp of ownedCompanies) {
+          for (const table of tables) {
+            try { await supabaseAdmin.from(table).delete().eq('company_id', comp.id); } catch (_) {}
+          }
+          await supabaseAdmin.from('profiles').update({ company_id: null }).eq('company_id', comp.id);
+          await supabaseAdmin.from('companies').delete().eq('id', comp.id);
+        }
+      }
+    } catch (_) {}
+
     await supabaseAdmin.from('companies').update({ owner_id: null }).eq('owner_id', uid);
 
     // 2. Remove project relations & entries
@@ -115,7 +136,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 4. Case C: Batch cleanup of all test users
-    const { data: { users: allAuthUsers }, error: listErr } = await supabaseAdmin.auth.admin.listUsers();
+    const { data: { users: allAuthUsers }, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
     if (listErr) throw listErr;
 
     const { data: allProfiles } = await supabaseAdmin.from('profiles').select('id, email');

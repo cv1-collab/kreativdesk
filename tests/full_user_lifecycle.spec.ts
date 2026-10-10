@@ -13,10 +13,23 @@ test.describe.configure({ mode: 'serial' });
 
 test.describe('E2E Lifecycle & Audit: Registration, Onboarding, BAU Project, Features & Password Reset', () => {
 
+  async function findUserByEmail(email: string) {
+    let page = 1;
+    const perPage = 1000;
+    while (true) {
+      const res = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+      const users = res.data?.users || [];
+      const found = users.find(u => u.email?.toLowerCase() === email.toLowerCase());
+      if (found) return found;
+      if (users.length < perPage) break;
+      page++;
+    }
+    return null;
+  }
+
   test.beforeAll(async () => {
     // Delete test user if left over from previous runs
-    const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
-    const existingUser = users.find(u => u.email?.toLowerCase() === TEST_EMAIL.toLowerCase());
+    const existingUser = await findUserByEmail(TEST_EMAIL);
     if (existingUser) {
       await supabaseAdmin.from('profiles').delete().eq('id', existingUser.id);
       await supabaseAdmin.auth.admin.deleteUser(existingUser.id);
@@ -151,8 +164,7 @@ test.describe('E2E Lifecycle & Audit: Registration, Onboarding, BAU Project, Fea
 
   test.afterAll(async () => {
     // Final Clean Up: Delete TEST_EMAIL completely from Supabase
-    const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
-    const existingUser = users.find(u => u.email?.toLowerCase() === TEST_EMAIL.toLowerCase());
+    const existingUser = await findUserByEmail(TEST_EMAIL);
     if (existingUser) {
       await supabaseAdmin.from('profiles').delete().eq('id', existingUser.id);
       await supabaseAdmin.auth.admin.deleteUser(existingUser.id);

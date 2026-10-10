@@ -14,25 +14,35 @@ test('Verify Modul-Guide in PitchDeckStudio opens properly', async ({ page }) =>
     consoleErrors.push(`[pageerror] ${err.message}\n${err.stack}`);
   });
 
+  await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('/deck');
   await page.waitForLoadState('domcontentloaded');
   await page.waitForTimeout(1000);
 
+  // Dismiss cookie banner explicitly once mounted
+  try {
+    const cookieBtn = page.locator('button:has-text("Alle akzeptieren"), button:has-text("Nur essenzielle")').first();
+    await cookieBtn.waitFor({ state: 'visible', timeout: 3000 });
+    await cookieBtn.click();
+    await cookieBtn.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {});
+  } catch(e) {}
+  await page.waitForTimeout(500);
+
   // Open Pitch Studio
   const studioBtn = page.locator('#btn-open-pitch-studio, button:has-text("Pitch Studio öffnen"), button:has-text("Open Pitch Studio")');
   await expect(studioBtn.first()).toBeVisible({ timeout: 5000 });
-  await studioBtn.first().click();
+  await studioBtn.first().click({ force: true });
   await page.waitForTimeout(1000);
 
   // Find Modul-Guide button inside the studio modal specifically
-  const guideBtn = page.locator('div.z-\\[100000\\] .tour-btn-module-guide, div.z-\\[100000\\] button:has-text("Modul-Guide")');
+  const guideBtn = page.locator('div.z-\\[100000\\] .tour-btn-module-guide:visible, div.z-\\[100000\\] button:has-text("Modul-Guide"):visible');
   console.log('Studio Guide buttons count:', await guideBtn.count());
   expect(await guideBtn.count()).toBeGreaterThan(0);
 
-  const targetGuideBtn = guideBtn.last();
+  const targetGuideBtn = guideBtn.first();
   await expect(targetGuideBtn).toBeVisible();
   console.log('Clicking Pitch Deck Studio Modul-Guide button...');
-  await targetGuideBtn.click();
+  await targetGuideBtn.click({ force: true });
 
   // Wait 1.5 seconds to see what happens
   await page.waitForTimeout(1500);

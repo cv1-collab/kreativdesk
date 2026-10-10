@@ -88,8 +88,8 @@ export default function Layout() {
 
   // Automatische Tour-Aktivierung beim Wechsel aus Ebene 2 (Firmen-Dashboard) in den Projekt-Workspace
   useEffect(() => {
-    if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('auto_start_project_tour') === 'true') {
-      sessionStorage.removeItem('auto_start_project_tour');
+    if (safeStorage.session.getItem('auto_start_project_tour') === 'true') {
+      safeStorage.session.removeItem('auto_start_project_tour');
       const timer = setTimeout(() => {
         startTour();
       }, 500);
@@ -98,9 +98,9 @@ export default function Layout() {
   }, [location.pathname, startTour]);
 
   useEffect(() => {
-    // Check preview mode in sessionStorage
-    const pId = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('admin_preview_company_id') : null;
-    const pName = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('admin_preview_company_name') : null;
+    // Check preview mode in safeStorage.session
+    const pId = safeStorage.session.getString('admin_preview_company_id');
+    const pName = safeStorage.session.getString('admin_preview_company_name');
     if (pId) {
       setAdminPreviewCompany({ id: pId, name: pName || 'Workspace' });
     }
@@ -137,8 +137,8 @@ export default function Layout() {
   }, [currentUser]);
 
   const handleExitPreviewMode = () => {
-    sessionStorage.removeItem('admin_preview_company_id');
-    sessionStorage.removeItem('admin_preview_company_name');
+    safeStorage.session.removeItem('admin_preview_company_id');
+    safeStorage.session.removeItem('admin_preview_company_name');
     addToast('Mandanten-Vorschau beendet', 'info');
     window.location.href = '/admin?tab=users';
   };

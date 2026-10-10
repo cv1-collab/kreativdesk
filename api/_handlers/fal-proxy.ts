@@ -19,10 +19,7 @@ export default async function handler(req: any, res: any) {
 
   try {
     const user = await verifyAuth(req);
-    const origin = req.headers.origin || req.headers.referer || '';
-    const isSameOrigin = origin.includes('kreativdesk.ch') || origin.includes('localhost') || origin.includes('vercel.app');
-    
-    if (!user && !isSameOrigin) {
+    if (!user) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 

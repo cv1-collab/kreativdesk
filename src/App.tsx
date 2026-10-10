@@ -150,9 +150,6 @@ function AuthenticatedOverlays() {
       <Suspense fallback={null}>
         <AIConcierge />
       </Suspense>
-      <Suspense fallback={null}>
-        <ProductTour />
-      </Suspense>
     </>
   );
 }
@@ -174,6 +171,9 @@ export default function App() {
                           <Screensaver />
 
                           <AuthenticatedOverlays />
+                          <Suspense fallback={null}>
+                            <ProductTour />
+                          </Suspense>
                           <Suspense fallback={null}>
                             <CookieBanner />
                           </Suspense>

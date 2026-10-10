@@ -20,11 +20,20 @@ async function executeCleanState() {
   console.log("STARTING CLEAN STATE: KEEP ONLY CV1 & CARLO");
   console.log("==================================================");
 
-  // 1. Fetch all Auth users
-  const { data: { users }, error: listErr } = await supabaseAdmin.auth.admin.listUsers();
-  if (listErr) {
-    console.error("Error fetching users:", listErr);
-    process.exit(1);
+  // 1. Fetch all Auth users with pagination
+  let users = [];
+  let page = 1;
+  const perPage = 1000;
+  while (true) {
+    const { data, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+    if (listErr) {
+      console.error("Error fetching users:", listErr);
+      process.exit(1);
+    }
+    const batch = data?.users || [];
+    users.push(...batch);
+    if (batch.length < perPage) break;
+    page++;
   }
 
   const adminUsersMap = {};

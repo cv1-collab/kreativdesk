@@ -29,5 +29,14 @@ test_poll.jpg
 test_post.jpg
 test_post_image.jpg
 
-# Maintenance & repair scripts
+# Maintenance, scratch & repair scripts
 scripts/
+functions/
+scratch-*
+check_db.js
+fix*
+recover*
+handle_recover*
+update_prompt.cjs
+*.py
+*.txt

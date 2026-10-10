@@ -5,6 +5,7 @@ import { registerSW } from 'virtual:pwa-register';
 import App from './App';
 import './index.css';
 import { scrubLocalStorageFileUrls } from './utils';
+import { safeSessionStorage } from './utils/safeStorage';
 
 scrubLocalStorageFileUrls();
 
@@ -24,10 +25,10 @@ if (typeof window !== 'undefined') {
 
   const attemptReload = () => {
     try {
-      const lastReload = Number(sessionStorage.getItem('chunk_reload_timestamp') || '0');
+      const lastReload = Number(safeSessionStorage.getString('chunk_reload_timestamp', '0'));
       const now = Date.now();
       if (now - lastReload > 10000) {
-        sessionStorage.setItem('chunk_reload_timestamp', String(now));
+        safeSessionStorage.setItem('chunk_reload_timestamp', String(now));
         window.location.reload();
       }
     } catch {

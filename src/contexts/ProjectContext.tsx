@@ -11,6 +11,7 @@ import { useProjectTeam, CompanyUser, ProjectMember } from '../hooks/useProjectT
 import { useProjectTimeEntries, TimeEntry } from '../hooks/useProjectTimeEntries';
 import { queryClient } from '../lib/queryClient';
 import { PROJECTS_QUERY_KEY } from '../hooks/queries/useProjectsQuery';
+import { safeStorage } from '../utils/safeStorage';
 
 export type { Defect, CompanyUser, ProjectMember, TimeEntry };
 
@@ -92,7 +93,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
   const getSafeCompanyId = useCallback(() => {
     if (!currentUser) return '';
-    const previewCompanyId = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('admin_preview_company_id') : null;
+    const previewCompanyId = safeStorage.session.getString('admin_preview_company_id');
     return previewCompanyId || currentUser.companyId || (currentUser as any)?.company_id || currentUser.uid || '';
   }, [currentUser]);
 

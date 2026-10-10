@@ -211,9 +211,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         targetRole = 'super_admin';
       }
 
-      // Check admin preview mode in sessionStorage for super admins
-      const previewCompanyId = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('admin_preview_company_id') : null;
-      const previewCompanyName = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('admin_preview_company_name') : null;
+      // Check admin preview mode in safeStorage.session for super admins
+      const previewCompanyId = safeStorage.session.getString('admin_preview_company_id');
+      const previewCompanyName = safeStorage.session.getString('admin_preview_company_name');
       if (isSuperUser && previewCompanyId) {
         effectiveCompanyId = previewCompanyId;
       }
@@ -537,7 +537,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session: Session | null) => {
       if (_event === 'PASSWORD_RECOVERY') {
-        sessionStorage.setItem('is_password_recovery', 'true');
+        safeStorage.session.setItem('is_password_recovery', 'true');
         if (!window.location.pathname.startsWith('/reset-password')) {
           window.location.href = '/reset-password';
           return;
@@ -584,7 +584,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const remoteSessionId = payload.new?.[deviceTypeKey];
         if (remoteSessionId && remoteSessionId !== mySessionId) {
           try {
-            sessionStorage.setItem(
+            safeStorage.session.setItem(
               'auth_conflict_reason',
               `⚠️ Sitzung Beendet: Dein Konto wurde auf einem zweiten ${deviceTypeName} angemeldet. Du kannst dich gleichzeitig auf 1 Laptop und 1 Smartphone/iPad anmelden, jedoch nicht auf zwei ${deviceTypeName}en gleichzeitig.`
             );

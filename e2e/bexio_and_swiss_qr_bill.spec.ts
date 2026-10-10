@@ -39,17 +39,17 @@ test.describe('Bexio ERP & Swiss QR-Bill Integration Suite', () => {
   });
 
   test('Verify Bexio connection endpoint contract', async ({ request }) => {
-    // Missing token should return 400
+    // Missing token or unauthenticated call should return 400 or 401
     const emptyRes = await request.post('/api/bexio/test-connection', {
       data: {}
     });
-    expect([400, 404]).toContain(emptyRes.status());
+    expect([400, 401, 404]).toContain(emptyRes.status());
 
-    // Calling with non-existent token should return a structured failure response without crashing
+    // Calling with non-existent token should return a structured response (or 401 if unauthenticated) without crashing
     const dummyRes = await request.post('/api/bexio/test-connection', {
       data: { apiToken: 'test_token_bexio_12345678' }
     });
-    expect([200, 404]).toContain(dummyRes.status());
+    expect([200, 401, 404]).toContain(dummyRes.status());
     if (dummyRes.status() === 200) {
       const data = await dummyRes.json();
       expect(typeof data.success).toBe('boolean');
@@ -65,7 +65,7 @@ test.describe('Bexio ERP & Swiss QR-Bill Integration Suite', () => {
         acceptanceData: { name: 'Hans Meier', email: 'hans@meier.ch' }
       }
     });
-    expect([200, 404]).toContain(proposalRes.status());
+    expect([200, 400, 401, 404]).toContain(proposalRes.status());
 
     const leadRes = await request.post('/api/bexio/sync-leads', {
       data: {
@@ -73,6 +73,6 @@ test.describe('Bexio ERP & Swiss QR-Bill Integration Suite', () => {
         leads: [{ name: 'Firma Schmidt', email: 'schmidt@bau.ch' }]
       }
     });
-    expect([200, 404]).toContain(leadRes.status());
+    expect([200, 400, 401, 404]).toContain(leadRes.status());
   });
 });

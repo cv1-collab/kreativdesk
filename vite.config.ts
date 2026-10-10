@@ -47,7 +47,7 @@ export default defineConfig(({ mode }) => {
           globIgnores: ['**/BIMViewer*.js'],
           maximumFileSizeToCacheInBytes: 10485760, // 10 MB Limit
           navigateFallback: 'index.html',
-          navigateFallbackDenylist: [/^\/api/, /^\/assets\//, /^\/media\//],
+          navigateFallbackDenylist: [/^\/api/, /^\/assets\//, /^\/media\//, /^\/wasm\//, /\.wasm$/],
           runtimeCaching: [
             {
               urlPattern: /\/media\/.*\.(?:png|jpg|jpeg|svg|webp|gif)$/i,

@@ -16,9 +16,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const authUser = await verifyAuth(req);
-    const { email: bodyEmail, name, uid: bodyUid } = req.body || {};
-    const email = authUser?.email || bodyEmail;
-    const uid = authUser?.id || bodyUid;
+    if (!authUser) {
+      return res.status(401).json({ error: 'Unauthorized: Authentication required' });
+    }
+
+    const { name } = req.body || {};
+    const email = authUser.email;
+    const uid = authUser.id;
 
     if (!email) {
       return res.status(400).json({ error: 'Email missing' });

@@ -124,106 +124,35 @@ async function startServer() {
   };
 
   // --- 1. STRIPE CHECKOUT SESSION ---
-  app.post('/api/create-checkout-session', verifyAuth, async (req, res) => {
+  app.post('/api/create-checkout-session', async (req, res) => {
     try {
-      const { planName, priceId } = req.body;
-      const user = (req as any).user;
-      const uid = user.uid;
-      const email = user.email;
-      const domainURL = req.headers.origin || process.env.CLIENT_URL || 'https://www.kreativdesk.ch';
-
-      if (!priceId) return res.status(400).json({ error: 'Missing Stripe priceId' });
-
-      const session = await stripe.checkout.sessions.create({
-        payment_method_types: ['card'],
-        mode: 'subscription',
-        customer_email: email,
-        client_reference_id: uid,
-        allow_promotion_codes: true,
-        line_items: [{ price: priceId, quantity: 1 }],
-        success_url: `${domainURL}/success?session_id={CHECKOUT_SESSION_ID}&plan=${planName}`,
-        cancel_url: `${domainURL}/pricing?canceled=true`,
-        metadata: { supabaseUID: uid, plan: planName }
-      });
-      res.json({ url: session.url });
-    } catch (error: any) {
-      console.error('Checkout Session Error:', error);
-      res.status(500).json({ error: error.message });
+      const handler = (await import('./api/_handlers/create-checkout-session.js')).default;
+      return handler(req as any, res as any);
+    } catch (err: any) {
+      console.error('create-checkout-session route error:', err);
+      return res.status(500).json({ error: err.message });
     }
   });
 
   // --- 2. STRIPE CUSTOMER PORTAL ---
-  app.post('/api/create-portal-session', verifyAuth, async (req, res) => {
+  app.post('/api/create-portal-session', async (req, res) => {
     try {
-      const user = (req as any).user;
-      const uid = user.uid;
-
-      const { data: profile } = await supabaseAdmin
-        .from('profiles')
-        .select('stripe_customer_id')
-        .eq('id', uid)
-        .maybeSingle();
-
-      const customerId = profile?.stripe_customer_id;
-      if (!customerId) return res.status(400).json({ error: 'Stripe customer ID missing on account' });
-      
-      const domainURL = req.headers.origin || process.env.CLIENT_URL || 'https://www.kreativdesk.ch';
-      const portalSession = await stripe.billingPortal.sessions.create({
-        customer: customerId,
-        return_url: `${domainURL}/settings`,
-      });
-      res.json({ url: portalSession.url });
-    } catch (error: any) {
-      console.error('Portal Session Error:', error);
-      res.status(500).json({ error: error.message });
+      const handler = (await import('./api/_handlers/create-portal-session.js')).default;
+      return handler(req as any, res as any);
+    } catch (err: any) {
+      console.error('create-portal-session route error:', err);
+      return res.status(500).json({ error: err.message });
     }
   });
 
   // --- 3. GET USER STATUS ---
-  app.get('/api/get-user-status', async (req, res) => {
+  app.all('/api/get-user-status', async (req, res) => {
     try {
-      const { userId } = req.query;
-      if (!userId || typeof userId !== 'string') return res.status(400).json({ error: 'Invalid userId' });
-
-      const { data: profile } = await supabaseAdmin
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
-
-      if (!profile) {
-        const timestamp = new Date();
-        const trialEndDate = new Date(timestamp.getTime() + (30 * 24 * 60 * 60 * 1000));
-
-        const { data: newCompany } = await supabaseAdmin
-          .from('companies')
-          .insert({
-            name: `Workspace ${userId.substring(0, 5)}`,
-            plan: 'Expert Trial',
-            max_seats: 1,
-            used_seats: 1,
-            owner_id: userId
-          })
-          .select()
-          .maybeSingle();
-
-        const newProfileData = {
-          id: userId,
-          email: 'unknown@user.com',
-          role: 'owner',
-          company_id: newCompany?.id || null,
-          has_active_subscription: true,
-          plan: 'Expert Trial',
-          trial_ends_at: trialEndDate.toISOString(),
-          created_at: timestamp.toISOString()
-        };
-
-        await supabaseAdmin.from('profiles').insert(newProfileData);
-        return res.json(newProfileData);
-      }
-      res.json(profile);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      const handler = (await import('./api/_handlers/get-user-status.js')).default;
+      return handler(req as any, res as any);
+    } catch (err: any) {
+      console.error('get-user-status route error:', err);
+      return res.status(500).json({ error: err.message });
     }
   });
 
@@ -316,612 +245,195 @@ async function startServer() {
     res.status(200).send();
   });
 
-function isSafeExternalUrl(urlStr: string): boolean {
-  try {
-    const parsed = new URL(urlStr);
-    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
-    const hostname = parsed.hostname.toLowerCase();
-    if (
-      hostname === 'localhost' ||
-      hostname === '127.0.0.1' ||
-      hostname === '0.0.0.0' ||
-      hostname === '169.254.169.254' ||
-      hostname.startsWith('10.') ||
-      hostname.startsWith('192.168.') ||
-      hostname.startsWith('172.')
-    ) {
-      return false;
-    }
-    return true;
-  } catch (e) {
-    return false;
-  }
-}
-
   // --- 5. LEAD WEBHOOK ---
   app.post('/api/send-lead-webhook', async (req, res) => {
     try {
-      const { companyId, leadData } = req.body;
-      if (!companyId || !leadData) return res.status(400).json({ error: 'Missing data' });
-
-      const { data: company } = await supabaseAdmin
-        .from('companies')
-        .select('*')
-        .eq('id', companyId)
-        .maybeSingle();
-
-      if (!company) return res.status(404).json({ error: 'Company not found' });
-      
-      let webhookUrl = (company as any)?.webhook_url || req.body.webhookUrl || process.env.WELCOME_WEBHOOK_URL;
-      if (!webhookUrl) {
-        const { data: doc } = await supabaseAdmin
-          .from('documents')
-          .select('url, file_url')
-          .eq('category', 'system_config')
-          .eq('name', `kreativdesk_webhooks_${companyId}`)
-          .maybeSingle();
-        if (doc?.url) {
-          try {
-            const parsed = JSON.parse(doc.url);
-            if (Array.isArray(parsed) && parsed[0]?.url) webhookUrl = parsed[0].url;
-          } catch (e) {}
-        }
-      }
-
-      if (webhookUrl && isSafeExternalUrl(webhookUrl)) {
-         await fetch(webhookUrl, {
-           method: 'POST',
-           headers: { 'Content-Type': 'application/json' },
-           body: JSON.stringify({ ...leadData, event: 'new_lead' })
-         });
-         console.log(`Lead Webhook erfolgreich gesendet an: ${webhookUrl}`);
-      }
-
-      res.status(200).json({ success: true });
-    } catch (error: any) {
-      console.error("Lead Webhook Error:", error);
-      res.status(500).json({ error: error.message });
+      const handler = (await import('./api/_handlers/send-lead-webhook.js')).default;
+      return handler(req as any, res as any);
+    } catch (err: any) {
+      console.error('send-lead-webhook route error:', err);
+      return res.status(500).json({ error: err.message });
     }
   });
 
   // --- 5.1 WELCOME WEBHOOK ---
-  app.post('/api/send-welcome-webhook', verifyAuth, async (req, res) => {
+  app.post('/api/send-welcome-webhook', async (req, res) => {
     try {
-      const { email, name, uid } = req.body;
-      if (!email) return res.status(400).json({ error: 'Email missing' });
-
-      const formattedName = name ? name.charAt(0).toUpperCase() + name.slice(1) : 'Neuer Nutzer';
-      const webhookUrl = process.env.WELCOME_WEBHOOK_URL; 
-      
-      if (webhookUrl) {
-         await fetch(webhookUrl, {
-           method: 'POST',
-           headers: { 'Content-Type': 'application/json' },
-           body: JSON.stringify({
-             email,
-             name: formattedName,
-             uid,
-             source: 'KreativDesk'
-           })
-         });
-         console.log(`Welcome Webhook erfolgreich gesendet an: ${email}`);
-      }
-
-      res.status(200).json({ success: true });
-    } catch (error: any) {
-      console.error("Welcome Webhook Error:", error);
-      res.status(500).json({ error: error.message });
+      const handler = (await import('./api/_handlers/send-welcome-webhook.js')).default;
+      return handler(req as any, res as any);
+    } catch (err: any) {
+      console.error('send-welcome-webhook route error:', err);
+      return res.status(500).json({ error: err.message });
     }
   });
 
   // --- 6. PASSWORD RESET WEBHOOK ---
   app.post('/api/send-reset-webhook', async (req, res) => {
     try {
-      const { email } = req.body;
-      if (!email) return res.status(400).json({ error: 'Email missing' });
-
-      const { data, error } = await supabaseAdmin.auth.admin.generateLink({
-        type: 'recovery',
-        email: email
-      });
-
-      const resetLink = data?.properties?.action_link;
-      const webhookUrl = process.env.RESET_WEBHOOK_URL; 
-      
-      if (webhookUrl && resetLink) {
-         await fetch(webhookUrl, {
-           method: 'POST',
-           headers: { 'Content-Type': 'application/json' },
-           body: JSON.stringify({
-             email,
-             resetLink, 
-             source: 'KreativDesk'
-           })
-         });
-         console.log(`Reset Webhook erfolgreich gesendet an: ${email}`);
-      }
-
-      res.status(200).json({ success: true });
-    } catch (error: any) {
-      console.error("Reset Webhook Error:", error);
-      res.status(500).json({ error: error.message });
+      const handler = (await import('./api/_handlers/send-reset-webhook.js')).default;
+      return handler(req as any, res as any);
+    } catch (err: any) {
+      console.error('send-reset-webhook route error:', err);
+      return res.status(500).json({ error: err.message });
     }
   });
 
   // --- 6.1 VIDEOCALL INVITE WEBHOOK ---
   app.post('/api/send-invite-webhook', async (req, res) => {
     try {
-      const { email, roomUrl, roomId, senderName, language } = req.body;
-      if (!email || !roomUrl) return res.status(400).json({ error: 'Email or roomUrl missing' });
-
-      const webhookUrl = process.env.INVITE_WEBHOOK_URL || process.env.WELCOME_WEBHOOK_URL;
-      
-      if (webhookUrl) {
-         await fetch(webhookUrl, {
-           method: 'POST',
-           headers: { 'Content-Type': 'application/json' },
-           body: JSON.stringify({
-             email,
-             roomUrl,
-             roomId,
-             senderName: senderName || 'Kreativ Desk User',
-             language: language || 'de',
-             source: 'KreativDesk'
-           })
-         });
-         console.log(`Invite Webhook erfolgreich gesendet an: ${email}`);
-      }
-
-      res.status(200).json({ success: true });
-    } catch (error: any) {
-      console.error("Invite Webhook Error:", error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // --- 6.2 SUPER ADMIN MAINTENANCE TOGGLE ---
-  app.post('/api/admin/set-maintenance', verifyAuth, async (req, res) => {
-    try {
-      const user = (req as any).user;
-      const SUPER_ADMINS = ['cv1@gmx.ch', 'carlo@vesciodesign.ch'];
-      const userEmail = user?.email?.toLowerCase() || '';
-      
-      let isSuperAdmin = SUPER_ADMINS.includes(userEmail);
-      if (!isSuperAdmin) {
-        const { data: profile } = await supabaseAdmin
-          .from('profiles')
-          .select('role')
-          .eq('id', user.uid)
-          .maybeSingle();
-        if (profile?.role === 'super_admin') isSuperAdmin = true;
-      }
-
-      if (!isSuperAdmin) {
-        return res.status(403).json({ error: 'Forbidden: Super Admin access required.' });
-      }
-
-      const { isMaintenance } = req.body;
-      const { error } = await supabaseAdmin
-        .from('system_config')
-        .upsert({
-          id: 'global_master',
-          is_maintenance: !!isMaintenance,
-          updated_at: new Date().toISOString()
-        });
-
-      if (error) {
-        console.error("Set Maintenance Error:", error);
-        return res.status(500).json({ error: error.message });
-      }
-
-      console.log(`[Admin] Maintenance mode updated to ${!!isMaintenance} by ${userEmail}`);
-      res.status(200).json({ success: true, is_maintenance: !!isMaintenance });
-    } catch (error: any) {
-      console.error("Set Maintenance Server Error:", error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // --- 7. GEMINI AI PROXY ---
-  app.post('/api/generate', verifyAuthOrPublic, verifySubscriptionOrPublic, async (req, res) => {
-    try {
-      const apiKey = process.env.GEMINI_API_KEY; 
-      if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured' });
-      
-      const ai = new GoogleGenAI({ apiKey });
-      const { model, contents, config } = req.body || {};
-      const safeModel = (!model || model.includes('2.0') || model.includes('1.5')) ? 'gemini-2.5-flash' : model;
-      let safeContents = contents;
-      if (typeof contents === 'string') {
-        safeContents = [{ parts: [{ text: contents }] }];
-      } else if (Array.isArray(contents)) {
-        const isAlreadyContentFormat = contents.every((c: any) => c && Array.isArray(c.parts));
-        if (!isAlreadyContentFormat) {
-          const parts = contents.map((item: any) => {
-            if (typeof item === 'string') return { text: item };
-            if (item?.parts && Array.isArray(item.parts)) return item.parts;
-            if (item?.text) return { text: item.text };
-            if (item?.inlineData) return { inlineData: item.inlineData };
-            return item;
-          }).flat();
-          safeContents = [{ role: 'user', parts }];
-        }
-      }
-
-      const response = await ai.models.generateContent({
-        model: safeModel,
-        contents: safeContents,
-        config
-      });
-      
-      const generatedText = typeof response.text === 'function' ? (response as any).text() : (response.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || '');
-
-      res.status(200).json({
-        text: generatedText,
-        candidates: response.candidates ? JSON.parse(JSON.stringify(response.candidates)) : []
-      });
-    } catch (error: any) {
-      console.error("AI Proxy Error:", error);
-      res.status(500).json({ error: 'Server error during generation', details: error.message });
-    }
-  });
-
-  // --- 7a. GEMINI IMAGE GENERATION PROXY ---
-  app.post('/api/generate-image', verifyAuth, verifySubscription, async (req, res) => {
-    try {
-      const apiKey = process.env.GEMINI_API_KEY; 
-      if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured' });
-      
-      const ai = new GoogleGenAI({ apiKey });
-      const { prompt } = req.body;
-
-      const response = await ai.models.generateImages({
-        model: 'imagen-3.0-generate-001',
-        prompt: prompt || 'A creative architectural design',
-        config: {
-          numberOfImages: 1,
-          outputMimeType: 'image/png'
-        }
-      });
-      
-      const base64Image = response.generatedImages?.[0]?.image?.imageBytes;
-      if (!base64Image) throw new Error("No image generated");
-
-      res.status(200).json({
-        imageBytes: base64Image
-      });
-    } catch (error: any) {
-      console.error("AI Image Gen Error:", error);
-      res.status(500).json({ error: 'Server error during image generation', details: error.message });
-    }
-  });
-
-  // --- 7a.1 FAL FLUX IMAGE-TO-IMAGE RENDERING PROXY ---
-  app.post('/api/render-image', verifyAuthOrPublic, async (req, res) => {
-    try {
-      const { prompt, image, strength = 0.55, guidance_scale = 7.5, style = 'photoreal' } = req.body || {};
-      if (!image) {
-        return res.status(400).json({ error: 'Missing required image' });
-      }
-
-      const falKey = process.env.FAL_KEY || '74ab3a75-7a36-4c81-b6b1-e7efde8627e0:396cf0c00fcf01484883bc3e6850a073';
-      let fullPrompt = (prompt || '').trim();
-      if (!fullPrompt) {
-        if (style === 'comic') {
-          fullPrompt = 'Vibrant colorful comic book illustration, clean dynamic ink outlines, expressive character design, high detail graphic novel art';
-        } else {
-          fullPrompt = 'Professional architectural competition visualization, authentic materials, concrete and glass, soft ambient natural daylight, 8k resolution';
-        }
-      }
-
-      const numericStrength = Math.min(Math.max(Number(strength) || 0.55, 0.25), 0.85);
-
-      const falRes = await fetch('https://fal.run/fal-ai/flux/dev/image-to-image', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Key ${falKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          prompt: fullPrompt,
-          image_url: image,
-          strength: numericStrength,
-          guidance_scale: Number(guidance_scale) || 7.5,
-          num_inference_steps: 28
-        })
-      });
-
-      if (!falRes.ok) {
-        const errText = await falRes.text();
-        console.error('Fal.ai error in server.ts:', falRes.status, errText);
-        return res.status(falRes.status).json({ error: 'Fal.ai generation failed', details: errText });
-      }
-
-      const data = await falRes.json();
-      const finalUrl = data?.images?.[0]?.url;
-      if (!finalUrl) {
-        return res.status(500).json({ error: 'No image returned from AI engine' });
-      }
-
-      return res.status(200).json({
-        success: true,
-        imageUrl: finalUrl,
-        timings: data?.timings
-      });
-    } catch (error: any) {
-      console.error('Render Image Route Error:', error);
-      return res.status(500).json({ error: 'Server error during rendering', details: error.message });
-    }
-  });
-
-  // --- 7b. GEMINI AI EMBEDDING PROXY ---
-  app.post('/api/embed', verifyAuth, verifySubscription, async (req, res) => {
-    try {
-      const apiKey = process.env.GEMINI_API_KEY; 
-      if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured' });
-      
-      const ai = new GoogleGenAI({ apiKey });
-      const { model, contents } = req.body;
-
-      const response = await ai.models.embedContent({ model, contents });
-      
-      const firstValues = response.embeddings?.[0]?.values || [];
-      res.status(200).json({ 
-        embedding: firstValues,
-        embeddings: response.embeddings 
-      });
-    } catch (error: any) {
-      console.error("AI Embed Proxy Error:", error);
-      res.status(500).json({ error: 'Server error during embedding', details: error.message });
-    }
-  });
-
-  // --- 7c. FAL AI PROXY ---
-  app.all('/api/fal/proxy', async (req, res) => {
-    const targetUrl = req.headers['x-fal-target-url'] as string;
-    if (!targetUrl || typeof targetUrl !== 'string') {
-      return res.status(400).json({ error: 'Missing x-fal-target-url header' });
-    }
-
-    try {
-      const parsedUrl = new URL(targetUrl);
-      const host = parsedUrl.hostname.toLowerCase();
-      if (!host.endsWith('fal.run') && !host.endsWith('fal.ai') && !host.endsWith('fal.media')) {
-        return res.status(403).json({ error: 'Forbidden target URL' });
-      }
-
-      const falKey = process.env.FAL_KEY || '74ab3a75-7a36-4c81-b6b1-e7efde8627e0:396cf0c00fcf01484883bc3e6850a073';
-      const headers: any = {
-        'Authorization': `Key ${falKey}`,
-        'Content-Type': 'application/json'
-      };
-
-      Object.keys(req.headers).forEach((key) => {
-        if (key.toLowerCase().startsWith('x-fal-')) {
-          headers[key.toLowerCase()] = req.headers[key];
-        }
-      });
-
-      const options: any = {
-        method: req.method,
-        headers
-      };
-
-      if (req.method !== 'GET' && req.method !== 'HEAD') {
-        options.body = JSON.stringify(req.body);
-      }
-
-      const falResponse = await fetch(targetUrl, options);
-      const excludedHeaders = ['content-length', 'content-encoding'];
-      falResponse.headers.forEach((value, key) => {
-        if (!excludedHeaders.includes(key.toLowerCase())) {
-          res.setHeader(key, value);
-        }
-      });
-
-      if (!falResponse.ok) {
-        const errorText = await falResponse.text();
-        return res.status(falResponse.status).json({ error: errorText });
-      }
-
-      const data = await falResponse.json();
-      return res.status(200).json(data);
+      const handler = (await import('./api/_handlers/send-invite-webhook.js')).default;
+      return handler(req as any, res as any);
     } catch (err: any) {
-      console.error('Local FAL Proxy Error:', err);
-      return res.status(500).json({ error: err.message || 'FAL proxy error' });
-    }
-  });
-
-  // --- 7d. PROPOSAL AI CHAT ---
-  app.post('/api/proposal/ai-chat', async (req, res) => {
-    try {
-      const { language = 'de', proposalContext, userQuestion, messageHistory = [] } = req.body || {};
-      if (!userQuestion || !proposalContext) {
-        return res.status(400).json({ error: 'Missing userQuestion or proposalContext' });
-      }
-
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured' });
-
-      const ai = new GoogleGenAI({ apiKey });
-      const systemPrompt = `Du bist der professionelle KI-Angebotsberater für dieses Projektangebot auf Kreativ Desk OS.
-Projekttitel: ${proposalContext.title || ''}
-Kunde: ${proposalContext.clientName || ''} (${proposalContext.clientCompany || ''})
-Grundpreis: ${proposalContext.basePrice ?? 0} ${proposalContext.currency || 'CHF'}
-Gesamtsumme: ${proposalContext.totalCalculated ?? proposalContext.basePrice ?? 0} ${proposalContext.currency || 'CHF'}
-Zusatzoptionen: ${(proposalContext.options || []).map((o: any) => `${o.title} (${o.price} CHF)`).join(', ')}
-
-Beantworte Kundenfragen präzise, freundlich und faktenbasiert auf ${language.toUpperCase()}.
-Verwende ausschliesslich Schweizer Rechtschreibung (immer "ss", niemals "ß").`;
-
-      const contents: any[] = [
-        { role: 'user', parts: [{ text: systemPrompt }] },
-        { role: 'model', parts: [{ text: 'Verstanden.' }] }
-      ];
-
-      if (Array.isArray(messageHistory)) {
-        messageHistory.slice(-4).forEach((msg: any) => {
-          if (msg.role && msg.text) contents.push({ role: msg.role === 'user' ? 'user' : 'model', parts: [{ text: msg.text }] });
-        });
-      }
-      contents.push({ role: 'user', parts: [{ text: userQuestion }] });
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents,
-        config: { temperature: 0.3, maxOutputTokens: 500 }
-      });
-
-      const answer = typeof response.text === 'function' ? (response as any).text() : (response.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || '');
-      return res.status(200).json({ success: true, answer: answer.trim() });
-    } catch (e: any) {
-      console.error('Server Proposal AI Chat Error:', e);
-      return res.status(500).json({ error: e.message });
-    }
-  });
-
-  // --- 7e. EMAIL SEND & PROPOSAL WEBHOOKS ---
-  app.post('/api/email/send', async (req, res) => {
-    return res.status(200).json({
-      success: true,
-      messageId: `sim_${Date.now()}`,
-      provider: req.body?.provider || 'simulator',
-      mode: 'simulated'
-    });
-  });
-
-  app.post('/api/webhook/lead', async (req, res) => {
-    try {
-      const { event = 'PROPOSAL_ACCEPTED', proposalId, acceptanceData, acceptedAt, webhookUrl } = req.body || {};
-      let forwarded = false;
-      const targetUrl = webhookUrl || process.env.LEAD_WEBHOOK_URL || process.env.WELCOME_WEBHOOK_URL;
-
-      if (targetUrl && isSafeExternalUrl(targetUrl)) {
-        try {
-          const whRes = await fetch(targetUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              event,
-              proposalId,
-              acceptanceData,
-              acceptedAt: acceptedAt || new Date().toISOString(),
-              source: 'KreativDesk'
-            })
-          });
-          forwarded = whRes.ok;
-        } catch (fwdErr) {
-          console.warn('Lead webhook forwarding failed:', fwdErr);
-        }
-      }
-
-      return res.status(200).json({ success: true, forwarded, received: true });
-    } catch (err: any) {
+      console.error('send-invite-webhook route error:', err);
       return res.status(500).json({ error: err.message });
     }
   });
 
-  app.post('/api/quote/send-email', async (req, res) => {
-    return res.status(200).json({ success: true, sent: true });
-  });
-
-  app.post('/api/bexio/test-connection', async (req, res) => {
-    const { apiToken } = req.body || {};
-    if (!apiToken) return res.status(400).json({ success: false, message: 'Kein Bexio API-Token angegeben' });
-
+  // --- 6.2 SUPER ADMIN MAINTENANCE TOGGLE ---
+  app.post(['/api/admin/set-maintenance', '/api/set-maintenance'], async (req, res) => {
     try {
-      if (apiToken.length > 20 && !apiToken.includes('demo') && !apiToken.includes('test')) {
-        const bexioRes = await fetch('https://api.bexio.com/2.0/company_profile', {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-            'Authorization': `Bearer ${apiToken}`
-          }
-        });
-        if (bexioRes.ok) {
-          const data = await bexioRes.json();
-          return res.status(200).json({
-            success: true,
-            companyName: data.name || data.company_name || 'Bexio Verknüpft',
-            email: data.mail || data.email || '',
-            message: 'Verbindung zu Bexio erfolgreich hergestellt!'
-          });
-        }
-      }
-    } catch (e) {}
-
-    return res.status(200).json({ success: true, companyName: 'Bexio Verknüpft', message: 'Verbindung erfolgreich' });
+      const handler = (await import('./api/_handlers/set-maintenance.js')).default;
+      return handler(req as any, res as any);
+    } catch (err: any) {
+      console.error('set-maintenance route error:', err);
+      return res.status(500).json({ error: err.message });
+    }
   });
 
-  app.post('/api/bexio/sync-proposal', async (req, res) => {
-    const { apiToken, proposal, acceptanceData } = req.body || {};
-    if (!apiToken) return res.status(400).json({ success: false, errors: ['Kein Bexio API-Token übermittelt'] });
-    return res.status(200).json({ success: true, contactId: Math.floor(10000 + Math.random() * 90000), kbOfferId: Math.floor(20000 + Math.random() * 80000) });
+  // --- 7. GEMINI AI PROXY ---
+  app.post('/api/generate', async (req, res) => {
+    try {
+      const handler = (await import('./api/_handlers/generate.js')).default;
+      return handler(req as any, res as any);
+    } catch (err: any) {
+      console.error('generate route error:', err);
+      return res.status(500).json({ error: err.message });
+    }
   });
 
-  app.post('/api/bexio/sync-leads', async (req, res) => {
-    const { leads = [], apiToken } = req.body || {};
-    if (!apiToken) return res.status(400).json({ success: false, syncedCount: 0, errors: ['Kein Bexio API-Token angegeben'] });
-    return res.status(200).json({ success: true, syncedCount: leads.length, errors: [] });
+  // --- 7a. GEMINI IMAGE GENERATION PROXY ---
+  app.post('/api/generate-image', async (req, res) => {
+    try {
+      const handler = (await import('./api/_handlers/generate-image.js')).default;
+      return handler(req as any, res as any);
+    } catch (err: any) {
+      console.error('generate-image route error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // --- 7a.1 FAL FLUX IMAGE-TO-IMAGE RENDERING PROXY ---
+  app.all(['/api/render-image', '/api/render/image'], async (req, res) => {
+    try {
+      const handler = (await import('./api/_handlers/render-image.js')).default;
+      return handler(req as any, res as any);
+    } catch (err: any) {
+      console.error('render-image route error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // --- 7b. GEMINI AI EMBEDDING PROXY ---
+  app.post('/api/embed', async (req, res) => {
+    try {
+      const handler = (await import('./api/_handlers/embed.js')).default;
+      return handler(req as any, res as any);
+    } catch (err: any) {
+      console.error('embed route error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // --- 7c. FAL AI PROXY ---
+  app.all(['/api/fal/proxy', '/api/fal-proxy'], async (req, res) => {
+    try {
+      const handler = (await import('./api/_handlers/fal-proxy.js')).default;
+      return handler(req as any, res as any);
+    } catch (err: any) {
+      console.error('fal-proxy route error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // --- 7d. PROPOSAL AI CHAT ---
+  app.all(['/api/proposal/ai-chat', '/api/proposal-ai-chat'], async (req, res) => {
+    try {
+      const handler = (await import('./api/_handlers/proposal-ai-chat.js')).default;
+      return handler(req as any, res as any);
+    } catch (err: any) {
+      console.error('proposal-ai-chat route error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // --- 7e. EMAIL SEND & PROPOSAL WEBHOOKS ---
+  app.post(['/api/email/send', '/api/email-send'], async (req, res) => {
+    try {
+      const handler = (await import('./api/_handlers/email-send.js')).default;
+      return handler(req as any, res as any);
+    } catch (err: any) {
+      console.error('email-send route error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post(['/api/webhook/lead', '/api/webhook-lead'], async (req, res) => {
+    try {
+      const handler = (await import('./api/_handlers/webhook-lead.js')).default;
+      return handler(req as any, res as any);
+    } catch (err: any) {
+      console.error('webhook-lead route error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post(['/api/quote/send-email', '/api/quote-send-email'], async (req, res) => {
+    try {
+      const handler = (await import('./api/_handlers/quote-send-email.js')).default;
+      return handler(req as any, res as any);
+    } catch (err: any) {
+      console.error('quote-send-email route error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post(['/api/bexio/test-connection', '/api/bexio-test-connection'], async (req, res) => {
+    try {
+      const handler = (await import('./api/_handlers/bexio-test-connection.js')).default;
+      return handler(req as any, res as any);
+    } catch (err: any) {
+      console.error('bexio-test-connection route error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post(['/api/bexio/sync-proposal', '/api/bexio-sync-proposal'], async (req, res) => {
+    try {
+      const handler = (await import('./api/_handlers/bexio-sync-proposal.js')).default;
+      return handler(req as any, res as any);
+    } catch (err: any) {
+      console.error('bexio-sync-proposal route error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post(['/api/bexio/sync-leads', '/api/bexio-sync-leads'], async (req, res) => {
+    try {
+      const handler = (await import('./api/_handlers/bexio-sync-leads.js')).default;
+      return handler(req as any, res as any);
+    } catch (err: any) {
+      console.error('bexio-sync-leads route error:', err);
+      return res.status(500).json({ error: err.message });
+    }
   });
 
   // --- DELETE ACCOUNT ---
   app.post('/api/delete-account', async (req, res) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ error: 'Unauthorized' });
-      }
-      const token = authHeader.split('Bearer ')[1];
-      const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
-      if (authErr || !user) {
-        return res.status(401).json({ error: 'Unauthorized' });
-      }
-
-      const uid = user.id;
-      const { data: profile } = await supabaseAdmin.from('profiles').select('*').eq('id', uid).maybeSingle();
-      if (!profile) return res.status(404).json({ error: 'User not found' });
-
-      const { role, company_id: companyId, stripe_customer_id: stripeCustomerId } = profile;
-
-      if (stripeCustomerId) {
-        try {
-          const subscriptions = await stripe.subscriptions.list({ customer: stripeCustomerId, status: 'active' });
-          for (const sub of subscriptions.data) {
-            await stripe.subscriptions.cancel(sub.id);
-          }
-        } catch (e) {}
-      }
-
-      if ((role === 'owner' || role === 'Owner') && companyId) {
-        const tables = [
-          'projects', 'time_entries', 'defects', 'documents', 'leads', 
-          'company_users', 'invites', 'notifications', 'smart_proposals',
-          'cad_plans', 'slides', 'transactions', 'calendar_events', 
-          'chat_messages', 'company_settings', 'audio_notes', 'whiteboard_exports',
-          'project_tasks', 'project_members', 'project_schedules', 'audit_logs',
-          'knowledge_docs', 'embeddings', 'goals'
-        ];
-        for (const table of tables) {
-          try {
-            await supabaseAdmin.from(table).delete().eq('company_id', companyId);
-          } catch (e) {}
-        }
-        try {
-          await supabaseAdmin.from('profiles').update({ company_id: null }).eq('company_id', companyId);
-          await supabaseAdmin.from('companies').delete().eq('id', companyId);
-        } catch (e) {}
-      }
-
-      await supabaseAdmin.from('projects').delete().eq('owner_id', uid);
-      await supabaseAdmin.from('documents').delete().eq('owner_id', uid);
-      await supabaseAdmin.from('defects').delete().eq('owner_id', uid);
-      await supabaseAdmin.from('time_entries').delete().eq('user_id', uid);
-      await supabaseAdmin.from('profiles').delete().eq('id', uid);
-      await supabaseAdmin.auth.admin.deleteUser(uid);
-
-      return res.status(200).json({ success: true, message: 'Account deleted successfully' });
+      const handler = (await import('./api/_handlers/delete-account.js')).default;
+      return handler(req as any, res as any);
     } catch (err: any) {
+      console.error('delete-account route error:', err);
       return res.status(500).json({ error: err.message });
     }
   });
@@ -929,73 +441,10 @@ Verwende ausschliesslich Schweizer Rechtschreibung (immer "ss", niemals "ß").`;
   // --- PREPROVISION COMPANY ---
   app.post('/api/preprovision-company', async (req, res) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ error: 'Unauthorized' });
-      }
-      const token = authHeader.split('Bearer ')[1];
-      const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
-      const SUPER_ADMINS = ['cv1@gmx.ch', 'carlo@vesciodesign.ch'];
-      if (authErr || !user || !SUPER_ADMINS.includes(user.email?.toLowerCase() || '')) {
-        return res.status(403).json({ error: 'Forbidden: Super Admin access required' });
-      }
-
-      const { companyName, ceoName, ceoEmail, plan, maxSeats, employeeEmails, seedDemoProject } = req.body;
-      if (!companyName || !ceoEmail) {
-        return res.status(400).json({ error: 'Missing required fields: companyName and ceoEmail' });
-      }
-
-      const now = new Date().toISOString();
-      const { data: company, error: compErr } = await supabaseAdmin.from('companies').insert({
-        name: companyName,
-        plan: plan || 'Enterprise',
-        max_seats: maxSeats || 1,
-        used_seats: 1,
-        created_at: now
-      }).select().maybeSingle();
-
-      if (compErr || !company) throw (compErr || new Error('Failed to create company'));
-      const companyId = company.id;
-
-      const ceoToken = crypto.randomUUID();
-      const { data: ceoInvite, error: inviteErr } = await supabaseAdmin.from('invites').insert({
-        token: ceoToken,
-        company_id: companyId,
-        email: ceoEmail.toLowerCase().trim(),
-        role: 'owner',
-        status: 'pending',
-        created_at: now
-      }).select().maybeSingle();
-
-      if (inviteErr || !ceoInvite) throw (inviteErr || new Error('Failed to create CEO invite'));
-
-      await supabaseAdmin.from('company_users').insert({
-        company_id: companyId,
-        name: ceoName || ceoEmail.split('@')[0],
-        email: ceoEmail.toLowerCase().trim(),
-        role: 'owner',
-        status: 'team',
-        is_external: false,
-        created_at: now
-      });
-
-      if (Array.isArray(employeeEmails) && employeeEmails.length > 0) {
-        const employeeRecords = employeeEmails.map((empEmail: string) => ({
-          token: crypto.randomUUID(),
-          company_id: companyId,
-          email: empEmail.toLowerCase().trim(),
-          role: 'employee',
-          status: 'pending',
-          created_at: now
-        }));
-        await supabaseAdmin.from('invites').insert(employeeRecords);
-      }
-
-      const inviteIdentifier = ceoInvite.token || ceoInvite.id;
-      const vipLink = `https://www.kreativdesk.ch/signup?invite=${inviteIdentifier}&email=${encodeURIComponent(ceoEmail)}`;
-
-      return res.status(200).json({ success: true, companyId, vipLink, ceoInviteId: ceoInvite.id });
+      const handler = (await import('./api/_handlers/preprovision-company.js')).default;
+      return handler(req as any, res as any);
     } catch (err: any) {
+      console.error('preprovision-company route error:', err);
       return res.status(500).json({ error: err.message });
     }
   });
@@ -1003,48 +452,54 @@ Verwende ausschliesslich Schweizer Rechtschreibung (immer "ss", niemals "ß").`;
   // --- SEND INVITATION ---
   app.post('/api/send-invitation', async (req, res) => {
     try {
-      const { title, date, time, description, meetingLink, recipients, senderName, language, type } = req.body || {};
-      if (!title || !recipients || (Array.isArray(recipients) && recipients.length === 0)) {
-        return res.status(400).json({ error: 'Missing title or recipients' });
-      }
-      const host = senderName || 'Carlo Vescio';
-      const recipientList = Array.isArray(recipients) ? recipients : [recipients];
-      const isDe = !language || language === 'de';
-      const isCall = type !== 'meeting';
-      const emailSubject = isDe
-        ? (isCall ? '📹 Einladung zum Live-Videocall | Kreativ Desk OS' : '📅 Einladung zum Termin | Kreativ Desk OS')
-        : (isCall ? '📹 Invitation to Live Video Call | Kreativ Desk OS' : '📅 Invitation to Meeting | Kreativ Desk OS');
-      const emailBody = `${host} lädt dich zu einem ${isCall ? 'Live-Videocall' : 'Termin'} auf Kreativ Desk OS ein.\n\nTitel: ${title}\nDatum: ${date} um ${time} Uhr\nLink: ${meetingLink || 'https://www.kreativdesk.ch'}`;
-
-      const resendKey = process.env.RESEND_API_KEY;
-      if (resendKey) {
-        try {
-          await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              from: 'Kreativ Desk <onboarding@resend.dev>',
-              to: recipientList,
-              subject: emailSubject,
-              text: emailBody
-            })
-          });
-        } catch (e) {}
-      }
-
-      const webhookUrl = process.env.EMAIL_INVITE_WEBHOOK_URL || process.env.CALENDAR_INVITE_WEBHOOK_URL || process.env.INVITE_WEBHOOK_URL || process.env.WELCOME_WEBHOOK_URL;
-      if (webhookUrl) {
-        try {
-          await fetch(webhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ event: 'calendar_invitation', to: recipientList[0], recipients: recipientList, subject: emailSubject, body: emailBody, meetingLink })
-          });
-        } catch (e) {}
-      }
-
-      return res.status(200).json({ success: true, message: `Invitation triggered for ${recipientList.join(',')}` });
+      const handler = (await import('./api/_handlers/send-invitation.js')).default;
+      return handler(req as any, res as any);
     } catch (err: any) {
+      console.error('send-invitation route error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // --- SET TENANT CLAIM ---
+  app.post('/api/set-tenant-claim', async (req, res) => {
+    try {
+      const handler = (await import('./api/_handlers/set-tenant-claim.js')).default;
+      return handler(req as any, res as any);
+    } catch (err: any) {
+      console.error('set-tenant-claim route error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // --- SUBMIT PUBLIC LEAD ---
+  app.post(['/api/public/lead', '/api/public-lead', '/api/submit-lead'], async (req, res) => {
+    try {
+      const handler = (await import('./api/_handlers/submit-public-lead.js')).default;
+      return handler(req as any, res as any);
+    } catch (err: any) {
+      console.error('submit-public-lead route error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // --- ADMIN CLEANUP TEST USERS ---
+  app.post(['/api/admin/cleanup-test-users', '/api/admin-cleanup-test-users'], async (req, res) => {
+    try {
+      const handler = (await import('./api/_handlers/admin-cleanup-test-users.js')).default;
+      return handler(req as any, res as any);
+    } catch (err: any) {
+      console.error('admin-cleanup-test-users route error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // --- FINANCIAL LEDGER ---
+  app.all(['/api/financial/ledger', '/api/financial-ledger'], async (req, res) => {
+    try {
+      const handler = (await import('./api/_handlers/financial-ledger.js')).default;
+      return handler(req as any, res as any);
+    } catch (err: any) {
+      console.error('financial-ledger route error:', err);
       return res.status(500).json({ error: err.message });
     }
   });
@@ -1053,7 +508,7 @@ Verwende ausschliesslich Schweizer Rechtschreibung (immer "ss", niemals "ß").`;
   app.post('/api/register-company', async (req, res) => {
     try {
       const handler = (await import('./api/_handlers/register-company.js')).default;
-      return handler(req, res);
+      return handler(req as any, res as any);
     } catch (err: any) {
       console.error('register-company route error:', err);
       return res.status(500).json({ error: err.message });
@@ -1064,7 +519,7 @@ Verwende ausschliesslich Schweizer Rechtschreibung (immer "ss", niemals "ß").`;
   app.all(['/api/sentry-tunnel', '/api/sentry/tunnel'], express.raw({ type: '*/*', limit: '10mb' }), async (req, res) => {
     try {
       const handler = (await import('./api/_handlers/sentry-tunnel.js')).default;
-      return handler(req, res);
+      return handler(req as any, res as any);
     } catch (err: any) {
       console.error('sentry-tunnel route error:', err);
       return res.status(500).json({ error: err.message });

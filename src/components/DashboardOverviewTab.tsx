@@ -65,10 +65,10 @@ export default function DashboardOverviewTab({
       if (setActiveProject) {
         setActiveProject(targetProj.id);
       }
-      sessionStorage.setItem('auto_start_project_tour', 'true');
+      safeStorage.session.setItem('auto_start_project_tour', 'true');
       navigate(`/project/${targetProj.id}`);
     } else {
-      sessionStorage.setItem('auto_start_project_tour', 'true');
+      safeStorage.session.setItem('auto_start_project_tour', 'true');
       if (onOpenDemoProject) {
         onOpenDemoProject();
       } else {
