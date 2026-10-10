@@ -240,5 +240,135 @@ describe('CAD Measurement Scaling & Adaptive Zoom Logic', () => {
       expect(computedScale).toBe(75);
     });
   });
+
+  describe('CAD Layer Hierarchy, Reordering & Base Layer Binding', () => {
+    interface Layer {
+      id: string;
+      name: string;
+      visible: boolean;
+      locked: boolean;
+      opacity: number;
+    }
+
+    interface MockPlanElement {
+      id: string;
+      layerId?: string;
+      type: string;
+      opacity?: number;
+    }
+
+    it('sortiert Plan-Elemente strikt nach der Ebenen-Hierarchie (Painter-Algorithmus)', () => {
+      const layers: Layer[] = [
+        { id: 'default', name: 'Standard-Ebene (Grundriss)', visible: true, locked: false, opacity: 1 },
+        { id: 'layer_ elektro', name: 'Elektro-Installation', visible: true, locked: false, opacity: 1 },
+        { id: 'layer_sanitaer', name: 'Sanitär & HLK', visible: true, locked: false, opacity: 1 }
+      ];
+
+      const layerOrderMap = new Map(layers.map((l, idx) => [l.id, idx]));
+
+      const elements: MockPlanElement[] = [
+        { id: 'sanitaer_1', layerId: 'layer_sanitaer', type: 'circle' },
+        { id: 'base_1', layerId: 'default', type: 'rect' },
+        { id: 'elektro_1', layerId: 'layer_ elektro', type: 'pen' },
+        { id: 'base_2', layerId: 'default', type: 'rect' }
+      ];
+
+      const sorted = [...elements].sort((a, b) => {
+        const aOrder = layerOrderMap.get(a.layerId || 'default') ?? 0;
+        const bOrder = layerOrderMap.get(b.layerId || 'default') ?? 0;
+        return aOrder - bOrder;
+      });
+
+      // Zuerst müssen Elemente der Standard-Ebene (0) gerendert werden, dann Elektro (1), dann Sanitär (2)
+      expect(sorted[0].id).toBe('base_1');
+      expect(sorted[1].id).toBe('base_2');
+      expect(sorted[2].id).toBe('elektro_1');
+      expect(sorted[3].id).toBe('sanitaer_1');
+    });
+
+    it('unterstützt Ebenen-Verschiebung nach oben und unten (moveLayer up/down)', () => {
+      let layers: Layer[] = [
+        { id: 'default', name: 'Standard-Ebene', visible: true, locked: false, opacity: 1 },
+        { id: 'layer_2', name: 'Ebene 2', visible: true, locked: false, opacity: 1 },
+        { id: 'layer_3', name: 'Ebene 3', visible: true, locked: false, opacity: 1 }
+      ];
+
+      const moveLayer = (id: string, direction: 'up' | 'down') => {
+        const index = layers.findIndex(l => l.id === id);
+        if (index === -1) return;
+        const targetIndex = direction === 'up' ? index + 1 : index - 1;
+        if (targetIndex < 0 || targetIndex >= layers.length) return;
+        const next = [...layers];
+        const [moved] = next.splice(index, 1);
+        next.splice(targetIndex, 0, moved);
+        layers = next;
+      };
+
+      // Ebene 2 nach oben verschieben (Richtung oberste Ebene)
+      moveLayer('layer_2', 'up');
+      expect(layers.map(l => l.id)).toEqual(['default', 'layer_3', 'layer_2']);
+
+      // Ebene 2 nach unten verschieben
+      moveLayer('layer_2', 'down');
+      expect(layers.map(l => l.id)).toEqual(['default', 'layer_2', 'layer_3']);
+
+      // Oberste Ebene kann nicht noch weiter nach oben geschoben werden
+      moveLayer('layer_3', 'up');
+      expect(layers.map(l => l.id)).toEqual(['default', 'layer_2', 'layer_3']);
+
+      // Unterste Ebene kann nicht noch weiter nach unten geschoben werden
+      moveLayer('default', 'down');
+      expect(layers.map(l => l.id)).toEqual(['default', 'layer_2', 'layer_3']);
+    });
+
+    it('bindet Sichtbarkeit und Deckkraft des Haupt-Grundrisses (planImage) an die Basis-Ebene', () => {
+      let baseLayer: Layer = { id: 'default', name: 'Standard-Ebene', visible: true, locked: false, opacity: 1 };
+      
+      const getPlanImageStyles = (layer: Layer) => {
+        if (!layer.visible) {
+          return { display: 'none', opacity: 0 };
+        }
+        return { display: 'block', opacity: layer.opacity };
+      };
+
+      // Initial: Sichtbar bei 100%
+      expect(getPlanImageStyles(baseLayer)).toEqual({ display: 'block', opacity: 1 });
+
+      // Ausgeschaltet: Ausgeblendet
+      baseLayer.visible = false;
+      expect(getPlanImageStyles(baseLayer)).toEqual({ display: 'none', opacity: 0 });
+
+      // Wiedereingeschaltet mit 40% Deckkraft (z.B. als gedimmte Hintergrundreferenz)
+      baseLayer.visible = true;
+      baseLayer.opacity = 0.4;
+      expect(getPlanImageStyles(baseLayer)).toEqual({ display: 'block', opacity: 0.4 });
+    });
+
+    it('rendert Ebenen-UI in umgekehrter Reihenfolge (Photoshop/CAD-Standard: oberste Ebene oben)', () => {
+      const layers: Layer[] = [
+        { id: 'default', name: 'Standard-Ebene (Grundriss)', visible: true, locked: false, opacity: 1 },
+        { id: 'layer_2', name: 'Ebene 2 (Möblierung)', visible: true, locked: false, opacity: 1 },
+        { id: 'layer_3', name: 'Ebene 3 (Mängel-Pins)', visible: true, locked: false, opacity: 1 }
+      ];
+
+      const uiListOrder = [...layers].reverse().map(l => l.id);
+
+      // In der UI muss Ebene 3 ganz oben stehen, Ebene 2 in der Mitte, und Standard-Ebene zuunterst
+      expect(uiListOrder).toEqual(['layer_3', 'layer_2', 'default']);
+    });
+
+    it('fügt dynamisch kalibrierte Massstäbe (z.B. 1:75) in die Auswahloptionen ein', () => {
+      const standardScales = [20, 50, 100, 200, 500];
+      const calibratedScale = 75;
+
+      const scaleOptions = standardScales.includes(calibratedScale)
+        ? standardScales
+        : [...standardScales, calibratedScale].sort((a, b) => a - b);
+
+      expect(scaleOptions).toContain(75);
+      expect(scaleOptions).toEqual([20, 50, 75, 100, 200, 500]);
+    });
+  });
 });
+
 

@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Terminal, HardDrive, Database, Server, Download, Loader2, Sparkles, Wrench, ShieldAlert } from 'lucide-react';
+import { Database, Wrench, Loader2 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../../contexts/ToastContext';
 import { cn } from '../../utils';
+import AuditLogsTab from '../AuditLogsTab';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
     cloud_storage: 'Cloud Storage', total_capacity: 'Total Capacity', database_status: 'Database Health',
-    operational: 'Operational', live_system_logs: 'Live System Logs', export_logs: 'Export Logs',
+    operational: 'Operational', live_system_logs: 'Live System Logs & Governance', export_logs: 'Export Logs',
     no_logs: 'No system logs available.', loading_logs: 'Loading logs...',
     demo_env: 'Demo Environment', demo_desc: 'Populates your workspace with realistic sample projects.',
     maintenance_mode: 'Maintenance Mode',
@@ -20,7 +21,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   },
   de: {
     cloud_storage: 'Cloud Speicher', total_capacity: 'Gesamt-Kapazität', database_status: 'Datenbank Status',
-    operational: 'Betriebsbereit', live_system_logs: 'Echtzeit System-Logs', export_logs: 'Logs exportieren',
+    operational: 'Betriebsbereit', live_system_logs: 'Echtzeit System-Logs & Governance', export_logs: 'Logs exportieren',
     no_logs: 'Keine System-Logs vorhanden.', loading_logs: 'Logs werden geladen...',
     demo_env: 'Muster-Projekte', demo_desc: 'Lädt realistische Musterprojekte direkt in deinen Workspace.',
     maintenance_mode: 'Wartungsmodus',
@@ -34,12 +35,9 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 export default function AdminSystemTab() {
   const { language, t: globalT } = useLanguage();
   const { addToast } = useToast();
-  const { currentUser } = useAuth();
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
-  const [logs, setLogs] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isMaintenance, setIsMaintenance] = useState(false);
   const [isUpdatingMaintenance, setIsUpdatingMaintenance] = useState(false);
 
@@ -52,17 +50,8 @@ export default function AdminSystemTab() {
           .eq('id', 'global_master')
           .maybeSingle();
         if (config) setIsMaintenance(config.is_maintenance || false);
-
-        const { data: logsData } = await supabase
-          .from('audit_logs')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(50);
-        if (logsData) setLogs(logsData);
       } catch (e) {
-        console.error(e);
-      } finally {
-        setIsLoading(false);
+        console.error('Error fetching maintenance config:', e);
       }
     };
     fetchSystemData();
@@ -137,40 +126,18 @@ export default function AdminSystemTab() {
           <button 
             onClick={toggleMaintenance} 
             disabled={isUpdatingMaintenance}
-            className={cn("px-4 py-2 rounded-xl text-xs font-semibold transition-all", isMaintenance ? "bg-amber-500 text-white" : "bg-background border border-border text-text-primary")}
+            className={cn("px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer", isMaintenance ? "bg-amber-500 text-white" : "bg-background border border-border text-text-primary")}
           >
             {isUpdatingMaintenance ? <Loader2 size={14} className="animate-spin" /> : isMaintenance ? t('deactivate') : t('activate')}
           </button>
         </div>
       </div>
 
-      <div className="bg-surface border border-border p-6 rounded-2xl shadow-sm">
-        <div className="flex items-center gap-2.5 mb-4">
-          <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center shrink-0 shadow-xs">
-            <Terminal size={16} />
-          </div>
-          <h3 className="font-bold text-base sm:text-lg text-text-primary">
-            {t('live_system_logs')}
-          </h3>
-        </div>
-        <div className="bg-background border border-border rounded-xl p-4 font-sans text-xs max-h-96 overflow-y-auto space-y-1.5">
-          {isLoading ? (
-            <div className="text-text-muted text-center py-8">{t('loading_logs')}</div>
-          ) : logs.length === 0 ? (
-            <div className="text-text-muted text-center py-8">{t('no_logs')}</div>
-          ) : (
-            logs.map(log => (
-              <div key={log.id} className="flex items-center gap-3 text-text-muted py-1.5 border-b border-border/20 last:border-0">
-                <span className="text-blue-500 font-semibold shrink-0 text-xs">{new Date(log.created_at || Date.now()).toLocaleTimeString()}</span>
-                <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 font-semibold text-[10px] uppercase tracking-wider shrink-0">
-                  {log.action || 'INFO'}
-                </span>
-                <span className="text-text-primary truncate font-normal">{log.details || log.message}</span>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
+      <AuditLogsTab 
+        isGlobalAdmin={true} 
+        title={t('live_system_logs')}
+        description={currentLang === 'de' ? 'Revisionssichere, globale Dokumentation aller System- und Mandantenaktivitäten in Echtzeit.' : 'Tamper-proof, audit-ready log of all system activities in real time.'}
+      />
     </div>
   );
 }

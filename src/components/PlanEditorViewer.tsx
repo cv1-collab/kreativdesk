@@ -1,4 +1,4 @@
-import React, { useState, useRef, ChangeEvent, useEffect, useCallback } from 'react';
+import React, { useState, useRef, ChangeEvent, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
@@ -6,8 +6,8 @@ import {
   UploadCloud, Image as ImageIcon, MapPin, Square, Circle,
   Trash2, Settings, Layers, Hexagon, Check, LayoutTemplate, MoveHorizontal, Loader2,
   ZoomIn, ZoomOut, MousePointer2, Save, Download, ShieldAlert, Camera as LucideCamera,
-  Eye, EyeOff, Lock, Unlock, Plus, SlidersHorizontal, ImagePlus, BringToFront, SendToBack, Type, PenTool, Ruler, X, ChevronDown, Map,
-  Crosshair, Undo2, Redo2, ExternalLink, RotateCw
+  Eye, EyeOff, Lock, Unlock, Plus, SlidersHorizontal, ImagePlus, BringToFront, SendToBack, Type, PenTool, Ruler, X, ChevronDown, ChevronUp, Map as MapIcon,
+  Crosshair, Undo2, Redo2, ExternalLink, RotateCw, CheckCircle2, Compass, ArrowUpRight
 } from 'lucide-react';
 import { cn, sanitizeUrl } from '../utils';
 import { useToast } from '../contexts/ToastContext';
@@ -126,9 +126,10 @@ const TOOL_LABELS: Record<string, { de: string; en: string }> = {
   calibrate: { de: 'TrueScale™ Kalibrieren', en: 'TrueScale™ Calibrate' },
   measure: { de: 'Messen / Massstab (Distanz)', en: 'Measure (Distance)' },
   scalebar: { de: 'Grafischer Massstabsbalken', en: 'Graphic Scale Bar' },
-  polygon: { de: 'Polygon / Raumfläche', en: 'Polygon / Room Area' },
-  rect: { de: 'Rechteck', en: 'Rectangle' },
+  polygon: { de: 'Polygon / Raumfläche (m²)', en: 'Polygon / Room Area (m²)' },
+  rect: { de: 'Rechteck / Fläche (m²)', en: 'Rectangle / Area (m²)' },
   circle: { de: 'Kreis', en: 'Circle' },
+  arrow: { de: 'Hinweispfeil / Zeiger', en: 'Arrow / Callout' },
   pen: { de: 'Stift / Freihandzeichnung', en: 'Freehand Pen' },
   text: { de: 'Text einfügen', en: 'Insert Text' },
   defect: { de: 'SIA 118 Mangel-Pin', en: 'SIA 118 Defect Pin' },
@@ -136,7 +137,7 @@ const TOOL_LABELS: Record<string, { de: string; en: string }> = {
   image: { de: 'Bild / Plan überlagern', en: 'Overlay Image' },
 };
 
-type ToolType = 'pan' | 'defect' | 'zone' | 'text' | 'pen' | 'measure' | 'polygon' | 'titleblock' | 'rect' | 'circle' | 'scalebar' | 'image';
+type ToolType = 'pan' | 'defect' | 'zone' | 'text' | 'pen' | 'measure' | 'polygon' | 'titleblock' | 'rect' | 'circle' | 'scalebar' | 'image' | 'arrow';
 type LineStyle = 'solid' | 'dashed' | 'dotted';
 
 const SWISS_TRADES = [
@@ -154,7 +155,7 @@ const SWISS_TRADES = [
   'Planung / Bauleitung'
 ];
 
-interface BaseElement { id: string; type: ToolType; x: number; y: number; layerId?: string; opacity?: number; rotation?: number; }
+interface BaseElement { id: string; type: ToolType; x: number; y: number; layerId?: string; opacity?: number; rotation?: number; locked?: boolean; }
 interface DefectMarker extends BaseElement { 
   type: 'defect'; 
   title: string; 
@@ -170,9 +171,10 @@ interface DefectMarker extends BaseElement {
 interface TextMarkup extends BaseElement { type: 'text'; text: string; color: string; size: number; }
 interface FreehandLine extends BaseElement { type: 'pen'; points: {x: number, y: number}[]; color: string; thickness: number; }
 interface Measurement extends BaseElement { type: 'measure'; start: {x: number, y: number}; end: {x: number, y: number}; color: string; }
-interface PolygonMarkup extends BaseElement { type: 'polygon'; points: {x: number, y: number}[]; color: string; strokeColor: string; borderStyle: LineStyle; strokeWidth?: number; }
-interface RectMarkup extends BaseElement { type: 'rect'; w: number; h: number; color: string; strokeColor: string; borderStyle: LineStyle; strokeWidth?: number; rotation?: number; }
-interface CircleMarkup extends BaseElement { type: 'circle'; r: number; color: string; strokeColor: string; borderStyle: LineStyle; strokeWidth?: number; }
+interface PolygonMarkup extends BaseElement { type: 'polygon'; points: {x: number, y: number}[]; color: string; strokeColor: string; borderStyle: LineStyle; strokeWidth?: number; showArea?: boolean; roomName?: string; }
+interface RectMarkup extends BaseElement { type: 'rect'; w: number; h: number; color: string; strokeColor: string; borderStyle: LineStyle; strokeWidth?: number; rotation?: number; showArea?: boolean; roomName?: string; }
+interface CircleMarkup extends BaseElement { type: 'circle'; r: number; color: string; strokeColor: string; borderStyle: LineStyle; strokeWidth?: number; showArea?: boolean; roomName?: string; }
+interface ArrowMarkup extends BaseElement { type: 'arrow'; start: {x: number, y: number}; end: {x: number, y: number}; color: string; strokeWidth?: number; borderStyle?: LineStyle; }
 interface ScaleBarMarkup extends BaseElement { type: 'scalebar'; lengthMeters: number; color: string; thickness: number; textSize: number; }
 interface TitleBlockMarkup extends BaseElement { 
   type: 'titleblock'; scale: number; textColor: string;
@@ -180,7 +182,7 @@ interface TitleBlockMarkup extends BaseElement {
 }
 interface ImageMarkup extends BaseElement { type: 'image'; url: string; scale: number; color?: string; }
 
-type PlanElement = DefectMarker | TextMarkup | FreehandLine | Measurement | PolygonMarkup | TitleBlockMarkup | RectMarkup | CircleMarkup | ScaleBarMarkup | ImageMarkup;
+type PlanElement = DefectMarker | TextMarkup | FreehandLine | Measurement | PolygonMarkup | TitleBlockMarkup | RectMarkup | CircleMarkup | ScaleBarMarkup | ImageMarkup | ArrowMarkup;
 
 interface Layer { id: string; name: string; visible: boolean; locked: boolean; opacity: number; }
 
@@ -196,6 +198,13 @@ const CADPlanPDFDocument = ({ settings, docHeader, planImage, elements, layers, 
   const isA3 = settings.format === 'A3';
   
   const safeImage = planImage ? (sessionImageCache[planImage] || planImage) : null;
+  const baseLayer = (layers || []).find((l: any) => l.id === 'default') || (layers || [])[0];
+  const layerOrderMap = new Map<string, number>((layers || []).map((l: any, idx: number) => [l.id, idx]));
+  const sortedElements = [...(elements || [])].sort((a: any, b: any) => {
+    const aOrder: number = layerOrderMap.get(a.layerId || 'default') ?? 0;
+    const bOrder: number = layerOrderMap.get(b.layerId || 'default') ?? 0;
+    return aOrder - bOrder;
+  });
 
   const PAGE_W = isLandscape ? (isA3 ? 1190.55 : 841.89) : (isA3 ? 841.89 : 595.28);
   const PAGE_H = isLandscape ? (isA3 ? 841.89 : 595.28) : (isA3 ? 1190.55 : 841.89);
@@ -220,9 +229,21 @@ const CADPlanPDFDocument = ({ settings, docHeader, planImage, elements, layers, 
       <Page size={settings.format} orientation={settings.orientation} style={{ backgroundColor: '#ffffff', margin: 0, padding: 0 }}>
         <View wrap={false} style={{ width: SAFE_W, height: SAFE_H, position: 'relative', margin: 'auto' }}>
           
-          {safeImage && <PDFImage src={safeImage} style={{ position: 'absolute', top: 0, left: 0, width: SAFE_W, height: SAFE_H }} />}
+          {safeImage && (baseLayer?.visible ?? true) && (
+            <PDFImage 
+              src={safeImage} 
+              style={{ 
+                position: 'absolute', 
+                top: 0, 
+                left: 0, 
+                width: SAFE_W, 
+                height: SAFE_H,
+                opacity: baseLayer?.opacity ?? 1
+              }} 
+            />
+          )}
           
-          {(elements || []).map((el: any) => {
+          {(sortedElements || []).map((el: any) => {
             if (el.type === 'image') {
               const layer = layers.find((l:any) => l.id === (el.layerId || 'default'));
               if (layer && !layer.visible) return null;
@@ -246,7 +267,7 @@ const CADPlanPDFDocument = ({ settings, docHeader, planImage, elements, layers, 
 
           <View style={{ position: 'absolute', top: 0, left: 0, width: SAFE_W, height: SAFE_H }}>
             <Svg viewBox={`0 0 ${SAFE_W} ${SAFE_H}`} style={{ width: SAFE_W, height: SAFE_H }}>
-              {elements.map((el: any) => {
+              {sortedElements.map((el: any) => {
                 const layer = layers.find((l:any) => l.id === (el.layerId || 'default'));
                 if (layer && !layer.visible) return null;
                 const totalOpacity = (layer?.opacity ?? 1) * (el.opacity ?? 1);
@@ -276,6 +297,26 @@ const CADPlanPDFDocument = ({ settings, docHeader, planImage, elements, layers, 
                    const pts = el.points.map((p:any) => `${p.x * SAFE_W},${p.y * SAFE_H}`).join(' ');
                    const thick = ((el.strokeWidth || 1.5) * 0.5 * MM_TO_PX) * SCALE_AVG;
                    return <G key={el.id} opacity={totalOpacity}><Polygon points={pts} fill={el.color} fillOpacity={el.opacity || 1} stroke={el.strokeColor} strokeWidth={thick} strokeDasharray={getDashArray(el.borderStyle, thick * 1.5)} /></G>;
+                }
+                if (el.type === 'arrow') {
+                   const arr = el as any;
+                   const sx = arr.start.x * SAFE_W; const sy = arr.start.y * SAFE_H;
+                   const ex = arr.end.x * SAFE_W; const ey = arr.end.y * SAFE_H;
+                   const strokeW = (arr.strokeWidth || 2) * 0.5 * MM_TO_PX * SCALE_AVG;
+                   const angle = Math.atan2(ey - sy, ex - sx);
+                   const headLen = 8 * MM_TO_PX * SCALE_AVG;
+                   const headAngle = Math.PI / 6;
+                   const x1 = ex - headLen * Math.cos(angle - headAngle);
+                   const y1 = ey - headLen * Math.sin(angle - headAngle);
+                   const x2 = ex - headLen * Math.cos(angle + headAngle);
+                   const y2 = ey - headLen * Math.sin(angle + headAngle);
+                   const arrowPoints = `${ex},${ey} ${x1},${y1} ${x2},${y2}`;
+                   return (
+                     <G key={arr.id} opacity={totalOpacity}>
+                       <Line x1={sx} y1={sy} x2={ex} y2={ey} stroke={arr.color || '#ef4444'} strokeWidth={strokeW} strokeDasharray={getDashArray(arr.borderStyle, strokeW * 1.5)} />
+                       <Polygon points={arrowPoints} fill={arr.color || '#ef4444'} />
+                     </G>
+                   );
                 }
                 if (el.type === 'measure') {
                    const sx = el.start.x * SAFE_W; const sy = el.start.y * SAFE_H;
@@ -358,6 +399,47 @@ const CADPlanPDFDocument = ({ settings, docHeader, planImage, elements, layers, 
                  return (
                    <View key={el.id} style={{ position: 'absolute', left: mx - (8 * MM_TO_PX * SCALE_X), top: my - (2.5 * MM_TO_PX * SCALE_Y), width: 16 * MM_TO_PX * SCALE_X, height: 5 * MM_TO_PX * SCALE_Y, backgroundColor: '#ffffff', border: `0.6px solid ${el.color || '#3b82f6'}`, borderRadius: 1 * MM_TO_PX * SCALE_AVG, justifyContent: 'center', alignItems: 'center', opacity: totalOpacity }}>
                      <Text style={{ color: '#000000', fontSize: 2.8 * MM_TO_PX * SCALE_AVG, fontFamily: 'Helvetica-Bold' }}>{distMeters} m</Text>
+                   </View>
+                 );
+              }
+              if (el.type === 'polygon' && (el as any).showArea !== false && el.points && el.points.length >= 3) {
+                 const sum = el.points.reduce((acc: any, p: any) => ({ x: acc.x + p.x, y: acc.y + p.y }), { x: 0, y: 0 });
+                 const cx = (sum.x / el.points.length) * SAFE_W;
+                 const cy = (sum.y / el.points.length) * SAFE_H;
+                 let area = 0;
+                 const n = el.points.length;
+                 for (let i = 0; i < n; i++) {
+                   const j = (i + 1) % n;
+                   const xi_m = (el.points[i].x * origW_mm * planScale) / 1000;
+                   const yi_m = (el.points[i].y * origH_mm * planScale) / 1000;
+                   const xj_m = (el.points[j].x * origW_mm * planScale) / 1000;
+                   const yj_m = (el.points[j].y * origH_mm * planScale) / 1000;
+                   area += xi_m * yj_m - xj_m * yi_m;
+                 }
+                 const areaM2 = (Math.abs(area) / 2).toFixed(2);
+                 const rName = (el as any).roomName;
+                 const label = rName ? `${rName}: ${areaM2} m²` : `${areaM2} m²`;
+                 const badgeW = Math.max(30 * MM_TO_PX * SCALE_AVG, (label.length * 2.2 + 6) * MM_TO_PX * SCALE_AVG);
+                 const badgeH = 5 * MM_TO_PX * SCALE_AVG;
+                 return (
+                   <View key={`${el.id}-badge`} style={{ position: 'absolute', left: cx - badgeW / 2, top: cy - badgeH / 2, width: badgeW, height: badgeH, backgroundColor: '#ffffff', border: `0.8px solid ${el.strokeColor || '#2563eb'}`, borderRadius: 1 * MM_TO_PX * SCALE_AVG, justifyContent: 'center', alignItems: 'center', opacity: totalOpacity }}>
+                     <Text style={{ color: '#0f172a', fontSize: 2.6 * MM_TO_PX * SCALE_AVG, fontFamily: 'Helvetica-Bold' }}>{label}</Text>
+                   </View>
+                 );
+              }
+              if (el.type === 'rect' && (el as any).showArea === true && Math.abs(el.w) > 0.01 && Math.abs(el.h) > 0.01) {
+                 const cx = (Math.min(el.x, el.x + el.w) + Math.abs(el.w) / 2) * SAFE_W;
+                 const cy = (Math.min(el.y, el.y + el.h) + Math.abs(el.h) / 2) * SAFE_H;
+                 const w_m = (Math.abs(el.w) * origW_mm * planScale) / 1000;
+                 const h_m = (Math.abs(el.h) * origH_mm * planScale) / 1000;
+                 const areaM2 = (w_m * h_m).toFixed(2);
+                 const rName = (el as any).roomName;
+                 const label = rName ? `${rName}: ${areaM2} m²` : `${areaM2} m²`;
+                 const badgeW = Math.max(30 * MM_TO_PX * SCALE_AVG, (label.length * 2.2 + 6) * MM_TO_PX * SCALE_AVG);
+                 const badgeH = 5 * MM_TO_PX * SCALE_AVG;
+                 return (
+                   <View key={`${el.id}-badge`} style={{ position: 'absolute', left: cx - badgeW / 2, top: cy - badgeH / 2, width: badgeW, height: badgeH, backgroundColor: '#ffffff', border: `0.8px solid ${el.strokeColor || '#2563eb'}`, borderRadius: 1 * MM_TO_PX * SCALE_AVG, justifyContent: 'center', alignItems: 'center', opacity: totalOpacity }}>
+                     <Text style={{ color: '#0f172a', fontSize: 2.6 * MM_TO_PX * SCALE_AVG, fontFamily: 'Helvetica-Bold' }}>{label}</Text>
                    </View>
                  );
               }
@@ -492,6 +574,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   const [paperFormat, setPaperFormat] = useState<string>(() => initialCache?.paperFormat || 'A3');
   const [paperOrientation, setPaperOrientation] = useState<'landscape'|'portrait'>(() => initialCache?.paperOrientation || 'landscape');
   const [planScale, setPlanScale] = useState<number>(() => initialCache?.planScale || 50); 
+  const [isCalibrated, setIsCalibrated] = useState<boolean>(() => Boolean(initialCache?.isCalibrated));
   const [scale, setScale] = useState(0.8); 
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const isPanning = useRef(false);
@@ -562,6 +645,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     paperFormat: string;
     paperOrientation: 'landscape' | 'portrait';
     planScale: number;
+    isCalibrated?: boolean;
     elements: PlanElement[];
     layers: Layer[];
     activeLayerId: string;
@@ -582,18 +666,52 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         paperFormat,
         paperOrientation,
         planScale,
+        isCalibrated,
         elements,
         layers,
         activeLayerId
       });
     }, 300);
     return () => clearTimeout(timeout);
-  }, [activePlanId, planImage, planName, paperFormat, paperOrientation, planScale, elements, layers, activeLayerId, savePlanToCache]);
+  }, [activePlanId, planImage, planName, paperFormat, paperOrientation, planScale, isCalibrated, elements, layers, activeLayerId, savePlanToCache]);
   const [draftElement, setDraftElement] = useState<PlanElement | null>(null);
   const [selectedElement, setSelectedElement] = useState<PlanElement | null>(null);
   const [draggingElementId, setDraggingElementId] = useState<string | null>(null);
   const [draggingVertex, setDraggingVertex] = useState<{elementId: string, vertexIndex: number} | null>(null);
   const lastDragCoordsRef = useRef<{ nx: number; ny: number }>({ nx: 0, ny: 0 });
+  const [isSpacePressed, setIsSpacePressed] = useState(false);
+  const pendingDragRef = useRef<{
+    el: PlanElement;
+    startScreenX: number;
+    startScreenY: number;
+    startCoords: { nx: number; ny: number };
+  } | null>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return;
+      }
+      if (e.code === 'Space' && !e.repeat) {
+        e.preventDefault();
+        setIsSpacePressed(true);
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        setIsSpacePressed(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
   
   const [isPdfStudioOpen, setIsPdfStudioOpen] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -659,6 +777,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     if (lineDistanceOnPaper_mm > 0) {
       const computedScaleRatio = Math.round((knownMeters * 1000) / lineDistanceOnPaper_mm);
       setPlanScale(computedScaleRatio);
+      setIsCalibrated(true);
       addToast(
         currentLang === 'de' 
           ? `TrueScale™ Massstab erfolgreich kalibriert auf 1:${computedScaleRatio}!` 
@@ -715,6 +834,53 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     const dxReal_mm = (end.x - start.x) * paperW_mm; const dyReal_mm = (end.y - start.y) * paperH_mm;
     return ((Math.sqrt(dxReal_mm * dxReal_mm + dyReal_mm * dyReal_mm) * planScale) / 1000).toFixed(2);
   };
+
+  const calculatePolygonAreaM2 = (points: {x: number, y: number}[]) => {
+    if (!points || points.length < 3) return '0.00';
+    let area = 0;
+    const n = points.length;
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      const xi_m = (points[i].x * paperW_mm * planScale) / 1000;
+      const yi_m = (points[i].y * paperH_mm * planScale) / 1000;
+      const xj_m = (points[j].x * paperW_mm * planScale) / 1000;
+      const yj_m = (points[j].y * paperH_mm * planScale) / 1000;
+      area += xi_m * yj_m - xj_m * yi_m;
+    }
+    return (Math.abs(area) / 2).toFixed(2);
+  };
+
+  const calculatePolygonPerimeterM = (points: {x: number, y: number}[]) => {
+    if (!points || points.length < 2) return '0.00';
+    let perimeter = 0;
+    const n = points.length;
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      const dx_m = ((points[j].x - points[i].x) * paperW_mm * planScale) / 1000;
+      const dy_m = ((points[j].y - points[i].y) * paperH_mm * planScale) / 1000;
+      perimeter += Math.sqrt(dx_m * dx_m + dy_m * dy_m);
+    }
+    return perimeter.toFixed(2);
+  };
+
+  const calculateRectAreaM2 = (w: number, h: number) => {
+    const w_m = (Math.abs(w) * paperW_mm * planScale) / 1000;
+    const h_m = (Math.abs(h) * paperH_mm * planScale) / 1000;
+    return (w_m * h_m).toFixed(2);
+  };
+
+  const calculateRectPerimeterM = (w: number, h: number) => {
+    const w_m = (Math.abs(w) * paperW_mm * planScale) / 1000;
+    const h_m = (Math.abs(h) * paperH_mm * planScale) / 1000;
+    return (2 * (w_m + h_m)).toFixed(2);
+  };
+
+  const calculateCentroid = (points: {x: number, y: number}[]) => {
+    if (!points || points.length === 0) return { x: 0, y: 0 };
+    const sum = points.reduce((acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }), { x: 0, y: 0 });
+    return { x: sum.x / points.length, y: sum.y / points.length };
+  };
+
   const calculateRatioForMeters = (meters: number) => { const paper_mm = 1000 / planScale; return (paper_mm * meters) / paperW_mm; };
   const getStrokeDasharray = (style: LineStyle, width: number) => { if(style === 'dashed') return `${width * 4},${width * 4}`; if(style === 'dotted') return `${width},${width * 2}`; return 'none'; };
 
@@ -730,6 +896,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     const resolvedPaperFormat = planData.paperFormat || planData.paper_format || metaEl?.paper_format || 'A3';
     const resolvedPaperOrientation = planData.paperOrientation || planData.paper_orientation || metaEl?.paper_orientation || 'landscape';
     const resolvedPlanScale = planData.planScale || planData.plan_scale || metaEl?.plan_scale || 50;
+    const resolvedIsCalibrated = Boolean(planData.isCalibrated || planData.is_calibrated || metaEl?.is_calibrated);
 
     setPlanImage(resolvedImage);
     setPlanName(resolvedName);
@@ -741,6 +908,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     setPaperFormat(resolvedPaperFormat);
     setPaperOrientation(resolvedPaperOrientation);
     setPlanScale(resolvedPlanScale);
+    setIsCalibrated(resolvedIsCalibrated);
     setPan({ x: 0, y: 0 });
     setSelectedElement(null);
 
@@ -751,6 +919,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       paperFormat: resolvedPaperFormat,
       paperOrientation: resolvedPaperOrientation,
       planScale: resolvedPlanScale,
+      isCalibrated: resolvedIsCalibrated,
       elements: resolvedElements,
       layers: resolvedLayers,
       activeLayerId: resolvedActiveLayerId
@@ -930,6 +1099,17 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     setLayers([...layers, newL]); setActiveLayerId(newL.id);
   };
 
+  const moveLayer = (id: string, direction: 'up' | 'down') => {
+    const index = layers.findIndex(l => l.id === id);
+    if (index === -1) return;
+    const targetIndex = direction === 'up' ? index + 1 : index - 1;
+    if (targetIndex < 0 || targetIndex >= layers.length) return;
+    const next = [...layers];
+    const [moved] = next.splice(index, 1);
+    next.splice(targetIndex, 0, moved);
+    setLayers(next);
+  };
+
   const toggleLayerVisibility = (id: string) => {
     setLayers(layers.map(l => l.id === id ? { ...l, visible: !l.visible } : l));
     setSelectedElement(null);
@@ -1079,7 +1259,8 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         plan_image: url,
         paper_format: 'A3',
         paper_orientation: 'landscape',
-        plan_scale: 50
+        plan_scale: 50,
+        is_calibrated: false
       };
 
       const newPlanPayload = {
@@ -1113,13 +1294,19 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           paper_format: 'A3',
           paper_orientation: 'landscape',
           plan_scale: 50,
+          is_calibrated: false,
           elements: [],
           layers: createdPlan.layers || [{ id: 'default', name: 'Standard-Ebene', visible: true, locked: false, opacity: 1 }],
           active_layer_id: createdPlan.active_layer_id || 'default'
         };
         setProjectPlans(prev => [mapped, ...prev]);
         loadPlanDataToEditor(mapped);
-        addToast("CAD-Plan erfolgreich hochgeladen und geladen!", "success");
+        addToast(
+          currentLang === 'de'
+            ? "CAD-Plan geladen! Tipp: Klicke oben auf 'Kalibrieren' (neben dem Massstab) für millimetergenaue Messungen."
+            : "CAD plan loaded! Tip: Click 'Calibrate' above next to scale for millimetre-exact measurements.",
+          "success"
+        );
       }
     } catch (e: any) {
       console.error("CAD-Plan Upload error:", e);
@@ -1198,7 +1385,8 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         plan_image: planImage,
         paper_format: paperFormat,
         paper_orientation: paperOrientation,
-        plan_scale: planScale
+        plan_scale: planScale,
+        is_calibrated: isCalibrated
       };
       const elementsToPersist = [...elements.filter((e: any) => e?.id !== '__plan_meta__'), metaEl];
       const { error: updateErr } = await supabase
@@ -1259,7 +1447,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   };
 
   const handleMainPointerDown = (e: React.PointerEvent) => {
-    if (!isCalibratingMode && activeTool === 'pan' && planImage && !draggingElementId && !draggingVertex) {
+    if (isSpacePressed || (!isCalibratingMode && activeTool === 'pan' && planImage && !draggingElementId && !draggingVertex)) {
       isPanning.current = true;
       startPan.current = { x: e.clientX - pan.x, y: e.clientY - pan.y };
       try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch(err) { console.error(err); }
@@ -1269,6 +1457,14 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   const handleMainPointerMove = (e: React.PointerEvent) => {
     if (isPanning.current) {
        setPan({ x: e.clientX - startPan.current.x, y: e.clientY - startPan.current.y });
+    } else if (pendingDragRef.current && !draggingElementId) {
+       // Drag-Distanz-Schwellenwert (5px): Verhindert versehentliches Verschieben bei Klicks
+       const screenDist = Math.hypot(e.clientX - pendingDragRef.current.startScreenX, e.clientY - pendingDragRef.current.startScreenY);
+       if (screenDist > 5) {
+         elementsBeforeDragRef.current = elements;
+         setDraggingElementId(pendingDragRef.current.el.id);
+         lastDragCoordsRef.current = pendingDragRef.current.startCoords;
+       }
     } else if (draggingElementId) {
        const { nx, ny } = getRelativeCoords(e.clientX, e.clientY);
        const dx = nx - lastDragCoordsRef.current.nx;
@@ -1287,6 +1483,12 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                  points: el.points.map(pt => ({ x: pt.x + dx, y: pt.y + dy }))
                };
              } else if (el.type === 'measure') {
+               updated = {
+                 ...el,
+                 start: { x: el.start.x + dx, y: el.start.y + dy },
+                 end: { x: el.end.x + dx, y: el.end.y + dy }
+               };
+             } else if (el.type === 'arrow') {
                updated = {
                  ...el,
                  start: { x: el.start.x + dx, y: el.start.y + dy },
@@ -1321,6 +1523,13 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                end: { x: prev.end.x + dx, y: prev.end.y + dy }
              };
            }
+           if (prev.type === 'arrow') {
+             return {
+               ...prev,
+               start: { x: prev.start.x + dx, y: prev.start.y + dy },
+               end: { x: prev.end.x + dx, y: prev.end.y + dy }
+             };
+           }
            return {
              ...prev,
              x: prev.x + dx,
@@ -1341,6 +1550,10 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
              if (draggingVertex.vertexIndex === 0) return { ...el, start: { x: nx, y: ny } };
              if (draggingVertex.vertexIndex === 1) return { ...el, end: { x: nx, y: ny } };
            }
+           if (el.type === 'arrow') {
+             if (draggingVertex.vertexIndex === 0) return { ...el, start: { x: nx, y: ny } };
+             if (draggingVertex.vertexIndex === 1) return { ...el, end: { x: nx, y: ny } };
+           }
          }
          return el;
        }));
@@ -1356,6 +1569,10 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
            if (draggingVertex.vertexIndex === 0) return { ...prev, start: { x: nx, y: ny } };
            if (draggingVertex.vertexIndex === 1) return { ...prev, end: { x: nx, y: ny } };
          }
+         if (prev.type === 'arrow') {
+           if (draggingVertex.vertexIndex === 0) return { ...prev, start: { x: nx, y: ny } };
+           if (draggingVertex.vertexIndex === 1) return { ...prev, end: { x: nx, y: ny } };
+         }
          return prev;
        });
     }
@@ -1363,6 +1580,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
   const handleMainPointerUp = (e: React.PointerEvent) => {
     isPanning.current = false;
+    pendingDragRef.current = null;
     if (draggingElementId || draggingVertex) {
       if (elementsBeforeDragRef.current && elementsBeforeDragRef.current !== elements) {
         setHistory(prev => [...prev.slice(-30), elementsBeforeDragRef.current!]);
@@ -1381,17 +1599,31 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   };
 
   const handleElementPointerDown = (e: React.PointerEvent, el: PlanElement) => { 
-    if (activeTool !== 'pan' || isCalibratingMode) return; 
+    if (activeTool !== 'pan' || isCalibratingMode || isSpacePressed) return; 
     e.stopPropagation(); 
-    elementsBeforeDragRef.current = elements;
-    setDraggingElementId(el.id); 
     setSelectedElement(el); 
+
+    const layer = layers.find(l => l.id === (el.layerId || 'default'));
+    if (layer?.locked || el.locked) {
+      // Gesperrtes Objekt/Ebene: Nur Auswählen, kein Verschieben möglich
+      return;
+    }
+
     const coords = getRelativeCoords(e.clientX, e.clientY);
-    lastDragCoordsRef.current = coords;
+    pendingDragRef.current = {
+      el,
+      startScreenX: e.clientX,
+      startScreenY: e.clientY,
+      startCoords: coords
+    };
   };
 
   const handleVertexPointerDown = (e: React.PointerEvent, elId: string, vIndex: number) => { 
-    if (activeTool !== 'pan' || isCalibratingMode) return; 
+    if (activeTool !== 'pan' || isCalibratingMode || isSpacePressed) return; 
+    const target = elements.find(el => el.id === elId);
+    const layer = layers.find(l => l.id === (target?.layerId || 'default'));
+    if (layer?.locked || target?.locked) return;
+
     e.stopPropagation(); 
     elementsBeforeDragRef.current = elements;
     setDraggingVertex({ elementId: elId, vertexIndex: vIndex }); 
@@ -1441,8 +1673,9 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     e.stopPropagation();
     try { (e.currentTarget as unknown as HTMLElement).setPointerCapture(e.pointerId); } catch(err){ console.error(err); }
     
-    if (activeTool === 'rect') setDraftElement({ id: `rect_${Date.now()}`, type: 'rect', x: nx, y: ny, w: 0.01, h: 0.01, color: '#3b82f6', strokeColor: '#2563eb', strokeWidth: 1.5, borderStyle: 'solid', layerId: activeLayerId, opacity: 0.5 });
+    if (activeTool === 'rect') setDraftElement({ id: `rect_${Date.now()}`, type: 'rect', x: nx, y: ny, w: 0.01, h: 0.01, color: '#3b82f6', strokeColor: '#2563eb', strokeWidth: 1.5, borderStyle: 'solid', layerId: activeLayerId, opacity: 0.5, showArea: false });
     else if (activeTool === 'circle') setDraftElement({ id: `circle_${Date.now()}`, type: 'circle', x: nx, y: ny, r: 0.01, color: '#3b82f6', strokeColor: '#2563eb', strokeWidth: 1.5, borderStyle: 'solid', layerId: activeLayerId, opacity: 0.5 });
+    else if (activeTool === 'arrow') setDraftElement({ id: `arrow_${Date.now()}`, type: 'arrow', x: nx, y: ny, start: {x: nx, y: ny}, end: {x: nx, y: ny}, color: '#ef4444', strokeWidth: 2, borderStyle: 'solid', layerId: activeLayerId, opacity: 1 });
     else if (activeTool === 'text') {
       const newEl: TextMarkup = { id: `text_${Date.now()}`, type: 'text', x: nx, y: ny, text: 'Text', color: '#000000', size: 5, layerId: activeLayerId };
       commitElements([...elements, newEl]); setSelectedElement(newEl); setActiveTool('pan');
@@ -1493,6 +1726,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     e.stopPropagation();
     if (draftElement.type === 'pen') setDraftElement({ ...draftElement, points: [...draftElement.points, {x: nx, y: ny}] });
     else if (draftElement.type === 'measure') setDraftElement({ ...draftElement, end: {x: nx, y: ny} });
+    else if (draftElement.type === 'arrow') setDraftElement({ ...draftElement, end: {x: nx, y: ny} });
     else if (draftElement.type === 'rect') setDraftElement({ ...draftElement, w: nx - draftElement.x, h: ny - draftElement.y });
     else if (draftElement.type === 'circle') { const dx = (nx - draftElement.x) * paperW_mm; const dy = (ny - draftElement.y) * paperH_mm; setDraftElement({ ...draftElement, r: Math.sqrt(dx*dx + dy*dy) / paperW_mm }); }
   };
@@ -1524,6 +1758,14 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           commitElements([...elements, draftElement]);
           setSelectedElement(draftElement);
         }
+      } else if (draftElement.type === 'arrow') {
+        const arr = draftElement as ArrowMarkup;
+        const dx_mm = (arr.end.x - arr.start.x) * paperW_mm;
+        const dy_mm = (arr.end.y - arr.start.y) * paperH_mm;
+        if (Math.hypot(dx_mm, dy_mm) > 1.5) {
+          commitElements([...elements, draftElement]);
+          setSelectedElement(draftElement);
+        }
       } else {
         commitElements([...elements, draftElement]);
         setSelectedElement(draftElement);
@@ -1535,7 +1777,10 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
   const finishPolygon = () => { 
     if (draftElement?.type === 'polygon') { 
-      commitElements([...elements, draftElement]); 
+      const p = draftElement as PolygonMarkup;
+      const finalPoly: PolygonMarkup = { ...p, showArea: p.showArea !== false };
+      commitElements([...elements, finalPoly]); 
+      setSelectedElement(finalPoly);
       setDraftElement(null); 
       setActiveTool('pan'); 
     } 
@@ -1553,13 +1798,29 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     }
   };
 
-  const allElementsToRender = (draftElement ? [...elements, draftElement] : elements).filter(el => {
-     const layer = layers.find(l => l.id === (el.layerId || 'default'));
-     return layer ? layer.visible : true;
-  });
+  const layerOrderMap = useMemo(() => {
+    return new Map<string, number>(layers.map((l, idx) => [l.id, idx]));
+  }, [layers]);
+
+  const baseLayer = layers.find(l => l.id === 'default') || layers[0];
+
+  const allElementsToRender = useMemo(() => {
+    const rawList = draftElement ? [...elements, draftElement] : elements;
+    return rawList
+      .filter(el => {
+        const layer = layers.find(l => l.id === (el.layerId || 'default'));
+        return layer ? layer.visible : true;
+      })
+      .sort((a, b) => {
+        const aOrder: number = layerOrderMap.get(a.layerId || 'default') ?? 0;
+        const bOrder: number = layerOrderMap.get(b.layerId || 'default') ?? 0;
+        return aOrder - bOrder;
+      });
+  }, [elements, draftElement, layers, layerOrderMap]);
 
   const renderSvgElements = (elementsToRender: PlanElement[], isPdf: boolean = false) => {
     const invScale = isPdf ? 1 : Math.min(10, Math.max(0.1, 1 / scale));
+    const isInteractive = !isPdf && activeTool === 'pan' && !isSpacePressed && !isCalibratingMode;
 
     return elementsToRender.map(el => {
       const isSelected = selectedElement?.id === el.id && !isPdf;
@@ -1567,6 +1828,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       if (layer && !layer.visible) return null;
       
       const totalOpacity = (layer?.opacity ?? 1) * (el.opacity ?? 1);
+      const isElLocked = Boolean(el.locked || layer?.locked);
 
       if (el.type === 'image') return null;
 
@@ -1575,8 +1837,20 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         const rawThickness = el.thickness || 1.5;
         const penStroke = isPdf ? (rawThickness * 1.5) : (rawThickness * invScale);
         return (
-          <polyline key={el.id} points={pointsStr} fill="none" stroke={el.color} strokeWidth={`${penStroke}px`} strokeLinecap="round" strokeLinejoin="round"
-            style={{ opacity: totalOpacity, cursor: activeTool === 'pan' ? 'move' : 'crosshair', pointerEvents: 'auto', filter: isSelected ? 'drop-shadow(0px 0px 4px rgba(0,0,0,0.5))' : 'none' }} 
+          <polyline 
+            key={el.id} 
+            points={pointsStr} 
+            fill="none" 
+            stroke={el.color} 
+            strokeWidth={`${penStroke}px`} 
+            strokeLinecap="round" 
+            strokeLinejoin="round"
+            style={{ 
+              opacity: totalOpacity, 
+              cursor: isInteractive ? (isElLocked ? 'default' : 'move') : 'crosshair', 
+              pointerEvents: isInteractive ? 'auto' : 'none', 
+              filter: isSelected ? 'drop-shadow(0px 0px 4px rgba(0,0,0,0.5))' : 'none' 
+            }} 
             onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, el); }}
           />
         );
@@ -1591,6 +1865,11 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         const rot = el.rotation || 0;
         const cx = rx + rw / 2;
         const cy = ry + rh / 2;
+        const showBadge = (el as any).showArea === true && Math.abs(el.w) > 0.01 && Math.abs(el.h) > 0.01;
+        const areaM2 = showBadge ? calculateRectAreaM2(el.w, el.h) : '';
+        const roomName = (el as any).roomName;
+        const labelText = roomName ? `${roomName}: ${areaM2} m²` : `${areaM2} m²`;
+
         return (
           <g 
             key={el.id} 
@@ -1608,12 +1887,45 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
               strokeWidth={isSelected ? Math.max(strokeW, 2 * invScale) : strokeW} 
               strokeDasharray={strokeDash}
               style={{ 
-                cursor: activeTool === 'pan' ? 'move' : 'crosshair', 
-                pointerEvents: 'auto',
+                cursor: isInteractive ? (isElLocked ? 'default' : 'move') : 'crosshair', 
+                pointerEvents: isInteractive ? 'auto' : 'none',
                 filter: isSelected ? 'drop-shadow(0 0 6px rgba(59, 130, 246, 0.6))' : 'none'
               }} 
               onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, el); }}
             />
+            {showBadge && (
+              <g pointerEvents="none">
+                <rect 
+                  x={`${cx - Math.max(34 * invScale, (labelText.length * 6 + 12) * invScale) / 2}px`} 
+                  y={`${cy - 9 * invScale}px`} 
+                  width={`${Math.max(34 * invScale, (labelText.length * 6 + 12) * invScale)}px`} 
+                  height={`${18 * invScale}px`} 
+                  fill="#ffffff" 
+                  stroke={isSelected ? '#2563eb' : (el.strokeColor || '#2563eb')} 
+                  strokeWidth={`${1.2 * invScale}px`} 
+                  rx={`${3.5 * invScale}px`} 
+                  opacity={0.96}
+                />
+                <text 
+                  x={`${cx}px`} 
+                  y={`${cy}px`} 
+                  fill="#0f172a" 
+                  fontSize={`${9.5 * invScale}px`} 
+                  fontFamily="Inter, sans-serif" 
+                  fontWeight="700" 
+                  textAnchor="middle" 
+                  dominantBaseline="central"
+                >
+                  {labelText}
+                </text>
+              </g>
+            )}
+            {isSelected && isElLocked && !isPdf && (
+              <g transform={`translate(${rx + 8 * invScale}, ${ry + 8 * invScale})`} pointerEvents="none">
+                <rect x={-2 * invScale} y={-2 * invScale} width={16 * invScale} height={16 * invScale} rx={3 * invScale} fill="#f59e0b" />
+                <text x={6 * invScale} y={8.5 * invScale} fill="#ffffff" fontSize={`${9 * invScale}px`} textAnchor="middle" dominantBaseline="central">🔒</text>
+              </g>
+            )}
           </g>
         );
       }
@@ -1624,9 +1936,28 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         const strokeDash = getStrokeDasharray(el.borderStyle, strokeW);
         return (
           <g key={el.id} style={{ opacity: totalOpacity }}>
-            <circle cx={`${cx}px`} cy={`${cy}px`} r={`${r}px`} fill={el.color || '#3b82f6'} fillOpacity={el.opacity || 1} stroke={el.strokeColor || '#2563eb'} strokeWidth={strokeW} strokeDasharray={strokeDash}
-              style={{ cursor: activeTool === 'pan' ? 'move' : 'crosshair', pointerEvents: 'auto' }} onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, el); }}
+            <circle 
+              cx={`${cx}px`} 
+              cy={`${cy}px`} 
+              r={`${r}px`} 
+              fill={el.color || '#3b82f6'} 
+              fillOpacity={el.opacity || 1} 
+              stroke={isSelected ? '#3b82f6' : (el.strokeColor || '#2563eb')} 
+              strokeWidth={isSelected ? Math.max(strokeW, 2 * invScale) : strokeW} 
+              strokeDasharray={strokeDash}
+              style={{ 
+                cursor: isInteractive ? (isElLocked ? 'default' : 'move') : 'crosshair', 
+                pointerEvents: isInteractive ? 'auto' : 'none',
+                filter: isSelected ? 'drop-shadow(0 0 6px rgba(59, 130, 246, 0.6))' : 'none'
+              }} 
+              onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, el); }}
             />
+            {isSelected && isElLocked && !isPdf && (
+              <g transform={`translate(${cx - 8 * invScale}, ${cy - 8 * invScale})`} pointerEvents="none">
+                <rect x={-2 * invScale} y={-2 * invScale} width={16 * invScale} height={16 * invScale} rx={3 * invScale} fill="#f59e0b" />
+                <text x={6 * invScale} y={8.5 * invScale} fill="#ffffff" fontSize={`${9 * invScale}px`} textAnchor="middle" dominantBaseline="central">🔒</text>
+              </g>
+            )}
           </g>
         );
       }
@@ -1636,6 +1967,12 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         const rawThickness = (el as any).strokeWidth || 1.5;
         const strokeW = isPdf ? (rawThickness * 1.5) : (rawThickness * invScale);
         const strokeDash = getStrokeDasharray(el.borderStyle, strokeW);
+        const showBadge = (el as any).showArea !== false && el.points.length >= 3;
+        const centroid = showBadge ? calculateCentroid(el.points) : { x: 0, y: 0 };
+        const areaM2 = showBadge ? calculatePolygonAreaM2(el.points) : '';
+        const roomName = (el as any).roomName;
+        const labelText = roomName ? `${roomName}: ${areaM2} m²` : `${areaM2} m²`;
+
         return (
           <g key={el.id} style={{ opacity: totalOpacity }}>
             <polygon 
@@ -1646,19 +1983,130 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
               strokeWidth={isSelected ? Math.max(strokeW, 2 * invScale) : strokeW} 
               strokeDasharray={strokeDash}
               style={{ 
-                cursor: activeTool === 'pan' ? 'move' : 'crosshair', 
-                pointerEvents: 'auto',
+                cursor: isInteractive ? (isElLocked ? 'default' : 'move') : 'crosshair', 
+                pointerEvents: isInteractive ? 'auto' : 'none',
                 filter: isSelected ? 'drop-shadow(0 0 6px rgba(59, 130, 246, 0.5))' : 'none'
               }} 
               onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, el); }} 
             />
-            {isSelected && !isPdf && el.points.map((pt, i) => (
+            {showBadge && (
+              <g pointerEvents="none">
+                <rect 
+                  x={`${centroid.x * internalW - Math.max(34 * invScale, (labelText.length * 6 + 12) * invScale) / 2}px`} 
+                  y={`${centroid.y * internalH - 9 * invScale}px`} 
+                  width={`${Math.max(34 * invScale, (labelText.length * 6 + 12) * invScale)}px`} 
+                  height={`${18 * invScale}px`} 
+                  fill="#ffffff" 
+                  stroke={isSelected ? '#2563eb' : (el.strokeColor || '#2563eb')} 
+                  strokeWidth={`${1.2 * invScale}px`} 
+                  rx={`${3.5 * invScale}px`} 
+                  opacity={0.96}
+                />
+                <text 
+                  x={`${centroid.x * internalW}px`} 
+                  y={`${centroid.y * internalH}px`} 
+                  fill="#0f172a" 
+                  fontSize={`${9.5 * invScale}px`} 
+                  fontFamily="Inter, sans-serif" 
+                  fontWeight="700" 
+                  textAnchor="middle" 
+                  dominantBaseline="central"
+                >
+                  {labelText}
+                </text>
+              </g>
+            )}
+            {isSelected && !isPdf && !isElLocked && el.points.map((pt, i) => (
               <circle key={i} cx={`${pt.x * internalW}px`} cy={`${pt.y * internalH}px`} r={`${5 * invScale}px`} fill="white" stroke="#ef4444" strokeWidth={`${1.8 * invScale}px`}
                 style={{ cursor: 'crosshair', pointerEvents: 'auto' }} 
                 onPointerDown={(e) => handleVertexPointerDown(e, el.id, i)}
                 onDoubleClick={(e) => { e.stopPropagation(); handleRemoveVertex(el.id, i); }}
               />
             ))}
+            {isSelected && isElLocked && !isPdf && el.points.length > 0 && (() => {
+              const p0 = el.points[0];
+              return (
+                <g transform={`translate(${p0.x * internalW + 8 * invScale}, ${p0.y * internalH + 8 * invScale})`} pointerEvents="none">
+                  <rect x={-2 * invScale} y={-2 * invScale} width={16 * invScale} height={16 * invScale} rx={3 * invScale} fill="#f59e0b" />
+                  <text x={6 * invScale} y={8.5 * invScale} fill="#ffffff" fontSize={`${9 * invScale}px`} textAnchor="middle" dominantBaseline="central">🔒</text>
+                </g>
+              );
+            })()}
+          </g>
+        );
+      }
+
+      if (el.type === 'arrow') {
+        const arr = el as ArrowMarkup;
+        const sx = arr.start.x * internalW; const sy = arr.start.y * internalH;
+        const ex = arr.end.x * internalW; const ey = arr.end.y * internalH;
+        const rawThickness = arr.strokeWidth || 2;
+        const strokeW = isPdf ? (rawThickness * 1.5) : (rawThickness * invScale);
+        const strokeDash = getStrokeDasharray(arr.borderStyle || 'solid', strokeW);
+
+        const angle = Math.atan2(ey - sy, ex - sx);
+        const headLen = isPdf ? 12 : Math.max(10 * invScale, strokeW * 4);
+        const headAngle = Math.PI / 6;
+        const x1 = ex - headLen * Math.cos(angle - headAngle);
+        const y1 = ey - headLen * Math.sin(angle - headAngle);
+        const x2 = ex - headLen * Math.cos(angle + headAngle);
+        const y2 = ey - headLen * Math.sin(angle + headAngle);
+        const arrowPoints = `${ex},${ey} ${x1},${y1} ${x2},${y2}`;
+
+        return (
+          <g 
+            key={arr.id} 
+            style={{ opacity: totalOpacity, pointerEvents: isInteractive ? 'auto' : 'none' }}
+            onPointerDown={(e) => { if (!isPdf) handleElementPointerDown(e, arr); }}
+          >
+            {/* Unsichtbare Hit-Test-Linie für leichtes Greifen */}
+            <line 
+              x1={`${sx}px`} y1={`${sy}px`} x2={`${ex}px`} y2={`${ey}px`} 
+              stroke="transparent" 
+              strokeWidth={`${Math.max(14 * invScale, strokeW + 10)}px`} 
+              style={{ cursor: isInteractive ? (isElLocked ? 'default' : 'move') : 'crosshair' }}
+            />
+            {/* Pfeilschaft */}
+            <line 
+              x1={`${sx}px`} y1={`${sy}px`} x2={`${ex}px`} y2={`${ey}px`} 
+              stroke={isSelected ? '#3b82f6' : (arr.color || '#ef4444')} 
+              strokeWidth={`${strokeW}px`} 
+              strokeDasharray={strokeDash}
+              strokeLinecap="round"
+            />
+            {/* Pfeilspitze */}
+            <polygon 
+              points={arrowPoints} 
+              fill={isSelected ? '#3b82f6' : (arr.color || '#ef4444')} 
+            />
+            {/* Startpunkt */}
+            <circle 
+              cx={`${sx}px`} cy={`${sy}px`} r={`${strokeW * 1.2}px`} 
+              fill={isSelected ? '#3b82f6' : (arr.color || '#ef4444')} 
+            />
+            {/* Vertex-Bearbeitung bei Auswahl */}
+            {isSelected && !isPdf && !isElLocked && (
+              <>
+                <circle 
+                  cx={`${sx}px`} cy={`${sy}px`} r={`${5 * invScale}px`} 
+                  fill="white" stroke="#3b82f6" strokeWidth={`${1.8 * invScale}px`}
+                  style={{ cursor: 'crosshair', pointerEvents: 'auto' }}
+                  onPointerDown={(e) => { e.stopPropagation(); handleVertexPointerDown(e, arr.id, 0); }}
+                />
+                <circle 
+                  cx={`${ex}px`} cy={`${ey}px`} r={`${5 * invScale}px`} 
+                  fill="white" stroke="#ef4444" strokeWidth={`${1.8 * invScale}px`}
+                  style={{ cursor: 'crosshair', pointerEvents: 'auto' }}
+                  onPointerDown={(e) => { e.stopPropagation(); handleVertexPointerDown(e, arr.id, 1); }}
+                />
+              </>
+            )}
+            {isSelected && isElLocked && !isPdf && (
+              <g transform={`translate(${sx + 8 * invScale}, ${sy - 8 * invScale})`} pointerEvents="none">
+                <rect x={-2 * invScale} y={-2 * invScale} width={16 * invScale} height={16 * invScale} rx={3 * invScale} fill="#f59e0b" />
+                <text x={6 * invScale} y={8.5 * invScale} fill="#ffffff" fontSize={`${9 * invScale}px`} textAnchor="middle" dominantBaseline="central">🔒</text>
+              </g>
+            )}
           </g>
         );
       }
@@ -1676,40 +2124,40 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         const badgeH = isPdf ? 18 : (18 * invScale);
         const badgeRx = isPdf ? 3.5 : (3.5 * invScale);
         return (
-          <g key={el.id} style={{ opacity: totalOpacity, cursor: activeTool === 'pan' ? 'move' : 'crosshair', pointerEvents: 'auto' }} onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, el); }}>
+          <g key={el.id} style={{ opacity: totalOpacity, cursor: isInteractive ? (isElLocked ? 'default' : 'move') : 'crosshair', pointerEvents: isInteractive ? 'auto' : 'none' }} onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, el); }}>
             {/* Bemassungslinie (präzise durchgezogen) */}
             <line 
               x1={`${sx}px`} y1={`${sy}px`} x2={`${ex}px`} y2={`${ey}px`} 
               stroke={el.color || '#3b82f6'} 
               strokeWidth={strokeW} 
             />
-            {/* Endpunkt Start: Solider schwarzer CAD-Endpunkt (kein weiss) */}
+            {/* Endpunkt Start */}
             <circle 
               cx={`${sx}px`} cy={`${sy}px`} r={rCircle} 
               fill="#000000" 
               stroke="#000000" 
-              strokeWidth={strokeW}
-              style={{ cursor: isSelected ? 'crosshair' : (activeTool === 'pan' ? 'move' : 'crosshair') }}
+              strokeWidth={strokeW} 
+              style={{ cursor: isSelected ? 'crosshair' : (isInteractive ? (isElLocked ? 'default' : 'move') : 'crosshair'), pointerEvents: isInteractive && !isElLocked ? 'auto' : 'none' }}
               onPointerDown={(e) => {
-                if (isSelected && !isPdf) {
+                if (isSelected && !isPdf && !isElLocked) {
                   handleVertexPointerDown(e, el.id, 0);
                 }
               }}
             />
-            {/* Endpunkt Ende: Solider schwarzer CAD-Endpunkt (kein weiss) */}
+            {/* Endpunkt Ende */}
             <circle 
               cx={`${ex}px`} cy={`${ey}px`} r={rCircle} 
               fill="#000000" 
               stroke="#000000" 
-              strokeWidth={strokeW}
-              style={{ cursor: isSelected ? 'crosshair' : (activeTool === 'pan' ? 'move' : 'crosshair') }}
+              strokeWidth={strokeW} 
+              style={{ cursor: isSelected ? 'crosshair' : (isInteractive ? (isElLocked ? 'default' : 'move') : 'crosshair'), pointerEvents: isInteractive && !isElLocked ? 'auto' : 'none' }}
               onPointerDown={(e) => {
-                if (isSelected && !isPdf) {
+                if (isSelected && !isPdf && !isElLocked) {
                   handleVertexPointerDown(e, el.id, 1);
                 }
               }}
             />
-            {/* Weisser Hintergrund-Badge: verdeckt Linie darunter, fein skalierter Rahmen ohne Überdimensionierung */}
+            {/* Weisser Hintergrund-Badge */}
             <rect 
               x={`${mx - badgeW / 2}px`} 
               y={`${my - badgeH / 2}px`} 
@@ -1720,7 +2168,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
               strokeWidth={isSelected ? (strokeW * 1.3) : strokeW} 
               rx={`${badgeRx}px`} 
             />
-            {/* Schwarze Schrift: perfekt zentriert und kristallklar lesbar */}
+            {/* Schrift */}
             <text 
               x={`${mx}px`} 
               y={`${my}px`} 
@@ -1733,6 +2181,12 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
             >
               {textStr}
             </text>
+            {isSelected && isElLocked && !isPdf && (
+              <g transform={`translate(${mx + badgeW / 2 + 4 * invScale}, ${my - 8 * invScale})`} pointerEvents="none">
+                <rect x={-2 * invScale} y={-2 * invScale} width={16 * invScale} height={16 * invScale} rx={3 * invScale} fill="#f59e0b" />
+                <text x={6 * invScale} y={8.5 * invScale} fill="#ffffff" fontSize={`${9 * invScale}px`} textAnchor="middle" dominantBaseline="central">🔒</text>
+              </g>
+            )}
           </g>
         );
       }
@@ -1743,12 +2197,18 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         const thickPx = (el.thickness || 1.5) * MM_TO_PX;
         const textPx = (el.textSize || 4) * MM_TO_PX; 
         return (
-          <g key={el.id} style={{ opacity: totalOpacity, cursor: activeTool === 'pan' ? 'move' : 'crosshair', pointerEvents: 'auto', filter: isSelected ? 'drop-shadow(0px 0px 4px rgba(0,0,0,0.5))' : 'none' }} transform={`translate(${el.x * internalW}, ${el.y * internalH})`} onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, el); }}>
+          <g key={el.id} style={{ opacity: totalOpacity, cursor: isInteractive ? (isElLocked ? 'default' : 'move') : 'crosshair', pointerEvents: isInteractive ? 'auto' : 'none', filter: isSelected ? 'drop-shadow(0px 0px 4px rgba(0,0,0,0.5))' : 'none' }} transform={`translate(${el.x * internalW}, ${el.y * internalH})`} onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, el); }}>
              <rect x="0" y="0" width={`${w_px/2}px`} height={`${thickPx}px`} fill={el.color} />
              <rect x={`${w_px/2}px`} y="0" width={`${w_px/2}px`} height={`${thickPx}px`} fill="transparent" stroke={el.color} strokeWidth={`${thickPx/3}px`} />
              <text x="0" y={`${-2 * MM_TO_PX}px`} fill={el.color} fontSize={`${textPx}px`} fontFamily="sans-serif" fontWeight="bold" textAnchor="middle">0</text>
              <text x={`${w_px/2}px`} y={`${-2 * MM_TO_PX}px`} fill={el.color} fontSize={`${textPx}px`} fontFamily="sans-serif" fontWeight="bold" textAnchor="middle">{el.lengthMeters / 2}</text>
              <text x={`${w_px}px`} y={`${-2 * MM_TO_PX}px`} fill={el.color} fontSize={`${textPx}px`} fontFamily="sans-serif" fontWeight="bold" textAnchor="middle">{el.lengthMeters}m</text>
+             {isSelected && isElLocked && !isPdf && (
+               <g transform={`translate(${w_px + 8 * invScale}, 0)`} pointerEvents="none">
+                 <rect x={-2 * invScale} y={-2 * invScale} width={16 * invScale} height={16 * invScale} rx={3 * invScale} fill="#f59e0b" />
+                 <text x={6 * invScale} y={8.5 * invScale} fill="#ffffff" fontSize={`${9 * invScale}px`} textAnchor="middle" dominantBaseline="central">🔒</text>
+               </g>
+             )}
           </g>
         );
       }
@@ -1759,7 +2219,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         const h = 45 * MM_TO_PX;
         const tCol = tb.textColor || '#000000';
         return (
-          <g key={tb.id} style={{ opacity: totalOpacity, cursor: activeTool === 'pan' ? 'move' : 'pointer', pointerEvents: 'auto' }} transform={`translate(${tb.x * internalW}, ${tb.y * internalH}) scale(${tb.scale})`} onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, tb); }}>
+          <g key={tb.id} style={{ opacity: totalOpacity, cursor: isInteractive ? (isElLocked ? 'default' : 'move') : 'pointer', pointerEvents: isInteractive ? 'auto' : 'none' }} transform={`translate(${tb.x * internalW}, ${tb.y * internalH}) scale(${tb.scale})`} onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, tb); }}>
             <rect x="0" y="0" width={`${tbWidth}px`} height={`${h}px`} fill="#ffffff" stroke={tCol} strokeWidth="2" />
             
             <line x1="0" y1="60" x2={`${tbWidth}px`} y2="60" stroke={tCol} strokeWidth="1" />
@@ -1807,16 +2267,38 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
             <text x={`${tbWidth - 10}px`} y="130" fill="#ffffff" fontSize="12px" fontWeight="900" fontFamily="sans-serif" textAnchor="end">{tb.data.planNummer}</text>
 
             {isSelected && !isPdf && <rect x="0" y="0" width={`${tbWidth}px`} height={`${h}px`} fill="none" stroke="#3b82f6" strokeWidth="2" strokeDasharray="4,4" pointerEvents="none" />}
+            {isSelected && isElLocked && !isPdf && (
+              <g transform={`translate(${tbWidth - 24 * invScale}, 8 * invScale)`} pointerEvents="none">
+                <rect x={-2 * invScale} y={-2 * invScale} width={16 * invScale} height={16 * invScale} rx={3 * invScale} fill="#f59e0b" />
+                <text x={6 * invScale} y={8.5 * invScale} fill="#ffffff" fontSize={`${9 * invScale}px`} textAnchor="middle" dominantBaseline="central">🔒</text>
+              </g>
+            )}
           </g>
         );
       }
 
       if (el.type === 'text') {
         return (
-          <text key={el.id} x={`${el.x * internalW}px`} y={`${el.y * internalH}px`} fill={el.color} fontSize={`${el.size * MM_TO_PX}px`} fontFamily="sans-serif" fontWeight="bold" 
-            style={{ opacity: totalOpacity, cursor: activeTool === 'pan' ? 'move' : 'crosshair', pointerEvents: 'auto' }} 
-            onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, el); }}
-          >{el.text}</text>
+          <g key={el.id} style={{ opacity: totalOpacity }}>
+            <text 
+              x={`${el.x * internalW}px`} 
+              y={`${el.y * internalH}px`} 
+              fill={el.color} 
+              fontSize={`${el.size * MM_TO_PX}px`} 
+              fontFamily="sans-serif" 
+              fontWeight="bold" 
+              style={{ cursor: isInteractive ? (isElLocked ? 'default' : 'move') : 'crosshair', pointerEvents: isInteractive ? 'auto' : 'none' }} 
+              onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, el); }}
+            >
+              {el.text}
+            </text>
+            {isSelected && isElLocked && !isPdf && (
+              <g transform={`translate(${el.x * internalW - 14 * invScale}, ${el.y * internalH - 14 * invScale})`} pointerEvents="none">
+                <rect x={-2 * invScale} y={-2 * invScale} width={14 * invScale} height={14 * invScale} rx={3 * invScale} fill="#f59e0b" />
+                <text x={5 * invScale} y={7.5 * invScale} fill="#ffffff" fontSize={`${8 * invScale}px`} textAnchor="middle" dominantBaseline="central">🔒</text>
+              </g>
+            )}
+          </g>
         );
       }
 
@@ -1844,8 +2326,8 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
             key={d.id} 
             style={{ 
               opacity: totalOpacity, 
-              cursor: activeTool === 'pan' ? 'pointer' : 'default', 
-              pointerEvents: 'auto'
+              cursor: isInteractive ? 'pointer' : 'default', 
+              pointerEvents: isInteractive ? 'auto' : 'none'
             }} 
             transform={`translate(${d.x * internalW}, ${d.y * internalH})`} 
             onPointerDown={(e) => { if (!isPdf) handleElementPointerDown(e, d); }}
@@ -2121,46 +2603,46 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     <PremiumFeature>
     <div className="absolute inset-0 bg-background text-text-primary flex flex-col overflow-hidden">
       
-      <header className="min-h-14 sm:min-h-16 py-2 sm:py-2.5 border-b border-border bg-surface/95 backdrop-blur-xl flex flex-col sm:flex-row sm:items-center justify-between px-3 sm:px-6 shrink-0 z-50 shadow-sm gap-2.5 sm:gap-3 overflow-visible">
+      <header className="min-h-14 sm:min-h-16 py-2 border-b border-border bg-surface/95 backdrop-blur-xl flex flex-nowrap items-center justify-between px-3 sm:px-4 lg:px-5 shrink-0 z-40 shadow-sm gap-2 sm:gap-3 overflow-x-auto custom-scrollbar">
         {/* MODUL TITEL & PLAN AUSWAHL */}
-        <div className="flex items-center justify-between sm:justify-start gap-2.5 sm:gap-4 shrink-0 min-w-0 w-full sm:w-auto">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center shrink-0 shadow-xs">
-              <Map size={18} />
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center shrink-0 shadow-xs">
+              <MapIcon size={17} />
             </div>
             <div>
-              <h1 className="text-sm sm:text-base font-bold tracking-tight text-text-primary leading-tight whitespace-nowrap">
+              <h1 className="text-xs sm:text-sm font-bold tracking-tight text-text-primary leading-tight whitespace-nowrap">
                 {t('cad_title')}
               </h1>
-              <p className="text-[11px] text-text-muted hidden xl:block leading-tight">
+              <p className="text-[10px] text-text-muted hidden 2xl:block leading-tight">
                 {t('cad_subtitle')}
               </p>
             </div>
           </div>
 
-          <div className="hidden sm:block w-px h-6 bg-border/60 mx-0.5" />
+          <div className="hidden sm:block w-px h-5 bg-border/60 mx-0.5" />
 
           {/* PLAN AUSWAHL & LÖSCHEN */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
             {projectPlans.length > 0 ? (
-              <div className="flex items-center gap-2 bg-background border border-border px-3 h-9 rounded-xl shadow-sm">
-                <Layers size={14} className="text-text-muted shrink-0" />
+              <div className="flex items-center gap-1.5 bg-background border border-border px-2.5 h-8 sm:h-9 rounded-xl shadow-xs">
+                <Layers size={13} className="text-text-muted shrink-0" />
                 <select 
                   value={activePlanId || ''} 
                   onChange={e => loadPlanDataToEditor(projectPlans.find(p=>p.id===e.target.value))} 
-                  className="bg-transparent font-bold text-xs sm:text-sm outline-none cursor-pointer max-w-[130px] sm:max-w-[190px] truncate text-text-primary"
+                  className="bg-transparent font-bold text-xs outline-none cursor-pointer max-w-[110px] sm:max-w-[150px] md:max-w-[180px] truncate text-text-primary"
                 >
                   {projectPlans.map(p => <option key={p.id} value={p.id} className="bg-surface">{p.planName || p.plan_name || 'Unbenannter Plan'}</option>)}
                 </select>
                 {activePlanId && activePlanId !== 'demo-cad-1' && activePlanId !== 'system-fallback-plan' && (
-                  <button onClick={handleDeletePlan} className="text-red-500 p-1 hover:bg-red-500/10 rounded cursor-pointer" title={t('delete_plan')}>
-                    <Trash2 size={14}/>
+                  <button onClick={handleDeletePlan} className="text-red-500 p-1 hover:bg-red-500/10 rounded cursor-pointer transition-colors" title={t('delete_plan')}>
+                    <Trash2 size={13}/>
                   </button>
                 )}
               </div>
             ) : (
-              <div className="flex items-center gap-2 px-3 h-9 bg-background border border-border rounded-xl text-xs font-semibold text-text-muted shadow-sm">
-                <Layers size={14} className="text-text-muted" /> <span>Kein Plan geladen</span>
+              <div className="flex items-center gap-1.5 px-2.5 h-8 sm:h-9 bg-background border border-border rounded-xl text-xs font-semibold text-text-muted shadow-xs">
+                <Layers size={13} className="text-text-muted" /> <span>Kein Plan</span>
               </div>
             )}
           </div>
@@ -2168,8 +2650,8 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
         {/* PLAN FORMAT & MASSSTAB */}
         {planImage && (
-          <div className="hidden lg:flex items-center gap-1.5 sm:gap-2 bg-background border border-border px-2.5 h-9 rounded-xl shadow-inner mx-1 sm:mx-2 shrink-0 text-xs">
-             <span className="text-[10px] font-extrabold uppercase tracking-wider text-text-muted hidden xl:inline">{t('plan_layout')}:</span>
+          <div className="hidden md:flex items-center gap-1 sm:gap-1.5 bg-background border border-border px-2 sm:px-2.5 h-8 sm:h-9 rounded-xl shadow-inner shrink-0 text-xs">
+             <span className="text-[10px] font-extrabold uppercase tracking-wider text-text-muted hidden 2xl:inline">{t('plan_layout')}:</span>
              <select value={paperFormat} onChange={e => setPaperFormat(e.target.value)} className="bg-transparent text-xs font-bold text-text-primary outline-none cursor-pointer">
                {Object.keys(PAPER_DIMENSIONS).map(f => <option key={f} value={f} className="bg-surface">{f}</option>)}
              </select>
@@ -2180,15 +2662,45 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
              <div className="w-px h-4 bg-border/60 mx-0.5"></div>
              <span className="text-xs font-bold text-text-muted">1:</span>
              <select value={planScale} onChange={e => setPlanScale(Number(e.target.value))} className="bg-transparent text-xs font-bold text-text-primary outline-none cursor-pointer">
-               <option value={20} className="bg-surface">20</option><option value={50} className="bg-surface">50</option><option value={100} className="bg-surface">100</option><option value={200} className="bg-surface">200</option><option value={500} className="bg-surface">500</option>
+               <option value={20} className="bg-surface">20</option>
+               <option value={50} className="bg-surface">50</option>
+               <option value={100} className="bg-surface">100</option>
+               <option value={200} className="bg-surface">200</option>
+               <option value={500} className="bg-surface">500</option>
+               {!([20, 50, 100, 200, 500].includes(planScale)) && (
+                 <option value={planScale} className="bg-surface">{planScale} (Kalibriert)</option>
+               )}
              </select>
+
+             {/* TRUESCALE KALIBRIEREN TRIGGER */}
+             {isCalibrated ? (
+               <button
+                 type="button"
+                 onClick={handleStartCalibration}
+                 className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 text-[10px] font-bold transition-all cursor-pointer"
+                 title={currentLang === 'de' ? 'Massstab ist kalibriert. Klicke um neu zu kalibrieren (TrueScale™).' : 'Scale is calibrated. Click to re-calibrate (TrueScale™).'}
+               >
+                 <CheckCircle2 size={11} />
+                 <span className="hidden xl:inline">{currentLang === 'de' ? 'Kalibriert' : 'Calibrated'}</span>
+               </button>
+             ) : (
+               <button
+                 type="button"
+                 onClick={handleStartCalibration}
+                 className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/15 hover:bg-amber-500/25 text-amber-500 border border-amber-500/40 text-[10px] font-bold transition-all cursor-pointer animate-pulse"
+                 title={currentLang === 'de' ? 'Massstab unkalibriert! Klicke um eine Referenzlinie auf dem Plan zu ziehen (TrueScale™).' : 'Scale uncalibrated! Click to draw reference line (TrueScale™).'}
+               >
+                 <Compass size={11} />
+                 <span>{currentLang === 'de' ? 'Kalibrieren' : 'Calibrate'}</span>
+               </button>
+             )}
           </div>
         )}
 
         {/* RECHTE BUTTONS (LOGISCH IN 4 FUNKTIONSGRUPPEN MIT TRENNLINIEN STRUKTURIERT) */}
-        <div className="flex items-center gap-2 shrink-0 overflow-visible">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* GRUPPE 1: PLAN-MANAGEMENT & SPEICHERN */}
-          <div className="flex items-center bg-background/90 border border-border rounded-xl p-0.5 shadow-xs h-9 shrink-0">
+          <div className="flex items-center bg-background/90 border border-border rounded-xl p-0.5 shadow-xs h-8 sm:h-9 shrink-0">
             <label 
               onClick={(e) => {
                 if (isDemoMode || currentProjectId === 'demo-1') {
@@ -2199,24 +2711,24 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
               }}
               title={t('upload_plan_tooltip')}
               className={cn(
-                "tour-plan-upload flex items-center gap-1.5 px-3 h-8 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold shadow-xs transition-all whitespace-nowrap shrink-0",
+                "tour-plan-upload flex items-center gap-1.5 px-2.5 sm:px-3 h-7 sm:h-8 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold shadow-xs transition-all whitespace-nowrap shrink-0",
                 (isDemoMode || currentProjectId === 'demo-1') ? "opacity-70 cursor-not-allowed" : "cursor-pointer"
               )}
             >
               {isUploading ? <Loader2 size={13} className="animate-spin"/> : <UploadCloud size={13}/>}
-              <span className="hidden sm:inline">{t('upload_plan_btn')}</span>
-              <span className="sm:hidden">{t('upload_btn_short')}</span>
+              <span className="hidden xl:inline">{t('upload_plan_btn')}</span>
+              <span className="xl:hidden sm:inline hidden">{t('upload_btn_short')}</span>
               <input type="file" accept="image/*,application/pdf" onChange={handleFileChange} disabled={isUploading || isDemoMode || currentProjectId === 'demo-1'} className="hidden" />
             </label>
 
             <button 
               onClick={handleManualSave} 
               disabled={isSaving || !activePlanId || activePlanId === 'demo-cad-1' || activePlanId === 'system-fallback-plan' || isDemoMode} 
-              className="flex items-center gap-1.5 px-3 h-8 text-text-primary hover:bg-white/5 rounded-lg text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap cursor-pointer shrink-0" 
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 h-7 sm:h-8 text-text-primary hover:bg-white/5 rounded-lg text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap cursor-pointer shrink-0" 
               title={t('save_layers_tooltip')}
             >
               {isSaving ? <Loader2 size={13} className="animate-spin"/> : <Save size={13}/>}
-              <span className="hidden sm:inline">{t('save')}</span>
+              <span className="hidden xl:inline">{t('save')}</span>
             </button>
           </div>
 
@@ -2232,7 +2744,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
               }}
               disabled={!planImage}
               className={cn(
-                "tour-plan-pdf flex items-center gap-1.5 px-3 h-9 rounded-xl text-xs font-bold border transition-all shadow-xs whitespace-nowrap cursor-pointer shrink-0",
+                "tour-plan-pdf flex items-center gap-1.5 px-2.5 sm:px-3 h-8 sm:h-9 rounded-xl text-xs font-bold border transition-all shadow-xs whitespace-nowrap cursor-pointer shrink-0",
                 exportMenuOpen 
                   ? "bg-accent-ai/15 text-accent-ai border-accent-ai/40" 
                   : "bg-surface hover:bg-white/5 text-text-primary border-border"
@@ -2240,8 +2752,8 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
               title={planImage ? (currentLang === 'de' ? 'Exportieren & Präsentieren' : 'Export & Presentation') : t('export_pdf_tooltip_disabled')}
             >
               <Download size={13} className="text-text-muted" />
-              <span>{t('export_dropdown')}</span>
-              <ChevronDown size={13} className={cn("transition-transform duration-200 text-text-muted", exportMenuOpen && "rotate-180")} />
+              <span className="hidden sm:inline">{t('export_dropdown')}</span>
+              <ChevronDown size={12} className={cn("transition-transform duration-200 text-text-muted", exportMenuOpen && "rotate-180")} />
             </button>
 
             <AnimatePresence>
@@ -2319,9 +2831,9 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
             type="button"
             onClick={() => setShowRightPanel(prev => !prev)} 
             className={cn(
-              "h-9 px-3 border rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0 transition-all shadow-xs",
+              "h-8 sm:h-9 px-2.5 sm:px-3 border rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0 transition-all shadow-xs",
               showRightPanel 
-                ? "bg-primary/15 text-primary border-primary/40 ring-1 ring-primary/20" 
+                ? "bg-primary/20 text-primary border-primary/50 shadow-xs" 
                 : "bg-surface text-text-muted hover:text-text-primary border-border hover:bg-white/5"
             )}
             title={showRightPanel ? (currentLang === 'de' ? 'Ebenen & Eigenschaften ausblenden' : 'Hide layers & properties') : (currentLang === 'de' ? 'Ebenen & Eigenschaften einblenden' : 'Show layers & properties')}
@@ -2341,7 +2853,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           <div className="w-px h-5 bg-border/70 mx-0.5 shrink-0 hidden sm:block" />
 
           {/* GRUPPE 4: HILFE & ANLEITUNG */}
-          <ModuleGuideButton moduleId="plans" compact className="h-9 px-3 rounded-xl text-xs flex items-center justify-center shrink-0" />
+          <ModuleGuideButton moduleId="plans" compact className="h-8 sm:h-9 px-2.5 rounded-xl text-xs flex items-center justify-center shrink-0" />
         </div>
       </header>
 
@@ -2389,7 +2901,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
            </button>
 
            {/* ZEICHEN- & PLANWERKZEUGE */}
-           {(['measure', 'scalebar', 'polygon', 'rect', 'circle', 'pen', 'text', 'defect', 'titleblock', 'image'] as ToolType[]).map(tool => (
+           {(['measure', 'scalebar', 'polygon', 'rect', 'circle', 'arrow', 'pen', 'text', 'defect', 'titleblock', 'image'] as ToolType[]).map(tool => (
              <button 
                key={tool} 
                onClick={() => {
@@ -2417,6 +2929,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                {tool === 'polygon' && <Hexagon size={16} className="sm:w-[17px] sm:h-[17px]"/>}
                {tool === 'rect' && <Square size={16} className="sm:w-[17px] sm:h-[17px]"/>}
                {tool === 'circle' && <Circle size={16} className="sm:w-[17px] sm:h-[17px]"/>}
+               {tool === 'arrow' && <ArrowUpRight size={16} className="sm:w-[17px] sm:h-[17px]"/>}
                {tool === 'pen' && <PenTool size={16} className="sm:w-[17px] sm:h-[17px]"/>}
                {tool === 'text' && <Type size={16} className="sm:w-[17px] sm:h-[17px]"/>}
                {tool === 'defect' && <MapPin size={16} className="sm:w-[17px] sm:h-[17px]"/>}
@@ -2469,36 +2982,171 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
            </button>
         </aside>
 
+        {/* FLOATING QUICK-ACCESS EBENEN BUTTON AUF DEM CANVAS */}
+        {planImage && !showRightPanel && (
+          <button
+            type="button"
+            onClick={() => setShowRightPanel(true)}
+            className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 flex items-center gap-2 px-3 py-2 bg-surface/95 hover:bg-surface backdrop-blur-xl border border-border hover:border-primary/50 rounded-xl shadow-xl text-xs font-bold text-text-primary transition-all cursor-pointer group"
+            title={currentLang === 'de' ? 'Ebenen & Eigenschaften einblenden' : 'Show layers & properties'}
+          >
+            <Layers size={14} className="text-primary group-hover:scale-110 transition-transform" />
+            <span>{t('layers')}</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-primary/15 text-primary">
+              {layers.length}
+            </span>
+          </button>
+        )}
+
         {/* EBENEN & PROPERTIES RECHTS */}
         {planImage && (
           <aside className={cn("absolute right-2 sm:right-6 top-2 sm:top-6 bottom-2 sm:bottom-6 w-72 sm:w-80 flex-col gap-4 z-20 pointer-events-none transition-all duration-200", showRightPanel ? "flex pointer-events-auto" : "hidden")}>
             
             {/* LAYERS */}
-            <div className="bg-surface/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-4 flex flex-col pointer-events-auto max-h-[40%] shrink-0">
+            <div className="bg-surface/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-4 flex flex-col pointer-events-auto max-h-[46%] shrink-0">
               <div className="flex justify-between items-center mb-3 border-b border-border pb-2 shrink-0">
-                <span className="font-bold text-sm flex items-center gap-2"><Layers size={16}/> {t('layers')}</span>
+                <div className="flex items-center gap-2">
+                  <Layers size={16} className="text-primary"/>
+                  <span className="font-bold text-sm">{t('layers')}</span>
+                  <span className="text-[11px] text-text-muted">({layers.length})</span>
+                </div>
                 <div className="flex items-center gap-1">
-                  <button onClick={handleAddLayer} className="p-1.5 bg-accent-ai/10 text-accent-ai hover:bg-accent-ai/20 rounded-lg transition-colors cursor-pointer" title={t('add_layer')}><Plus size={14}/></button>
-                  <button onClick={() => setShowRightPanel(false)} className="p-1.5 hover:bg-white/10 rounded-lg text-text-muted hover:text-text-primary transition-colors cursor-pointer" title={currentLang === 'de' ? 'Ebenen schliessen' : 'Close layers'}><X size={14}/></button>
+                  <button 
+                    onClick={handleAddLayer} 
+                    className="flex items-center gap-1 px-2 py-1 bg-accent-ai/10 text-accent-ai hover:bg-accent-ai/20 rounded-lg text-xs font-bold transition-colors cursor-pointer" 
+                    title={t('add_layer')}
+                  >
+                    <Plus size={13}/>
+                    <span>{t('add_layer')}</span>
+                  </button>
+                  <button 
+                    onClick={() => setShowRightPanel(false)} 
+                    className="p-1.5 hover:bg-white/10 rounded-lg text-text-muted hover:text-text-primary transition-colors cursor-pointer" 
+                    title={currentLang === 'de' ? 'Ebenen schliessen' : 'Close layers'}
+                  >
+                    <X size={14}/>
+                  </button>
                 </div>
               </div>
               
               <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-1">
-                {layers.map(layer => (
-                  <div key={layer.id} className={cn("p-2 rounded-xl border transition-colors", activeLayerId === layer.id ? "border-accent-ai bg-accent-ai/5" : "border-border hover:bg-white/5")}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <button onClick={() => toggleLayerVisibility(layer.id)} className={layer.visible ? "text-text-primary" : "text-text-muted"}>{layer.visible ? <Eye size={14}/> : <EyeOff size={14}/>}</button>
-                      <button onClick={() => toggleLayerLock(layer.id)} className={layer.locked ? "text-red-400" : "text-text-muted"}>{layer.locked ? <Lock size={12}/> : <Unlock size={12}/>}</button>
-                      <input value={layer.name === 'Standard-Ebene' && currentLang === 'en' ? 'Default Layer' : (layer.name === 'Default Layer' && currentLang === 'de' ? 'Standard-Ebene' : layer.name)} onChange={e => setLayers(layers.map(l=>l.id===layer.id?{...l, name:e.target.value}:l))} className="bg-transparent flex-1 outline-none text-xs font-bold" onClick={() => setActiveLayerId(layer.id)} readOnly={layer.locked} />
-                      <button onClick={() => deleteLayer(layer.id)} className="text-red-500 opacity-50 hover:opacity-100"><Trash2 size={12}/></button>
+                {/* Hierarchie: In umgekehrter Reihenfolge rendern (Oberste Ebene oben, Basisplan/Standard-Ebene zuunterst) */}
+                {[...layers].reverse().map(layer => {
+                  const realIndex = layers.findIndex(l => l.id === layer.id);
+                  const isBase = layer.id === 'default' || realIndex === 0;
+                  const elementCount = elements.filter(el => (el.layerId || 'default') === layer.id).length;
+                  const isActive = activeLayerId === layer.id;
+
+                  return (
+                    <div 
+                      key={layer.id} 
+                      onClick={() => setActiveLayerId(layer.id)}
+                      className={cn(
+                        "p-2.5 rounded-xl border transition-all cursor-pointer", 
+                        isActive ? "border-primary/60 bg-primary/10 shadow-xs" : "border-border hover:bg-white/5"
+                      )}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <button 
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); toggleLayerVisibility(layer.id); }} 
+                          className={cn("p-1 rounded hover:bg-white/10 transition-colors", layer.visible ? "text-text-primary" : "text-text-muted/40")}
+                          title={layer.visible ? (currentLang === 'de' ? 'Ebene ausblenden' : 'Hide layer') : (currentLang === 'de' ? 'Ebene einblenden' : 'Show layer')}
+                        >
+                          {layer.visible ? <Eye size={14}/> : <EyeOff size={14}/>}
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); toggleLayerLock(layer.id); }} 
+                          className={cn("p-1 rounded hover:bg-white/10 transition-colors", layer.locked ? "text-red-400" : "text-text-muted/60")}
+                          title={layer.locked ? (currentLang === 'de' ? 'Ebene entsperren' : 'Unlock layer') : (currentLang === 'de' ? 'Ebene sperren' : 'Lock layer')}
+                        >
+                          {layer.locked ? <Lock size={12}/> : <Unlock size={12}/>}
+                        </button>
+
+                        <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                          <input 
+                            value={
+                              layer.name === 'Standard-Ebene' && currentLang === 'en' 
+                                ? 'Default Layer' 
+                                : (layer.name === 'Default Layer' && currentLang === 'de' 
+                                  ? 'Standard-Ebene' 
+                                  : layer.name)
+                            } 
+                            onChange={e => {
+                              const val = e.target.value;
+                              setLayers(layers.map(l => l.id === layer.id ? { ...l, name: val } : l));
+                            }} 
+                            className="bg-transparent flex-1 outline-none text-xs font-bold text-text-primary truncate" 
+                            readOnly={layer.locked} 
+                          />
+                          {isBase && (
+                            <span className="text-[9px] px-1 py-0.2 rounded bg-blue-500/15 text-blue-400 font-semibold whitespace-nowrap">
+                              {currentLang === 'de' ? 'Basis' : 'Base'}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Hierarchie: Buttons für Ebene nach oben / unten bewegen */}
+                        <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => moveLayer(layer.id, 'up')}
+                            disabled={realIndex === layers.length - 1}
+                            className="p-1 text-text-muted hover:text-text-primary disabled:opacity-20 disabled:cursor-not-allowed rounded hover:bg-white/10 transition-colors cursor-pointer"
+                            title={currentLang === 'de' ? 'Ebene nach oben bewegen' : 'Move layer up'}
+                          >
+                            <ChevronUp size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveLayer(layer.id, 'down')}
+                            disabled={realIndex === 0}
+                            className="p-1 text-text-muted hover:text-text-primary disabled:opacity-20 disabled:cursor-not-allowed rounded hover:bg-white/10 transition-colors cursor-pointer"
+                            title={currentLang === 'de' ? 'Ebene nach unten bewegen' : 'Move layer down'}
+                          >
+                            <ChevronDown size={12} />
+                          </button>
+                        </div>
+
+                        {/* Ebene löschen */}
+                        {layers.length > 1 && (
+                          <button 
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); deleteLayer(layer.id); }} 
+                            className="text-red-500 opacity-50 hover:opacity-100 p-1 rounded hover:bg-red-500/10 transition-all cursor-pointer"
+                            title={currentLang === 'de' ? 'Ebene löschen' : 'Delete layer'}
+                          >
+                            <Trash2 size={12}/>
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-1 border-t border-border/30">
+                        <SlidersHorizontal size={10} className="text-text-muted shrink-0"/>
+                        <input 
+                          type="range" 
+                          min="0" 
+                          max="1" 
+                          step="0.05" 
+                          value={layer.opacity} 
+                          onClick={e => e.stopPropagation()}
+                          onChange={e => {
+                            const val = Number(e.target.value);
+                            setLayers(layers.map(l => l.id === layer.id ? { ...l, opacity: val } : l));
+                          }} 
+                          className="flex-1 accent-primary h-1 cursor-pointer" 
+                        />
+                        <span className="text-[9px] text-text-muted w-7 text-right font-mono font-bold">
+                          {Math.round(layer.opacity * 100)}%
+                        </span>
+                        <span className="text-[9px] text-text-muted px-1.5 py-0.5 bg-background rounded border border-border/40 whitespace-nowrap">
+                          {elementCount} {elementCount === 1 ? 'Objekt' : 'Objekte'}{isBase && planImage ? ' + Plan' : ''}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <SlidersHorizontal size={10} className="text-text-muted"/>
-                      <input type="range" min="0" max="1" step="0.05" value={layer.opacity} onChange={e => setLayers(layers.map(l=>l.id===layer.id?{...l, opacity:Number(e.target.value)}:l))} className="flex-1 accent-accent-ai h-1 cursor-pointer" />
-                      <span className="text-[9px] text-text-muted w-6 text-right">{Math.round(layer.opacity*100)}%</span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -2697,6 +3345,59 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
                     {(selectedElement.type === 'rect' || selectedElement.type === 'circle' || selectedElement.type === 'polygon') && (
                       <>
+                        {/* SIA Flächen- & Raummasse (m² / Umfang) */}
+                        <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
+                              <Compass size={12} className="text-blue-400" />
+                              SIA 416 Flächenmass
+                            </span>
+                            <span className="text-xs font-black text-blue-400">
+                              {selectedElement.type === 'polygon' 
+                                ? `${calculatePolygonAreaM2((selectedElement as PolygonMarkup).points)} m²`
+                                : selectedElement.type === 'rect'
+                                ? `${calculateRectAreaM2((selectedElement as RectMarkup).w, (selectedElement as RectMarkup).h)} m²`
+                                : `${(Math.PI * Math.pow((((selectedElement as CircleMarkup).r || 0) * paperW_mm * planScale) / 1000, 2)).toFixed(2)} m²`}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[11px] text-text-muted">
+                            <span>Umfang:</span>
+                            <span className="font-bold text-text-primary">
+                              {selectedElement.type === 'polygon'
+                                ? `${calculatePolygonPerimeterM((selectedElement as PolygonMarkup).points)} m`
+                                : selectedElement.type === 'rect'
+                                ? `${calculateRectPerimeterM((selectedElement as RectMarkup).w, (selectedElement as RectMarkup).h)} m`
+                                : `${(2 * Math.PI * ((((selectedElement as CircleMarkup).r || 0) * paperW_mm * planScale) / 1000)).toFixed(2)} m`}
+                            </span>
+                          </div>
+
+                          <div className="pt-2 space-y-2 border-t border-blue-500/20">
+                            <label className="flex items-center gap-2 cursor-pointer select-none">
+                              <input
+                                type="checkbox"
+                                checked={Boolean((selectedElement as any).showArea ?? true)}
+                                onChange={e => updateElement({ ...selectedElement, showArea: e.target.checked } as any)}
+                                className="w-3.5 h-3.5 rounded accent-blue-500 cursor-pointer"
+                              />
+                              <span className="text-[11px] font-medium text-text-secondary">
+                                Flächenstempel auf Plan anzeigen
+                              </span>
+                            </label>
+
+                            <div>
+                              <label className="text-[10px] font-bold uppercase text-text-muted block mb-1">Raumbezeichnung / Funktion</label>
+                              <input
+                                type="text"
+                                value={(selectedElement as any).roomName || ''}
+                                placeholder="z.B. Wohnen / Essen, Zimmer 1, Büro"
+                                onChange={e => updateElement({ ...selectedElement, roomName: e.target.value } as any)}
+                                className="w-full bg-background border border-border rounded-lg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-muted outline-none focus:border-blue-500"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
                         <div>
                           <label className="text-[10px] font-bold uppercase mb-1 block">Füll-Farbe</label>
                           <input type="color" value={selectedElement.color || '#3b82f6'} onChange={e => updateElement({...selectedElement, color: e.target.value} as any)} className="w-full h-8 rounded border border-border cursor-pointer" />
@@ -2870,6 +3571,68 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                       </>
                     )}
 
+                    {selectedElement.type === 'arrow' && (
+                      <>
+                        <div>
+                          <label className="text-[10px] font-bold uppercase mb-1 block">Pfeil-Farbe</label>
+                          <input 
+                            type="color" 
+                            value={(selectedElement as ArrowMarkup).color || '#ef4444'} 
+                            onChange={e => updateElement({...selectedElement, color: e.target.value} as any)} 
+                            className="w-full h-8 rounded border border-border cursor-pointer" 
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold uppercase mb-1 block">{t('line_style')}</label>
+                          <select 
+                            value={(selectedElement as ArrowMarkup).borderStyle || 'solid'} 
+                            onChange={(e) => updateElement({ ...selectedElement, borderStyle: e.target.value as LineStyle } as any)} 
+                            className="w-full bg-background border border-border rounded px-2 py-1.5 text-xs font-bold outline-none"
+                          >
+                            <option value="solid">Durchgehend</option>
+                            <option value="dashed">Gestrichelt</option>
+                            <option value="dotted">Gepunktet</option>
+                          </select>
+                        </div>
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <label className="text-[10px] font-bold uppercase block">{t('line_thickness')}</label>
+                            <span className="text-xs font-bold text-primary">{((selectedElement as ArrowMarkup).strokeWidth ?? 2)} px</span>
+                          </div>
+                          <input 
+                            type="range" 
+                            min="0.5" 
+                            max="8" 
+                            step="0.5" 
+                            value={((selectedElement as ArrowMarkup).strokeWidth ?? 2)} 
+                            onChange={e => updateElement({...selectedElement, strokeWidth: Number(e.target.value)} as any)} 
+                            className="w-full accent-blue-500 cursor-pointer" 
+                          />
+                          <div className="flex justify-between text-[10px] text-text-muted mt-1 gap-1">
+                            <button type="button" className="px-1.5 py-0.5 rounded bg-background border border-border hover:border-primary/50 text-[10px] font-medium" onClick={() => updateElement({...selectedElement, strokeWidth: 1} as any)}>1px (Fein)</button>
+                            <button type="button" className="px-1.5 py-0.5 rounded bg-background border border-border hover:border-primary/50 text-[10px] font-medium" onClick={() => updateElement({...selectedElement, strokeWidth: 2} as any)}>2px (CAD)</button>
+                            <button type="button" className="px-1.5 py-0.5 rounded bg-background border border-border hover:border-primary/50 text-[10px] font-medium" onClick={() => updateElement({...selectedElement, strokeWidth: 4} as any)}>4px</button>
+                            <button type="button" className="px-1.5 py-0.5 rounded bg-background border border-border hover:border-primary/50 text-[10px] font-medium" onClick={() => updateElement({...selectedElement, strokeWidth: 6} as any)}>6px (Stark)</button>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold uppercase mb-1 block">Deckkraft</label>
+                          <input type="range" min="0" max="1" step="0.05" value={selectedElement.opacity ?? 1} onChange={e => updateElement({...selectedElement, opacity: Number(e.target.value)} as any)} className="w-full accent-blue-500" />
+                          <span className="text-xs text-text-muted">{Math.round((selectedElement.opacity ?? 1)*100)}%</span>
+                        </div>
+                        <div className="flex gap-2 pt-1">
+                          <button onClick={() => {
+                            const newEls = elements.filter(e => e.id !== selectedElement.id);
+                            setElements([...newEls, selectedElement]);
+                          }} className="flex-1 py-2 bg-background border border-border rounded-lg text-xs font-bold hover:bg-white/5"><BringToFront size={16} className="mx-auto mb-1"/> Vorne</button>
+                          <button onClick={() => {
+                            const newEls = elements.filter(e => e.id !== selectedElement.id);
+                            setElements([selectedElement, ...newEls]);
+                          }} className="flex-1 py-2 bg-background border border-border rounded-lg text-xs font-bold hover:bg-white/5"><SendToBack size={16} className="mx-auto mb-1"/> Hinten</button>
+                        </div>
+                      </>
+                    )}
+
                     {selectedElement.type === 'measure' && (
                       <>
                         <div>
@@ -2932,7 +3695,38 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                       </>
                     )}
                   </div>
-                  <button onClick={() => deleteElement(selectedElement.id)} className="w-full mt-4 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500/20 transition-colors shrink-0">
+
+                  {/* Universal Objekt-Sperre gegen versehentliches Verschieben */}
+                  <div className="p-3 mt-4 rounded-xl bg-background/60 border border-border/80 flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center", selectedElement.locked ? "bg-amber-500/15 text-amber-500" : "bg-surface text-text-muted")}>
+                        {selectedElement.locked ? <Lock size={14} /> : <Unlock size={14} />}
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-text-primary">
+                          {selectedElement.locked ? 'Objekt gesperrt' : 'Objekt entsperrt'}
+                        </div>
+                        <div className="text-[10px] text-text-muted">
+                          {selectedElement.locked ? 'Gegen Verschieben geschützt' : 'Frei verschiebbar & bearbeitbar'}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => updateElement({ ...selectedElement, locked: !selectedElement.locked } as any)}
+                      className={cn(
+                        "px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5",
+                        selectedElement.locked
+                          ? "bg-amber-500/10 text-amber-500 border border-amber-500/30 hover:bg-amber-500/20"
+                          : "bg-surface border border-border text-text-muted hover:text-text-primary hover:border-border-hover"
+                      )}
+                    >
+                      {selectedElement.locked ? <Unlock size={12} /> : <Lock size={12} />}
+                      {selectedElement.locked ? 'Entsperren' : 'Sperren'}
+                    </button>
+                  </div>
+
+                  <button onClick={() => deleteElement(selectedElement.id)} className="w-full mt-3 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500/20 transition-colors shrink-0">
                     <Trash2 size={14} className="inline mr-2"/> {t('delete_element')}
                   </button>
                 </motion.div>
@@ -2942,7 +3736,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         )}
 
         <main 
-          className={cn("flex-1 relative overflow-hidden touch-none", activeTool === 'pan' ? (draggingElementId ? "cursor-grabbing" : "cursor-grab active:cursor-grabbing") : "cursor-crosshair")} 
+          className={cn("flex-1 relative overflow-hidden touch-none", isSpacePressed ? "cursor-grab active:cursor-grabbing" : (activeTool === 'pan' ? (draggingElementId ? "cursor-grabbing" : "cursor-grab active:cursor-grabbing") : "cursor-crosshair"))} 
           onPointerDown={handleMainPointerDown} 
           onPointerMove={handleMainPointerMove} 
           onPointerUp={handleMainPointerUp}
@@ -3015,8 +3809,23 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
             <div style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`, transformOrigin: 'center center', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <div className="relative overflow-hidden bg-white shadow-2xl" style={{ width: `${internalW}px`, height: `${internalH}px` }}>
                 
-                {/* 1. HAUPTBILD */}
-                <img src={sanitizeUrl(planImage)} crossOrigin="anonymous" alt="Plan" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain' }} />
+                {/* 1. HAUPTBILD (BASISPLAN AUF STANDARD-EBENE) */}
+                {baseLayer?.visible !== false && (
+                  <img 
+                    src={sanitizeUrl(planImage)} 
+                    crossOrigin="anonymous" 
+                    alt="Plan" 
+                    style={{ 
+                      position: 'absolute', 
+                      inset: 0, 
+                      width: '100%', 
+                      height: '100%', 
+                      objectFit: 'contain',
+                      opacity: baseLayer?.opacity ?? 1,
+                      transition: 'opacity 0.15s ease'
+                    }} 
+                  />
+                )}
                 
                 {/* 2. OVERLAY BILDER (PERFORMANCE OPTIMIERT) */}
                 {allElementsToRender.map(el => {

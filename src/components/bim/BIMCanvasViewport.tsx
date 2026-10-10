@@ -9,8 +9,10 @@ import { ColladaLoader } from 'three/examples/jsm/loaders/ColladaLoader.js';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import { IFCLoader } from 'web-ifc-three/IFCLoader';
+import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
+import { resolve3DModelFormat } from '../../utils/documentClassifier';
 
 // ----------------------------------------------------------------------------
 // 3D HELPER SUBCOMPONENTS
@@ -298,10 +300,28 @@ function DaeModel({ url, onClick }: { url: string; onClick: (e: any) => void }) 
 }
 
 function FbxModel({ url, onClick }: { url: string; onClick: (e: any) => void }) {
-  const fbx = useLoader(FBXLoader, url);
+  const fbx = useLoader(FBXLoader, url, (loader: any) => {
+    if (loader && loader.manager) {
+      loader.manager.onError = (errUrl: string) => {
+        console.warn('[FBXLoader] Asset or texture could not be loaded, continuing without it:', errUrl);
+      };
+    }
+  });
+
   const { scene, scale } = React.useMemo(() => {
     if (!fbx) return { scene: null, scale: 1 };
-    const cloned = fbx.clone(true);
+
+    let cloned: THREE.Object3D;
+    try {
+      cloned = SkeletonUtils.clone(fbx);
+    } catch {
+      try {
+        cloned = fbx.clone(true);
+      } catch {
+        cloned = fbx;
+      }
+    }
+
     cloned.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(cloned);
     const size = box.getSize(new THREE.Vector3());
@@ -309,19 +329,29 @@ function FbxModel({ url, onClick }: { url: string; onClick: (e: any) => void }) 
     const calculatedScale = maxDim > 0 ? 8 / maxDim : 1;
 
     cloned.traverse((child: any) => {
+      // Hide internal lights or cameras from CAD/BIM exports that might blow out viewport exposure
+      if (child.isLight || child.isCamera) {
+        child.visible = false;
+      }
       if (child.isMesh) {
         child.castShadow = true;
         child.receiveShadow = true;
         if (child.material) {
+          const enhanceMaterial = (m: any) => {
+            if (!m) return m;
+            const mat = m.clone ? m.clone() : m;
+            mat.side = THREE.DoubleSide;
+            // Architectural FBX models often have zero/black materials with no diffuse map
+            if (mat.color && mat.color.r === 0 && mat.color.g === 0 && mat.color.b === 0 && !mat.map) {
+              mat.color.setHex(0xd1d5db);
+            }
+            return mat;
+          };
+
           if (Array.isArray(child.material)) {
-            child.material = child.material.map((m: any) => {
-              const mat = m.clone();
-              mat.side = THREE.DoubleSide;
-              return mat;
-            });
+            child.material = child.material.map(enhanceMaterial);
           } else {
-            child.material = child.material.clone();
-            child.material.side = THREE.DoubleSide;
+            child.material = enhanceMaterial(child.material);
           }
         }
       }
@@ -420,6 +450,7 @@ function DwgModel({ onClick, t }: { onClick: (e: any) => void; t: (k: string) =>
 function UploadedModelViewer({
   url,
   type,
+  modelName,
   onSelect,
   measureMode,
   onMeasureClick,
@@ -427,7 +458,7 @@ function UploadedModelViewer({
   onDefectClick,
   t,
 }: any) {
-  const tType = type?.toLowerCase() || '';
+  const tType = resolve3DModelFormat({ type, name: modelName, url });
 
   const handleClick = (e: any) => {
     e.stopPropagation();
@@ -442,7 +473,7 @@ function UploadedModelViewer({
       onDefectClick(e.point, worldNormal);
     } else {
       onSelect(`uploaded-element-${Math.floor(Math.random() * 1000)}`, {
-        type: `${type.toUpperCase()} Element`,
+        type: `${(tType || type || '3D').toUpperCase()} Element`,
         material: 'Imported',
         cost: 'N/A',
         status: 'Loaded',
@@ -456,9 +487,20 @@ function UploadedModelViewer({
   if (tType === 'dae') return <DaeModel url={url} onClick={handleClick} />;
   if (tType === 'fbx') return <FbxModel url={url} onClick={handleClick} />;
   if (tType === 'stl') return <StlModel url={url} onClick={handleClick} />;
-  if (tType === 'blend') return <BlendPlaceholder fileName={url?.split('/').pop()} />;
+  if (tType === 'blend') return <BlendPlaceholder fileName={modelName || url?.split('/').pop()} />;
   if (tType === 'dwg') return <DwgModel onClick={handleClick} t={t} />;
-  return null;
+
+  return (
+    <Html center zIndexRange={[10, 0]}>
+      <div className="flex flex-col items-center gap-2.5 p-5 bg-surface/95 backdrop-blur-md border border-amber-500/40 rounded-2xl shadow-2xl text-center max-w-xs">
+        <AlertTriangle className="text-amber-500" size={28} />
+        <div className="font-bold text-xs text-text-primary">Nicht direkt unterstütztes 3D-Format</div>
+        <p className="text-[11px] text-text-muted leading-relaxed">
+          Das Format "{type || modelName?.split('.').pop() || 'Unbekannt'}" konnte nicht gerendert werden. Unterstützt: IFC, OBJ, GLTF, GLB, FBX, DAE, STL.
+        </p>
+      </div>
+    </Html>
+  );
 }
 
 function CameraRig({ isTouring }: { isTouring: boolean }) {
@@ -660,7 +702,7 @@ function BIMCanvasViewportComponent({
       camera={{ position: [15, 12, 15], fov: 50 }}
       gl={{
         preserveDrawingBuffer: true,
-        powerPreference: isMobile ? 'default' : 'high-performance',
+        powerPreference: 'default',
         antialias: !isMobile,
         failIfMajorPerformanceCaveat: false,
       }}
@@ -707,8 +749,9 @@ function BIMCanvasViewportComponent({
             }
           >
             <UploadedModelViewer
-              url={activeModel.url}
+              url={activeModel.url || activeModel.file_url}
               type={activeModel.type}
+              modelName={activeModel.name}
               onSelect={handleSelect}
               measureMode={measureMode}
               onMeasureClick={handleMeasureClick}

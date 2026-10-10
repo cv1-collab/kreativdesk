@@ -1,6 +1,7 @@
 import React, { useState, Suspense, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { resolve3DModelFormat } from '../utils/documentClassifier';
 import { Canvas, useFrame, useThree, useLoader } from '@react-three/fiber';
 import { OrbitControls, Box as DreiBox, Environment, Grid, Cylinder, Line, Html, Center } from '@react-three/drei';
 import * as THREE from 'three';
@@ -419,11 +420,20 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
   
   const { addToast } = useToast();
 
+  const [searchParams] = useSearchParams();
+  const queryModelId = searchParams.get('model');
   const bimModelStorageKey = `kreativdesk_bim_${projectId || 'global'}`;
   const [customModels, setCustomModels] = useState<any[]>([]);
   const [activeModelId, setActiveModelId] = useState<string>(() => {
-    return safeStorage.getItem(bimModelStorageKey) || 'default';
+    return queryModelId || safeStorage.getItem(bimModelStorageKey) || 'default';
   });
+
+  useEffect(() => {
+    if (queryModelId) {
+      setActiveModelId(queryModelId);
+      safeStorage.setItem(bimModelStorageKey, queryModelId);
+    }
+  }, [queryModelId, bimModelStorageKey]);
 
   const selectModel = (id: string) => {
     setActiveModelId(id);
@@ -578,17 +588,18 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
       const { data } = await query;
       if (data) {
         const models = data.filter(d => {
-          const type = String(d.type || '').toLowerCase();
-          const name = String(d.name || '').toLowerCase();
-          return ['obj', 'gltf', 'glb', 'dae', 'ifc', 'dwg', 'fbx', '3d model'].includes(type) ||
-                 name.endsWith('.obj') || name.endsWith('.gltf') || name.endsWith('.glb') || 
-                 name.endsWith('.dae') || name.endsWith('.ifc') || name.endsWith('.dwg') || name.endsWith('.fbx');
-        });
+          const format = resolve3DModelFormat(d);
+          return Boolean(format);
+        }).map(d => ({
+          ...d,
+          type: resolve3DModelFormat(d)
+        }));
         setCustomModels(models);
-        const savedActive = safeStorage.getItem(bimModelStorageKey);
-        if (savedActive && models.some(m => m.id === savedActive)) {
-          setActiveModelId(savedActive);
-        } else if (models.length > 0) {
+
+        const currentTargetId = queryModelId || safeStorage.getItem(bimModelStorageKey);
+        if (currentTargetId && models.some(m => m.id === currentTargetId)) {
+          setActiveModelId(currentTargetId);
+        } else if (models.length > 0 && (!currentTargetId || currentTargetId === 'default')) {
           const ifcModel = models.find(m => String(m.name || '').toLowerCase().endsWith('.ifc') || m.type === 'ifc') || models[0];
           setActiveModelId(ifcModel.id);
         }
@@ -1079,7 +1090,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
         {activeModel ? (
           <div className="flex items-center justify-center text-center p-4 bg-background rounded-lg border border-dashed border-border overflow-hidden">
             <p className="text-xs text-text-muted">
-              {t('layer_import_native').replace('{type}', activeModel.type.toUpperCase())}
+              {t('layer_import_native').replace('{type}', (activeModel.type || resolve3DModelFormat(activeModel) || '3D').toUpperCase())}
             </p>
           </div>
         ) : (

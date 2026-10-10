@@ -19,31 +19,51 @@ interface ParsedDetails {
 
 function parseLogDetails(details: any): ParsedDetails {
   if (!details) return { title: null, message: null, userEmail: null, rawJson: null };
+  let parsedObj: any = null;
   if (typeof details === 'object') {
-    return {
-      title: details.title || null,
-      message: details.message || details.desc || details.description || null,
-      userEmail: details.userEmail || details.user_email || details.email || details.user || null,
-      rawJson: JSON.stringify(details, null, 2)
-    };
-  }
-  if (typeof details === 'string') {
+    parsedObj = details;
+  } else if (typeof details === 'string') {
     const trimmed = details.trim();
     if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
       try {
-        const parsed = JSON.parse(trimmed);
-        return {
-          title: parsed.title || null,
-          message: parsed.message || parsed.desc || parsed.description || null,
-          userEmail: parsed.userEmail || parsed.user_email || parsed.email || parsed.user || null,
-          rawJson: JSON.stringify(parsed, null, 2)
-        };
+        parsedObj = JSON.parse(trimmed);
       } catch {
-        // Fallback below
+        return { title: null, message: details, userEmail: null, rawJson: null };
+      }
+    } else {
+      return { title: null, message: details, userEmail: null, rawJson: null };
+    }
+  }
+
+  if (parsedObj) {
+    let title = parsedObj.title || null;
+    let msg = parsedObj.message || parsedObj.desc || parsedObj.description || null;
+    
+    // Intelligent fallback for message when details contains common audit attributes
+    if (!msg) {
+      if (parsedObj.invitedUserId) {
+        msg = `Mitarbeiter eingeladen (ID: ${parsedObj.invitedUserId}${parsedObj.isExternal ? ', Extern' : ', Intern'})`;
+      } else if (parsedObj.projectName) {
+        msg = `Projekt: "${parsedObj.projectName}"`;
+      } else if (parsedObj.projectId) {
+        msg = `Projekt-ID: ${parsedObj.projectId}`;
+      } else if (parsedObj.role) {
+        msg = `Rolle angepasst auf: ${parsedObj.role}`;
+      } else if (parsedObj.fileName || parsedObj.filename) {
+        msg = `Datei: "${parsedObj.fileName || parsedObj.filename}"`;
       }
     }
-    return { title: null, message: details, userEmail: null, rawJson: null };
+
+    const userEmail = parsedObj.userEmail || parsedObj.user_email || parsedObj.email || parsedObj.user || null;
+
+    return {
+      title,
+      message: msg,
+      userEmail,
+      rawJson: JSON.stringify(parsedObj, null, 2)
+    };
   }
+
   return { title: null, message: String(details), userEmail: null, rawJson: null };
 }
 
@@ -66,7 +86,13 @@ const ACTION_TRANSLATIONS_DE: Record<string, string> = {
   'LOGIN': 'Benutzer-Anmeldung',
   'LOGOUT': 'Benutzer-Abmeldung',
   'SETTINGS_UPDATED': 'Einstellungen gespeichert',
-  'SECURITY_ALERT': 'Sicherheitswarnung'
+  'SECURITY_ALERT': 'Sicherheitswarnung',
+  'FILE_DELETED': 'Datei gelöscht',
+  'FILE_UPLOADED': 'Datei hochgeladen',
+  'PLAN_SAVED': 'CAD-Plan gespeichert',
+  'DEFECT_CREATED': 'Mangel erfasst',
+  'DEFECT_RESOLVED': 'Mangel behoben',
+  'MAINTENANCE_TOGGLED': 'Wartungsmodus geändert'
 };
 
 function getReadableAction(action: string, lang: string): string {
@@ -79,7 +105,19 @@ function getReadableAction(action: string, lang: string): string {
     .replace(/\b\w/g, l => l.toUpperCase());
 }
 
-export default function AuditLogsTab() {
+export interface AuditLogsTabProps {
+  isGlobalAdmin?: boolean;
+  title?: string;
+  description?: string;
+  className?: string;
+}
+
+export default function AuditLogsTab({
+  isGlobalAdmin = false,
+  title,
+  description,
+  className
+}: AuditLogsTabProps = {}) {
   const { currentUser } = useAuth();
   const { language } = useLanguage();
   const [logs, setLogs] = useState<any[]>([]);
@@ -89,27 +127,69 @@ export default function AuditLogsTab() {
   const [expandedJsonIds, setExpandedJsonIds] = useState<string[]>([]);
 
   useEffect(() => {
+    let isMounted = true;
     const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
-    if (!safeCompanyId) return;
+    if (!isGlobalAdmin && !safeCompanyId) {
+      setLoading(false);
+      return;
+    }
     
     const fetchLogs = async () => {
       try {
-        const { data } = await supabase
+        let query = supabase
           .from('audit_logs')
-          .select('*')
-          .eq('company_id', safeCompanyId)
-          .order('created_at', { ascending: false });
+          .select('*');
 
-        if (data) setLogs(data);
+        if (!isGlobalAdmin) {
+          query = query.eq('company_id', safeCompanyId);
+        }
+
+        const { data, error } = await query
+          .order('created_at', { ascending: false })
+          .limit(isGlobalAdmin ? 150 : 200);
+
+        if (error) {
+          console.warn('Error fetching audit logs:', error);
+        } else if (data && isMounted) {
+          setLogs(data);
+        }
       } catch (error) {
         console.error("Error fetching audit logs:", error);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
     fetchLogs();
-  }, [currentUser]);
+
+    // Supabase Realtime live updates
+    const channelName = isGlobalAdmin 
+      ? `realtime_audit_logs_global_${Date.now()}` 
+      : `realtime_audit_logs_${safeCompanyId}_${Date.now()}`;
+
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'audit_logs',
+          ...(isGlobalAdmin ? {} : { filter: `company_id=eq.${safeCompanyId}` })
+        },
+        (payload) => {
+          if (payload?.new && isMounted) {
+            setLogs(prev => [payload.new, ...prev.filter(l => l.id !== payload.new.id)]);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, [currentUser, isGlobalAdmin]);
 
   const formatDate = (dateString: string) => {
     try {
@@ -193,23 +273,34 @@ export default function AuditLogsTab() {
   const handleExportCSV = () => {
     if (filteredLogs.length === 0) return;
 
-    const headers = ['ID', 'Zeitstempel', 'Aktion', 'Benutzer', 'Titel', 'Nachricht / Details', 'Raw Details'];
-    const rows = filteredLogs.map(log => [
-      `"${log.id || ''}"`,
-      `"${log.created_at || log.timestamp || ''}"`,
-      `"${(log.readableAction || log.action || '').replace(/"/g, '""')}"`,
-      `"${(log.userIdent || '').replace(/"/g, '""')}"`,
-      `"${(log.parsed.title || '').replace(/"/g, '""')}"`,
-      `"${(log.parsed.message || '').replace(/"/g, '""')}"`,
-      `"${(typeof log.details === 'string' ? log.details : JSON.stringify(log.details) || '').replace(/"/g, '""')}"`
-    ]);
+    const headers = isGlobalAdmin 
+      ? ['ID', 'Zeitstempel', 'Aktion', 'Benutzer', 'Mandant / Company ID', 'Titel', 'Nachricht / Details', 'Raw Details']
+      : ['ID', 'Zeitstempel', 'Aktion', 'Benutzer', 'Titel', 'Nachricht / Details', 'Raw Details'];
+
+    const rows = filteredLogs.map(log => {
+      const baseRow = [
+        `"${log.id || ''}"`,
+        `"${log.created_at || log.timestamp || ''}"`,
+        `"${(log.readableAction || log.action || '').replace(/"/g, '""')}"`,
+        `"${(log.userIdent || '').replace(/"/g, '""')}"`
+      ];
+      if (isGlobalAdmin) {
+        baseRow.push(`"${(log.company_id || '').replace(/"/g, '""')}"`);
+      }
+      baseRow.push(
+        `"${(log.parsed.title || '').replace(/"/g, '""')}"`,
+        `"${(log.parsed.message || '').replace(/"/g, '""')}"`,
+        `"${(typeof log.details === 'string' ? log.details : JSON.stringify(log.details) || '').replace(/"/g, '""')}"`
+      );
+      return baseRow;
+    });
 
     const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\r\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `audit_logs_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `${isGlobalAdmin ? 'system' : 'audit'}_logs_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -228,7 +319,7 @@ export default function AuditLogsTab() {
   }, [enrichedLogs]);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300 pb-24">
+    <div className={cn("space-y-6 animate-in fade-in duration-300", !isGlobalAdmin && "pb-24", className)}>
       <div className="bg-surface border border-border p-4 sm:p-6 md:p-8 rounded-2xl md:rounded-3xl shadow-sm space-y-6">
         
         {/* Header Title & Actions */}
@@ -239,12 +330,12 @@ export default function AuditLogsTab() {
             </div>
             <div>
               <h3 className="text-lg sm:text-xl font-bold tracking-tight text-text-primary">
-                {language === 'de' ? 'Audit-Logs & Governance' : 'Audit Logs & Governance'}
+                {title || (language === 'de' ? 'Audit-Logs & Governance' : 'Audit Logs & Governance')}
               </h3>
               <p className="text-text-muted text-xs sm:text-sm font-medium mt-0.5">
-                {language === 'de' 
+                {description || (language === 'de' 
                   ? 'Revisionssichere, lückenlose Dokumentation aller Firmenaktivitäten und Änderungen.' 
-                  : 'Tamper-proof, audit-ready log of all organization activities.'}
+                  : 'Tamper-proof, audit-ready log of all organization activities.')}
               </p>
             </div>
           </div>
@@ -407,6 +498,11 @@ export default function AuditLogsTab() {
                           <span className="text-[10px] font-mono font-semibold bg-surface border border-border px-2 py-0.5 rounded-full text-text-muted truncate max-w-[200px]" title={log.userIdent}>
                             👤 {log.userIdent}
                           </span>
+                          {isGlobalAdmin && log.company_id && (
+                            <span className="text-[10px] font-mono font-medium bg-surface/80 border border-border px-2 py-0.5 rounded-full text-text-muted shrink-0" title={`Mandant / Company ID: ${log.company_id}`}>
+                              🏢 {log.company_id.slice(0, 8)}…
+                            </span>
+                          )}
                         </div>
 
                         {/* Parsed Human-Readable Content */}

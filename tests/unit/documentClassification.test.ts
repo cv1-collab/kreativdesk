@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getFileCategory } from '../../src/utils/documentClassifier';
+import { getFileCategory, resolve3DModelFormat } from '../../src/utils/documentClassifier';
 
 describe('documentClassifier - getFileCategory', () => {
   describe('3D Models & BIM Files', () => {
@@ -92,4 +92,31 @@ describe('documentClassifier - getFileCategory', () => {
       expect(getFileCategory({ name: 'tabelle.xlsx', type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })).toBe('general');
     });
   });
+
+  describe('resolve3DModelFormat', () => {
+    it('erkennt FBX auch wenn MIME-Type leer oder octet-stream ist', () => {
+      expect(resolve3DModelFormat({ name: 'PHGR_Chur_Erdgeschoss_3D.fbx', type: '' })).toBe('fbx');
+      expect(resolve3DModelFormat({ name: 'PHGR_Chur_Erdgeschoss_3D.fbx', type: 'application/octet-stream' })).toBe('fbx');
+      expect(resolve3DModelFormat({ name: 'PHGR_Chur_Erdgeschoss_3D.fbx', type: '3D MODELL' })).toBe('fbx');
+      expect(resolve3DModelFormat({ url: 'https://storage.com/models/chur_3d.fbx?token=123' })).toBe('fbx');
+    });
+
+    it('erkennt IFC, OBJ, GLTF, GLB, DAE, STL, BLEND, DWG zuverlässig', () => {
+      expect(resolve3DModelFormat({ name: 'model.ifc' })).toBe('ifc');
+      expect(resolve3DModelFormat({ name: 'statik.obj' })).toBe('obj');
+      expect(resolve3DModelFormat({ name: 'fassade.gltf' })).toBe('gltf');
+      expect(resolve3DModelFormat({ name: 'scene.glb' })).toBe('glb');
+      expect(resolve3DModelFormat({ name: 'building.dae' })).toBe('dae');
+      expect(resolve3DModelFormat({ name: 'print.stl' })).toBe('stl');
+      expect(resolve3DModelFormat({ name: 'project.blend' })).toBe('blend');
+      expect(resolve3DModelFormat({ name: 'plan.dwg' })).toBe('dwg');
+    });
+
+    it('gibt leeren String für Nicht-3D-Dateien zurück', () => {
+      expect(resolve3DModelFormat({ name: 'document.pdf', type: 'application/pdf' })).toBe('');
+      expect(resolve3DModelFormat({ name: 'image.png', type: 'image/png' })).toBe('');
+      expect(resolve3DModelFormat(null)).toBe('');
+    });
+  });
 });
+

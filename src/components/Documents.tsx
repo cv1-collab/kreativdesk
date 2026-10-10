@@ -531,7 +531,8 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
     // 3D / BIM / Blender:
     if (category === '3d') {
       if (rawProjId && rawProjId !== 'global') {
-        navigate(`/project/${rawProjId}/bim`);
+        safeStorage.setItem(`kreativdesk_bim_${rawProjId}`, item.id);
+        navigate(`/project/${rawProjId}/bim?model=${item.id}`);
         addToast(`3D-Modell "${item.name}" im 3D Viewer (BIM) geöffnet!`, 'success');
         return;
       }
@@ -746,12 +747,15 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
         : null;
       const targetProjId = (rawProjId && rawProjId !== 'global') ? rawProjId : null;
 
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || '';
+      const docType = file.type && file.type !== 'application/octet-stream' ? file.type : fileExt;
+
       await supabase.from('documents').insert({
         name: file.name,
         file_url: fileUrl,
         url: fileUrl,
         size: `${Math.round(file.size / 1024)} KB`,
-        type: file.type,
+        type: docType,
         category: activeTab,
         project_id: targetProjId,
         folder_id: currentFolderId,
