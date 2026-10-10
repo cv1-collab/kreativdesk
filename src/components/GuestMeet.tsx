@@ -249,14 +249,25 @@ export default function GuestMeet() {
     // Check if meeting exists
     const checkMeeting = async () => {
       try {
-        const { data: callDoc, error: fetchErr } = await supabase
-          .from('video_calls')
-          .select('*')
-          .eq('id', joinId)
-          .maybeSingle();
+        let callDoc: any = null;
+        try {
+          const { data: rpcCall, error: rpcErr } = await supabase.rpc('get_guest_video_call', { p_call_id: joinId });
+          if (!rpcErr && rpcCall && rpcCall.length > 0) callDoc = rpcCall[0];
+        } catch {
+          // Fallback to direct query below
+        }
 
-        if (fetchErr) {
-          console.warn("Supabase video_calls query info:", fetchErr);
+        if (!callDoc) {
+          const { data: directCall, error: fetchErr } = await supabase
+            .from('video_calls')
+            .select('*')
+            .eq('id', joinId)
+            .maybeSingle();
+
+          if (fetchErr) {
+            console.warn("Supabase video_calls query info:", fetchErr);
+          }
+          if (directCall) callDoc = directCall;
         }
 
         if (callDoc) {
@@ -264,16 +275,28 @@ export default function GuestMeet() {
           setError('');
         } else {
           if (joinId && joinId.length >= 3) {
+            let created = false;
             try {
-              await supabase.from('video_calls').upsert({
-                id: joinId,
-                host_id: 'guest',
-                room_name: 'global',
-                status: 'active',
-                created_at: new Date().toISOString()
-              });
-            } catch (e) {
-              console.warn("Guest room upsert handled:", e);
+              const { data: rpcRoom, error: rpcRoomErr } = await supabase.rpc('join_or_create_guest_room', { p_call_id: joinId });
+              if (!rpcRoomErr && rpcRoom && rpcRoom.length > 0) {
+                created = true;
+              }
+            } catch {
+              // Fallback to direct upsert below
+            }
+
+            if (!created) {
+              try {
+                await supabase.from('video_calls').upsert({
+                  id: joinId,
+                  host_id: 'guest',
+                  room_name: 'global',
+                  status: 'active',
+                  created_at: new Date().toISOString()
+                });
+              } catch (e) {
+                console.warn("Guest room upsert handled:", e);
+              }
             }
             setError('');
           } else {
@@ -297,11 +320,22 @@ export default function GuestMeet() {
     if (!isJoined || !joinId) return;
     
     const fetchChat = async () => {
-      const { data } = await supabase
-        .from('chat_messages')
-        .select('*')
-        .eq('call_id', joinId)
-        .order('created_at', { ascending: true });
+      let data: any = null;
+      try {
+        const { data: rpcData, error: rpcErr } = await supabase.rpc('get_call_chat_messages', { p_call_id: joinId });
+        if (!rpcErr && rpcData) data = rpcData;
+      } catch {
+        // Fallback to direct query below
+      }
+
+      if (!data) {
+        const { data: directData } = await supabase
+          .from('chat_messages')
+          .select('*')
+          .eq('call_id', joinId)
+          .order('created_at', { ascending: true });
+        if (directData) data = directData;
+      }
       if (data) {
         setMessages(data.map((d: any) => ({
           id: d.id,

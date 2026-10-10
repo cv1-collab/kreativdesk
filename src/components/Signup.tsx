@@ -80,15 +80,28 @@ export default function Signup() {
           setEmail(prev => prev || rawEmail);
         }
 
-        const { data: inv } = await supabase
-          .from('invites')
-          .select('*')
-          .eq('token', token)
-          .maybeSingle();
+        let inv: any = null;
+        try {
+          const { data: rpcInv, error: rpcErr } = await supabase.rpc('get_invite_details', { p_token: token });
+          if (!rpcErr && rpcInv) {
+            inv = rpcInv;
+          }
+        } catch {
+          // Fallback to direct query below
+        }
+
+        if (!inv) {
+          const { data: directInv } = await supabase
+            .from('invites')
+            .select('*')
+            .eq('token', token)
+            .maybeSingle();
+          if (directInv) inv = directInv;
+        }
 
         const activeCompanyId = inv?.company_id || rawCompanyId;
-        let compName = '';
-        if (activeCompanyId) {
+        let compName = inv?.company_name || '';
+        if (!compName && activeCompanyId) {
           const { data: c } = await supabase.from('companies').select('name').eq('id', activeCompanyId).maybeSingle();
           if (c?.name) compName = c.name;
         }

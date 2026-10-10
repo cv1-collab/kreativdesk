@@ -1212,7 +1212,46 @@ export interface Database {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      get_invite_details: {
+        Args: { p_token: string };
+        Returns: Record<string, any>;
+      };
+      accept_invite_by_token: {
+        Args: { p_token: string; p_user_id: string };
+        Returns: boolean;
+      };
+      get_proposal_by_share_token: {
+        Args: { p_token: string };
+        Returns: Database['public']['Tables']['smart_proposals']['Row'][];
+      };
+      sign_accept_proposal: {
+        Args: { p_share_token: string; p_acceptance_data: Record<string, any> };
+        Returns: boolean;
+      };
+      get_guest_video_call: {
+        Args: { p_call_id: string };
+        Returns: Database['public']['Tables']['video_calls']['Row'][];
+      };
+      join_or_create_guest_room: {
+        Args: { p_call_id: string };
+        Returns: Database['public']['Tables']['video_calls']['Row'][];
+      };
+      get_call_chat_messages: {
+        Args: { p_call_id: string };
+        Returns: Database['public']['Tables']['chat_messages']['Row'][];
+      };
+      send_guest_chat_message: {
+        Args: { p_call_id: string; p_sender_name: string; p_message: string };
+        Returns: Record<string, any>;
+      };
+      get_my_company_id: {
+        Args: Record<PropertyKey, never>;
+        Returns: string;
+      };
+      is_super_admin: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
     };
     Enums: {
       [_ in never]: never;

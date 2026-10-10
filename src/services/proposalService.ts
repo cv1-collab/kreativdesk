@@ -168,6 +168,20 @@ export async function getCompanyProposals(companyId: string, projectId?: string,
 export async function getProposalByShareToken(shareToken: string): Promise<SmartProposal | null> {
   try {
     if (supabase) {
+      // 1. Secure RPC lookup first (prevents public table scans)
+      try {
+        const { data: rpcData, error: rpcErr } = await supabase.rpc('get_proposal_by_share_token', { p_token: shareToken });
+        const rows: any = rpcData;
+        const row = Array.isArray(rows) && rows.length > 0 ? rows[0] : (rows && !Array.isArray(rows) ? rows : null);
+        if (!rpcErr && row) {
+          incrementProposalViews(row.id, row.views_count || 0);
+          return mapDbToProposal(row);
+        }
+      } catch {
+        // Fallback to direct query below
+      }
+
+      // 2. Direct query fallback
       const { data, error } = await supabase
         .from('smart_proposals')
         .select('*')
@@ -366,19 +380,38 @@ export async function acceptProposalByClient(
     if (supabase) {
       const { data: propRow } = await supabase
         .from('smart_proposals')
-        .select('company_id, title, project_id')
+        .select('company_id, title, project_id, share_token')
         .eq('id', proposalId)
         .maybeSingle();
 
-      await supabase
-        .from('smart_proposals')
-        .update({
-          status: 'accepted',
-          accepted_at: now,
-          accepted_by: acceptanceData,
-          updated_at: now
-        })
-        .eq('id', proposalId);
+      const shareToken = (propRow as any)?.share_token || (item as any)?.shareToken;
+
+      let rpcSuccess = false;
+      if (shareToken) {
+        try {
+          const { data: res, error: rpcErr } = await supabase.rpc('sign_accept_proposal', {
+            p_share_token: shareToken,
+            p_acceptance_data: acceptanceData
+          });
+          if (!rpcErr && res === true) {
+            rpcSuccess = true;
+          }
+        } catch {
+          // Fallback to direct update below
+        }
+      }
+
+      if (!rpcSuccess) {
+        await supabase
+          .from('smart_proposals')
+          .update({
+            status: 'accepted',
+            accepted_at: now,
+            accepted_by: acceptanceData,
+            updated_at: now
+          })
+          .eq('id', proposalId);
+      }
 
       const targetCompanyId = propRow?.company_id || item?.companyId;
       if (targetCompanyId) {
