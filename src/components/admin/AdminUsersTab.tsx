@@ -627,13 +627,13 @@ export default function AdminUsersTab() {
       </div>
 
       {isModalOpen && editingUser && createPortal(
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-surface border border-border rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
-            <div className="flex items-center justify-between p-5 border-b border-border bg-background/50">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-surface border border-border rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-3.5rem)] min-h-0 m-auto">
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-border bg-background/50 shrink-0 z-10">
               <h3 className="font-semibold text-text-primary">{t('edit_user')}</h3>
               <button onClick={() => setIsModalOpen(false)} className="text-text-muted hover:text-text-primary cursor-pointer"><X size={20} /></button>
             </div>
-            <form onSubmit={handleSaveChanges} className="p-6 space-y-4">
+            <form onSubmit={handleSaveChanges} className="p-4 sm:p-6 space-y-4 flex-1 min-h-0 overflow-y-auto custom-scrollbar">
               <div>
                 <label className="block text-xs font-semibold text-text-muted mb-1 uppercase tracking-wider">{t('full_name')}</label>
                 <input 
@@ -742,7 +742,7 @@ export default function AdminUsersTab() {
                 </div>
               )}
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
+              <div className="flex justify-end gap-3 pt-4 border-t border-border/50 shrink-0 z-10">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-surface-hover">{t('cancel')}</button>
                 <button type="submit" disabled={isSubmitting} className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold shadow-lg shadow-blue-500/20">{isSubmitting ? 'Speichere...' : t('save_changes')}</button>
               </div>
@@ -754,8 +754,8 @@ export default function AdminUsersTab() {
 
       {/* VIP CONCIERGE PREPROVISION MODAL */}
       {isPreprovisionOpen && createPortal(
-        <div className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-surface border border-border/50 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto custom-scrollbar p-6 shadow-2xl space-y-6 text-text-primary">
+        <div className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-surface border border-border/50 rounded-2xl max-w-lg w-full max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-3.5rem)] min-h-0 overflow-y-auto custom-scrollbar p-5 sm:p-6 shadow-2xl space-y-6 text-text-primary m-auto">
             <div className="flex justify-between items-center border-b border-border/50 pb-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400">

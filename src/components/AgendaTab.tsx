@@ -1518,9 +1518,9 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
           {/* TERMIN BEARBEITEN / DETAILS */}
           <AnimatePresence>
             {selectedEvent && (
-              <motion.div key="edit-event-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm pointer-events-auto">
-                <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-surface border border-border/50 rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden relative">
-                  <div className="p-4 border-b border-border/50 flex items-center justify-between bg-surface/50 shrink-0">
+              <motion.div key="edit-event-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm pointer-events-auto overflow-y-auto">
+                <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-surface border border-border/50 rounded-2xl shadow-2xl w-full max-w-lg max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-3.5rem)] flex flex-col min-h-0 overflow-hidden relative m-auto">
+                  <div className="p-4 border-b border-border/50 flex items-center justify-between bg-surface/80 backdrop-blur-sm shrink-0 z-10">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
                         <Edit3 size={16} />
@@ -1529,7 +1529,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
                     </div>
                     <button onClick={() => setSelectedEvent(null)} className="h-8 w-8 flex items-center justify-center text-text-muted hover:text-text-primary bg-background border border-border/50 rounded-lg cursor-pointer transition-colors shadow-xs"><X size={16} /></button>
                   </div>
-                  <form onSubmit={handleUpdateCalendarEvent} className="p-6 space-y-4 overflow-y-auto max-h-[calc(85vh-70px)] custom-scrollbar">
+                  <form id="edit-event-form" onSubmit={handleUpdateCalendarEvent} className="p-4 sm:p-6 space-y-4 flex-1 min-h-0 overflow-y-auto custom-scrollbar">
                     <input type="text" value={selectedEvent.title} onChange={e => setSelectedEvent({ ...selectedEvent, title: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm font-black text-text-primary outline-none focus:border-accent-ai" placeholder={t('meeting_title')} />
 
                     <select required value={selectedEvent.projectId} onChange={e => setSelectedEvent({ ...selectedEvent, projectId: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-accent-ai">
@@ -1781,14 +1781,15 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
                       </button>
                     </div>
 
-                    <div className="pt-4 flex justify-between gap-3 border-t border-border/50">
-                      <button type="button" onClick={(e) => handleDeleteCalendarEvent(selectedEvent.id, e)} className="px-4 py-2.5 text-sm font-bold text-red-500 bg-red-500/10 hover:bg-red-500/20 rounded-lg transition-colors flex items-center gap-2"><Trash2 size={16} /></button>
-                      <div className="flex gap-2 flex-1">
-                        <button type="button" onClick={() => setSelectedEvent(null)} className="flex-1 py-2.5 text-sm font-bold text-text-muted hover:text-text-primary transition-colors">{t('cancel')}</button>
-                        <button type="submit" className="flex-[2] py-2.5 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg flex items-center justify-center gap-2"><Save size={16} /> OK</button>
-                      </div>
-                    </div>
                   </form>
+
+                  <div className="p-4 border-t border-border/50 bg-surface/80 backdrop-blur-sm shrink-0 z-10 flex justify-between gap-3">
+                    <button type="button" onClick={(e) => handleDeleteCalendarEvent(selectedEvent.id, e)} className="px-4 py-2.5 text-sm font-bold text-red-500 bg-red-500/10 hover:bg-red-500/20 rounded-lg transition-colors flex items-center gap-2 cursor-pointer"><Trash2 size={16} /></button>
+                    <div className="flex gap-2 flex-1">
+                      <button type="button" onClick={() => setSelectedEvent(null)} className="flex-1 py-2.5 text-sm font-bold text-text-muted hover:text-text-primary transition-colors cursor-pointer">{t('cancel')}</button>
+                      <button form="edit-event-form" type="submit" className="flex-[2] py-2.5 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg flex items-center justify-center gap-2 cursor-pointer hover:bg-accent-ai/90 transition-all"><Save size={16} /> OK</button>
+                    </div>
+                  </div>
                 </motion.div>
               </motion.div>
             )}
@@ -1797,9 +1798,9 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
           {/* NEUER TERMIN MODAL */}
           <AnimatePresence>
             {isEventModalOpen && !selectedEvent && (
-              <motion.div key="new-event-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm pointer-events-auto">
-                <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-surface border border-border/50 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden relative">
-                  <div className="p-4 border-b border-border/50 flex items-center justify-between bg-surface/50 shrink-0">
+              <motion.div key="new-event-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm pointer-events-auto overflow-y-auto">
+                <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-surface border border-border/50 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-3.5rem)] flex flex-col min-h-0 overflow-hidden relative m-auto">
+                  <div className="p-4 border-b border-border/50 flex items-center justify-between bg-surface/80 backdrop-blur-sm shrink-0 z-10">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
                         <CalendarDays size={16} />
@@ -1808,7 +1809,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
                     </div>
                     <button onClick={() => setIsEventModalOpen(false)} className="h-8 w-8 flex items-center justify-center text-text-muted hover:text-text-primary bg-background border border-border/50 rounded-lg cursor-pointer transition-colors shadow-xs"><X size={16} /></button>
                   </div>
-                  <form onSubmit={handleSaveCalendarEvent} className="p-6 space-y-6 overflow-y-auto max-h-[calc(85vh-70px)] custom-scrollbar">
+                  <form id="new-event-form" onSubmit={handleSaveCalendarEvent} className="p-4 sm:p-6 space-y-6 flex-1 min-h-0 overflow-y-auto custom-scrollbar">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('meeting_title')}</label>
@@ -1985,11 +1986,12 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
                         )}
                       </div>
                     </div>
-                    <div className="pt-4 flex justify-end gap-3 border-t border-border/50">
-                      <button type="button" onClick={() => setIsEventModalOpen(false)} className="px-6 py-2 text-sm font-bold text-text-muted hover:text-text-primary transition-colors">{t('cancel')}</button>
-                      <button type="submit" className="px-8 py-2 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all">{t('schedule_appointment')}</button>
-                    </div>
                   </form>
+
+                  <div className="p-4 sm:p-5 border-t border-border/50 bg-surface/80 backdrop-blur-sm shrink-0 z-10 flex justify-end gap-3">
+                    <button type="button" onClick={() => setIsEventModalOpen(false)} className="px-6 py-2.5 text-sm font-bold text-text-muted hover:text-text-primary transition-colors cursor-pointer">{t('cancel')}</button>
+                    <button form="new-event-form" type="submit" className="px-8 py-2.5 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all cursor-pointer">{t('schedule_appointment')}</button>
+                  </div>
                 </motion.div>
               </motion.div>
             )}
@@ -2023,9 +2025,9 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
 
           {/* AI RAPPORT MODAL */}
           {aiRapportModalOpen && (
-            <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col overflow-hidden max-h-[85vh]">
-                <div className="p-4 border-b border-border/50 flex justify-between items-center bg-surface/50">
+            <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col overflow-hidden max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-3.5rem)] min-h-0 m-auto">
+                <div className="p-4 border-b border-border/50 flex justify-between items-center bg-surface/50 shrink-0 z-10">
                   <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
                       <Sparkles size={16} />
@@ -2034,12 +2036,12 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
                   </div>
                   <button onClick={() => setAiRapportModalOpen(false)} className="h-8 w-8 flex items-center justify-center text-text-muted hover:text-text-primary bg-background border border-border/50 rounded-lg cursor-pointer transition-colors shadow-xs"><X size={16} /></button>
                 </div>
-                <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+                <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1 min-h-0">
                   <div className="text-sm text-text-primary whitespace-pre-wrap leading-relaxed bg-background/50 border border-border/50 p-5 rounded-xl font-medium">
                     {aiRapportText}
                   </div>
                 </div>
-                <div className="p-4 border-t border-border bg-surface flex justify-between items-center shrink-0">
+                <div className="p-4 border-t border-border bg-surface flex justify-between items-center shrink-0 z-10">
                   <button onClick={async () => { await navigator.clipboard.writeText(aiRapportText); addToast('Rapport in Zwischenablage kopiert!', 'success'); }} className="h-9 px-4 bg-background border border-border/50 text-text-primary rounded-xl text-xs font-bold hover:bg-white/5 transition-colors cursor-pointer shadow-xs">
                     Text Kopieren
                   </button>

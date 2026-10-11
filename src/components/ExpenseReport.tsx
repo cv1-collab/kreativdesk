@@ -380,8 +380,8 @@ export default function ExpenseReport({ onClose, onSave, initialCurrency }: Expe
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm">
-      <div className="bg-surface border-t sm:border border-border sm:rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[100dvh] sm:h-[90vh] sm:max-h-[900px] mt-auto sm:mt-0 animate-in slide-in-from-bottom sm:zoom-in-95">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+      <div className="bg-surface border-t sm:border border-border sm:rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[100dvh] sm:h-auto sm:max-h-[calc(100dvh-2.5rem)] min-h-0 mt-auto sm:my-auto animate-in slide-in-from-bottom sm:zoom-in-95">
         
         <div className="p-4 sm:p-6 border-b border-border/50 flex items-center justify-between bg-surface/90 backdrop-blur-md shrink-0 sticky top-0 z-30">
           <div className="flex items-center gap-3">
@@ -413,7 +413,7 @@ export default function ExpenseReport({ onClose, onSave, initialCurrency }: Expe
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto bg-background/50 custom-scrollbar relative">
+        <div className="flex-1 min-h-0 overflow-y-auto bg-background/50 custom-scrollbar relative">
           <div className="p-4 sm:p-6 md:p-8 space-y-6 md:space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 bg-surface p-4 md:p-6 rounded-xl border border-border/50 shadow-sm">
               <div className="space-y-2"><label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('employee')}</label><select value={headerData.userId} onChange={e => setHeaderData({...headerData, userId: e.target.value})} className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm outline-none text-text-primary font-bold"><option value="">{t('select')}</option>{allEmployees.map((u:any) => <option key={u.id || u.uid} value={u.id || u.uid}>{u.name || [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email || 'Mitarbeiter'}</option>)}</select></div>

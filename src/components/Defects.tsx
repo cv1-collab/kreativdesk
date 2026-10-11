@@ -534,7 +534,35 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
       addToast(t('upload_success'), 'success');
     } catch (error: any) { 
       console.error("Save Defect Error:", error);
-      addToast('Fehler beim Speichern', 'error'); 
+      const isNetworkIssue = !offlineSyncManager.isOnline() ||
+        error?.message?.toLowerCase().includes('fetch') ||
+        error?.message?.toLowerCase().includes('network') ||
+        error?.message?.toLowerCase().includes('failed to fetch') ||
+        error?.name === 'TypeError';
+
+      if (!editingId && isNetworkIssue) {
+        const offlineId = `DEF-OFFLINE-${Date.now()}`;
+        offlineSyncManager.saveOfflineDefect({
+          id: offlineId,
+          project_id: currentProjectId,
+          company_id: safeCompanyId || 'default',
+          owner_id: currentUser?.uid || '',
+          prompt: currentDefect.title || 'Mangel Baustelle',
+          description: currentDefect.description || '',
+          status: currentDefect.status || 'To Do',
+          severity: currentDefect.priority || 'High',
+          position: { x: 0, y: 1.5, z: 0 },
+          image_url: currentDefect.imageUrl || '',
+          created_at: new Date().toISOString()
+        });
+        setDefects(prev => [...prev, { ...currentDefect, id: offlineId, projectId: currentProjectId } as Defect]);
+        addToast('Netzwerk-Unterbruch: Mangel offline gesichert! Synchronisiert automatisch bei Verbindung.', 'info');
+        setIsModalOpen(false);
+        setCurrentDefect(DEFAULT_DEFECT);
+        setShowQrScanner(false);
+      } else {
+        addToast(error?.message ? `Fehler beim Speichern: ${error.message}` : 'Fehler beim Speichern', 'error'); 
+      }
     } finally { 
       setIsSubmitting(false); 
     }
@@ -925,8 +953,8 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
         <>
           {/* MODAL FÜR NEUEN / EDITIERTEN MANGEL */}
           {isModalOpen && (
-            <div className="fixed inset-0 z-[10000] flex items-center justify-center md:p-4 bg-black/80 backdrop-blur-sm">
-              <div className="bg-surface md:border md:border-border md:rounded-xl w-full max-w-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col h-[100dvh] md:h-auto md:max-h-[90vh]">
+            <div className="fixed inset-0 z-[10000] flex items-center justify-center md:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+              <div className="bg-surface md:border md:border-border md:rounded-xl w-full max-w-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col h-[100dvh] md:h-auto md:max-h-[calc(100dvh-3rem)] min-h-0 md:m-auto">
                 <div className="p-4 border-b border-border flex justify-between items-center bg-surface/90 backdrop-blur-md sticky top-0 z-20 shrink-0">
                   <h3 className="font-bold flex items-center gap-2 text-text-primary">
                     {editingId ? <Edit2 size={18} className="text-accent-ai" /> : <AlertTriangle size={18} className="text-accent-ai" />} 
@@ -934,7 +962,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
                   </h3>
                   <button onClick={() => setIsModalOpen(false)} className="text-text-muted hover:text-text-primary transition-colors bg-background p-2 rounded-lg border border-border"><X size={20}/></button>
                 </div>
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 bg-background/50">
+                <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-4 md:p-6 bg-background/50">
                   <form id="defect-form" onSubmit={handleSaveDefect} className="space-y-6">
                     <div className="space-y-4">
                       <div><label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-1 h-5 flex items-center">{t('title')}</label><input type="text" required value={currentDefect.title} onChange={e => setCurrentDefect({...currentDefect, title: e.target.value})} className="w-full bg-background border border-border/50 rounded-lg py-3 px-4 text-sm font-bold text-text-primary focus:outline-none focus:border-accent-ai shadow-sm" placeholder="Kurzer, prägnanter Titel" autoFocus={!editingId} /></div>
@@ -1039,7 +1067,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
                     </div>
                   </form>
                 </div>
-                <div className="p-4 md:p-6 border-t border-border bg-surface/90 backdrop-blur-md flex flex-col md:flex-row justify-end gap-3 shrink-0 pb-8 md:pb-4">
+                <div className="p-4 md:p-6 border-t border-border bg-surface/90 backdrop-blur-md flex flex-col md:flex-row justify-end gap-3 shrink-0 sticky bottom-0 z-20 pb-8 md:pb-4">
                   <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-3 text-sm font-bold text-text-muted hover:text-text-primary transition-colors border border-border md:border-transparent rounded-lg">{t('cancel')}</button>
                   <button form="defect-form" type="submit" disabled={isSubmitting || !currentDefect.title} className="px-8 py-3 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-colors disabled:opacity-50 flex justify-center items-center gap-2">
                     {isSubmitting ? <Loader2 size={16} className="animate-spin"/> : null} {editingId ? t('save_changes') : t('save')}

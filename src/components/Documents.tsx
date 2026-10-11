@@ -1151,7 +1151,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
           </p>
         </div>
 
-        <div className="flex items-center gap-2 w-full md:w-auto justify-between sm:justify-end overflow-x-auto hide-scrollbar py-0.5">
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-between sm:justify-end py-0.5">
           <ModuleGuideButton moduleId="documents" />
 
           {activeTab !== 'proposals' ? (

@@ -391,9 +391,9 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
       </div>
 
       {isAddMemberModalOpen && createPortal(
-        <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-surface border-t sm:border border-border sm:rounded-3xl rounded-t-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
-            <div className="p-5 border-b border-border flex justify-between items-center bg-surface/50 shrink-0">
+        <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-surface border-t sm:border border-border sm:rounded-3xl rounded-t-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-200 flex flex-col max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-3.5rem)] min-h-0 sm:m-auto">
+            <div className="p-5 border-b border-border flex justify-between items-center bg-surface/50 shrink-0 z-10">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
                   <UserPlus size={16} />
@@ -403,12 +403,12 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
               <button onClick={() => setIsAddMemberModalOpen(false)} className="h-8 w-8 flex items-center justify-center text-text-muted hover:text-text-primary bg-background border border-border/50 rounded-lg cursor-pointer transition-colors shadow-xs"><X size={16}/></button>
             </div>
             
-            <div className="flex p-1.5 gap-1 bg-background border-b border-border shrink-0">
+            <div className="flex p-1.5 gap-1 bg-background border-b border-border shrink-0 z-10">
               <button type="button" onClick={() => setAddMode('existing')} className={cn("flex-1 py-2.5 text-xs font-bold transition-all rounded-xl", addMode === 'existing' ? "bg-surface text-text-primary shadow-sm border border-border/50" : "text-text-muted hover:text-text-primary")}>{t('existing_user')}</button>
               <button type="button" onClick={() => setAddMode('new')} className={cn("flex-1 py-2.5 text-xs font-bold transition-all rounded-xl", addMode === 'new' ? "bg-surface text-text-primary shadow-sm border border-border/50" : "text-text-muted hover:text-text-primary")}>{t('new_user')}</button>
             </div>
 
-            <form onSubmit={handleFormSubmit} className="p-6 space-y-6 bg-background/50 overflow-y-auto max-h-[60vh] custom-scrollbar">
+            <form onSubmit={handleFormSubmit} className="p-6 space-y-6 bg-background/50 overflow-y-auto flex-1 min-h-0 custom-scrollbar">
               {addMode === 'existing' ? (
                 <div>
                   <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">{t('search_contacts')}</label>
@@ -461,7 +461,7 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
               </div>
             </form>
             
-            <div className="p-5 border-t border-border/50 bg-surface flex flex-col sm:flex-row justify-end gap-3 shrink-0">
+            <div className="p-5 border-t border-border/50 bg-surface flex flex-col sm:flex-row justify-end gap-3 shrink-0 z-10">
                 <button type="button" onClick={() => setIsAddMemberModalOpen(false)} className="w-full sm:w-auto h-9 px-5 text-xs font-bold text-text-muted hover:text-text-primary transition-colors border border-border/50 rounded-xl cursor-pointer shadow-xs">{t('cancel')}</button>
                 <button 
                   onClick={handleFormSubmit}

@@ -1837,7 +1837,7 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
               initial={{ y: '100%' }} 
               animate={{ y: 0 }} 
               exit={{ y: '100%' }} 
-              className="bg-surface border-t border-border rounded-t-3xl sm:rounded-3xl w-full max-h-[85vh] overflow-y-auto p-6 space-y-6 shadow-2xl relative text-text-primary"
+              className="bg-surface border-t border-border rounded-t-3xl sm:rounded-3xl w-full max-h-[85dvh] sm:max-h-[85vh] min-h-0 overflow-y-auto p-6 space-y-6 shadow-2xl relative text-text-primary flex flex-col"
             >
               <div className="flex items-center justify-between border-b border-border/50 pb-4">
                 <div className="flex items-center gap-3">
@@ -1975,9 +1975,9 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
       {/* KONTAKT ERFASSEN / BEARBEITEN MODAL */}
       <AnimatePresence>
         {isAddModalOpen && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-4xl my-auto overflow-hidden flex flex-col max-h-[90vh]">
-              <div className="p-4 sm:p-5 border-b border-border/60 flex items-center justify-between bg-surface/90 shrink-0">
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-4xl my-auto overflow-hidden flex flex-col max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-3rem)] min-h-0">
+              <div className="p-4 sm:p-5 border-b border-border/60 flex items-center justify-between bg-surface/90 shrink-0 z-10">
                 <div className="flex items-center gap-3">
                   <div className={cn(
                     "w-10 h-10 rounded-xl flex items-center justify-center font-bold shadow-sm transition-colors",
@@ -1998,12 +1998,12 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                     </p>
                   </div>
                 </div>
-                <button onClick={closeAddModal} className="text-text-muted hover:text-text-primary p-2 hover:bg-white/5 rounded-lg transition-colors">
+                <button onClick={closeAddModal} className="text-text-muted hover:text-text-primary p-2 hover:bg-white/5 rounded-lg transition-colors cursor-pointer">
                   <X size={20}/>
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-5 sm:p-6 bg-background custom-scrollbar">
+              <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 bg-background custom-scrollbar">
                 {/* 2-WEGE MODUS SCHALTER */}
                 <div className="mb-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-surface border border-border/70 rounded-2xl p-1.5 shadow-inner">
@@ -2485,7 +2485,7 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                 </div>
               </div>
 
-              <div className="p-4 sm:p-5 border-t border-border/60 bg-surface/90 shrink-0 flex justify-end gap-3">
+              <div className="p-4 sm:p-5 border-t border-border/60 bg-surface/90 shrink-0 z-10 flex justify-end gap-3">
                 <button type="button" onClick={closeAddModal} className="px-5 py-2.5 text-sm font-bold text-text-muted hover:text-text-primary transition-colors cursor-pointer">{t('cancel')}</button>
                 <button form="contact-form" type="submit" disabled={isSubmitting} className={cn("px-7 py-2.5 text-white rounded-xl text-sm font-bold shadow-lg transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer", !newContact.isExternal ? "bg-accent-ai hover:bg-accent-ai/90 shadow-accent-ai/20" : "bg-blue-600 hover:bg-blue-500 shadow-blue-500/20")}>
                   {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />} 
@@ -2499,8 +2499,8 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
 
       {/* UNIVERSAL PDF PRINT STUDIO - PORTAL */}
       {isPrintModalOpen && createPortal(
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-background border border-border/50 rounded-2xl shadow-2xl w-full max-w-6xl h-[90vh] flex overflow-hidden animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
+          <div className="bg-background border border-border/50 rounded-2xl shadow-2xl w-full max-w-6xl h-[calc(100dvh-2rem)] sm:h-[90vh] max-h-[calc(100dvh-2rem)] sm:max-h-[90vh] min-h-0 m-auto flex flex-col md:flex-row overflow-hidden animate-in zoom-in-95 duration-300">
             <div className="w-80 border-r border-border/50 bg-surface/30 flex flex-col shrink-0">
               <div className="p-6 pb-4 border-b border-border/50 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
@@ -2633,24 +2633,23 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
         document.body
       )}
 
-      {/* VISITENKARTE SCANNER MODAL */}
       {isScannerModalOpen && createPortal(
-        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm pointer-events-auto">
-          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-surface border border-border/50 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden relative flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm pointer-events-auto">
+          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-surface border border-border/50 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden relative flex flex-col max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-3.5rem)] min-h-0 m-auto">
             
-            <div className="p-4 border-b border-border/50 flex items-center justify-between bg-surface/50">
+            <div className="p-4 border-b border-border/50 flex items-center justify-between bg-surface/80 backdrop-blur-sm shrink-0 z-10">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
                   <Camera size={16} />
                 </div>
                 <h3 className="font-bold text-lg text-text-primary">Visitenkarte scannen & KI-Erfassung</h3>
               </div>
-              <button onClick={() => { setIsScannerModalOpen(false); setScannedCardPreview(null); }} className="text-text-muted hover:text-text-primary p-2">
+              <button onClick={() => { setIsScannerModalOpen(false); setScannedCardPreview(null); }} className="text-text-muted hover:text-text-primary p-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer">
                 <X size={20} />
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto custom-scrollbar space-y-6 flex-1">
+            <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar space-y-6 flex-1 min-h-0">
               
               {/* AKTIONEN: FOTO NEHMEN / HOCHLADEN */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2772,13 +2771,12 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
         document.body
       )}
 
-      {/* EINLADUNGS-E-MAIL VORLAGE MODAL (DE & EN, INTERN & EXTERN) */}
       {isInviteModalOpen && inviteModalContact && createPortal(
-        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm pointer-events-auto animate-in fade-in duration-200">
-          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-surface border border-border/60 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden relative flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm pointer-events-auto animate-in fade-in duration-200">
+          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-surface border border-border/60 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden relative flex flex-col max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-3.5rem)] min-h-0 m-auto">
             
             {/* Header */}
-            <div className="p-5 border-b border-border/50 flex items-center justify-between bg-surface/60">
+            <div className="p-4 sm:p-5 border-b border-border/50 flex items-center justify-between bg-surface/80 backdrop-blur-sm shrink-0 z-10">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-accent-ai/10 border border-accent-ai/20 text-accent-ai flex items-center justify-center">
                   <Mail size={20} />
@@ -2792,13 +2790,13 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                   </p>
                 </div>
               </div>
-              <button onClick={() => setIsInviteModalOpen(false)} className="text-text-muted hover:text-text-primary p-2 rounded-xl hover:bg-white/5 transition-colors">
+              <button onClick={() => setIsInviteModalOpen(false)} className="text-text-muted hover:text-text-primary p-2 rounded-xl hover:bg-white/5 transition-colors cursor-pointer">
                 <X size={20} />
               </button>
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 overflow-y-auto custom-scrollbar space-y-5 flex-1 text-left">
+            <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar space-y-5 flex-1 min-h-0 text-left">
               
               {/* Sprache & Vorlagen-Typ Steuerung */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-background/60 border border-border/50 rounded-2xl">
@@ -2889,7 +2887,7 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
             </div>
 
             {/* Modal Footer Actions */}
-            <div className="p-4 sm:p-5 border-t border-border/50 bg-surface/50 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="p-4 sm:p-5 border-t border-border/50 bg-surface/80 backdrop-blur-sm flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0 z-10">
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <button
                   type="button"

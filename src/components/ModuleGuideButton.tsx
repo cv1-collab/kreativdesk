@@ -40,8 +40,8 @@ export const ModuleGuideButton: React.FC<ModuleGuideButtonProps> = ({
       title={isGerman ? `${displayLabel}: 2–3 Praxistipps für dieses Werkzeug anzeigen` : `${displayLabel}: 2–3 pro tips for this tool`}
       aria-label={displayLabel}
     >
-      <HelpCircle size={compact ? 13 : 15} className="shrink-0 text-blue-500 dark:text-blue-400" />
-      <span>{displayLabel}</span>
+      <HelpCircle size={compact ? 14 : 15} className="shrink-0 text-blue-500 dark:text-blue-400" />
+      <span className={cn(compact ? "hidden xl:inline" : "hidden sm:inline")}>{displayLabel}</span>
     </button>
   );
 };

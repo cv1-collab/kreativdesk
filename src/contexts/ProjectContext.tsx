@@ -134,7 +134,12 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
           access_url: p.access_url || p.accessUrl || ''
         }));
         setProjects(mappedProjects);
-        setActiveProjectId(prev => prev || (mappedProjects.length > 0 ? mappedProjects[0].id : null));
+        setActiveProjectId(prev => {
+          if (prev && mappedProjects.some(p => p.id === prev)) {
+            return prev;
+          }
+          return mappedProjects.length > 0 ? mappedProjects[0].id : null;
+        });
       }
     } catch (err) {
       console.error("Error fetching projects:", err);

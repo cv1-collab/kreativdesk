@@ -2599,108 +2599,30 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     }
   };
 
+  const activePlanObj = projectPlans.find(p => p.id === activePlanId);
+  const currentPlanTitle = activePlanObj?.planName || activePlanObj?.plan_name || planName || (planImage ? 'Aktiver CAD-Plan' : t('cad_subtitle'));
+
   return (
     <PremiumFeature>
-    <div className="absolute inset-0 bg-background text-text-primary flex flex-col overflow-hidden">
-      
-      <header className="min-h-14 sm:min-h-16 py-2 border-b border-border bg-surface/95 backdrop-blur-xl flex flex-nowrap items-center justify-between px-3 sm:px-4 lg:px-5 shrink-0 z-40 shadow-sm gap-2 sm:gap-3 overflow-x-auto custom-scrollbar">
-        {/* MODUL TITEL & PLAN AUSWAHL */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center shrink-0 shadow-xs">
-              <MapIcon size={17} />
-            </div>
-            <div>
-              <h1 className="text-xs sm:text-sm font-bold tracking-tight text-text-primary leading-tight whitespace-nowrap">
-                {t('cad_title')}
-              </h1>
-              <p className="text-[10px] text-text-muted hidden 2xl:block leading-tight">
-                {t('cad_subtitle')}
-              </p>
-            </div>
+      <motion.div 
+        initial={{ opacity: 0 }} 
+        animate={{ opacity: 1 }} 
+        transition={{ duration: 0.3 }} 
+        className="absolute inset-0 flex flex-col bg-background p-4 md:p-6 gap-4 overflow-hidden text-text-primary"
+      >
+        {/* STANDALONE MODULE HEADER (Identical clean layout to 3D Viewer & other modules) */}
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{t('cad_title')}</h1>
+            <p className="text-text-muted text-xs sm:text-sm mt-0.5 truncate max-w-sm">
+              {currentPlanTitle}
+            </p>
           </div>
 
-          <div className="hidden sm:block w-px h-5 bg-border/60 mx-0.5" />
+          <div className="flex flex-wrap items-center gap-2">
+            <ModuleGuideButton moduleId="plans" />
 
-          {/* PLAN AUSWAHL & LÖSCHEN */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            {projectPlans.length > 0 ? (
-              <div className="flex items-center gap-1.5 bg-background border border-border px-2.5 h-8 sm:h-9 rounded-xl shadow-xs">
-                <Layers size={13} className="text-text-muted shrink-0" />
-                <select 
-                  value={activePlanId || ''} 
-                  onChange={e => loadPlanDataToEditor(projectPlans.find(p=>p.id===e.target.value))} 
-                  className="bg-transparent font-bold text-xs outline-none cursor-pointer max-w-[110px] sm:max-w-[150px] md:max-w-[180px] truncate text-text-primary"
-                >
-                  {projectPlans.map(p => <option key={p.id} value={p.id} className="bg-surface">{p.planName || p.plan_name || 'Unbenannter Plan'}</option>)}
-                </select>
-                {activePlanId && activePlanId !== 'demo-cad-1' && activePlanId !== 'system-fallback-plan' && (
-                  <button onClick={handleDeletePlan} className="text-red-500 p-1 hover:bg-red-500/10 rounded cursor-pointer transition-colors" title={t('delete_plan')}>
-                    <Trash2 size={13}/>
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5 px-2.5 h-8 sm:h-9 bg-background border border-border rounded-xl text-xs font-semibold text-text-muted shadow-xs">
-                <Layers size={13} className="text-text-muted" /> <span>Kein Plan</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* PLAN FORMAT & MASSSTAB */}
-        {planImage && (
-          <div className="hidden md:flex items-center gap-1 sm:gap-1.5 bg-background border border-border px-2 sm:px-2.5 h-8 sm:h-9 rounded-xl shadow-inner shrink-0 text-xs">
-             <span className="text-[10px] font-extrabold uppercase tracking-wider text-text-muted hidden 2xl:inline">{t('plan_layout')}:</span>
-             <select value={paperFormat} onChange={e => setPaperFormat(e.target.value)} className="bg-transparent text-xs font-bold text-text-primary outline-none cursor-pointer">
-               {Object.keys(PAPER_DIMENSIONS).map(f => <option key={f} value={f} className="bg-surface">{f}</option>)}
-             </select>
-             <select value={paperOrientation} onChange={e => setPaperOrientation(e.target.value as any)} className="bg-transparent text-xs font-bold text-text-primary outline-none cursor-pointer">
-               <option value="landscape" className="bg-surface">{t('landscape')}</option>
-               <option value="portrait" className="bg-surface">{t('portrait')}</option>
-             </select>
-             <div className="w-px h-4 bg-border/60 mx-0.5"></div>
-             <span className="text-xs font-bold text-text-muted">1:</span>
-             <select value={planScale} onChange={e => setPlanScale(Number(e.target.value))} className="bg-transparent text-xs font-bold text-text-primary outline-none cursor-pointer">
-               <option value={20} className="bg-surface">20</option>
-               <option value={50} className="bg-surface">50</option>
-               <option value={100} className="bg-surface">100</option>
-               <option value={200} className="bg-surface">200</option>
-               <option value={500} className="bg-surface">500</option>
-               {!([20, 50, 100, 200, 500].includes(planScale)) && (
-                 <option value={planScale} className="bg-surface">{planScale} (Kalibriert)</option>
-               )}
-             </select>
-
-             {/* TRUESCALE KALIBRIEREN TRIGGER */}
-             {isCalibrated ? (
-               <button
-                 type="button"
-                 onClick={handleStartCalibration}
-                 className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 text-[10px] font-bold transition-all cursor-pointer"
-                 title={currentLang === 'de' ? 'Massstab ist kalibriert. Klicke um neu zu kalibrieren (TrueScale™).' : 'Scale is calibrated. Click to re-calibrate (TrueScale™).'}
-               >
-                 <CheckCircle2 size={11} />
-                 <span className="hidden xl:inline">{currentLang === 'de' ? 'Kalibriert' : 'Calibrated'}</span>
-               </button>
-             ) : (
-               <button
-                 type="button"
-                 onClick={handleStartCalibration}
-                 className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/15 hover:bg-amber-500/25 text-amber-500 border border-amber-500/40 text-[10px] font-bold transition-all cursor-pointer animate-pulse"
-                 title={currentLang === 'de' ? 'Massstab unkalibriert! Klicke um eine Referenzlinie auf dem Plan zu ziehen (TrueScale™).' : 'Scale uncalibrated! Click to draw reference line (TrueScale™).'}
-               >
-                 <Compass size={11} />
-                 <span>{currentLang === 'de' ? 'Kalibrieren' : 'Calibrate'}</span>
-               </button>
-             )}
-          </div>
-        )}
-
-        {/* RECHTE BUTTONS (LOGISCH IN 4 FUNKTIONSGRUPPEN MIT TRENNLINIEN STRUKTURIERT) */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {/* GRUPPE 1: PLAN-MANAGEMENT & SPEICHERN */}
-          <div className="flex items-center bg-background/90 border border-border rounded-xl p-0.5 shadow-xs h-8 sm:h-9 shrink-0">
+            {/* PLAN HOCHLADEN */}
             <label 
               onClick={(e) => {
                 if (isDemoMode || currentProjectId === 'demo-1') {
@@ -2711,156 +2633,265 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
               }}
               title={t('upload_plan_tooltip')}
               className={cn(
-                "tour-plan-upload flex items-center gap-1.5 px-2.5 sm:px-3 h-7 sm:h-8 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold shadow-xs transition-all whitespace-nowrap shrink-0",
+                "tour-plan-upload px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-sm transition-all flex items-center gap-1.5 h-8.5 sm:h-9 whitespace-nowrap shrink-0",
                 (isDemoMode || currentProjectId === 'demo-1') ? "opacity-70 cursor-not-allowed" : "cursor-pointer"
               )}
             >
-              {isUploading ? <Loader2 size={13} className="animate-spin"/> : <UploadCloud size={13}/>}
-              <span className="hidden xl:inline">{t('upload_plan_btn')}</span>
-              <span className="xl:hidden sm:inline hidden">{t('upload_btn_short')}</span>
+              {isUploading ? <Loader2 size={14} className="animate-spin"/> : <UploadCloud size={14}/>}
+              <span>{t('upload_plan_btn')}</span>
               <input type="file" accept="image/*,application/pdf" onChange={handleFileChange} disabled={isUploading || isDemoMode || currentProjectId === 'demo-1'} className="hidden" />
             </label>
 
+            {/* PLAN SPEICHERN */}
             <button 
               onClick={handleManualSave} 
               disabled={isSaving || !activePlanId || activePlanId === 'demo-cad-1' || activePlanId === 'system-fallback-plan' || isDemoMode} 
-              className="flex items-center gap-1.5 px-2.5 sm:px-3 h-7 sm:h-8 text-text-primary hover:bg-white/5 rounded-lg text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap cursor-pointer shrink-0" 
+              className="px-3 py-1.5 sm:px-4 sm:py-2 bg-surface border border-border text-text-primary rounded-xl text-xs sm:text-sm font-semibold hover:bg-background transition-colors flex items-center gap-1.5 shadow-sm h-8.5 sm:h-9 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap shrink-0" 
               title={t('save_layers_tooltip')}
             >
-              {isSaving ? <Loader2 size={13} className="animate-spin"/> : <Save size={13}/>}
-              <span className="hidden xl:inline">{t('save')}</span>
+              {isSaving ? <Loader2 size={14} className="animate-spin"/> : <Save size={14}/>}
+              <span>{t('save')}</span>
             </button>
-          </div>
 
-          <div className="w-px h-5 bg-border/70 mx-0.5 shrink-0 hidden sm:block" />
+            {/* EXPORT & WEITERGABE DROPDOWN */}
+            <div className="relative z-50 shrink-0" ref={exportMenuRef}>
+              <button 
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setExportMenuOpen(prev => !prev);
+                }}
+                disabled={!planImage}
+                className={cn(
+                  "tour-plan-pdf px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold border transition-all shadow-sm flex items-center gap-1.5 h-8.5 sm:h-9 cursor-pointer whitespace-nowrap shrink-0",
+                  exportMenuOpen 
+                    ? "bg-accent-ai/15 text-accent-ai border-accent-ai/40" 
+                    : "bg-surface hover:bg-background text-text-primary border-border"
+                )}
+                title={planImage ? (currentLang === 'de' ? 'Exportieren & Präsentieren' : 'Export & Presentation') : t('export_pdf_tooltip_disabled')}
+              >
+                <Download size={14} />
+                <span>{t('export_dropdown')}</span>
+                <ChevronDown size={13} className={cn("transition-transform duration-200 text-text-muted", exportMenuOpen && "rotate-180")} />
+              </button>
 
-          {/* GRUPPE 2: EXPORT & WEITERGABE */}
-          <div className="relative z-50 shrink-0" ref={exportMenuRef}>
+              <AnimatePresence>
+                {exportMenuOpen && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 4, scale: 0.96 }}
+                    className="absolute right-0 top-full mt-2 w-72 bg-surface/98 backdrop-blur-2xl border border-border rounded-2xl shadow-2xl p-2 z-[9999] space-y-1.5"
+                  >
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExportMenuOpen(false);
+                        if (isDemoMode || currentProjectId === 'demo-1') {
+                          addToast('PDF Export ist in der Demo blockiert. Erstelle einen kostenlosen Account für diese Funktion!', 'info');
+                          return;
+                        }
+                        handleOpenPdfStudio();
+                      }}
+                      disabled={isGeneratingPdf || !planImage}
+                      className="w-full flex items-start gap-2.5 p-2.5 rounded-xl hover:bg-white/5 text-left text-text-primary transition-colors group cursor-pointer disabled:opacity-40 border border-transparent hover:border-border"
+                    >
+                      <div className="p-2 rounded-lg bg-red-500/10 text-red-400 group-hover:bg-red-500/20 shrink-0 mt-0.5">
+                        {isGeneratingPdf ? <Loader2 size={16} className="animate-spin"/> : <Download size={16} />}
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold flex items-center gap-1.5">
+                          {t('export_pdf_title')}
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-400 font-extrabold">SIA</span>
+                        </div>
+                        <div className="text-[10px] text-text-muted leading-tight mt-0.5">
+                          {t('export_pdf_sub')}
+                        </div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExportMenuOpen(false);
+                        if (isDemoMode || currentProjectId === 'demo-1') {
+                          addToast('Snapshot an Pitch Deck ist in der Demo deaktiviert.', 'info');
+                          return;
+                        }
+                        handleSaveSnapshotToPitchDeck();
+                      }}
+                      disabled={!planImage}
+                      className="w-full flex items-start gap-2.5 p-2.5 rounded-xl hover:bg-white/5 text-left text-text-primary transition-colors group cursor-pointer disabled:opacity-40 border border-transparent hover:border-border"
+                    >
+                      <div className="p-2 rounded-lg bg-pink-500/10 text-pink-400 group-hover:bg-pink-500/20 shrink-0 mt-0.5">
+                        <ImageIcon size={16} />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold flex items-center gap-1.5">
+                          {t('export_pitch_title')}
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-pink-500/15 text-pink-400 font-extrabold">Folie</span>
+                        </div>
+                        <div className="text-[10px] text-text-muted leading-tight mt-0.5">
+                          {t('export_pitch_sub')}
+                        </div>
+                      </div>
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* EBENEN TOGGLE */}
             <button 
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setExportMenuOpen(prev => !prev);
-              }}
-              disabled={!planImage}
+              onClick={() => setShowRightPanel(prev => !prev)} 
               className={cn(
-                "tour-plan-pdf flex items-center gap-1.5 px-2.5 sm:px-3 h-8 sm:h-9 rounded-xl text-xs font-bold border transition-all shadow-xs whitespace-nowrap cursor-pointer shrink-0",
-                exportMenuOpen 
-                  ? "bg-accent-ai/15 text-accent-ai border-accent-ai/40" 
-                  : "bg-surface hover:bg-white/5 text-text-primary border-border"
+                "px-3 py-1.5 sm:px-4 sm:py-2 border rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 cursor-pointer shrink-0 transition-all shadow-sm h-8.5 sm:h-9",
+                showRightPanel 
+                  ? "bg-primary/20 text-primary border-primary/50 shadow-xs" 
+                  : "bg-surface text-text-muted hover:text-text-primary border-border hover:bg-background"
               )}
-              title={planImage ? (currentLang === 'de' ? 'Exportieren & Präsentieren' : 'Export & Presentation') : t('export_pdf_tooltip_disabled')}
+              title={showRightPanel ? (currentLang === 'de' ? 'Ebenen & Eigenschaften ausblenden' : 'Hide layers & properties') : (currentLang === 'de' ? 'Ebenen & Eigenschaften einblenden' : 'Show layers & properties')}
             >
-              <Download size={13} className="text-text-muted" />
-              <span className="hidden sm:inline">{t('export_dropdown')}</span>
-              <ChevronDown size={12} className={cn("transition-transform duration-200 text-text-muted", exportMenuOpen && "rotate-180")} />
-            </button>
-
-            <AnimatePresence>
-              {exportMenuOpen && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 6, scale: 0.96 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 4, scale: 0.96 }}
-                  className="absolute right-0 top-full mt-2 w-72 bg-surface/98 backdrop-blur-2xl border border-border rounded-2xl shadow-2xl p-2 z-[9999] space-y-1.5"
-                >
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setExportMenuOpen(false);
-                      if (isDemoMode || currentProjectId === 'demo-1') {
-                        addToast('PDF Export ist in der Demo blockiert. Erstelle einen kostenlosen Account für diese Funktion!', 'info');
-                        return;
-                      }
-                      handleOpenPdfStudio();
-                    }}
-                    disabled={isGeneratingPdf || !planImage}
-                    className="w-full flex items-start gap-2.5 p-2.5 rounded-xl hover:bg-white/5 text-left text-text-primary transition-colors group cursor-pointer disabled:opacity-40 border border-transparent hover:border-border"
-                  >
-                    <div className="p-2 rounded-lg bg-red-500/10 text-red-400 group-hover:bg-red-500/20 shrink-0 mt-0.5">
-                      {isGeneratingPdf ? <Loader2 size={16} className="animate-spin"/> : <Download size={16} />}
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold flex items-center gap-1.5">
-                        {t('export_pdf_title')}
-                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-400 font-extrabold">SIA</span>
-                      </div>
-                      <div className="text-[10px] text-text-muted leading-tight mt-0.5">
-                        {t('export_pdf_sub')}
-                      </div>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setExportMenuOpen(false);
-                      if (isDemoMode || currentProjectId === 'demo-1') {
-                        addToast('Snapshot an Pitch Deck ist in der Demo deaktiviert.', 'info');
-                        return;
-                      }
-                      handleSaveSnapshotToPitchDeck();
-                    }}
-                    disabled={!planImage}
-                    className="w-full flex items-start gap-2.5 p-2.5 rounded-xl hover:bg-white/5 text-left text-text-primary transition-colors group cursor-pointer disabled:opacity-40 border border-transparent hover:border-border"
-                  >
-                    <div className="p-2 rounded-lg bg-pink-500/10 text-pink-400 group-hover:bg-pink-500/20 shrink-0 mt-0.5">
-                      <ImageIcon size={16} />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold flex items-center gap-1.5">
-                        {t('export_pitch_title')}
-                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-pink-500/15 text-pink-400 font-extrabold">Folie</span>
-                      </div>
-                      <div className="text-[10px] text-text-muted leading-tight mt-0.5">
-                        {t('export_pitch_sub')}
-                      </div>
-                    </div>
-                  </button>
-                </motion.div>
+              <Layers size={14} className={showRightPanel ? "text-primary" : "text-text-muted"}/>
+              <span className="hidden sm:inline">{t('layers')}</span>
+              {layers.length > 0 && (
+                <span className={cn(
+                  "text-[10px] px-1.5 py-0.2 rounded-full font-bold ml-0.5",
+                  showRightPanel ? "bg-primary text-white" : "bg-border text-text-muted"
+                )}>
+                  {layers.length}
+                </span>
               )}
-            </AnimatePresence>
+            </button>
           </div>
+        </header>
 
-          <div className="w-px h-5 bg-border/70 mx-0.5 shrink-0 hidden sm:block" />
+        {/* CAD WORKSPACE & VIEWPORT CONTAINER (Matches 3D BIM Viewer) */}
+        <div className="flex-1 flex flex-col md:flex-row gap-4 min-h-0 overflow-hidden">
+          <div className="tour-plan-viewport flex-1 bg-surface/30 border border-border rounded-xl relative overflow-hidden flex flex-col min-h-0 z-10 shadow-sm touch-none">
+            
+            {/* TOP CANVAS TOOLBAR (Plan Switcher, Format, Scale, Calibration) */}
+            <div className="tour-cad-tools absolute top-0 left-0 right-0 bg-surface/90 backdrop-blur-md border-b border-border px-3 sm:px-4 py-2 flex flex-wrap justify-between items-center z-20 shadow-sm pointer-events-auto gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                {/* Plan Auswahl & Löschen */}
+                {projectPlans.length > 0 ? (
+                  <div className="flex items-center gap-1.5 bg-background border border-border px-2 sm:px-2.5 h-8 rounded-xl shadow-xs">
+                    <Layers size={13} className="text-text-muted shrink-0" />
+                    <select 
+                      value={activePlanId || ''} 
+                      onChange={e => loadPlanDataToEditor(projectPlans.find(p => p.id === e.target.value))} 
+                      className="bg-transparent font-bold text-xs outline-none cursor-pointer max-w-[120px] sm:max-w-[170px] md:max-w-[220px] truncate text-text-primary"
+                    >
+                      {projectPlans.map(p => (
+                        <option key={p.id} value={p.id} className="bg-surface">
+                          {p.planName || p.plan_name || 'Unbenannter Plan'}
+                        </option>
+                      ))}
+                    </select>
+                    {activePlanId && activePlanId !== 'demo-cad-1' && activePlanId !== 'system-fallback-plan' && (
+                      <button 
+                        onClick={handleDeletePlan} 
+                        className="text-red-500 p-1 hover:bg-red-500/10 rounded cursor-pointer transition-colors" 
+                        title={t('delete_plan')}
+                      >
+                        <Trash2 size={13}/>
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 px-2.5 h-8 bg-background border border-border rounded-xl text-xs font-semibold text-text-muted shadow-xs">
+                    <Layers size={13} className="text-text-muted" /> <span>Kein Plan</span>
+                  </div>
+                )}
 
-          {/* GRUPPE 3: ANSICHT / EBENEN- & EIGENSCHAFTEN-DOCK */}
-          <button 
-            type="button"
-            onClick={() => setShowRightPanel(prev => !prev)} 
-            className={cn(
-              "h-8 sm:h-9 px-2.5 sm:px-3 border rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0 transition-all shadow-xs",
-              showRightPanel 
-                ? "bg-primary/20 text-primary border-primary/50 shadow-xs" 
-                : "bg-surface text-text-muted hover:text-text-primary border-border hover:bg-white/5"
-            )}
-            title={showRightPanel ? (currentLang === 'de' ? 'Ebenen & Eigenschaften ausblenden' : 'Hide layers & properties') : (currentLang === 'de' ? 'Ebenen & Eigenschaften einblenden' : 'Show layers & properties')}
-          >
-            <Layers size={14} className={showRightPanel ? "text-primary" : "text-text-muted"}/>
-            <span className="hidden sm:inline">{t('layers')}</span>
-            {layers.length > 0 && (
-              <span className={cn(
-                "text-[10px] px-1.5 py-0.2 rounded-full font-bold",
-                showRightPanel ? "bg-primary text-white" : "bg-border text-text-muted"
-              )}>
-                {layers.length}
-              </span>
-            )}
-          </button>
+                {planImage && (
+                  <>
+                    <div className="w-px h-4 bg-border/60 mx-0.5 hidden sm:block" />
 
-          <div className="w-px h-5 bg-border/70 mx-0.5 shrink-0 hidden sm:block" />
+                    {/* Format & Ausrichtung */}
+                    <div className="flex items-center gap-1 sm:gap-1.5 bg-background border border-border px-2 sm:px-2.5 h-8 rounded-xl shadow-xs text-xs">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-text-muted hidden md:inline">{t('plan_layout')}:</span>
+                      <select 
+                        value={paperFormat} 
+                        onChange={e => setPaperFormat(e.target.value)} 
+                        className="bg-transparent text-xs font-bold text-text-primary outline-none cursor-pointer"
+                      >
+                        {Object.keys(PAPER_DIMENSIONS).map(f => (
+                          <option key={f} value={f} className="bg-surface">{f}</option>
+                        ))}
+                      </select>
+                      <select 
+                        value={paperOrientation} 
+                        onChange={e => setPaperOrientation(e.target.value as any)} 
+                        className="bg-transparent text-xs font-bold text-text-primary outline-none cursor-pointer hidden md:block"
+                      >
+                        <option value="landscape" className="bg-surface">{t('landscape')}</option>
+                        <option value="portrait" className="bg-surface">{t('portrait')}</option>
+                      </select>
+                    </div>
 
-          {/* GRUPPE 4: HILFE & ANLEITUNG */}
-          <ModuleGuideButton moduleId="plans" compact className="h-8 sm:h-9 px-2.5 rounded-xl text-xs flex items-center justify-center shrink-0" />
-        </div>
-      </header>
+                    <div className="w-px h-4 bg-border/60 mx-0.5 hidden sm:block" />
 
-      <div className="flex-1 flex overflow-hidden relative bg-background touch-none">
-        
-        {/* WERKZEUGLEISTE LINKS (PAN, KALIBRIEREN, MESSWERKZEUGE, FORMEN & UNDO/REDO) */}
-        <aside className="tour-plan-toolbar absolute left-2 sm:left-4 top-2 sm:top-4 w-11 sm:w-12 flex flex-col items-center gap-1 py-1.5 z-30 bg-surface/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl overflow-y-auto max-h-[calc(100%-1.5rem)] custom-scrollbar">
+                    {/* Massstab */}
+                    <div className="flex items-center gap-1 sm:gap-1.5 bg-background border border-border px-2 sm:px-2.5 h-8 rounded-xl shadow-xs text-xs">
+                      <span className="text-xs font-bold text-text-muted">1:</span>
+                      <select 
+                        value={planScale} 
+                        onChange={e => setPlanScale(Number(e.target.value))} 
+                        className="bg-transparent text-xs font-bold text-text-primary outline-none cursor-pointer"
+                      >
+                        <option value={20} className="bg-surface">20</option>
+                        <option value={50} className="bg-surface">50</option>
+                        <option value={100} className="bg-surface">100</option>
+                        <option value={200} className="bg-surface">200</option>
+                        <option value={500} className="bg-surface">500</option>
+                        {!([20, 50, 100, 200, 500].includes(planScale)) && (
+                          <option value={planScale} className="bg-surface">{planScale} (Kalibriert)</option>
+                        )}
+                      </select>
+
+                      {/* TrueScale Kalibrieren */}
+                      {isCalibrated ? (
+                        <button
+                          type="button"
+                          onClick={handleStartCalibration}
+                          className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 text-[10px] font-bold transition-all cursor-pointer"
+                          title={currentLang === 'de' ? 'Massstab ist kalibriert. Klicke um neu zu kalibrieren (TrueScale™).' : 'Scale is calibrated. Click to re-calibrate (TrueScale™).'}
+                        >
+                          <CheckCircle2 size={11} />
+                          <span className="hidden sm:inline">{currentLang === 'de' ? 'Kalibriert' : 'Calibrated'}</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleStartCalibration}
+                          className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/15 hover:bg-amber-500/25 text-amber-500 border border-amber-500/40 text-[10px] font-bold transition-all cursor-pointer animate-pulse"
+                          title={currentLang === 'de' ? 'Massstab unkalibriert! Klicke um eine Referenzlinie auf dem Plan zu ziehen (TrueScale™).' : 'Scale uncalibrated! Click to draw reference line (TrueScale™).'}
+                        >
+                          <Compass size={11} />
+                          <span>{currentLang === 'de' ? 'Kalibrieren' : 'Calibrate'}</span>
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Statusanzeige */}
+              {planImage && (
+                <div className="flex items-center gap-2 text-xs text-text-muted">
+                  <span className="hidden md:inline font-medium">
+                    {elements.length} {elements.length === 1 ? 'Element' : 'Elemente'}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* WERKZEUGLEISTE LINKS (top-13 sm:top-14) */}
+            <aside className="tour-plan-toolbar absolute left-2 sm:left-4 top-13 sm:top-14 w-11 sm:w-12 flex flex-col items-center gap-1 py-1.5 z-30 bg-surface/95 backdrop-blur-xl border border-border rounded-2xl shadow-xl overflow-y-auto max-h-[calc(100%-4.5rem)] custom-scrollbar">
            {/* PAN / AUSWAHL */}
            <button 
              key="pan" 
@@ -2987,7 +3018,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           <button
             type="button"
             onClick={() => setShowRightPanel(true)}
-            className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 flex items-center gap-2 px-3 py-2 bg-surface/95 hover:bg-surface backdrop-blur-xl border border-border hover:border-primary/50 rounded-xl shadow-xl text-xs font-bold text-text-primary transition-all cursor-pointer group"
+            className="absolute top-13 sm:top-14 right-3 sm:right-4 z-20 flex items-center gap-2 px-3 py-2 bg-surface/95 hover:bg-surface backdrop-blur-xl border border-border hover:border-primary/50 rounded-xl shadow-xl text-xs font-bold text-text-primary transition-all cursor-pointer group"
             title={currentLang === 'de' ? 'Ebenen & Eigenschaften einblenden' : 'Show layers & properties'}
           >
             <Layers size={14} className="text-primary group-hover:scale-110 transition-transform" />
@@ -3000,7 +3031,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
         {/* EBENEN & PROPERTIES RECHTS */}
         {planImage && (
-          <aside className={cn("absolute right-2 sm:right-6 top-2 sm:top-6 bottom-2 sm:bottom-6 w-72 sm:w-80 flex-col gap-4 z-20 pointer-events-none transition-all duration-200", showRightPanel ? "flex pointer-events-auto" : "hidden")}>
+          <aside className={cn("absolute right-2 sm:right-4 top-13 sm:top-14 bottom-2 sm:bottom-4 w-72 sm:w-80 max-w-[calc(100vw-1.5rem)] flex-col gap-4 z-20 pointer-events-none transition-all duration-200", showRightPanel ? "flex pointer-events-auto" : "hidden")}>
             
             {/* LAYERS */}
             <div className="bg-surface/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-4 flex flex-col pointer-events-auto max-h-[46%] shrink-0">
@@ -4000,12 +4031,13 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
             </button>
           </div>
         )}
-      </div>
+          </div>
+        </div>
 
       {isMounted && defectPrompt && createPortal(
-        <div className="fixed inset-0 z-[99999] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
-          <div className="bg-surface border-t sm:border border-border sm:rounded-2xl rounded-t-3xl p-5 sm:p-6 w-full max-w-lg shadow-2xl animate-in slide-in-from-bottom sm:zoom-in-95 max-h-[90vh] overflow-y-auto custom-scrollbar">
-            <div className="flex items-center justify-between mb-4 border-b border-border pb-3">
+        <div className="fixed inset-0 z-[99999] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 overflow-y-auto">
+          <div className="bg-surface border-t sm:border border-border sm:rounded-2xl rounded-t-3xl w-full max-w-lg shadow-2xl animate-in slide-in-from-bottom sm:zoom-in-95 max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-3rem)] flex flex-col min-h-0 overflow-hidden m-auto">
+            <div className="p-4 sm:p-5 border-b border-border flex items-center justify-between shrink-0 bg-surface/80 backdrop-blur-sm z-10">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 flex items-center justify-center shrink-0 shadow-xs">
                   <ShieldAlert size={18} />
@@ -4024,7 +4056,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
               </button>
             </div>
 
-            <form onSubmit={handleDefectSubmit}>
+            <form id="plan-defect-form" onSubmit={handleDefectSubmit} className="p-4 sm:p-6 space-y-4 flex-1 min-h-0 overflow-y-auto custom-scrollbar">
               <div className="space-y-4 mb-6">
                 <div>
                   <label className="text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5 block">
@@ -4134,25 +4166,26 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                    )}
                 </div>
               </div>
-
-              <div className="flex items-center justify-end gap-3 pt-2 border-t border-border">
-                <button 
-                  type="button" 
-                  onClick={() => setDefectPrompt(null)} 
-                  className="h-10 px-4 text-xs font-bold text-text-muted hover:text-text-primary transition-colors cursor-pointer"
-                >
-                  {t('cancel')}
-                </button>
-                <button 
-                  type="submit" 
-                  disabled={isSavingDefect || !defectPrompt.element.title?.trim()} 
-                  className="h-10 px-5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-red-600/20 flex items-center gap-2 disabled:opacity-50 cursor-pointer"
-                >
-                   {isSavingDefect && <Loader2 size={14} className="animate-spin" />}
-                   <span>{currentLang === 'de' ? 'Mangel erfassen & Ticket anlegen' : 'Create Defect Ticket'}</span>
-                </button>
-              </div>
             </form>
+
+            <div className="p-4 border-t border-border bg-surface/80 backdrop-blur-sm shrink-0 z-10 flex items-center justify-end gap-3">
+              <button 
+                type="button" 
+                onClick={() => setDefectPrompt(null)} 
+                className="h-10 px-4 text-xs font-bold text-text-muted hover:text-text-primary transition-colors cursor-pointer"
+              >
+                {t('cancel')}
+              </button>
+              <button 
+                form="plan-defect-form"
+                type="submit" 
+                disabled={isSavingDefect || !defectPrompt.element.title?.trim()} 
+                className="h-10 px-5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-red-600/20 flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+              >
+                 {isSavingDefect && <Loader2 size={14} className="animate-spin" />}
+                 <span>{currentLang === 'de' ? 'Mangel erfassen & Ticket anlegen' : 'Create Defect Ticket'}</span>
+              </button>
+            </div>
           </div>
         </div>,
         document.body
@@ -4180,8 +4213,8 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
       {/* TRUESCALE CALIBRATOR MODAL */}
       {calibrationModalOpen && (
-        <div className="fixed inset-0 z-[150000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-md shadow-2xl p-6 space-y-5">
+        <div className="fixed inset-0 z-[150000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-md shadow-2xl p-6 space-y-5 max-h-[calc(100dvh-2rem)] min-h-0 overflow-y-auto custom-scrollbar m-auto">
             <div className="flex justify-between items-center border-b border-border/50 pb-4">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center justify-center shrink-0 shadow-xs">
@@ -4238,7 +4271,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           </motion.div>
         </div>
       )}
-    </div>
+      </motion.div>
     </PremiumFeature>
   );
 }

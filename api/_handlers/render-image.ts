@@ -25,7 +25,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Missing required base64 image' });
     }
 
-    const falKey = process.env.FAL_KEY || '74ab3a75-7a36-4c81-b6b1-e7efde8627e0:396cf0c00fcf01484883bc3e6850a073';
+    const falKey = process.env.FAL_KEY;
+    if (!falKey) {
+      return res.status(503).json({ error: 'FAL_KEY ist auf dem Server nicht konfiguriert.' });
+    }
 
     // Prepare optimized prompt based on requested style
     let fullPrompt = (prompt || '').trim();

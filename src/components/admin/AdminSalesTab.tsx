@@ -134,7 +134,7 @@ export default function AdminSalesTab() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1 sm:pb-0">
+        <div className="flex flex-wrap items-center gap-2 pb-1 sm:pb-0">
           <Filter size={16} className="text-text-muted shrink-0 mr-2" />
           {['All', 'Paid', 'Pending', 'Failed', 'Refunded', 'Canceled'].map(f => (
             <button key={f} onClick={() => setFilter(f)} className={cn("px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors border", filter === f ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-surface text-text-muted border-border hover:bg-white/5")}>

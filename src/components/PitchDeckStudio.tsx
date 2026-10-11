@@ -17,7 +17,7 @@ import {
   Copy, Zap, Check, Edit3, Wand2, Compass, Layers3, Flame, Building2, Trees, Tag, StickyNote, Circle, RotateCcw,
   Sun, Moon, Sliders, Type as TypeIcon, AlignLeft, AlignCenter, AlignRight, ArrowRight,
   Video as VideoIcon, Globe, MessageSquare, CheckCircle2, ShieldCheck, Share2, PlusCircle, ExternalLink, AlertCircle, HelpCircle,
-  Undo2, Redo2
+  Undo2, Redo2, FolderOpen, Search
 } from 'lucide-react';
 import { exportDeckToPptx } from '../utils/pptxExportHelper';
 import { jsPDF } from 'jspdf';
@@ -95,6 +95,12 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     sia_milestones_heading: 'SIA 102/118 Payment Plan & Milestones', legal_docs_heading: 'Upload Contract Documents & Terms',
     legal_docs_sub: 'Upload your GTC, works contracts (SIA 118) or NDAs as PDF. The client can view and bindingly accept them on the landing page.',
     pdf_uploaded: '✅ Uploaded', pdf_none: '⚠️ No PDF attached yet', upload_pdf: 'Upload PDF',
+    select_from_documents: 'Choose from Documents', select_doc_modal_title: 'Select Document from Kreativ Desk',
+    select_doc_modal_sub: 'Choose a contract or GTC from your project files or standard Swiss SIA templates',
+    search_docs_placeholder: 'Search documents...', sia_templates_heading: 'Official Swiss SIA Templates & Standards',
+    kd_docs_heading: 'Files & Documents in Kreativ Desk', no_kd_docs_found: 'No documents found matching your search.',
+    use_template: 'Use Template', attach_doc: 'Select Document',
+    clear_doc: 'Remove link', preview_doc: 'Preview document',
     cancel: 'Cancel', publish_landingpage: 'Publish Smart Landing Page', proposal_created_success: 'Client landing page created successfully!',
     insert: 'Insert', insert_tooltip: 'Insert elements, media, notes & stamps',
     present_btn: 'Present', present_tooltip: 'Start fullscreen presentation mode',
@@ -166,6 +172,13 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     new_option_placeholder: 'Neues Paket (z.B. 4K Drohnenflug)', price_placeholder: 'Preis', add_btn: '+ Hinzufügen',
     sia_milestones_heading: 'SIA 102/118 Zahlungsplan & Meilensteine', legal_docs_heading: 'Vertragsdokumente & AGBs hochladen',
     legal_docs_sub: 'Laden Sie Ihre AGB, Werkverträge (SIA 118) oder NDAs als PDF hoch. Der Kunde kann diese auf der Landingpage einsehen und verbindlich akzeptieren.',
+    upload_pdf: 'PDF hochladen', pdf_uploaded: '✅ Verknüpft', pdf_none: '⚠️ Noch kein Dokument',
+    select_from_documents: 'Aus Dokumente wählen', select_doc_modal_title: 'Dokument aus Kreativ Desk auswählen',
+    select_doc_modal_sub: 'Wählen Sie einen Vertrag oder AGB aus Ihren Projektdaten oder Schweizer SIA-Vorlagen',
+    search_docs_placeholder: 'Dokumente durchsuchen...', sia_templates_heading: 'Offizielle Schweizer SIA-Vorlagen & Standards',
+    kd_docs_heading: 'Dateien & Dokumente in Kreativ Desk', no_kd_docs_found: 'Keine Dokumente gefunden.',
+    use_template: 'Vorlage verwenden', attach_doc: 'Dokument wählen',
+    clear_doc: 'Verknüpfung aufheben', preview_doc: 'Dokument ansehen',
     cancel: 'Abbrechen', publish_landingpage: 'Smart Landingpage Veröffentlichen', proposal_created_success: 'Kunden-Landingpage erfolgreich erstellt!',
     insert: 'Einfügen', insert_tooltip: 'Elemente, Medien, Notizen & Stempel einfügen',
     present_btn: 'Präsentieren', present_tooltip: 'Vollbild-Präsentationsmodus starten',
@@ -559,6 +572,78 @@ export default function PitchDeckStudio({
     { id: 'doc-koop', name: 'Kooperationsvertrag & Subplaner-Vereinbarung', type: 'kooperation', url: '', isRequired: false, uploadedAt: new Date().toISOString() }
   ]);
   const [isUploadingLegalDoc, setIsUploadingLegalDoc] = useState(false);
+
+  // KREATIV DESK DOCUMENT PICKER MODAL STATE & SIA TEMPLATES
+  const STANDARD_SIA_LEGAL_TEMPLATES = [
+    {
+      name: 'SIA 102 – Ordnung für Leistungen und Honorare der Architektinnen und Architekten (AGB)',
+      category: 'SIA Normen',
+      size: '185 KB',
+      url: 'https://images.unsplash.com/legal/sia-102-architekten.pdf'
+    },
+    {
+      name: 'SIA 118 – Allgemeine Bedingungen für Bauarbeiten & Werkvertrag',
+      category: 'SIA Normen',
+      size: '220 KB',
+      url: 'https://images.unsplash.com/legal/sia-118-werkvertrag.pdf'
+    },
+    {
+      name: 'Kooperationsvertrag Planergemeinschaft & Subplaner-Vereinbarung',
+      category: 'Verträge',
+      size: '140 KB',
+      url: 'https://images.unsplash.com/legal/sia-planervertrag.pdf'
+    },
+    {
+      name: 'Vertraulichkeitsvereinbarung / NDA (Schweizer OR Art. 1 ff.)',
+      category: 'Recht',
+      size: '95 KB',
+      url: 'https://images.unsplash.com/legal/nda-schweiz-template.pdf'
+    }
+  ];
+
+  const [isKdDocPickerOpen, setIsKdDocPickerOpen] = useState(false);
+  const [selectedLegalDocIndex, setSelectedLegalDocIndex] = useState<number | null>(null);
+  const [kdDocsList, setKdDocsList] = useState<any[]>([]);
+  const [isLoadingKdDocs, setIsLoadingKdDocs] = useState(false);
+  const [kdDocSearchQuery, setKdDocSearchQuery] = useState('');
+
+  const openKdDocPicker = async (dIdx: number) => {
+    setSelectedLegalDocIndex(dIdx);
+    setIsKdDocPickerOpen(true);
+    setIsLoadingKdDocs(true);
+    try {
+      if (supabase) {
+        let query = supabase.from('documents').select('*');
+        const safeCompId = currentUser?.companyId || (currentUser as any)?.company_id;
+        if (safeCompId && safeCompId !== 'company-default') {
+          query = query.or(`company_id.eq.${safeCompId},company_id.is.null`);
+        }
+        const { data, error } = await query
+          .eq('is_folder', false)
+          .order('created_at', { ascending: false });
+        if (!error && data) {
+          setKdDocsList(data);
+        }
+      }
+    } catch (err) {
+      console.warn('Error fetching KD documents for picker', err);
+    } finally {
+      setIsLoadingKdDocs(false);
+    }
+  };
+
+  const handleSelectKdDoc = (docName: string, docUrl: string, docSize?: string) => {
+    if (selectedLegalDocIndex === null) return;
+    setProposalLegalDocs(prev => prev.map((d, i) => i === selectedLegalDocIndex ? {
+      ...d,
+      name: docName,
+      url: docUrl || '#',
+      size: docSize || 'PDF'
+    } : d));
+    setIsKdDocPickerOpen(false);
+    setSelectedLegalDocIndex(null);
+    addToast(t('doc_attached_success', { name: docName }), 'success');
+  };
   const [proposalPaymentMilestones, setProposalPaymentMilestones] = useState<any[]>([
     { id: 'ms-1', phase: 'Phase 1: Vorprojekt & Machbarkeitsanalyse', percentage: 20, description: 'Grundlagenanalyse, Vorkonzept & Kostenschätzung (SIA 102)' },
     { id: 'ms-2', phase: 'Phase 2: Bauprojekt & Baueingabe', percentage: 30, description: 'Bewilligungsfähige Projektpläne & Baueingabe bei Behörden' },
@@ -5714,18 +5799,18 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
         </div>
 
         {!isPreviewMode && (
-          <div className="flex border-b border-border p-2 gap-2 overflow-x-auto hide-scrollbar bg-surface shrink-0 shadow-lg relative z-40">
-            <button type="button" onClick={()=>setMobileTab('slides')} className={cn("px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap", mobileTab==='slides'?"bg-purple-500/20 text-purple-400":"text-text-muted")}>
-              <Layers size={14} className="inline mr-1 mb-0.5"/> Folien
+          <div className="grid grid-cols-4 border-b border-border p-2 gap-1.5 bg-surface shrink-0 shadow-lg relative z-40">
+            <button type="button" onClick={()=>setMobileTab('slides')} className={cn("px-2 py-2 rounded-lg text-xs font-bold whitespace-nowrap text-center flex items-center justify-center gap-1 transition-colors", mobileTab==='slides'?"bg-purple-500/20 text-purple-400":"text-text-muted hover:text-text-primary")}>
+              <Layers size={14} className="shrink-0"/> <span className="truncate">Folien</span>
             </button>
-            <button type="button" onClick={()=>setMobileTab('content')} className={cn("px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap", mobileTab==='content'?"bg-purple-500/20 text-purple-400":"text-text-muted")}>
-              <PenTool size={14} className="inline mr-1 mb-0.5"/> Inhalt
+            <button type="button" onClick={()=>setMobileTab('content')} className={cn("px-2 py-2 rounded-lg text-xs font-bold whitespace-nowrap text-center flex items-center justify-center gap-1 transition-colors", mobileTab==='content'?"bg-purple-500/20 text-purple-400":"text-text-muted hover:text-text-primary")}>
+              <PenTool size={14} className="shrink-0"/> <span className="truncate">Inhalt</span>
             </button>
-            <button type="button" onClick={()=>setMobileTab('design')} className={cn("px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap", mobileTab==='design'?"bg-purple-500/20 text-purple-400":"text-text-muted")}>
-              <PaintBucket size={14} className="inline mr-1 mb-0.5"/> Design
+            <button type="button" onClick={()=>setMobileTab('design')} className={cn("px-2 py-2 rounded-lg text-xs font-bold whitespace-nowrap text-center flex items-center justify-center gap-1 transition-colors", mobileTab==='design'?"bg-purple-500/20 text-purple-400":"text-text-muted hover:text-text-primary")}>
+              <PaintBucket size={14} className="shrink-0"/> <span className="truncate">Design</span>
             </button>
-            <button type="button" onClick={()=>setMobileTab('import')} className={cn("px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap", mobileTab==='import'?"bg-purple-500/20 text-purple-400":"text-text-muted")}>
-              <DownloadCloud size={14} className="inline mr-1 mb-0.5"/> Import
+            <button type="button" onClick={()=>setMobileTab('import')} className={cn("px-2 py-2 rounded-lg text-xs font-bold whitespace-nowrap text-center flex items-center justify-center gap-1 transition-colors", mobileTab==='import'?"bg-purple-500/20 text-purple-400":"text-text-muted hover:text-text-primary")}>
+              <DownloadCloud size={14} className="shrink-0"/> <span className="truncate">Import</span>
             </button>
           </div>
         )}
@@ -7236,10 +7321,10 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
       {/* ALL MODALS (PDF STUDIO, MEDIA PICKER) */}
       <AnimatePresence>
         {mediaPickerType && (
-          <motion.div className="absolute inset-0 z-[110000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-surface border border-border rounded-3xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[80%]">
+          <motion.div className="fixed inset-0 z-[110000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+            <div className="bg-surface border border-border rounded-3xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-3.5rem)] min-h-0 m-auto overflow-hidden">
               
-              <div className="p-4 lg:p-5 border-b border-border flex justify-between items-center bg-surface shrink-0">
+              <div className="p-4 lg:p-5 border-b border-border flex justify-between items-center bg-surface shrink-0 z-10">
                 <h3 className="font-bold text-text-primary text-sm lg:text-base">{mediaPickerType.title}</h3>
                 <div className="flex items-center gap-2 lg:gap-3">
                   <input type="file" id="pitch-direct-upload-input" className="hidden" accept="image/jpeg,image/png,image/webp,image/svg+xml,application/pdf,.pdf" onChange={handleDirectImageUpload} />
@@ -7250,7 +7335,7 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                 </div>
               </div>
 
-              <div className="p-6 overflow-y-auto grid grid-cols-2 lg:grid-cols-3 gap-4 custom-scrollbar">
+              <div className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0 grid grid-cols-2 lg:grid-cols-3 gap-4 custom-scrollbar">
                 {availableMedia.map(m=>(
                   <div key={m.id} onClick={()=>{
                       if(selectedMediaIds.includes(m.id)) setSelectedMediaIds(selectedMediaIds.filter(i=>i!==m.id)); 
@@ -7275,7 +7360,7 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                   </div>
                 )}
               </div>
-              <div className="p-5 border-t border-border flex justify-end">
+              <div className="p-4 sm:p-5 border-t border-border flex justify-end shrink-0 z-10 bg-surface">
                 <button type="button" onClick={executeMediaImport} disabled={selectedMediaIds.length === 0} className="px-8 py-3 bg-accent-ai text-white rounded-xl disabled:opacity-50 font-bold shadow-lg shadow-accent-ai/20 w-full sm:w-auto">{t('import')}</button>
               </div>
             </div>
@@ -7381,15 +7466,15 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
       {/* INTELLIGENTER BUDGET & VARIANTEN PICKER MODAL */}
       <AnimatePresence>
         {budgetVariantPicker.isOpen && (
-          <div className="fixed inset-0 z-[120000] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[120000] bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="bg-surface border border-border/70 rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              className="bg-surface border border-border/70 rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-3.5rem)] min-h-0 m-auto"
             >
               {/* Modal Header */}
-              <div className="p-5 border-b border-border/60 flex items-center justify-between bg-surface shrink-0">
+              <div className="p-4 sm:p-5 border-b border-border/60 flex items-center justify-between bg-surface shrink-0 z-10">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
                     <DollarSign size={20} />
@@ -7406,14 +7491,14 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                 <button
                   type="button"
                   onClick={() => setBudgetVariantPicker(prev => ({ ...prev, isOpen: false }))}
-                  className="p-2 hover:bg-white/10 rounded-xl text-text-muted hover:text-text-primary transition-colors"
+                  className="p-2 hover:bg-white/10 rounded-xl text-text-muted hover:text-text-primary transition-colors cursor-pointer"
                 >
                   <X size={18} />
                 </button>
               </div>
 
               {/* Modal Body */}
-              <div className="p-6 overflow-y-auto custom-scrollbar space-y-6">
+              <div className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0 custom-scrollbar space-y-6">
                 {/* 1. Fast Action: 3-Varianten-Gegenüberstellung */}
                 <div className="bg-gradient-to-r from-purple-500/10 via-accent-ai/10 to-emerald-500/10 border border-purple-500/30 rounded-2xl p-5 shadow-lg relative overflow-hidden group">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -7540,12 +7625,12 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
               </div>
 
               {/* Modal Footer */}
-              <div className="p-4 border-t border-border/60 bg-surface/50 flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-text-muted">
+              <div className="p-4 border-t border-border/60 bg-surface/50 flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-text-muted shrink-0 z-10">
                 <span>Tipp: Varianten können im Modul "Finanzen" beliebig umbenannt und kalkuliert werden.</span>
                 <button
                   type="button"
                   onClick={() => setBudgetVariantPicker(prev => ({ ...prev, isOpen: false }))}
-                  className="px-4 py-2 hover:bg-white/10 rounded-xl text-text-primary font-semibold cursor-pointer"
+                  className="px-4 py-2 hover:bg-white/10 rounded-xl text-text-primary font-semibold cursor-pointer transition-colors"
                 >
                   Schliessen
                 </button>
@@ -8589,22 +8674,59 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
 
                       <div className="space-y-3 pt-2">
                         {proposalLegalDocs.map((doc, dIdx) => (
-                          <div key={doc.id || dIdx} className="p-3 bg-surface rounded-xl border border-border flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center font-bold text-xs">
+                          <div key={doc.id || dIdx} className="p-3 bg-surface rounded-xl border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-9 h-9 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center font-bold text-xs shrink-0">
                                 📄
                               </div>
-                              <div>
-                                <div className="font-bold text-xs text-text-primary">{doc.name}</div>
-                                <div className="text-[10px] text-text-muted flex items-center gap-2">
-                                  <span>{doc.url ? t('pdf_uploaded') : t('pdf_none')}</span>
+                              <div className="min-w-0">
+                                <div className="font-bold text-xs text-text-primary truncate" title={doc.name}>{doc.name}</div>
+                                <div className="text-[10px] text-text-muted flex items-center gap-2 mt-0.5">
+                                  {doc.url ? (
+                                    <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                                      <CheckCircle2 size={11} /> {t('pdf_uploaded')}
+                                    </span>
+                                  ) : (
+                                    <span className="text-amber-400/80">{t('pdf_none')}</span>
+                                  )}
                                   {doc.size && <span>• {doc.size}</span>}
                                 </div>
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-2">
-                              <label className="px-3 py-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors border border-blue-500/20">
+                            <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                              {doc.url && (
+                                <>
+                                  <a 
+                                    href={doc.url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="p-1.5 bg-surface-hover hover:bg-white/10 text-text-muted hover:text-blue-400 rounded-lg text-xs transition-colors border border-border"
+                                    title={t('preview_doc')}
+                                  >
+                                    <Eye size={13} />
+                                  </a>
+                                  <button
+                                    type="button"
+                                    onClick={() => setProposalLegalDocs(prev => prev.map((d, i) => i === dIdx ? { ...d, url: '', size: '' } : d))}
+                                    className="p-1.5 bg-surface-hover hover:bg-red-500/10 text-text-muted hover:text-red-400 rounded-lg text-xs transition-colors border border-border cursor-pointer"
+                                    title={t('clear_doc')}
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={() => openKdDocPicker(dIdx)}
+                                className="px-2.5 py-1.5 bg-purple-600/15 hover:bg-purple-600/25 text-purple-400 rounded-lg text-xs font-bold flex items-center gap-1.5 border border-purple-500/25 cursor-pointer transition-colors"
+                              >
+                                <FolderOpen size={12} />
+                                <span>{t('select_from_documents')}</span>
+                              </button>
+
+                              <label className="px-2.5 py-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors border border-blue-500/20">
                                 {isUploadingLegalDoc ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
                                 <span>{t('upload_pdf')}</span>
                                 <input 
@@ -8665,6 +8787,150 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
         </div>
       )}
 
+      {/* KREATIV DESK DOKUMENTE & SIA VORLAGEN PICKER MODAL */}
+      {isKdDocPickerOpen && (
+        <div className="fixed inset-0 z-[125000] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+          <div className="bg-surface border border-border rounded-3xl p-4 sm:p-6 max-w-xl w-full shadow-2xl space-y-4 max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-3.5rem)] min-h-0 m-auto flex flex-col animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-border pb-3 shrink-0 z-10">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-purple-500/15 text-purple-400 flex items-center justify-center border border-purple-500/20">
+                  <FolderOpen size={20} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-text-primary">{t('select_doc_modal_title')}</h3>
+                  <p className="text-[11px] text-text-muted">{t('select_doc_modal_sub')}</p>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => { setIsKdDocPickerOpen(false); setSelectedLegalDocIndex(null); }}
+                className="p-1.5 rounded-xl text-text-muted hover:text-text-primary bg-background border border-border cursor-pointer transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="relative shrink-0 z-10">
+              <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted" />
+              <input 
+                type="text" 
+                placeholder={t('search_docs_placeholder')}
+                value={kdDocSearchQuery}
+                onChange={e => setKdDocSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3.5 py-2.5 bg-background border border-border rounded-xl text-xs text-text-primary outline-none focus:border-purple-500 transition-colors"
+              />
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1">
+              {/* SECTION 1: Dokumente in Kreativ Desk */}
+              <div className="space-y-2">
+                <div className="text-[11px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5">
+                  <FileText size={12} className="text-blue-400" /> {t('kd_docs_heading')}
+                </div>
+
+                {isLoadingKdDocs ? (
+                  <div className="py-8 flex items-center justify-center text-text-muted gap-2 text-xs">
+                    <Loader2 size={16} className="animate-spin text-purple-400" />
+                    <span>Dokumente werden aus Kreativ Desk geladen...</span>
+                  </div>
+                ) : (
+                  (() => {
+                    const filteredKd = kdDocsList.filter(d => 
+                      !kdDocSearchQuery || 
+                      d.name?.toLowerCase().includes(kdDocSearchQuery.toLowerCase()) ||
+                      d.category?.toLowerCase().includes(kdDocSearchQuery.toLowerCase())
+                    );
+
+                    if (filteredKd.length === 0) {
+                      return (
+                        <div className="p-4 rounded-xl bg-background border border-border/60 text-center text-xs text-text-muted">
+                          {t('no_kd_docs_found')}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-1.5">
+                        {filteredKd.map((kDoc) => (
+                          <div 
+                            key={kDoc.id}
+                            className="p-3 rounded-xl bg-background hover:bg-surface-hover border border-border/70 flex items-center justify-between gap-3 transition-colors"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span className="text-lg">📄</span>
+                              <div className="min-w-0">
+                                <div className="text-xs font-semibold text-text-primary truncate" title={kDoc.name}>{kDoc.name}</div>
+                                <div className="text-[10px] text-text-muted flex items-center gap-2 mt-0.5">
+                                  <span>{kDoc.category || 'Dokument'}</span>
+                                  {kDoc.size && <span>• {kDoc.size}</span>}
+                                </div>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleSelectKdDoc(kDoc.name, kDoc.url || kDoc.file_url || '', kDoc.size)}
+                              className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-bold cursor-pointer transition-colors shrink-0"
+                            >
+                              {t('attach_doc')}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()
+                )}
+              </div>
+
+              {/* SECTION 2: Schweizer SIA Vorlagen */}
+              <div className="space-y-2 pt-3 border-t border-border">
+                <div className="text-[11px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5">
+                  <ShieldCheck size={12} className="text-emerald-400" /> {t('sia_templates_heading')}
+                </div>
+
+                <div className="space-y-1.5">
+                  {STANDARD_SIA_LEGAL_TEMPLATES
+                    .filter(sia => !kdDocSearchQuery || sia.name.toLowerCase().includes(kdDocSearchQuery.toLowerCase()))
+                    .map((siaTpl, sIdx) => (
+                      <div 
+                        key={sIdx}
+                        className="p-3 rounded-xl bg-background hover:bg-surface-hover border border-border/70 flex items-center justify-between gap-3 transition-colors"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="text-lg">🇨🇭</span>
+                          <div className="min-w-0">
+                            <div className="text-xs font-semibold text-text-primary truncate" title={siaTpl.name}>{siaTpl.name}</div>
+                            <div className="text-[10px] text-emerald-400 flex items-center gap-2 mt-0.5">
+                              <span>{siaTpl.category}</span>
+                              <span>• {siaTpl.size}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleSelectKdDoc(siaTpl.name, siaTpl.url, siaTpl.size)}
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold cursor-pointer transition-colors shrink-0"
+                        >
+                          {t('use_template')}
+                        </button>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-3 border-t border-border shrink-0">
+              <button
+                type="button"
+                onClick={() => { setIsKdDocPickerOpen(false); setSelectedLegalDocIndex(null); }}
+                className="px-4 py-2 text-xs font-bold text-text-muted hover:text-text-primary cursor-pointer transition-colors"
+              >
+                {t('cancel')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MULTI-PAGE PDF PAGE SELECTOR MODAL */}
       <AnimatePresence>
         {pdfPagePicker && (
@@ -8672,16 +8938,16 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[125000] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6"
+            className="fixed inset-0 z-[125000] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-y-auto"
           >
             <motion.div
               initial={{ scale: 0.95, y: 10 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 10 }}
-              className="bg-surface border border-border rounded-3xl w-full max-w-3xl max-h-[85vh] shadow-2xl flex flex-col overflow-hidden"
+              className="bg-surface border border-border rounded-3xl w-full max-w-3xl max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-3.5rem)] min-h-0 m-auto shadow-2xl flex flex-col overflow-hidden"
             >
               {/* MODAL HEADER */}
-              <div className="p-4 sm:p-5 border-b border-border flex items-center justify-between bg-surface/90 shrink-0">
+              <div className="p-4 sm:p-5 border-b border-border flex items-center justify-between bg-surface/90 shrink-0 z-10">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center border border-purple-500/30 shrink-0">
                     <FileText size={20} />
@@ -8705,7 +8971,7 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
               </div>
 
               {/* MODAL ACTIONS BAR */}
-              <div className="px-5 py-3 bg-purple-500/10 border-b border-purple-500/20 flex flex-wrap items-center justify-between gap-2 shrink-0">
+              <div className="px-5 py-3 bg-purple-500/10 border-b border-purple-500/20 flex flex-wrap items-center justify-between gap-2 shrink-0 z-10">
                 <span className="text-xs text-purple-300 font-medium">
                   Klicken Sie auf eine Seite für diesen Bild-Slot, oder importieren Sie das gesamte PDF:
                 </span>
@@ -8740,7 +9006,7 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
               </div>
 
               {/* MODAL THUMBNAILS GRID */}
-              <div className="p-5 overflow-y-auto flex-1 custom-scrollbar grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5">
+              <div className="p-4 sm:p-5 overflow-y-auto flex-1 min-h-0 custom-scrollbar grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5">
                 {Array.from({ length: pdfPagePicker.totalPages }).map((_, idx) => {
                   const pageNum = idx + 1;
                   const thumb = pdfPagePicker.thumbnails[pageNum];

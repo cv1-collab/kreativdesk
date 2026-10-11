@@ -562,11 +562,11 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
 
   return (
     <>
-      <div className="fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm">
-        <div className="bg-surface border border-border/80 rounded-2xl md:rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95">
+      <div className="fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+        <div className="bg-surface border border-border/80 rounded-2xl md:rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-3rem)] min-h-0 animate-in zoom-in-95 m-auto">
           
           {/* Header */}
-          <div className="p-4 sm:p-5 border-b border-border/50 flex items-center justify-between shrink-0 bg-surface">
+          <div className="p-4 sm:p-5 border-b border-border/50 flex items-center justify-between shrink-0 bg-surface z-10">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-500 flex items-center justify-center font-bold shadow-inner">
                 <Receipt size={20} />
@@ -595,7 +595,7 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
           </div>
 
           {/* Body */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-background custom-scrollbar space-y-6">
+          <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 bg-background custom-scrollbar space-y-6">
             
             {/* Top Grid: Primary Details & Uploads */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -961,7 +961,7 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
           </div>
 
           {/* Footer Controls */}
-          <div className="p-4 sm:p-5 border-t border-border/50 bg-surface flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+          <div className="p-4 sm:p-5 border-t border-border/50 bg-surface flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0 z-10">
             <button 
               onClick={onClose} 
               className="w-full sm:w-auto px-5 py-2.5 text-xs font-semibold text-text-muted hover:text-text-primary border border-border rounded-xl transition-colors cursor-pointer"

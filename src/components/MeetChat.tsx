@@ -1947,44 +1947,63 @@ export default function MeetChat() {
 
         {/* SCHEDULE MODAL (PORTAL) */}
         {isScheduleModalOpen && typeof document !== 'undefined' && createPortal(
-          <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/80 backdrop-blur-sm">
-            <div className="bg-surface border border-border/50 rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
-              <div className="flex items-center justify-between mb-6 border-b border-border/50 pb-4 bg-surface/50">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
-                    <Calendar size={16} />
+          <div 
+            className="fixed inset-0 z-[999999] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/80 backdrop-blur-sm overflow-y-auto"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setIsScheduleModalOpen(false);
+            }}
+          >
+            <div className="bg-surface border border-border/60 rounded-2xl sm:rounded-3xl w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-3.5rem)] md:max-h-[85vh] min-h-0 overflow-hidden m-auto relative">
+              {/* STICKY HEADER */}
+              <div className="flex items-center justify-between p-3.5 sm:p-4.5 border-b border-border/50 bg-surface shrink-0 z-10">
+                <div className="flex items-center gap-2.5 sm:gap-3">
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
+                    <Calendar size={18} />
                   </div>
-                  <h2 className="text-base sm:text-lg font-bold text-text-primary tracking-tight">{t('schedule_video_call')}</h2>
+                  <div>
+                    <h2 className="text-sm sm:text-base md:text-lg font-bold text-text-primary tracking-tight leading-tight">{t('schedule_video_call')}</h2>
+                    <p className="text-[10px] sm:text-[11px] text-text-muted mt-0.5">
+                      {currentLang === 'de' ? 'Video-Konferenz planen, Teilnehmer einladen & .ics erstellen' : 'Schedule video conference, invite team & generate .ics'}
+                    </p>
+                  </div>
                 </div>
-                <button onClick={() => setIsScheduleModalOpen(false)} className="text-text-muted hover:text-text-primary bg-background p-1.5 rounded-lg border border-border/50 cursor-pointer"><X size={18} /></button>
+                <button 
+                  type="button"
+                  onClick={() => setIsScheduleModalOpen(false)} 
+                  className="text-text-muted hover:text-text-primary bg-background p-1.5 sm:p-2 rounded-xl border border-border/50 hover:bg-white/5 cursor-pointer transition-colors"
+                >
+                  <X size={18} />
+                </button>
               </div>
-              <form onSubmit={handleScheduleCall} className="space-y-4">
+
+              {/* SCROLLABLE FORM BODY */}
+              <form id="schedule-call-form" onSubmit={handleScheduleCall} className="flex-1 min-h-0 overflow-y-auto p-3.5 sm:p-5 space-y-3 sm:space-y-4 custom-scrollbar">
                 <div>
                   <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-1">{t('meeting_title')}</label>
-                  <input type="text" value={newCallEvent.title} onChange={e => setNewCallEvent({ ...newCallEvent, title: e.target.value })} className="w-full bg-background border border-border/50 rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-accent-ai text-text-primary font-bold" required />
+                  <input type="text" value={newCallEvent.title} onChange={e => setNewCallEvent({ ...newCallEvent, title: e.target.value })} className="w-full bg-background border border-border/50 rounded-xl py-2 sm:py-2.5 px-3.5 text-xs sm:text-sm focus:outline-none focus:border-accent-ai text-text-primary font-bold transition-colors" required />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
                   <div>
                     <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-1">{t('date')}</label>
-                    <input type="date" value={newCallEvent.date} onChange={e => setNewCallEvent({ ...newCallEvent, date: e.target.value })} className="w-full bg-background border border-border/50 rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-accent-ai text-text-primary font-bold" required />
+                    <input type="date" value={newCallEvent.date} onChange={e => setNewCallEvent({ ...newCallEvent, date: e.target.value })} className="w-full bg-background border border-border/50 rounded-xl py-2 sm:py-2.5 px-3 text-xs sm:text-sm focus:outline-none focus:border-accent-ai text-text-primary font-bold transition-colors" required />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-1">{t('time')}</label>
-                    <input type="time" value={newCallEvent.time} onChange={e => setNewCallEvent({ ...newCallEvent, time: e.target.value })} className="w-full bg-background border border-border/50 rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-accent-ai text-text-primary font-bold" required />
+                    <input type="time" value={newCallEvent.time} onChange={e => setNewCallEvent({ ...newCallEvent, time: e.target.value })} className="w-full bg-background border border-border/50 rounded-xl py-2 sm:py-2.5 px-3 text-xs sm:text-sm focus:outline-none focus:border-accent-ai text-text-primary font-bold transition-colors" required />
                   </div>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-1">{t('description')}</label>
-                  <textarea value={newCallEvent.description} onChange={e => setNewCallEvent({ ...newCallEvent, description: e.target.value })} className="w-full bg-background border border-border/50 rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-accent-ai resize-none h-20 text-text-primary font-medium custom-scrollbar" />
+                  <textarea value={newCallEvent.description} onChange={e => setNewCallEvent({ ...newCallEvent, description: e.target.value })} className="w-full bg-background border border-border/50 rounded-xl py-2 sm:py-2.5 px-3 text-xs sm:text-sm focus:outline-none focus:border-accent-ai resize-none h-16 sm:h-20 text-text-primary font-medium custom-scrollbar transition-colors" />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2 flex items-center gap-2">
+                  <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-1 flex items-center gap-2">
                     <Users size={14} /> {t('invite_participants')}
                   </label>
 
                   {/* CHIPS FOR SELECTED PARTICIPANTS (TEAM & EXTERNAL) */}
-                  <div className="flex flex-wrap gap-1.5 min-h-[32px] p-2 bg-background border border-border/50 rounded-xl mb-2">
+                  <div className="flex flex-wrap gap-1.5 min-h-[30px] p-2 bg-background border border-border/50 rounded-xl mb-1.5">
                     {((newCallEvent.participants || []).length > 0 || (newCallEvent.externalEmails || []).length > 0) ? (
                       <>
                         {(newCallEvent.participants || []).map((pId) => {
@@ -1999,7 +2018,7 @@ export default function MeetChat() {
                                   ...prev,
                                   participants: prev.participants.filter(id => id !== pId)
                                 }))}
-                                className="hover:text-red-500 ml-1 p-0.5"
+                                className="hover:text-red-500 ml-1 p-0.5 cursor-pointer"
                               >
                                 <X size={12} />
                               </button>
@@ -2016,7 +2035,7 @@ export default function MeetChat() {
                                 ...prev,
                                 externalEmails: prev.externalEmails.filter(e => e !== email)
                               }))}
-                              className="hover:text-red-500 ml-1 p-0.5"
+                              className="hover:text-red-500 ml-1 p-0.5 cursor-pointer"
                             >
                               <X size={12} />
                             </button>
@@ -2031,9 +2050,9 @@ export default function MeetChat() {
                   </div>
 
                   {/* TEAM CHECKBOXES */}
-                  <div className="bg-background border border-border/50 rounded-xl p-3 max-h-32 overflow-y-auto custom-scrollbar grid grid-cols-1 gap-2">
+                  <div className="bg-background border border-border/50 rounded-xl p-2.5 max-h-28 sm:max-h-32 overflow-y-auto custom-scrollbar grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                     {currentProjectMembers.map((user: any) => (
-                      <label key={user.id} className="flex items-center gap-3 p-2 hover:bg-surface rounded-lg cursor-pointer transition-colors border border-transparent hover:border-border/50">
+                      <label key={user.id} className="flex items-center gap-2.5 p-1.5 sm:p-2 hover:bg-surface rounded-lg cursor-pointer transition-colors border border-transparent hover:border-border/50">
                         <input
                           type="checkbox"
                           checked={newCallEvent.participants?.includes(user.id)}
@@ -2046,10 +2065,10 @@ export default function MeetChat() {
                                 : current.filter(id => id !== user.id)
                             });
                           }}
-                          className="rounded border-border/50 text-accent-ai focus:ring-accent-ai bg-surface"
+                          className="rounded border-border/50 text-accent-ai focus:ring-accent-ai bg-surface cursor-pointer"
                         />
                         <div className="flex items-center gap-2 overflow-hidden">
-                          <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-accent-ai shrink-0">
+                          <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-accent-ai shrink-0">
                             {sanitizeUrl(user.avatar) ? <img src={sanitizeUrl(user.avatar)} className="w-full h-full rounded-full object-cover" /> : user.name.charAt(0)}
                           </div>
                           <p className="text-xs font-bold truncate text-text-primary">{user.name}</p>
@@ -2062,7 +2081,7 @@ export default function MeetChat() {
                   </div>
 
                   {/* EXTERNAL EMAIL INPUT FOR CALLS */}
-                  <div className="mt-3">
+                  <div className="mt-2.5">
                     <label className="block text-[11px] font-bold text-text-muted uppercase tracking-wider mb-1">
                       {currentLang === 'de' ? 'Externe E-Mail-Adresse (Bauherren, Partner) hinzufügen:' : 'Add External Email Address (Clients, Partners):'}
                     </label>
@@ -2083,7 +2102,7 @@ export default function MeetChat() {
                       <button
                         type="button"
                         onClick={handleAddCallExternalEmail}
-                        className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer shrink-0"
+                        className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer shrink-0"
                       >
                         + {currentLang === 'de' ? 'Hinzufügen' : 'Add'}
                       </button>
@@ -2091,8 +2110,8 @@ export default function MeetChat() {
                   </div>
                 </div>
 
-                <div className="space-y-2 mt-4 pt-4 border-t border-border/50">
-                  <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2 flex items-center gap-2">
+                <div className="space-y-1.5 mt-3 pt-3 border-t border-border/50">
+                  <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-1 flex items-center gap-2">
                     <LinkIcon size={14} /> {t('external_link')}
                   </label>
                   <div className="flex gap-2">
@@ -2100,7 +2119,7 @@ export default function MeetChat() {
                       type="text"
                       readOnly
                       value={`${window.location.origin}/project/${projectId || activeProjectId || 'global'}/meet?join=${generatedMeetingId}`}
-                      className="flex-1 bg-surface border border-border/50 rounded-xl py-2.5 px-4 text-xs font-medium text-text-muted outline-none"
+                      className="flex-1 bg-background border border-border/50 rounded-xl py-2 px-3.5 text-xs font-medium text-text-muted outline-none truncate"
                     />
                     <button
                       type="button"
@@ -2109,47 +2128,61 @@ export default function MeetChat() {
                         setCopiedLink(true);
                         setTimeout(() => setCopiedLink(false), 2000);
                       }}
-                      className="px-4 py-2.5 bg-background border border-border/50 rounded-xl hover:bg-white/5 transition-colors flex items-center justify-center text-text-primary shadow-sm"
+                      className="px-3.5 py-2 bg-background border border-border/50 rounded-xl hover:bg-white/5 transition-colors flex items-center justify-center text-text-primary shadow-sm cursor-pointer shrink-0"
                       title="Kopieren"
                     >
                       {copiedLink ? <CheckCircle2 size={16} className="text-emerald-500" /> : <Copy size={16} />}
                     </button>
                   </div>
                 </div>
-
-                <div className="pt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border/50 mt-6">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!newCallEvent.title || !newCallEvent.date) {
-                        addToast(currentLang === 'de' ? 'Bitte zuerst Titel und Datum eingeben' : 'Please enter title and date first', 'error');
-                        return;
-                      }
-                      handleDownloadICS({
-                        title: newCallEvent.title,
-                        date: newCallEvent.date,
-                        time: newCallEvent.time,
-                        description: newCallEvent.description,
-                        meetingLink: `/project/${projectId || activeProjectId || 'global'}/meet?join=${generatedMeetingId}`
-                      });
-                    }}
-                    className="px-4 py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
-                  >
-                    <Calendar size={14} /> 📅 .ics Datei
-                  </button>
-                  <div className="flex items-center gap-3">
-                    <button type="button" onClick={() => setIsScheduleModalOpen(false)} className="px-6 py-2.5 rounded-xl text-sm font-bold text-text-muted hover:text-text-primary transition-colors">{t('cancel')}</button>
-                    <button type="submit" className="px-8 py-2.5 bg-accent-ai text-white rounded-xl text-sm font-bold hover:bg-accent-ai/90 transition-colors shadow-lg shadow-accent-ai/20">{t('schedule')}</button>
-                  </div>
-                </div>
               </form>
+
+              {/* STICKY FOOTER ACTION BAR */}
+              <div className="p-3 sm:p-4 border-t border-border/50 bg-surface shrink-0 flex items-center justify-between gap-2.5 z-10">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!newCallEvent.title || !newCallEvent.date) {
+                      addToast(currentLang === 'de' ? 'Bitte zuerst Titel und Datum eingeben' : 'Please enter title and date first', 'error');
+                      return;
+                    }
+                    handleDownloadICS({
+                      title: newCallEvent.title,
+                      date: newCallEvent.date,
+                      time: newCallEvent.time,
+                      description: newCallEvent.description,
+                      meetingLink: `/project/${projectId || activeProjectId || 'global'}/meet?join=${generatedMeetingId}`
+                    });
+                  }}
+                  className="px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm shrink-0"
+                >
+                  <Calendar size={13} />
+                  <span>.ics Datei</span>
+                </button>
+                <div className="flex items-center gap-2">
+                  <button 
+                    type="button" 
+                    onClick={() => setIsScheduleModalOpen(false)} 
+                    className="px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-text-muted hover:text-text-primary hover:bg-white/5 transition-colors cursor-pointer"
+                  >
+                    {t('cancel')}
+                  </button>
+                  <button 
+                    type="submit" 
+                    form="schedule-call-form"
+                    className="px-4 sm:px-6 py-2 bg-accent-ai text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-accent-ai/90 transition-all shadow-md shadow-accent-ai/20 cursor-pointer"
+                  >
+                    {t('schedule')}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>,
           document.body
         )}
         {showEmailModal && typeof document !== 'undefined' && createPortal(
-          <div className="fixed inset-0 z-[999999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-            <div className="bg-surface border border-border rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
+          <div className="fixed inset-0 z-[999999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-surface border border-border rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-in fade-in zoom-in-95 max-h-[calc(100dvh-2rem)] min-h-0 overflow-y-auto custom-scrollbar m-auto">
               <div className="flex items-center justify-between border-b border-border/50 pb-3">
                 <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
                   <Mail size={18} className="text-accent-ai" />
@@ -2221,7 +2254,7 @@ export default function MeetChat() {
         )}
         {isHistoryModalOpen && typeof document !== 'undefined' && createPortal(
           <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="bg-surface border border-border/50 rounded-3xl p-6 w-full max-w-2xl shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
+            <div className="bg-surface border border-border/50 rounded-2xl sm:rounded-3xl p-4 sm:p-6 w-full max-w-2xl shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[calc(100dvh-2rem)] sm:max-h-[85vh] min-h-0 m-auto">
               <div className="flex items-center justify-between mb-4 border-b border-border/50 pb-4 shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-accent-ai/10 text-accent-ai rounded-xl flex items-center justify-center">
@@ -2327,7 +2360,7 @@ export default function MeetChat() {
         )}
         {showBgModal && typeof document !== 'undefined' && createPortal(
           <div className="fixed inset-0 z-[999999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-            <div className="bg-surface border border-border/50 rounded-3xl p-6 w-full max-w-xl shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
+            <div className="bg-surface border border-border/50 rounded-2xl sm:rounded-3xl p-4 sm:p-6 w-full max-w-xl shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[calc(100dvh-2rem)] sm:max-h-[85vh] min-h-0 m-auto">
               <div className="flex items-center justify-between mb-4 border-b border-border/50 pb-4 shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-accent-ai/10 text-accent-ai rounded-xl flex items-center justify-center">

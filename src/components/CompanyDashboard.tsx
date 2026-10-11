@@ -853,7 +853,7 @@ export default function CompanyDashboard() {
                       </div>
                     </div>
                     
-                    <div className="tour-projects-filters flex items-center gap-2 overflow-x-auto hide-scrollbar pb-2">
+                    <div className="tour-projects-filters flex flex-wrap items-center gap-2 pb-2">
                       <button 
                         onClick={() => setActiveProjectFilter('active')}
                         className={cn(
@@ -1023,8 +1023,8 @@ export default function CompanyDashboard() {
 
       {/* CREATE PROJECT MODAL */}
       {isMounted && isNewProjectModalOpen && createPortal(
-        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm" onClick={() => setIsNewProjectModalOpen(false)}>
-          <div className="bg-surface border-t sm:border border-border sm:rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col h-[100dvh] sm:h-auto animate-in slide-in-from-bottom sm:zoom-in-95 mt-auto sm:mt-0" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto" onClick={() => setIsNewProjectModalOpen(false)}>
+          <div className="bg-surface border-t sm:border border-border sm:rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col h-[100dvh] sm:h-auto sm:max-h-[calc(100dvh-3rem)] min-h-0 animate-in slide-in-from-bottom sm:zoom-in-95 mt-auto sm:my-auto" onClick={e => e.stopPropagation()}>
              <div className="p-4 sm:p-6 border-b border-border/50 flex items-center justify-between bg-surface/90 backdrop-blur-md shrink-0">
                <div className="flex items-center gap-2.5">
                  <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
@@ -1034,7 +1034,7 @@ export default function CompanyDashboard() {
                </div>
                <button onClick={() => setIsNewProjectModalOpen(false)} className="h-8 w-8 flex items-center justify-center text-text-muted hover:text-text-primary bg-background border border-border/50 rounded-lg cursor-pointer transition-colors shadow-xs"><X size={16}/></button>
              </div>
-             <form id="new-project-form" onSubmit={handleCreateProject} className="p-4 sm:p-6 space-y-5 flex-1 overflow-y-auto bg-background/50 custom-scrollbar">
+             <form id="new-project-form" onSubmit={handleCreateProject} className="p-4 sm:p-6 space-y-5 flex-1 min-h-0 overflow-y-auto bg-background/50 custom-scrollbar">
                
                <div className="space-y-3">
                  <label className="text-xs font-bold text-text-muted uppercase tracking-widest">Projekt-Vorlage wählen</label>
@@ -1086,8 +1086,8 @@ export default function CompanyDashboard() {
 
       {/* EDIT / RENAME PROJECT MODAL */}
       {isMounted && isEditProjectModalOpen && createPortal(
-        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm" onClick={() => setIsEditProjectModalOpen(false)}>
-          <div className="bg-surface border-t sm:border border-border sm:rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col h-[100dvh] sm:h-auto animate-in slide-in-from-bottom sm:zoom-in-95 mt-auto sm:mt-0" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto" onClick={() => setIsEditProjectModalOpen(false)}>
+          <div className="bg-surface border-t sm:border border-border sm:rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col h-[100dvh] sm:h-auto sm:max-h-[calc(100dvh-3rem)] min-h-0 animate-in slide-in-from-bottom sm:zoom-in-95 mt-auto sm:my-auto" onClick={e => e.stopPropagation()}>
              <div className="p-4 sm:p-6 border-b border-border/50 flex items-center justify-between bg-surface/90 backdrop-blur-md shrink-0">
                <div className="flex items-center gap-2.5">
                  <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
@@ -1097,7 +1097,7 @@ export default function CompanyDashboard() {
                </div>
                <button onClick={() => setIsEditProjectModalOpen(false)} className="h-8 w-8 flex items-center justify-center text-text-muted hover:text-text-primary bg-background border border-border/50 rounded-lg cursor-pointer transition-colors shadow-xs"><X size={16}/></button>
              </div>
-             <form id="edit-project-form" onSubmit={handleSaveEditProject} className="p-4 sm:p-6 space-y-5 flex-1 overflow-y-auto bg-background/50 custom-scrollbar">
+             <form id="edit-project-form" onSubmit={handleSaveEditProject} className="p-4 sm:p-6 space-y-5 flex-1 min-h-0 overflow-y-auto bg-background/50 custom-scrollbar">
                <div className="space-y-2">
                  <label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('project_name')} *</label>
                  <input 
@@ -1151,9 +1151,9 @@ export default function CompanyDashboard() {
       )}
       {/* APP INSTALL INSTRUCTION MODAL */}
       {isMounted && isInstallModalOpen && createPortal(
-        <div className="fixed inset-0 z-[99999] bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[#18181b] border border-white/10 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-6 text-white">
-            <div className="flex justify-between items-center border-b border-white/10 pb-4">
+        <div className="fixed inset-0 z-[99999] bg-black/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-[#18181b] border border-white/10 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 text-white max-h-[calc(100dvh-2rem)] flex flex-col min-h-0 overflow-hidden m-auto">
+            <div className="flex justify-between items-center border-b border-white/10 pb-4 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-500">
                   <Laptop size={22} />
@@ -1165,13 +1165,13 @@ export default function CompanyDashboard() {
               </div>
               <button 
                 onClick={() => setIsInstallModalOpen(false)} 
-                className="text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors"
+                className="text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
               >
                 <X size={20} />
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-4 flex-1 min-h-0 overflow-y-auto custom-scrollbar pr-1">
               {/* Option 1: Chrome / Edge / Brave (Desktop) */}
               <div className="p-4 bg-white/5 border border-white/10 rounded-xl space-y-2">
                 <div className="flex items-center justify-between">
@@ -1208,7 +1208,7 @@ export default function CompanyDashboard() {
 
             <button 
               onClick={() => setIsInstallModalOpen(false)}
-              className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-500/20"
+              className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-500/20 shrink-0 cursor-pointer"
             >
               Verstanden
             </button>

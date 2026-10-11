@@ -322,7 +322,7 @@ describe('CAD Measurement Scaling & Adaptive Zoom Logic', () => {
     });
 
     it('bindet Sichtbarkeit und Deckkraft des Haupt-Grundrisses (planImage) an die Basis-Ebene', () => {
-      let baseLayer: Layer = { id: 'default', name: 'Standard-Ebene', visible: true, locked: false, opacity: 1 };
+      const baseLayer: Layer = { id: 'default', name: 'Standard-Ebene', visible: true, locked: false, opacity: 1 };
       
       const getPlanImageStyles = (layer: Layer) => {
         if (!layer.visible) {

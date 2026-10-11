@@ -42,6 +42,7 @@ export interface VariableEngineContext {
   };
   customDate?: string;
   language?: 'de' | 'en';
+  highlightVariables?: boolean;
 }
 
 /**
@@ -133,8 +134,30 @@ export async function fetchCompanyProfileAsync(companyId: string): Promise<Compa
   }
 }
 
+const VARIABLE_LABELS: Record<string, { de: string; en: string }> = {
+  'project.number': { de: 'Projektnummer / Ref.-Nr.', en: 'Project Ref Number' },
+  'project.name': { de: 'Projektname', en: 'Project Name' },
+  'project.siteLocation': { de: 'Projektstandort / Liegenschaft', en: 'Project Site Location' },
+  'project.budget': { de: 'Honorar / Gesamtbudget', en: 'Fee / Total Budget' },
+  'currency': { de: 'Währung', en: 'Currency' },
+  'client.name': { de: 'Auftraggeber Name', en: 'Client Name' },
+  'client.company': { de: 'Auftraggeber Firma', en: 'Client Company' },
+  'client.address': { de: 'Auftraggeber Strasse', en: 'Client Street' },
+  'client.zipCity': { de: 'Auftraggeber PLZ / Ort', en: 'Client ZIP / City' },
+  'jurisdiction': { de: 'Gerichtsstand', en: 'Jurisdiction / Venue' },
+  'date': { de: 'Datum', en: 'Date' },
+  'company.name': { de: 'Planer / Firmenname', en: 'Planner / Company Name' },
+  'company.address': { de: 'Firmenadresse', en: 'Company Street' },
+  'company.zipCity': { de: 'Firmenort', en: 'Company ZIP / City' },
+  'company.email': { de: 'Firmen-E-Mail', en: 'Company Email' },
+  'company.phone': { de: 'Firmen-Telefon', en: 'Company Phone' },
+  'company.vatNumber': { de: 'UID / MWST', en: 'VAT / Tax ID' },
+  'company.iban': { de: 'IBAN', en: 'IBAN' }
+};
+
 /**
  * Replaces all {{variable}} placeholders with real company and project values.
+ * When context.highlightVariables is true, wraps replacements in <mark class="doc-var"> for visual editing.
  */
 export function bindTemplateVariables(
   templateContent: string,
@@ -175,7 +198,7 @@ export function bindTemplateVariables(
   const projectNumber = project?.number || (project?.id ? `PRJ-${project.id.slice(0, 6).toUpperCase()}` : 'PRJ-2026-001');
   const projectLocation = project?.siteLocation || (isDe ? 'Zürich, Schweiz' : 'Zurich, Switzerland');
   const projectCurrency = project?.currency || 'CHF';
-  const projectBudget = project?.budget ? String(project.budget) : '150\'000.00';
+  const projectBudget = project?.budget ? String(project.budget) : "150'000.00";
 
   const jurisdiction = isDe
     ? `${compCity}, Schweiz`
@@ -213,9 +236,57 @@ export function bindTemplateVariables(
 
   // Replace each {{key}}
   for (const [key, value] of Object.entries(replacements)) {
-    const regex = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'g');
-    boundText = boundText.replace(regex, value);
+    const escapedKey = key.replace('.', '\\.');
+    const regex = new RegExp(`\\{\\{\\s*${escapedKey}\\s*\\}\\}`, 'g');
+    if (context.highlightVariables) {
+      const label = VARIABLE_LABELS[key]?.[lang] || key;
+      const wrapped = `<mark class="doc-var" data-var="${key}" title="Anpassbar: ${label}">${value}</mark>`;
+      boundText = boundText.replace(regex, wrapped);
+    } else {
+      boundText = boundText.replace(regex, value);
+    }
+  }
+
+  // If highlighting is active, also highlight bracketed placeholders/instructions like [Genaue Bezeichnung...]
+  if (context.highlightVariables) {
+    // Matches bracketed passages like [Konkrete Phasen...] or [Frist: ...] but avoids checkboxes [ ] / [X] and BBCode tags
+    boundText = boundText.replace(
+      /\[(?!\s*\]|\s*[xX]\s*\]|\/?(?:b|bold|sb|semibold|l|light|book|regular|color|var|v)(?:[:\]]))([A-ZÄÖÜa-zäöü0-9\s:.,/€$CHF#+–—_-]{3,140})\]/g,
+      (_match, inner) => {
+        const titleText = isDe ? 'Erfordert projektspezifische Ergänzung' : 'Requires project-specific adaptation';
+        return `<mark class="doc-placeholder" title="${titleText}">[${inner}]</mark>`;
+      }
+    );
   }
 
   return boundText;
+}
+
+/**
+ * Highlights placeholders and variables in an already-rendered HTML or text string.
+ */
+export function highlightPlaceholdersInHtml(content: string, isDe = true): string {
+  if (!content) return '';
+
+  let res = content;
+
+  // 1. Ref-Nr. patterns like Ref-Nr.: PRJ-8363D2 or Ref No.: PRJ-123 (if not already inside a <mark>)
+  res = res.replace(
+    /(Ref-Nr\.|Ref No\.|Referenz-Nr\.|Projektnummer)[:\s]+(?!(?:<mark[^>]*>))([A-Z0-9\-_./]+)/gi,
+    (_m, prefix, num) => {
+      const label = isDe ? 'Projektnummer / Ref.-Nr.' : 'Project Ref Number';
+      return `${prefix}: <mark class="doc-var" data-var="project.number" title="Anpassbar: ${label}">${num}</mark>`;
+    }
+  );
+
+  // 2. Bracketed instructions like [Frist: ...] or [Genaue Bezeichnung...]
+  res = res.replace(
+    /(?<!<mark[^>]*>)\[(?!\s*\]|\s*[xX]\s*\]|\/?(?:b|bold|sb|semibold|l|light|book|regular|color|var|v)(?:[:\]]))([A-ZÄÖÜa-zäöü0-9\s:.,/€$CHF#+–—_-]{3,140})\](?![^<]*<\/mark>)/g,
+    (_m, inner) => {
+      const titleText = isDe ? 'Erfordert projektspezifische Ergänzung' : 'Requires project-specific adaptation';
+      return `<mark class="doc-placeholder" title="${titleText}">[${inner}]</mark>`;
+    }
+  );
+
+  return res;
 }

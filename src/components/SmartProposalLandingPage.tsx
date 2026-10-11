@@ -21,7 +21,7 @@ import { cn, sanitizeUrl, copyToClipboard } from '../utils';
 import { demoTemplates, demoSmartProposal } from '../utils/demoTemplates';
 import { generateSwissQRPayload } from '../utils/qrBillGenerator';
 import { audioFeedback } from '../utils/audioFeedback';
-import { getCompanySettings, saveCompanySettings, CompanySettings } from '../services/companySettingsService';
+import { getCompanySettings, saveCompanySettings, loadAndSyncCompanySettings, CompanySettings } from '../services/companySettingsService';
 import { sendAcceptanceConfirmationEmail, EmailDispatchResult } from '../services/emailService';
 import UniversalPDFStudio from './UniversalPDFStudio';
 import { MesseOffertePDFDocument } from './interactv/pdf/MesseOffertePDFDocument';
@@ -1244,6 +1244,28 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
   const [isAcceptSubmitting, setIsAcceptSubmitting] = useState(false);
   const [isAcceptedSuccess, setIsAcceptedSuccess] = useState(false);
 
+  const handleOpenAcceptModal = () => {
+    if (isDemo) {
+      showDemoBlockedToast();
+      return;
+    }
+    if (proposal) {
+      if (!acceptName && proposal.clientName && !proposal.clientName.toLowerCase().includes('sehr geehrte')) {
+        setAcceptName(proposal.clientName);
+      }
+      if (!acceptCompany && proposal.clientCompany) {
+        setAcceptCompany(proposal.clientCompany);
+      }
+      if (!acceptEmail && proposal.clientEmail) {
+        setAcceptEmail(proposal.clientEmail);
+      }
+      if (!acceptPhone && proposal.clientPhone) {
+        setAcceptPhone(proposal.clientPhone);
+      }
+    }
+    setIsAcceptModalOpen(true);
+  };
+
   // E-Signature Drawing Canvas state
   const signatureCanvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -1581,6 +1603,28 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
         setSelectedOptionIds(defaultSelected);
         if (data.status === 'accepted') {
           setIsAcceptedSuccess(true);
+        }
+
+        // Sync company settings (QR-IBAN, company details)
+        loadAndSyncCompanySettings(data.companyId).then(syncedSettings => {
+          if (syncedSettings) {
+            setCompanySettings(syncedSettings);
+            setTempCompanySettings(syncedSettings);
+          }
+        });
+
+        // Pre-fill acceptance fields for client
+        if (data.clientName && !data.clientName.toLowerCase().includes('sehr geehrte')) {
+          setAcceptName(data.clientName);
+        }
+        if (data.clientCompany) {
+          setAcceptCompany(data.clientCompany);
+        }
+        if (data.clientEmail) {
+          setAcceptEmail(data.clientEmail);
+        }
+        if (data.clientPhone) {
+          setAcceptPhone(data.clientPhone);
         }
       } else {
         const isSteleProposal = Boolean(shareToken && (shareToken.includes('stele') || shareToken.includes('messe')));
@@ -2285,13 +2329,7 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
             </div>
           ) : (
             <button 
-              onClick={() => {
-                if (isDemo) {
-                  showDemoBlockedToast();
-                  return;
-                }
-                setIsAcceptModalOpen(true);
-              }}
+              onClick={handleOpenAcceptModal}
               className="px-3 sm:px-4 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-extrabold shadow-lg shadow-blue-600/30 transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
             >
               <FileCheck size={15} /> <span>{t('accept')}</span>
@@ -2642,274 +2680,431 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
             </div>
 
             <div className="space-y-8">
-              {slides.map((slide, sIdx) => (
-                <div key={slide.id || sIdx} className={cn("rounded-3xl backdrop-blur-md p-6 sm:p-10 shadow-xl space-y-6 border", isLight ? "bg-white border-slate-200/90 shadow-slate-200/50" : "bg-zinc-900/60 border-white/10")}>
-                  <div className={cn("flex items-center justify-between border-b pb-4", isLight ? "border-slate-200" : "border-white/10")}>
-                    <div className="flex items-center gap-3">
-                      <span className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-500 dark:text-blue-400 font-extrabold flex items-center justify-center text-xs font-sans">
-                        {sIdx + 1}
-                      </span>
-                      <h3 className={cn("text-xl sm:text-2xl font-extrabold", isLight ? "text-slate-900" : "text-white")}>{getTranslatedSlideTitle(slide.title)}</h3>
-                    </div>
-                  </div>
+              {slides.map((slide, sIdx) => {
+                const effectiveTitle = (slide.title && slide.title.trim()) 
+                  ? getTranslatedSlideTitle(slide.title) 
+                  : (slide.notes && !slide.notes.startsWith('Importiert') ? slide.notes : `Plan / Visualisierung ${sIdx + 1}`);
 
-                  {slide.layout === 'split' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-                      <div className={cn("text-sm leading-relaxed whitespace-pre-wrap", isLight ? "text-slate-700" : "text-zinc-300")}>{getTranslatedSlideContent(slide.content)}</div>
-                      {slide.imageUrl && (
-                        <div className={cn("rounded-2xl overflow-hidden aspect-video relative group border", isLight ? "border-slate-200 shadow-md" : "border-white/10")}>
-                          <img 
-                            src={slide.imageUrl} 
-                            alt={slide.title} 
-                            style={
-                              slide.motionEffect === 'ken-burns' ? { animation: 'kenburns 14s ease-in-out infinite alternate' } :
-                              slide.motionEffect === 'parallax' ? { animation: 'parallaxFloat 6s ease-in-out infinite' } :
-                              slide.motionEffect === 'glow' ? { animation: 'cinematicGlow 4s ease-in-out infinite' } : {}
-                            }
-                            className="w-full h-full object-cover" 
-                          />
-                        </div>
+                return (
+                  <div key={slide.id || sIdx} className={cn("rounded-3xl backdrop-blur-md p-6 sm:p-10 shadow-xl space-y-6 border", isLight ? "bg-white border-slate-200/90 shadow-slate-200/50" : "bg-zinc-900/60 border-white/10")}>
+                    <div className={cn("flex items-center justify-between border-b pb-4", isLight ? "border-slate-200" : "border-white/10")}>
+                      <div className="flex items-center gap-3">
+                        <span className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-500 dark:text-blue-400 font-extrabold flex items-center justify-center text-xs font-sans">
+                          {sIdx + 1}
+                        </span>
+                        <h3 className={cn("text-xl sm:text-2xl font-extrabold", isLight ? "text-slate-900" : "text-white")}>{effectiveTitle}</h3>
+                      </div>
+                      {slide.layout && (
+                        <span className={cn("text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border", isLight ? "text-slate-600 bg-slate-100 border-slate-200" : "text-zinc-400 bg-white/5 border-white/10")}>
+                          {slide.layout === 'full-image-clean' ? (proposalLang === 'de' ? 'Plan / Render' : 'Plan / Render') : (slide.layout === 'full-image' ? (proposalLang === 'de' ? 'Visualisierung' : 'Visualization') : (slide.layout === 'data-budget' ? 'Budget' : slide.layout))}
+                        </span>
                       )}
                     </div>
-                  )}
 
-                  {/* VORHER / NACHHER MORPHING SLIDER */}
-                  {slide.layout === 'before-after' && (
-                    <div className="space-y-4">
-                      {slide.content && <p className={cn("text-sm", isLight ? "text-slate-700" : "text-zinc-300")}>{getTranslatedSlideContent(slide.content)}</p>}
-                      <div 
-                        className={cn("rounded-2xl overflow-hidden aspect-video bg-black relative select-none cursor-ew-resize border", isLight ? "border-slate-200 shadow-md" : "border-white/10")}
-                        onMouseMove={(e) => {
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          const x = e.clientX - rect.left;
-                          const pos = Math.max(5, Math.min(95, (x / rect.width) * 100));
-                          setBeforeAfterPosMap(prev => ({ ...prev, [slide.id || sIdx]: pos }));
-                        }}
-                        onTouchMove={(e) => {
-                          if (e.touches[0]) {
+                    {/* FULL-IMAGE & FULL-IMAGE-CLEAN LAYOUT */}
+                    {(slide.layout === 'full-image' || slide.layout === 'full-image-clean') && (
+                      <div className="space-y-4">
+                        {slide.imageUrl ? (
+                          <div className={cn("rounded-2xl overflow-hidden relative group border shadow-md transition-all", isLight ? "border-slate-200 bg-slate-100" : "border-white/10 bg-black/40")}>
+                            <img 
+                              src={slide.imageUrl} 
+                              alt={effectiveTitle} 
+                              className="w-full h-auto max-h-[750px] object-contain mx-auto" 
+                            />
+                            <a 
+                              href={slide.imageUrl} 
+                              target="_blank" 
+                              rel="noreferrer" 
+                              className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity bg-black/75 hover:bg-black text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-lg cursor-pointer"
+                              title="Originalbild in Vollbild öffnen"
+                            >
+                              <ExternalLink size={13} />
+                              <span>{proposalLang === 'de' ? 'Vollbild' : 'Full Screen'}</span>
+                            </a>
+                          </div>
+                        ) : (
+                          <div className={cn("p-8 rounded-2xl border text-center text-xs", isLight ? "bg-slate-50 border-slate-200 text-slate-500" : "bg-white/5 border-white/10 text-zinc-400")}>
+                            {proposalLang === 'de' ? 'Kein Bild für diese Folie hinterlegt' : 'No image uploaded for this slide'}
+                          </div>
+                        )}
+                        {slide.content && !slide.dataPayload?.hideTextOverlay && slide.layout !== 'full-image-clean' && (
+                          <p className={cn("text-sm leading-relaxed whitespace-pre-wrap", isLight ? "text-slate-700" : "text-zinc-300")}>
+                            {getTranslatedSlideContent(slide.content)}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {slide.layout === 'split' && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                        <div className={cn("text-sm leading-relaxed whitespace-pre-wrap", isLight ? "text-slate-700" : "text-zinc-300")}>{getTranslatedSlideContent(slide.content)}</div>
+                        {slide.imageUrl && (
+                          <div className={cn("rounded-2xl overflow-hidden aspect-video relative group border", isLight ? "border-slate-200 shadow-md" : "border-white/10")}>
+                            <img 
+                              src={slide.imageUrl} 
+                              alt={slide.title} 
+                              style={
+                                slide.motionEffect === 'ken-burns' ? { animation: 'kenburns 14s ease-in-out infinite alternate' } :
+                                slide.motionEffect === 'parallax' ? { animation: 'parallaxFloat 6s ease-in-out infinite' } :
+                                slide.motionEffect === 'glow' ? { animation: 'cinematicGlow 4s ease-in-out infinite' } : {}
+                              }
+                              className="w-full h-full object-cover" 
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* VORHER / NACHHER MORPHING SLIDER */}
+                    {slide.layout === 'before-after' && (
+                      <div className="space-y-4">
+                        {slide.content && <p className={cn("text-sm", isLight ? "text-slate-700" : "text-zinc-300")}>{getTranslatedSlideContent(slide.content)}</p>}
+                        <div 
+                          className={cn("rounded-2xl overflow-hidden aspect-video bg-black relative select-none cursor-ew-resize border", isLight ? "border-slate-200 shadow-md" : "border-white/10")}
+                          onMouseMove={(e) => {
                             const rect = e.currentTarget.getBoundingClientRect();
-                            const x = e.touches[0].clientX - rect.left;
+                            const x = e.clientX - rect.left;
                             const pos = Math.max(5, Math.min(95, (x / rect.width) * 100));
                             setBeforeAfterPosMap(prev => ({ ...prev, [slide.id || sIdx]: pos }));
-                          }
-                        }}
-                      >
-                        {/* Nachher */}
-                        <img src={slide.compareImageUrl || slide.imageUrl} alt="Nachher" className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
-                        <span className="absolute top-4 right-4 px-3 py-1 bg-blue-600/90 backdrop-blur-md text-white text-xs font-extrabold rounded-full z-10 shadow-lg">
-                          {t('after3d')}
-                        </span>
-
-                        {/* Vorher */}
-                        <div 
-                          className="absolute inset-0 overflow-hidden pointer-events-none"
-                          style={{ clipPath: `polygon(0 0, ${beforeAfterPosMap[slide.id || sIdx] ?? 50}% 0, ${beforeAfterPosMap[slide.id || sIdx] ?? 50}% 100%, 0 100%)` }}
+                          }}
+                          onTouchMove={(e) => {
+                            if (e.touches[0]) {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const x = e.touches[0].clientX - rect.left;
+                              const pos = Math.max(5, Math.min(95, (x / rect.width) * 100));
+                              setBeforeAfterPosMap(prev => ({ ...prev, [slide.id || sIdx]: pos }));
+                            }
+                          }}
                         >
-                          <img src={slide.imageUrl} alt="Vorher" className="absolute inset-0 w-full h-full object-cover" />
-                          <span className="absolute top-4 left-4 px-3 py-1 bg-black/80 backdrop-blur-md text-zinc-300 text-xs font-bold rounded-full z-10 border border-white/20">
-                            {t('beforeSite')}
+                          {/* Nachher */}
+                          <img src={slide.compareImageUrl || slide.imageUrl} alt="Nachher" className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
+                          <span className="absolute top-4 right-4 px-3 py-1 bg-blue-600/90 backdrop-blur-md text-white text-xs font-extrabold rounded-full z-10 shadow-lg">
+                            {t('after3d')}
                           </span>
-                        </div>
 
-                        {/* Divider Bar */}
-                        <div 
-                          className="absolute top-0 bottom-0 w-1 bg-white shadow-[0_0_15px_rgba(255,255,255,1)] pointer-events-none"
-                          style={{ left: `${beforeAfterPosMap[slide.id || sIdx] ?? 50}%` }}
-                        >
-                          <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white text-zinc-950 shadow-2xl flex items-center justify-center font-black text-xs">
-                            ↔
+                          {/* Vorher */}
+                          <div 
+                            className="absolute inset-0 overflow-hidden pointer-events-none"
+                            style={{ clipPath: `polygon(0 0, ${beforeAfterPosMap[slide.id || sIdx] ?? 50}% 0, ${beforeAfterPosMap[slide.id || sIdx] ?? 50}% 100%, 0 100%)` }}
+                          >
+                            <img src={slide.imageUrl} alt="Vorher" className="absolute inset-0 w-full h-full object-cover" />
+                            <span className="absolute top-4 left-4 px-3 py-1 bg-black/80 backdrop-blur-md text-zinc-300 text-xs font-bold rounded-full z-10 border border-white/20">
+                              {t('beforeSite')}
+                            </span>
+                          </div>
+
+                          {/* Divider Bar */}
+                          <div 
+                            className="absolute top-0 bottom-0 w-1 bg-white shadow-[0_0_15px_rgba(255,255,255,1)] pointer-events-none"
+                            style={{ left: `${beforeAfterPosMap[slide.id || sIdx] ?? 50}%` }}
+                          >
+                            <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white text-zinc-950 shadow-2xl flex items-center justify-center font-black text-xs">
+                              ↔
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* 2-BILDER-VERGLEICH (TWO-IMAGES) */}
-                  {slide.layout === 'two-images' && (() => {
-                    const img0 = slide.dataPayload?.images?.[0] || slide.imageUrl || '';
-                    const img1 = slide.dataPayload?.images?.[1] || slide.compareImageUrl || '';
-                    const cap0 = slide.dataPayload?.captions?.[0] ?? 'Vorher / Bestand';
-                    const cap1 = slide.dataPayload?.captions?.[1] ?? 'Nachher / Realisierung';
-                    const splitRatio = slide.dataPayload?.splitRatio ?? 50;
-                    const displayMode = slide.dataPayload?.displayMode || 'side-by-side';
-                    const maskRadius = slide.dataPayload?.maskRadius ?? 16;
-                    const sliderPos = beforeAfterPosMap[slide.id || sIdx] ?? slide.dataPayload?.sliderPos ?? 50;
+                    {/* 2-BILDER-VERGLEICH (TWO-IMAGES) */}
+                    {slide.layout === 'two-images' && (() => {
+                      const img0 = slide.dataPayload?.images?.[0] || slide.imageUrl || '';
+                      const img1 = slide.dataPayload?.images?.[1] || slide.compareImageUrl || '';
+                      const cap0 = slide.dataPayload?.captions?.[0] ?? 'Vorher / Bestand';
+                      const cap1 = slide.dataPayload?.captions?.[1] ?? 'Nachher / Realisierung';
+                      const splitRatio = slide.dataPayload?.splitRatio ?? 50;
+                      const displayMode = slide.dataPayload?.displayMode || 'side-by-side';
+                      const maskRadius = slide.dataPayload?.maskRadius ?? 16;
+                      const sliderPos = beforeAfterPosMap[slide.id || sIdx] ?? slide.dataPayload?.sliderPos ?? 50;
 
-                    if (displayMode === 'slider') {
-                      return (
-                        <div className="space-y-4">
-                          <div 
-                            className={cn("rounded-2xl overflow-hidden aspect-video bg-black relative select-none cursor-ew-resize border shadow-md", isLight ? "border-slate-200" : "border-white/10")}
-                            style={{ borderRadius: `${maskRadius}px` }}
-                            onMouseMove={(e) => {
-                              const rect = e.currentTarget.getBoundingClientRect();
-                              const x = e.clientX - rect.left;
-                              const pos = Math.max(5, Math.min(95, (x / rect.width) * 100));
-                              setBeforeAfterPosMap(prev => ({ ...prev, [slide.id || sIdx]: pos }));
-                            }}
-                            onTouchMove={(e) => {
-                              if (e.touches[0]) {
+                      if (displayMode === 'slider') {
+                        return (
+                          <div className="space-y-4">
+                            <div 
+                              className={cn("rounded-2xl overflow-hidden aspect-video bg-black relative select-none cursor-ew-resize border shadow-md", isLight ? "border-slate-200" : "border-white/10")}
+                              style={{ borderRadius: `${maskRadius}px` }}
+                              onMouseMove={(e) => {
                                 const rect = e.currentTarget.getBoundingClientRect();
-                                const x = e.touches[0].clientX - rect.left;
+                                const x = e.clientX - rect.left;
                                 const pos = Math.max(5, Math.min(95, (x / rect.width) * 100));
                                 setBeforeAfterPosMap(prev => ({ ...prev, [slide.id || sIdx]: pos }));
-                              }
-                            }}
-                          >
-                            {img1 && <img src={img1} alt={cap1} className="absolute inset-0 w-full h-full object-cover pointer-events-none" />}
-                            <span className="absolute top-4 right-4 px-3 py-1 bg-purple-600/90 backdrop-blur-md text-white text-xs font-extrabold rounded-full z-10 shadow-lg">
-                              {cap1}
-                            </span>
-                            <div 
-                              className="absolute inset-0 overflow-hidden pointer-events-none"
-                              style={{ clipPath: `polygon(0 0, ${sliderPos}% 0, ${sliderPos}% 100%, 0 100%)` }}
+                              }}
+                              onTouchMove={(e) => {
+                                if (e.touches[0]) {
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  const x = e.touches[0].clientX - rect.left;
+                                  const pos = Math.max(5, Math.min(95, (x / rect.width) * 100));
+                                  setBeforeAfterPosMap(prev => ({ ...prev, [slide.id || sIdx]: pos }));
+                                }
+                              }}
                             >
-                              {img0 && <img src={img0} alt={cap0} className="absolute inset-0 w-full h-full object-cover" />}
-                              <span className="absolute top-4 left-4 px-3 py-1 bg-black/80 backdrop-blur-md text-zinc-300 text-xs font-bold rounded-full z-10 border border-white/20">
-                                {cap0}
+                              {img1 && <img src={img1} alt={cap1} className="absolute inset-0 w-full h-full object-cover pointer-events-none" />}
+                              <span className="absolute top-4 right-4 px-3 py-1 bg-purple-600/90 backdrop-blur-md text-white text-xs font-extrabold rounded-full z-10 shadow-lg">
+                                {cap1}
                               </span>
-                            </div>
-                            <div 
-                              className="absolute top-0 bottom-0 w-1 bg-white shadow-[0_0_15px_rgba(255,255,255,1)] pointer-events-none z-20"
-                              style={{ left: `${sliderPos}%` }}
-                            >
-                              <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white text-zinc-950 shadow-2xl flex items-center justify-center font-black text-xs">
-                                ↔
+                              <div 
+                                className="absolute inset-0 overflow-hidden pointer-events-none"
+                                style={{ clipPath: `polygon(0 0, ${sliderPos}% 0, ${sliderPos}% 100%, 0 100%)` }}
+                              >
+                                {img0 && <img src={img0} alt={cap0} className="absolute inset-0 w-full h-full object-cover" />}
+                                <span className="absolute top-4 left-4 px-3 py-1 bg-black/80 backdrop-blur-md text-zinc-300 text-xs font-bold rounded-full z-10 border border-white/20">
+                                  {cap0}
+                                </span>
+                              </div>
+                              <div 
+                                className="absolute top-0 bottom-0 w-1 bg-white shadow-[0_0_15px_rgba(255,255,255,1)] pointer-events-none z-20"
+                                style={{ left: `${sliderPos}%` }}
+                              >
+                                <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white text-zinc-950 shadow-2xl flex items-center justify-center font-black text-xs">
+                                  ↔
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    }
+                        );
+                      }
 
-                    return (
-                      <div className="flex flex-col sm:flex-row gap-4 items-stretch">
-                        <div style={{ width: `calc(${splitRatio}% - 8px)` }} className="w-full sm:w-auto flex flex-col flex-1">
-                          <div 
-                            style={{ borderRadius: `${maskRadius}px` }}
-                            className={cn("overflow-hidden aspect-video relative border shadow-sm", isLight ? "border-slate-200 bg-slate-100" : "border-white/10 bg-white/5")}
-                          >
-                            {img0 && <img src={img0} alt={cap0} className="w-full h-full object-cover" />}
-                          </div>
-                          {cap0 && <p className={cn("text-xs font-bold mt-1.5 px-0.5", isLight ? "text-slate-700" : "text-zinc-300")}>{cap0}</p>}
-                        </div>
-                        <div style={{ width: `calc(${100 - splitRatio}% - 8px)` }} className="w-full sm:w-auto flex flex-col flex-1">
-                          <div 
-                            style={{ borderRadius: `${maskRadius}px` }}
-                            className={cn("overflow-hidden aspect-video relative border shadow-sm", isLight ? "border-slate-200 bg-slate-100" : "border-white/10 bg-white/5")}
-                          >
-                            {img1 && <img src={img1} alt={cap1} className="w-full h-full object-cover" />}
-                          </div>
-                          {cap1 && <p className={cn("text-xs font-bold mt-1.5 px-0.5", isLight ? "text-slate-700" : "text-zinc-300")}>{cap1}</p>}
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* 3-BILDER-GALERIE (THREE-IMAGES) */}
-                  {slide.layout === 'three-images' && (() => {
-                    const img0 = slide.dataPayload?.images?.[0] || slide.imageUrl || '';
-                    const img1 = slide.dataPayload?.images?.[1] || slide.compareImageUrl || '';
-                    const img2 = slide.dataPayload?.images?.[2] || '';
-                    const cap0 = slide.dataPayload?.captions?.[0] ?? 'Perspektive 1';
-                    const cap1 = slide.dataPayload?.captions?.[1] ?? 'Perspektive 2';
-                    const cap2 = slide.dataPayload?.captions?.[2] ?? 'Perspektive 3';
-                    const galleryMode = slide.dataPayload?.galleryMode || 'columns';
-                    const maskRadius = slide.dataPayload?.maskRadius ?? 16;
-
-                    const renderCard = (imgUrl: string, captionText: string) => (
-                      <div className="flex flex-col flex-1 min-w-0">
-                        <div 
-                          style={{ borderRadius: `${maskRadius}px` }}
-                          className={cn("overflow-hidden aspect-video relative border shadow-sm", isLight ? "border-slate-200 bg-slate-100" : "border-white/10 bg-white/5")}
-                        >
-                          {imgUrl && <img src={imgUrl} alt={captionText} className="w-full h-full object-cover" />}
-                        </div>
-                        {captionText && <p className={cn("text-xs font-bold mt-1 px-0.5", isLight ? "text-slate-700" : "text-zinc-300")}>{captionText}</p>}
-                      </div>
-                    );
-
-                    if (galleryMode === 'hero' || galleryMode === 'hero-stacked') {
                       return (
                         <div className="flex flex-col sm:flex-row gap-4 items-stretch">
-                          <div className="w-full sm:w-[60%]">
-                            {renderCard(img0, cap0)}
+                          <div style={{ width: `calc(${splitRatio}% - 8px)` }} className="w-full sm:w-auto flex flex-col flex-1">
+                            <div 
+                              style={{ borderRadius: `${maskRadius}px` }}
+                              className={cn("overflow-hidden aspect-video relative border shadow-sm", isLight ? "border-slate-200 bg-slate-100" : "border-white/10 bg-white/5")}
+                            >
+                              {img0 && <img src={img0} alt={cap0} className="w-full h-full object-cover" />}
+                            </div>
+                            {cap0 && <p className={cn("text-xs font-bold mt-1.5 px-0.5", isLight ? "text-slate-700" : "text-zinc-300")}>{cap0}</p>}
                           </div>
-                          <div className="w-full sm:w-[40%] flex flex-col gap-3">
-                            {renderCard(img1, cap1)}
-                            {renderCard(img2, cap2)}
+                          <div style={{ width: `calc(${100 - splitRatio}% - 8px)` }} className="w-full sm:w-auto flex flex-col flex-1">
+                            <div 
+                              style={{ borderRadius: `${maskRadius}px` }}
+                              className={cn("overflow-hidden aspect-video relative border shadow-sm", isLight ? "border-slate-200 bg-slate-100" : "border-white/10 bg-white/5")}
+                            >
+                              {img1 && <img src={img1} alt={cap1} className="w-full h-full object-cover" />}
+                            </div>
+                            {cap1 && <p className={cn("text-xs font-bold mt-1.5 px-0.5", isLight ? "text-slate-700" : "text-zinc-300")}>{cap1}</p>}
                           </div>
                         </div>
                       );
-                    }
+                    })()}
 
-                    return (
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        {renderCard(img0, cap0)}
-                        {renderCard(img1, cap1)}
-                        {renderCard(img2, cap2)}
-                      </div>
-                    );
-                  })()}
+                    {/* 3-BILDER-GALERIE (THREE-IMAGES) */}
+                    {slide.layout === 'three-images' && (() => {
+                      const img0 = slide.dataPayload?.images?.[0] || slide.imageUrl || '';
+                      const img1 = slide.dataPayload?.images?.[1] || slide.compareImageUrl || '';
+                      const img2 = slide.dataPayload?.images?.[2] || '';
+                      const cap0 = slide.dataPayload?.captions?.[0] ?? 'Perspektive 1';
+                      const cap1 = slide.dataPayload?.captions?.[1] ?? 'Perspektive 2';
+                      const cap2 = slide.dataPayload?.captions?.[2] ?? 'Perspektive 3';
+                      const galleryMode = slide.dataPayload?.galleryMode || 'columns';
+                      const maskRadius = slide.dataPayload?.maskRadius ?? 16;
 
-                  {slide.layout === 'image-focus' && slide.imageUrl && (
-                    <div className={cn("rounded-2xl overflow-hidden aspect-video relative group border", isLight ? "border-slate-200 shadow-md" : "border-white/10")}>
-                      <img 
-                        src={slide.imageUrl} 
-                        alt={slide.title} 
-                        className="w-full h-full object-cover" 
-                      />
-                    </div>
-                  )}
-
-                  {slide.layout === 'video-focus' && (
-                    <div className="space-y-4">
-                      {slide.content && <p className={cn("text-sm", isLight ? "text-slate-700" : "text-zinc-300")}>{getTranslatedSlideContent(slide.content)}</p>}
-                      <div className={cn("rounded-2xl overflow-hidden aspect-video bg-black relative border", isLight ? "border-slate-200 shadow-md" : "border-white/10")}>
-                        <video src={slide.videoUrl || proposal.heroVideoUrl} controls playsInline className="w-full h-full object-cover" />
-                      </div>
-                    </div>
-                  )}
-
-                  {slide.layout === 'data-budget' && (
-                    <div className="space-y-4">
-                      <div className={cn("rounded-2xl overflow-hidden border", isLight ? "bg-slate-50 border-slate-200" : "bg-black/30 border-white/10")}>
-                        <div className={cn("grid grid-cols-12 p-3 text-xs font-bold uppercase tracking-wider border-b", isLight ? "text-slate-600 bg-slate-100 border-slate-200" : "text-zinc-400 bg-white/5 border-white/10")}>
-                          <div className="col-span-2">{t('pos')}</div>
-                          <div className="col-span-7">{t('servicePhase')}</div>
-                          <div className="col-span-3 text-right">{t('amount')}</div>
+                      const renderCard = (imgUrl: string, captionText: string) => (
+                        <div className="flex flex-col flex-1 min-w-0">
+                          <div 
+                            style={{ borderRadius: `${maskRadius}px` }}
+                            className={cn("overflow-hidden aspect-video relative border shadow-sm", isLight ? "border-slate-200 bg-slate-100" : "border-white/10 bg-white/5")}
+                          >
+                            {imgUrl && <img src={imgUrl} alt={captionText} className="w-full h-full object-cover" />}
+                          </div>
+                          {captionText && <p className={cn("text-xs font-bold mt-1 px-0.5", isLight ? "text-slate-700" : "text-zinc-300")}>{captionText}</p>}
                         </div>
-                        {(slide.dataPayload?.budgetGroups || []).map((grp: any, bIdx: number) => (
-                          <div key={bIdx} className={cn("grid grid-cols-12 text-xs py-2 border-b last:border-0", isLight ? "border-slate-200" : "border-white/5")}>
-                            <div className={cn("col-span-2 font-bold font-sans", isLight ? "text-slate-600" : "text-zinc-400")}>{grp.pos}</div>
-                            <div className={cn("col-span-7 font-medium", isLight ? "text-slate-800" : "text-zinc-200")}>{getTranslatedBudgetGroup(grp.title)}</div>
-                            <div className={cn("col-span-3 text-right font-bold font-sans", isLight ? "text-slate-900" : "text-white")}>{proposal.currency} {(grp.total || 0).toLocaleString('de-CH')}</div>
+                      );
+
+                      if (galleryMode === 'hero' || galleryMode === 'hero-stacked') {
+                        return (
+                          <div className="flex flex-col sm:flex-row gap-4 items-stretch">
+                            <div className="w-full sm:w-[60%]">
+                              {renderCard(img0, cap0)}
+                            </div>
+                            <div className="w-full sm:w-[40%] flex flex-col gap-3">
+                              {renderCard(img1, cap1)}
+                              {renderCard(img2, cap2)}
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          {renderCard(img0, cap0)}
+                          {renderCard(img1, cap1)}
+                          {renderCard(img2, cap2)}
+                        </div>
+                      );
+                    })()}
+
+                    {slide.layout === 'image-focus' && slide.imageUrl && (
+                      <div className={cn("rounded-2xl overflow-hidden aspect-video relative group border", isLight ? "border-slate-200 shadow-md" : "border-white/10")}>
+                        <img 
+                          src={slide.imageUrl} 
+                          alt={slide.title} 
+                          className="w-full h-full object-cover" 
+                        />
+                        <a 
+                          href={slide.imageUrl} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity bg-black/75 hover:bg-black text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-lg"
+                        >
+                          <ExternalLink size={13} />
+                          <span>{proposalLang === 'de' ? 'Vollbild' : 'Full Screen'}</span>
+                        </a>
+                      </div>
+                    )}
+
+                    {slide.layout === 'video-focus' && (
+                      <div className="space-y-4">
+                        {slide.content && <p className={cn("text-sm", isLight ? "text-slate-700" : "text-zinc-300")}>{getTranslatedSlideContent(slide.content)}</p>}
+                        <div className={cn("rounded-2xl overflow-hidden aspect-video bg-black relative border", isLight ? "border-slate-200 shadow-md" : "border-white/10")}>
+                          <video src={slide.videoUrl || proposal.heroVideoUrl} controls playsInline className="w-full h-full object-cover" />
+                        </div>
+                      </div>
+                    )}
+
+                    {slide.layout === 'data-budget' && (
+                      <div className="space-y-4">
+                        <div className={cn("rounded-2xl overflow-hidden border", isLight ? "bg-slate-50 border-slate-200" : "bg-black/30 border-white/10")}>
+                          <div className={cn("grid grid-cols-12 p-3 text-xs font-bold uppercase tracking-wider border-b", isLight ? "text-slate-600 bg-slate-100 border-slate-200" : "text-zinc-400 bg-white/5 border-white/10")}>
+                            <div className="col-span-2">{t('pos')}</div>
+                            <div className="col-span-7">{t('servicePhase')}</div>
+                            <div className="col-span-3 text-right">{t('amount')}</div>
+                          </div>
+                          {(slide.dataPayload?.budgetGroups || []).map((grp: any, bIdx: number) => (
+                            <div key={bIdx} className={cn("grid grid-cols-12 text-xs py-2 border-b last:border-0", isLight ? "border-slate-200" : "border-white/5")}>
+                              <div className={cn("col-span-2 font-bold font-sans", isLight ? "text-slate-600" : "text-zinc-400")}>{grp.pos}</div>
+                              <div className={cn("col-span-7 font-medium", isLight ? "text-slate-800" : "text-zinc-200")}>{getTranslatedBudgetGroup(grp.title)}</div>
+                              <div className={cn("col-span-3 text-right font-bold font-sans", isLight ? "text-slate-900" : "text-white")}>{proposal.currency} {(grp.total || 0).toLocaleString('de-CH')}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {slide.layout === 'team-grid' && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {(slide.dataPayload?.members || []).map((member: any, mIdx: number) => (
+                          <div key={mIdx} className={cn("p-5 rounded-2xl flex items-center gap-4 border", isLight ? "bg-slate-50 border-slate-200 shadow-sm" : "border-white/10 bg-white/5")}>
+                            <img src={member.photoURL || member.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80'} alt={member.name} className="w-14 h-14 rounded-full object-cover border-2 border-blue-500" />
+                            <div>
+                              <div className={cn("font-bold text-base", isLight ? "text-slate-900" : "text-white")}>{member.name}</div>
+                              <div className="text-xs text-blue-500 font-medium">{getTranslatedMemberRole(member.role)}</div>
+                              <div className="flex items-center gap-2 mt-2">
+                                <a href={`https://wa.me/41790000000`} target="_blank" rel="noreferrer" className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/30 text-xs font-bold flex items-center gap-1">
+                                  <MessageSquare size={12} /> WhatsApp
+                                </a>
+                              </div>
+                            </div>
                           </div>
                         ))}
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {slide.layout === 'team-grid' && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {(slide.dataPayload?.members || []).map((member: any, mIdx: number) => (
-                        <div key={mIdx} className={cn("p-5 rounded-2xl flex items-center gap-4 border", isLight ? "bg-slate-50 border-slate-200 shadow-sm" : "border-white/10 bg-white/5")}>
-                          <img src={member.photoURL || member.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80'} alt={member.name} className="w-14 h-14 rounded-full object-cover border-2 border-blue-500" />
-                          <div>
-                            <div className={cn("font-bold text-base", isLight ? "text-slate-900" : "text-white")}>{member.name}</div>
-                            <div className="text-xs text-blue-500 font-medium">{getTranslatedMemberRole(member.role)}</div>
-                            <div className="flex items-center gap-2 mt-2">
-                              <a href={`https://wa.me/41790000000`} target="_blank" rel="noreferrer" className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/30 text-xs font-bold flex items-center gap-1">
-                                <MessageSquare size={12} /> WhatsApp
-                              </a>
-                            </div>
+                    {/* CHART DONUT IN STORY MODE */}
+                    {slide.layout === 'chart-donut' && slide.dataPayload?.chartSegments && (
+                      <div className="flex flex-col md:flex-row items-center justify-center gap-8 p-4">
+                        <div className="relative w-52 h-52 flex items-center justify-center shrink-0">
+                          <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                            {(() => {
+                              const segments = slide.dataPayload.chartSegments;
+                              const total = segments.reduce((acc: number, s: any) => acc + (s.value || 0), 0) || 1;
+                              let cumulativePercent = 0;
+                              return segments.map((seg: any, idx: number) => {
+                                const percent = (seg.value || 0) / total;
+                                const strokeDasharray = `${percent * 282.7} 282.7`;
+                                const strokeDashoffset = -cumulativePercent * 282.7;
+                                cumulativePercent += percent;
+                                return (
+                                  <circle
+                                    key={idx}
+                                    cx="50"
+                                    cy="50"
+                                    r="45"
+                                    fill="transparent"
+                                    stroke={seg.color || ['#3b82f6', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b'][idx % 5]}
+                                    strokeWidth="10"
+                                    strokeDasharray={strokeDasharray}
+                                    strokeDashoffset={strokeDashoffset}
+                                    className="transition-all duration-700"
+                                  />
+                                );
+                              });
+                            })()}
+                          </svg>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-2">
+                            <span className={cn("text-[10px] uppercase font-bold tracking-widest opacity-60", isLight ? "text-slate-500" : "text-zinc-400")}>{t('total')}</span>
+                            <span className="text-xl font-extrabold text-blue-500 dark:text-blue-400">
+                              CHF {(slide.dataPayload.totalAmount || slide.dataPayload.chartSegments.reduce((acc: number, s: any) => acc + (s.value || 0), 0)).toLocaleString('de-CH')}
+                            </span>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
+                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto custom-scrollbar w-full">
+                          {slide.dataPayload.chartSegments.map((seg: any, idx: number) => (
+                            <div key={idx} className={cn("p-3 rounded-xl border flex items-center justify-between", isLight ? "bg-slate-50 border-slate-200" : "border-white/10 bg-white/5")}>
+                              <div className="flex items-center gap-2 truncate">
+                                <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: seg.color || '#3b82f6' }} />
+                                <div className="truncate">
+                                  <div className={cn("text-xs font-bold truncate", isLight ? "text-slate-800" : "text-white")}>{seg.label}</div>
+                                  <div className={cn("text-[10px] tabular-nums", isLight ? "text-slate-500" : "text-zinc-400")}>CHF {(seg.value || 0).toLocaleString('de-CH')}</div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* SMART CALENDAR / TIMELINE IN STORY MODE */}
+                    {(slide.layout === 'smart-calendar' || slide.layout === 'timeline') && slide.dataPayload?.milestones && (
+                      <div className="space-y-3">
+                        {slide.dataPayload.milestones.map((m: any, mIdx: number) => (
+                          <div key={mIdx} className={cn("p-4 rounded-2xl border flex items-center justify-between gap-4", isLight ? "bg-slate-50 border-slate-200 shadow-sm" : "bg-white/5 border-white/10")}>
+                            <div className="flex items-center gap-3">
+                              <span className="w-7 h-7 rounded-lg bg-blue-500/20 text-blue-500 font-bold flex items-center justify-center text-xs">
+                                {mIdx + 1}
+                              </span>
+                              <div>
+                                <div className={cn("font-bold text-sm", isLight ? "text-slate-900" : "text-white")}>{m.title || m.phase}</div>
+                                {m.date && <div className="text-xs text-blue-500 font-medium">{m.date}</div>}
+                              </div>
+                            </div>
+                            {m.status && (
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-500 border border-emerald-500/30">
+                                {m.status}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* UNIVERSAL FALLBACK FOR ALL OTHER SLIDE LAYOUTS */}
+                    {slide.layout !== 'split' && slide.layout !== 'before-after' && slide.layout !== 'two-images' && slide.layout !== 'three-images' && slide.layout !== 'image-focus' && slide.layout !== 'video-focus' && slide.layout !== 'data-budget' && slide.layout !== 'team-grid' && slide.layout !== 'full-image' && slide.layout !== 'full-image-clean' && slide.layout !== 'chart-donut' && slide.layout !== 'smart-calendar' && slide.layout !== 'timeline' && (
+                      <div className="space-y-4">
+                        {slide.imageUrl && (
+                          <div className={cn("rounded-2xl overflow-hidden relative group border shadow-md", isLight ? "border-slate-200 bg-slate-100" : "border-white/10 bg-black/40")}>
+                            <img src={slide.imageUrl} alt={effectiveTitle} className="w-full h-auto max-h-[750px] object-contain mx-auto" />
+                            <a href={slide.imageUrl} target="_blank" rel="noreferrer" className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity bg-black/75 hover:bg-black text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-lg">
+                              <ExternalLink size={13} />
+                              <span>{proposalLang === 'de' ? 'Vollbild' : 'Full Screen'}</span>
+                            </a>
+                          </div>
+                        )}
+                        {slide.videoUrl && (
+                          <div className={cn("rounded-2xl overflow-hidden aspect-video bg-black relative border", isLight ? "border-slate-200 shadow-md" : "border-white/10")}>
+                            <video src={slide.videoUrl} controls playsInline className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                        {slide.content && (
+                          <p className={cn("text-sm leading-relaxed whitespace-pre-wrap", isLight ? "text-slate-700" : "text-zinc-300")}>
+                            {getTranslatedSlideContent(slide.content)}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </section>
         </>
@@ -3171,7 +3366,7 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
                   )}
 
                   {/* Full Bleed Image Cover Layout */}
-                  {activeDeckSlide.layout === 'full-image' && (
+                  {(activeDeckSlide.layout === 'full-image' || activeDeckSlide.layout === 'full-image-clean') && (
                     <div className="w-full h-full min-h-[360px] md:min-h-[420px] rounded-2xl overflow-hidden relative group/img flex flex-col justify-end p-6 md:p-10 select-none shadow-2xl">
                       {activeDeckSlide.imageUrl && (
                         <img
@@ -3185,7 +3380,7 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
                           className="absolute inset-0 w-full h-full pointer-events-none"
                         />
                       )}
-                      {activeDeckSlide.imageUrl && ((activeDeckSlide.dataPayload?.overlayOpacity ?? 40) > 0) && (
+                      {activeDeckSlide.imageUrl && ((activeDeckSlide.dataPayload?.overlayOpacity ?? 40) > 0) && activeDeckSlide.layout !== 'full-image-clean' && !activeDeckSlide.dataPayload?.hideTextOverlay && (
                         <div
                           className="absolute inset-0 pointer-events-none transition-all duration-300"
                           style={{
@@ -3195,19 +3390,23 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
                           }}
                         />
                       )}
-                      <div className={cn(
-                        "relative z-10 space-y-2",
-                        activeDeckSlide.dataPayload?.textPosition === 'center' ? "text-center mx-auto" : "text-left"
-                      )}>
-                        <h3 className="text-2xl sm:text-4xl font-black text-white drop-shadow-md">
-                          {getTranslatedSlideTitle(activeDeckSlide.title)}
-                        </h3>
-                        {activeDeckSlide.content && (
-                          <p className="text-sm sm:text-base text-zinc-200 max-w-xl drop-shadow leading-relaxed">
-                            {getTranslatedSlideContent(activeDeckSlide.content)}
-                          </p>
-                        )}
-                      </div>
+                      {activeDeckSlide.layout !== 'full-image-clean' && !activeDeckSlide.dataPayload?.hideTextOverlay && (activeDeckSlide.title || activeDeckSlide.content) && (
+                        <div className={cn(
+                          "relative z-10 space-y-2",
+                          activeDeckSlide.dataPayload?.textPosition === 'center' ? "text-center mx-auto" : "text-left"
+                        )}>
+                          {activeDeckSlide.title && (
+                            <h3 className="text-2xl sm:text-4xl font-black text-white drop-shadow-md">
+                              {getTranslatedSlideTitle(activeDeckSlide.title)}
+                            </h3>
+                          )}
+                          {activeDeckSlide.content && (
+                            <p className="text-sm sm:text-base text-zinc-200 max-w-xl drop-shadow leading-relaxed">
+                              {getTranslatedSlideContent(activeDeckSlide.content)}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -3343,10 +3542,17 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
                   })()}
 
                   {/* Fallback Layout */}
-                  {activeDeckSlide.layout !== 'split' && activeDeckSlide.layout !== 'video-focus' && activeDeckSlide.layout !== 'data-budget' && activeDeckSlide.layout !== 'team-grid' && activeDeckSlide.layout !== 'image-focus' && activeDeckSlide.layout !== 'before-after' && activeDeckSlide.layout !== 'chart-donut' && activeDeckSlide.layout !== 'full-image' && activeDeckSlide.layout !== 'two-images' && activeDeckSlide.layout !== 'three-images' && (
+                  {activeDeckSlide.layout !== 'split' && activeDeckSlide.layout !== 'video-focus' && activeDeckSlide.layout !== 'data-budget' && activeDeckSlide.layout !== 'team-grid' && activeDeckSlide.layout !== 'image-focus' && activeDeckSlide.layout !== 'before-after' && activeDeckSlide.layout !== 'chart-donut' && activeDeckSlide.layout !== 'full-image' && activeDeckSlide.layout !== 'full-image-clean' && activeDeckSlide.layout !== 'two-images' && activeDeckSlide.layout !== 'three-images' && (
                     <div className="text-center space-y-4 max-w-2xl mx-auto">
+                      {activeDeckSlide.imageUrl && (
+                        <div className={cn("rounded-2xl overflow-hidden aspect-video max-h-[360px] mx-auto relative group border shadow-xl", isLight ? "border-slate-200" : "border-white/15")}>
+                          <img src={activeDeckSlide.imageUrl} alt={getTranslatedSlideTitle(activeDeckSlide.title)} className="w-full h-full object-cover" />
+                        </div>
+                      )}
                       <h3 className={cn("text-3xl font-extrabold", isLight ? "text-slate-900" : "text-white")}>{getTranslatedSlideTitle(activeDeckSlide.title)}</h3>
-                      <p className={cn("text-base leading-relaxed whitespace-pre-wrap", isLight ? "text-slate-700" : "text-zinc-300")}>{getTranslatedSlideContent(activeDeckSlide.content)}</p>
+                      {activeDeckSlide.content && (
+                        <p className={cn("text-base leading-relaxed whitespace-pre-wrap", isLight ? "text-slate-700" : "text-zinc-300")}>{getTranslatedSlideContent(activeDeckSlide.content)}</p>
+                      )}
                     </div>
                   )}
                 </motion.div>
@@ -3496,7 +3702,7 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
 
               <div className="flex items-center gap-3">
                 <button 
-                  onClick={() => setIsAcceptModalOpen(true)}
+                  onClick={handleOpenAcceptModal}
                   className="px-6 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-2xl font-extrabold text-sm shadow-xl shadow-blue-600/30 transition-all flex items-center gap-2 cursor-pointer"
                 >
                   <FileCheck size={18} /> <span>{t('acceptProposalCta')}</span>
@@ -3766,17 +3972,17 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setSelectedLegalDocModal(null)}
-                className="fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md"
+                className="fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md overflow-y-auto"
               >
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.95 }} 
                   animate={{ opacity: 1, scale: 1 }} 
                   exit={{ opacity: 0, scale: 0.95 }} 
                   onClick={(e) => e.stopPropagation()} 
-                  className={cn("rounded-3xl p-4 sm:p-7 max-w-4xl w-full shadow-2xl space-y-4 max-h-[90vh] flex flex-col border", isLight ? "bg-white border-slate-200 text-slate-900 shadow-slate-900/15" : "bg-zinc-900 border-white/15 text-white")}
+                  className={cn("rounded-3xl p-4 sm:p-7 max-w-4xl w-full shadow-2xl space-y-4 max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-3.5rem)] min-h-0 flex flex-col border m-auto", isLight ? "bg-white border-slate-200 text-slate-900 shadow-slate-900/15" : "bg-zinc-900 border-white/15 text-white")}
                 >
                   {/* MODAL HEADER */}
-                  <div className={cn("flex items-center justify-between border-b pb-4", isLight ? "border-slate-200" : "border-white/10")}>
+                  <div className={cn("flex items-center justify-between border-b pb-4 shrink-0 z-10", isLight ? "border-slate-200" : "border-white/10")}>
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-10 h-10 rounded-xl bg-blue-600/15 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xl shrink-0">
                         ⚖️
@@ -3806,7 +4012,7 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
                   </div>
 
                   {/* MODAL BODY: STRUCTURED SWISS CONTRACT DOCUMENT SHEET */}
-                  <div className={cn("flex-1 min-h-[360px] max-h-[64vh] rounded-2xl overflow-y-auto border p-4 sm:p-6 custom-scrollbar transition-colors", isLight ? "bg-slate-50 border-slate-200" : "bg-zinc-950/80 border-white/10")}>
+                  <div className={cn("flex-1 min-h-0 rounded-2xl overflow-y-auto border p-4 sm:p-6 custom-scrollbar transition-colors", isLight ? "bg-slate-50 border-slate-200" : "bg-zinc-950/80 border-white/10")}>
                     <div className={cn("max-w-3xl mx-auto rounded-xl border p-5 sm:p-8 shadow-sm space-y-6 transition-colors", isLight ? "bg-white border-slate-200 text-slate-800" : "bg-zinc-900/90 border-white/10 text-zinc-200")}>
                       
                       {/* DOCUMENT LETTERHEAD */}
@@ -4018,7 +4224,7 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
                   </div>
 
                   {/* MODAL FOOTER */}
-                  <div className={cn("flex items-center justify-between gap-3 pt-3 border-t", isLight ? "border-slate-200" : "border-white/10")}>
+                  <div className={cn("flex items-center justify-between gap-3 pt-3 border-t shrink-0 z-10", isLight ? "border-slate-200" : "border-white/10")}>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
@@ -4445,7 +4651,7 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setIsShareModalOpen(false)}
-            className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+            className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto"
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 15 }}
@@ -4453,7 +4659,7 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
               exit={{ scale: 0.95, opacity: 0, y: 15 }}
               onClick={(e) => e.stopPropagation()}
               className={cn(
-                "w-full max-w-lg rounded-3xl border shadow-2xl p-6 space-y-5 max-h-[90vh] overflow-y-auto transition-colors",
+                "w-full max-w-lg rounded-3xl border shadow-2xl p-5 sm:p-6 space-y-5 max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-3.5rem)] min-h-0 overflow-y-auto custom-scrollbar m-auto transition-colors",
                 isLight ? "bg-white border-slate-200 text-slate-900 shadow-slate-900/15" : "bg-neutral-900 border-white/15 text-white"
               )}
             >
@@ -4662,13 +4868,13 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
               exit={{ scale: 0.95, opacity: 0, y: 15 }}
               onClick={(e) => e.stopPropagation()}
               className={cn(
-                "w-full max-w-2xl rounded-3xl border shadow-2xl p-6 sm:p-8 space-y-6 max-h-[90vh] overflow-y-auto overflow-x-hidden my-8 transition-colors",
+                "flex flex-col w-full max-w-2xl max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-3.5rem)] min-h-0 rounded-3xl border shadow-2xl my-auto overflow-hidden transition-colors",
                 isLight 
                   ? "bg-white border-purple-200 text-slate-900 shadow-slate-900/15" 
                   : "bg-neutral-900 border-purple-500/30 text-white"
               )}
             >
-              <div className={cn("flex items-center justify-between border-b pb-4", isLight ? "border-slate-200" : "border-white/10")}>
+              <div className={cn("flex items-center justify-between border-b p-5 sm:p-6 shrink-0 z-10", isLight ? "border-slate-200 bg-white" : "border-white/10 bg-neutral-900")}>
                 <div className="flex items-center gap-3">
                   <div className={cn("w-11 h-11 rounded-2xl border flex items-center justify-center font-bold", isLight ? "bg-purple-100 text-purple-700 border-purple-300" : "bg-purple-500/20 text-purple-400 border-purple-500/30")}>
                     <Building2 size={22} />
@@ -4695,8 +4901,9 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
                   audioFeedback.playSuccessChime();
                   setIsCompanySettingsModalOpen(false);
                 }}
-                className="space-y-4 text-xs"
+                className="flex-1 min-h-0 flex flex-col overflow-hidden text-xs"
               >
+                <div className="flex-1 min-h-0 overflow-y-auto p-5 sm:p-6 space-y-4">
                 {/* Firmengrunddaten */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
@@ -4833,8 +5040,9 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
                     />
                   </div>
                 </div>
+                </div>
 
-                <div className={cn("flex items-center justify-end gap-3 pt-3 border-t", isLight ? "border-slate-200" : "border-white/10")}>
+                <div className={cn("flex items-center justify-end gap-3 p-4 sm:p-5 border-t shrink-0 z-10", isLight ? "border-slate-200 bg-slate-50/80" : "border-white/10 bg-neutral-900/90")}>
                   <button
                     type="button"
                     onClick={() => setIsCompanySettingsModalOpen(false)}

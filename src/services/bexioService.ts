@@ -138,7 +138,10 @@ export async function syncProposalToBexio(
       })
     });
 
-    const result: BexioSyncResult = await response.json();
+    const result: BexioSyncResult = await response.json().catch(() => ({
+      success: false,
+      error: `Bexio Server-Fehler (Status ${response.status})`
+    }));
     
     // Log speichern
     saveBexioSyncLog({

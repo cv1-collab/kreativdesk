@@ -627,8 +627,8 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
 
       {/* INTERACTIVE LIVE PREVIEW MODAL (DESKTOP & MOBILE FRAME) */}
       {previewProposal && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/85 backdrop-blur-md p-2 sm:p-6 animate-in fade-in duration-200" onClick={() => setPreviewProposal(null)}>
-          <div className="bg-surface border border-border rounded-3xl w-full max-w-6xl h-[94vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/85 backdrop-blur-md p-2 sm:p-6 animate-in fade-in duration-200 overflow-y-auto" onClick={() => setPreviewProposal(null)}>
+          <div className="bg-surface border border-border rounded-3xl w-full max-w-6xl h-[94vh] max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2.5rem)] min-h-0 flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 m-auto" onClick={e => e.stopPropagation()}>
             {/* Modal Header Bar */}
             <div className="p-3 sm:px-5 sm:py-3.5 border-b border-border flex items-center justify-between gap-3 bg-surface/90 backdrop-blur-md shrink-0">
               <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">

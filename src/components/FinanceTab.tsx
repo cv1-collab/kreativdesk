@@ -332,7 +332,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
         </div>
 
         {/* CATEGORY TABS */}
-        <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar border-b border-border/30 pb-3">
+        <div className="flex flex-wrap items-center gap-2 border-b border-border/30 pb-3">
           <button
             onClick={() => setActiveTabFilter('all')}
             className={cn("px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border", activeTabFilter === 'all' ? "bg-indigo-500/10 text-indigo-500 border-indigo-500/30" : "bg-surface border-border/40 text-text-muted hover:text-text-primary")}

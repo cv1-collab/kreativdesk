@@ -34,9 +34,11 @@ export const initiateSubscriptionCheckout = async (planName: PlanType, interval:
       body: JSON.stringify({ planName, priceId })
     });
     
-    if (!response.ok) throw new Error('Checkout API Fehler');
+    const resData = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(resData?.error || `Checkout API Fehler (${response.status})`);
+    }
     
-    const resData = await response.json();
     if (resData.url) {
       const safe = sanitizeUrl(resData.url);
       if (safe && (safe.startsWith('https://') || safe.startsWith('/'))) {
@@ -62,8 +64,12 @@ export const openCustomerPortal = async (stripeCustomerId: string) => {
       },
       body: JSON.stringify({ customerId: stripeCustomerId })
     });
-    if (!response.ok) throw new Error('Portal API Fehler');
-    const resData = await response.json();
+    
+    const resData = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(resData?.error || `Portal API Fehler (${response.status})`);
+    }
+    
     if (resData.url) {
       const safe = sanitizeUrl(resData.url);
       if (safe && (safe.startsWith('https://') || safe.startsWith('/'))) {

@@ -303,8 +303,8 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
 
   return createPortal(
     <>
-      <div className="fixed inset-0 z-[90000] flex items-end md:items-center justify-center bg-black/80 backdrop-blur-sm sm:p-4">
-        <div className="bg-background w-full h-[100dvh] md:h-[95vh] md:max-h-[900px] md:rounded-2xl shadow-2xl max-w-4xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-200">
+      <div className="fixed inset-0 z-[90000] flex items-end md:items-center justify-center bg-black/80 backdrop-blur-sm sm:p-4 overflow-y-auto">
+        <div className="bg-background w-full h-[100dvh] md:h-auto md:max-h-[calc(100dvh-2rem)] md:rounded-2xl shadow-2xl max-w-4xl flex flex-col min-h-0 overflow-hidden animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-200 m-auto">
           <div className="p-4 md:p-6 border-b border-border/50 bg-surface/90 backdrop-blur-md sticky top-0 z-20 flex justify-between items-center shrink-0">
             <div className="flex items-center gap-3">
               <div className={cn(
@@ -341,7 +341,7 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
               <button onClick={onClose} className="h-9 w-9 flex items-center justify-center text-text-muted hover:text-text-primary bg-background border border-border/50 rounded-xl transition-colors cursor-pointer shadow-xs"><X size={18} /></button>
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 md:space-y-8 custom-scrollbar pb-32">
+          <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 space-y-6 md:space-y-8 custom-scrollbar pb-32">
             <div className="bg-surface border border-border/50 rounded-xl p-4 space-y-4 shadow-sm">
               <div><label className="text-[10px] uppercase font-bold text-text-muted block mb-1">{t('project_assignment')}</label><select value={activeProjectId} onChange={e => setActiveProjectId(e.target.value)} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 outline-none text-sm font-bold text-text-primary cursor-pointer transition-colors focus:border-accent-ai"><option value="global">Kein Projekt (Global)</option>{projects.map((p:any) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
               <div className="grid grid-cols-2 gap-4"><div><label className="text-[10px] uppercase font-bold text-text-muted block mb-1">{type === 'invoice' ? t('invoice_no') : t('quote_no')}</label><input value={formData.invoiceNumber} onChange={e => setFormData({...formData, invoiceNumber: e.target.value})} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 outline-none text-sm font-bold text-text-primary focus:border-accent-ai transition-colors" /></div><div><label className="text-[10px] uppercase font-bold text-text-muted block mb-1">{t('date')}</label><input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 outline-none text-sm font-bold text-text-primary focus:border-accent-ai transition-colors" /></div></div>
@@ -392,9 +392,9 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
       </div>
       <AnimatePresence>
         {showBudgetImport && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[90010] flex items-center justify-center p-4">
-            <div className="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-full">
-              <div className="p-5 border-b border-border/50 flex justify-between items-center bg-surface/90">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[90010] flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+            <div className="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[calc(100dvh-2rem)] min-h-0 m-auto">
+              <div className="p-4 sm:p-5 border-b border-border/50 flex justify-between items-center bg-surface/90 shrink-0 z-10">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center shrink-0 shadow-xs">
                     <Cloud size={16} />
@@ -405,10 +405,10 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
                   <X size={16}/>
                 </button>
               </div>
-              <div className="p-5 overflow-y-auto space-y-3 custom-scrollbar">
+              <div className="p-4 sm:p-5 flex-1 min-h-0 overflow-y-auto space-y-3 custom-scrollbar">
                 {budgetGroups.length === 0 ? (<div className="text-center py-8 text-text-muted font-medium">{t('budget_not_found')}</div>) : (budgetGroups.map(g => { const groupTotal = g.items?.reduce((sum: number, item: any) => sum + (item.total || 0), 0) || 0; return (<label key={g.id} className={cn("flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-colors", selectedBudgetIds.includes(g.id) ? "bg-blue-500/10 border-blue-500/30" : "bg-background border-border/50 hover:border-blue-500/30")}><input type="checkbox" checked={selectedBudgetIds.includes(g.id)} onChange={(e) => { if (e.target.checked) setSelectedBudgetIds([...selectedBudgetIds, g.id]); else setSelectedBudgetIds(selectedBudgetIds.filter(id => id !== g.id)); }} className="w-5 h-5 rounded border-border text-blue-500 focus:ring-blue-500 bg-background cursor-pointer" /><div className="flex-1 flex justify-between items-center"><div className="font-bold text-text-primary text-sm">{g.pos} {g.title}</div><div className="font-bold text-blue-500 text-lg">{currency} {formatAmount(groupTotal, currency)}</div></div></label>);}))}
               </div>
-              <div className="p-5 border-t border-border/50 flex justify-between items-center bg-surface/80">
+              <div className="p-4 sm:p-5 border-t border-border/50 flex justify-between items-center bg-surface/80 shrink-0 z-10">
                 <button onClick={() => setSelectedBudgetIds(budgetGroups.map((g:any)=>g.id))} className="text-xs font-bold text-blue-500 flex items-center gap-1.5 hover:underline cursor-pointer">
                   <CheckSquare size={16}/> {t('select_all')}
                 </button>

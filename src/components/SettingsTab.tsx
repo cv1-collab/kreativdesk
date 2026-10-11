@@ -24,6 +24,7 @@ import { applyBrandColor, DEFAULT_BRAND_COLOR } from '../utils/brandColorManager
 import { saveSystemConfigJSON, fetchSystemConfigJSON } from '../utils/configHelper';
 import API from './API';
 import ModuleGuideButton from './ModuleGuideButton';
+import QRCode from 'react-qr-code';
 
 const BRAND_COLOR_PRESETS = [
   { name: 'Kreativ Blue (Standard)', hex: '#3b82f6' },
@@ -315,6 +316,22 @@ export default function SettingsTab() {
   const [isResetLoading, setIsResetLoading] = useState(false);
   const [is2FAEnabled, setIs2FAEnabled] = useState(false);
   const [show2FASetup, setShow2FASetup] = useState(false);
+
+  const user2FASecret = React.useMemo(() => {
+    const uid = currentUser?.uid || 'user';
+    const stored = safeStorage.getString(`user_2fa_secret_${uid}`);
+    if (stored) return stored;
+    const base32Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    let generated = '';
+    for (let i = 0; i < 16; i++) {
+      generated += base32Chars[Math.floor(Math.random() * base32Chars.length)];
+    }
+    safeStorage.setItem(`user_2fa_secret_${uid}`, generated);
+    return generated;
+  }, [currentUser?.uid]);
+
+  const otpAuthUrl = `otpauth://totp/KreativDesk:${encodeURIComponent(currentUser?.email || 'User')}?secret=${user2FASecret}&issuer=KreativDesk`;
+
   const [activeSubTab, setActiveSubTab] = useState<'general' | 'api'>(() => (safeStorage.getString('settings_active_subtab') as any) || 'general');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1277,9 +1294,14 @@ export default function SettingsTab() {
                 </div>
                 <p className="text-xs text-text-muted">Scanne den QR-Code mit deiner Authenticator App und bestätige die Einrichtung.</p>
                 <div className="flex items-center gap-4">
-                  <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=otpauth://totp/KreativDesk:User?secret=JBSWY3DPEHPK3PXP" alt="2FA QR Code" className="w-24 h-24 rounded-lg border border-border bg-white p-2" />
+                  <div className="w-24 h-24 rounded-lg border border-border bg-white p-2 flex items-center justify-center shrink-0 shadow-sm">
+                    <QRCode value={otpAuthUrl} size={80} style={{ width: '100%', height: '100%' }} />
+                  </div>
                   <div className="space-y-2">
-                    <input type="text" placeholder="6-stelliger Code" className="px-3 py-2 bg-surface border border-border rounded-lg text-sm font-mono text-text-primary outline-none focus:border-emerald-500" maxLength={6} />
+                    <div className="text-[11px] font-mono text-text-muted bg-surface px-2.5 py-1 rounded border border-border/50">
+                      Key: <span className="text-text-primary font-bold">{user2FASecret}</span>
+                    </div>
+                    <input type="text" placeholder="6-stelliger Code" className="px-3 py-2 bg-surface border border-border rounded-lg text-sm font-mono text-text-primary outline-none focus:border-emerald-500 w-full" maxLength={6} />
                     <button 
                       type="button"
                       onClick={() => {
@@ -1637,6 +1659,21 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
   // 2FA states
   const [show2FASetup, setShow2FASetup] = useState(false);
   const [is2FAEnabled, setIs2FAEnabled] = useState(() => safeStorage.getItem<string>(`user_2fa_enabled_${currentUser?.uid}`, 'false') === 'true');
+
+  const user2FASecret = React.useMemo(() => {
+    const uid = currentUser?.uid || 'user';
+    const stored = safeStorage.getString(`user_2fa_secret_${uid}`);
+    if (stored) return stored;
+    const base32Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    let generated = '';
+    for (let i = 0; i < 16; i++) {
+      generated += base32Chars[Math.floor(Math.random() * base32Chars.length)];
+    }
+    safeStorage.setItem(`user_2fa_secret_${uid}`, generated);
+    return generated;
+  }, [currentUser?.uid]);
+
+  const otpAuthUrl = `otpauth://totp/KreativDesk:${encodeURIComponent(currentUser?.email || 'User')}?secret=${user2FASecret}&issuer=KreativDesk`;
 
   // Role display label
   const rawRole = (currentUser?.role || '').toLowerCase().trim();
@@ -2186,14 +2223,12 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
             </div>
             <p className="text-xs text-text-muted">{currentLang === 'en' ? 'Scan the QR code with your Authenticator app and confirm setup.' : 'Scanne den QR-Code mit deiner Authenticator App und bestätige die Einrichtung.'}</p>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
-              <img 
-                src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=otpauth://totp/KreativDesk:User?secret=JBSWY3DPEHPK3PXP" 
-                alt="2FA QR Code" 
-                className="w-28 h-28 rounded-xl border border-border bg-white p-2 shadow-sm shrink-0" 
-              />
+              <div className="w-28 h-28 rounded-xl border border-border bg-white p-2.5 shadow-sm shrink-0 flex items-center justify-center">
+                <QRCode value={otpAuthUrl} size={92} style={{ width: '100%', height: '100%' }} />
+              </div>
               <div className="space-y-3 flex-1">
                 <p className="text-xs text-text-muted font-mono bg-surface px-3 py-1.5 rounded-lg border border-border/60 inline-block">
-                  {currentLang === 'en' ? 'Key:' : 'Schlüssel:'} JBSWY3DPEHPK3PXP
+                  {currentLang === 'en' ? 'Key:' : 'Schlüssel:'} <span className="text-text-primary font-bold">{user2FASecret}</span>
                 </p>
                 <div className="flex items-center gap-3">
                   <input 

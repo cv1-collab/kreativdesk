@@ -48,6 +48,7 @@ export const DEFAULT_COMPANY_SETTINGS: CompanySettings = {
 };
 
 import { safeStorage } from '../utils/safeStorage';
+import { supabase } from '../lib/supabase';
 
 export function getCompanySettings(): CompanySettings {
   if (typeof window === 'undefined') return DEFAULT_COMPANY_SETTINGS;
@@ -62,11 +63,119 @@ export function getCompanySettings(): CompanySettings {
   return DEFAULT_COMPANY_SETTINGS;
 }
 
-export function saveCompanySettings(settings: Partial<CompanySettings>): CompanySettings {
+export function saveCompanySettings(settings: Partial<CompanySettings>, companyId?: string): CompanySettings {
   const current = getCompanySettings();
   const updated = { ...current, ...settings };
   if (typeof window !== 'undefined') {
     safeStorage.setItem(STORAGE_KEY, updated);
   }
+
+  // Asynchronous backup / sync to Supabase company_profile_config
+  if (supabase) {
+    try {
+      const safeId = companyId || safeStorage.getString('kd_active_company_id') || 'global';
+      const profileData = {
+        agencyName: updated.companyName,
+        address: `${updated.street} ${updated.buildingNumber}`.trim(),
+        zipCode: updated.postalCode,
+        city: updated.city,
+        email: updated.contactEmail,
+        phone: updated.contactPhone,
+        website: updated.website,
+        uidNumber: updated.uid,
+        iban: updated.iban,
+        qrIban: updated.qrIban,
+        bankName: updated.bankName,
+        legalForm: updated.legalForm,
+        vatRate: updated.vatRate,
+        updatedAt: new Date().toISOString()
+      };
+
+      // Upsert into documents table under company_settings category
+      supabase
+        .from('documents')
+        .select('id')
+        .eq('category', 'company_settings')
+        .eq('name', 'company_profile_config')
+        .maybeSingle()
+        .then(({ data: existing }) => {
+          if (existing?.id) {
+            supabase
+              .from('documents')
+              .update({
+                url: JSON.stringify(profileData),
+                file_url: JSON.stringify(profileData),
+                uploaded_at: new Date().toISOString()
+              })
+              .eq('id', existing.id)
+              .then(() => {});
+          } else {
+            supabase
+              .from('documents')
+              .insert({
+                name: 'company_profile_config',
+                category: 'company_settings',
+                type: 'application/json',
+                company_id: safeId !== 'global' ? safeId : null,
+                url: JSON.stringify(profileData),
+                file_url: JSON.stringify(profileData),
+                is_folder: false
+              })
+              .then(() => {});
+          }
+        });
+    } catch (err) {
+      console.warn('Failed to sync company settings to Supabase:', err);
+    }
+  }
+
   return updated;
+}
+
+export async function loadAndSyncCompanySettings(companyId?: string): Promise<CompanySettings> {
+  const local = getCompanySettings();
+  if (!supabase) return local;
+
+  try {
+    let query = supabase
+      .from('documents')
+      .select('url, file_url')
+      .eq('category', 'company_settings')
+      .eq('name', 'company_profile_config');
+
+    if (companyId && companyId !== 'global') {
+      query = query.eq('company_id', companyId);
+    }
+
+    const { data: configDoc } = await query.maybeSingle();
+
+    if (configDoc?.file_url || configDoc?.url) {
+      const parsed = JSON.parse(configDoc.file_url || configDoc.url);
+      const merged: CompanySettings = {
+        ...local,
+        companyName: parsed.agencyName || local.companyName,
+        legalForm: parsed.legalForm || local.legalForm,
+        street: parsed.address?.replace(/\s*\d+.*$/, '') || local.street,
+        buildingNumber: parsed.address?.match(/\d+.*$/)?.[0] || local.buildingNumber,
+        postalCode: parsed.zipCode || local.postalCode,
+        city: parsed.city || local.city,
+        uid: parsed.uidNumber || parsed.vatNumber || local.uid,
+        iban: parsed.iban || local.iban,
+        qrIban: parsed.qrIban || parsed.iban || local.qrIban,
+        bankName: parsed.bankName || local.bankName,
+        contactEmail: parsed.email || local.contactEmail,
+        contactPhone: parsed.phone || local.contactPhone,
+        website: parsed.website || local.website
+      };
+
+      if (typeof window !== 'undefined') {
+        safeStorage.setItem(STORAGE_KEY, merged);
+      }
+      return merged;
+    }
+  } catch (err) {
+    console.warn('Could not sync company settings from Supabase:', err);
+  }
+
+  return local;
 }

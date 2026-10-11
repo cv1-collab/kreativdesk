@@ -866,8 +866,8 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
         <>
           {/* WEATHER LOCATION MODAL */}
           {isWeatherModalOpen && (
-            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-0 md:p-4 bg-black/80 backdrop-blur-sm">
-              <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-surface border border-border/50 md:rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col h-[100dvh] md:h-auto max-md:max-h-full max-md:rounded-none max-md:border-none">
+            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-0 md:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+              <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-surface border border-border/50 md:rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col h-[100dvh] md:h-auto md:max-h-[calc(100dvh-3rem)] min-h-0 md:m-auto max-md:max-h-full max-md:rounded-none max-md:border-none">
                 <div className="p-4 md:p-6 border-b border-border/50 flex items-center justify-between bg-surface/50 shrink-0 sticky top-0 z-10">
                   <h3 className="font-bold flex items-center gap-2 text-text-primary">
                     <MapPin size={18} className="text-accent-ai" /> 
@@ -875,29 +875,31 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
                   </h3>
                   <button onClick={() => setIsWeatherModalOpen(false)} className="text-text-muted hover:text-text-primary bg-background p-2 rounded-lg transition-colors"><X size={20}/></button>
                 </div>
-                <form onSubmit={handleSaveLocation} className="p-4 md:p-6 space-y-4 flex-1 overflow-y-auto bg-background/50">
-                  <div>
-                    <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">
-                      {t('city_location')}
-                    </label>
-                    <input type="text" required value={locationInput} onChange={e => setLocationInput(e.target.value)} className="w-full bg-surface border border-border/50 rounded-lg py-3 md:py-2.5 px-4 text-sm font-bold text-text-primary focus:outline-none focus:border-accent-ai shadow-sm" placeholder={t('city_placeholder')} autoFocus />
-                    <p className="text-[10px] text-text-muted mt-2 font-medium">{t('weather_location_desc')}</p>
+                <form onSubmit={handleSaveLocation} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                  <div className="p-4 md:p-6 space-y-4 flex-1 overflow-y-auto custom-scrollbar bg-background/50 min-h-0">
+                    <div>
+                      <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">
+                        {t('city_location')}
+                      </label>
+                      <input type="text" required value={locationInput} onChange={e => setLocationInput(e.target.value)} className="w-full bg-surface border border-border/50 rounded-lg py-3 md:py-2.5 px-4 text-sm font-bold text-text-primary focus:outline-none focus:border-accent-ai shadow-sm" placeholder={t('city_placeholder')} autoFocus />
+                      <p className="text-[10px] text-text-muted mt-2 font-medium">{t('weather_location_desc')}</p>
+                    </div>
+                  </div>
+                  <div className="p-4 md:p-6 flex flex-col sm:flex-row justify-end gap-3 border-t border-border/50 bg-surface/90 shrink-0 z-10">
+                    <button type="button" onClick={() => setIsWeatherModalOpen(false)} className="w-full sm:w-auto px-6 py-3 md:py-2.5 text-sm font-bold text-text-primary border border-border sm:border-transparent rounded-lg transition-colors">{t('cancel')}</button>
+                    <button type="submit" disabled={isSavingLink || !locationInput} className="w-full sm:w-auto px-8 py-3 md:py-2.5 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                      {isSavingLink ? <Loader2 size={16} className="animate-spin"/> : null} {t('save')}
+                    </button>
                   </div>
                 </form>
-                <div className="p-4 md:p-6 flex flex-col sm:flex-row justify-end gap-3 border-t border-border/50 bg-surface/90 shrink-0 sticky bottom-0">
-                  <button type="button" onClick={() => setIsWeatherModalOpen(false)} className="w-full sm:w-auto px-6 py-3 md:py-2.5 text-sm font-bold text-text-primary border border-border sm:border-transparent rounded-lg transition-colors">{t('cancel')}</button>
-                  <button type="submit" disabled={isSavingLink || !locationInput} className="w-full sm:w-auto px-8 py-3 md:py-2.5 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
-                    {isSavingLink ? <Loader2 size={16} className="animate-spin"/> : null} {t('save')}
-                  </button>
-                </div>
               </motion.div>
             </div>
           )}
 
           {/* INTEGRATION ASSISTANT & LINK MODAL */}
           {linkModal && (
-            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-0 md:p-4 bg-black/80 backdrop-blur-sm">
-              <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-surface border border-border/50 md:rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col h-[100dvh] md:h-auto max-md:max-h-full max-md:rounded-none max-md:border-none">
+            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-0 md:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+              <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-surface border border-border/50 md:rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col h-[100dvh] md:h-auto md:max-h-[calc(100dvh-3rem)] min-h-0 md:m-auto max-md:max-h-full max-md:rounded-none max-md:border-none">
                 <div className="p-4 md:p-6 border-b border-border/50 flex items-center justify-between bg-surface/50 shrink-0 sticky top-0 z-10">
                   <h3 className="font-bold flex items-center gap-2 text-text-primary">
                     <LinkIcon size={18} className="text-accent-ai" /> {t('link_integration')}
@@ -905,46 +907,48 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
                   <button onClick={() => setLinkModal(null)} className="text-text-muted hover:text-text-primary bg-background p-2 rounded-lg transition-colors"><X size={20}/></button>
                 </div>
                 
-                <form onSubmit={handleSaveLink} className="p-4 md:p-6 space-y-5 flex-1 overflow-y-auto bg-background/50">
-                  
-                  {/* PRESET SCHNELL-AUSWAHL */}
-                  <div className="space-y-2">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-text-muted">
-                      {t('preset_help')}
-                    </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {(PROVIDER_CATALOG[linkModal.type] || []).map((preset) => (
-                        <button
-                          key={preset.name}
-                          type="button"
-                          onClick={() => setLinkModal({ ...linkModal, url: preset.sampleUrl })}
-                          className="p-2.5 bg-surface border border-border/50 hover:border-accent-ai/50 rounded-xl text-left transition-all hover:bg-white/5"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-xs text-text-primary">{preset.name}</span>
-                            <span className={cn("text-[8px] font-bold px-1 py-0.5 rounded uppercase", preset.badgeColor)}>
-                              {preset.logoTag}
-                            </span>
-                          </div>
-                          <div className="text-[10px] text-text-muted truncate mt-0.5">{preset.description}</div>
-                        </button>
-                      ))}
+                <form onSubmit={handleSaveLink} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                  <div className="p-4 md:p-6 space-y-5 flex-1 overflow-y-auto custom-scrollbar bg-background/50 min-h-0">
+                    
+                    {/* PRESET SCHNELL-AUSWAHL */}
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-text-muted">
+                        {t('preset_help')}
+                      </label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {(PROVIDER_CATALOG[linkModal.type] || []).map((preset) => (
+                          <button
+                            key={preset.name}
+                            type="button"
+                            onClick={() => setLinkModal({ ...linkModal, url: preset.sampleUrl })}
+                            className="p-2.5 bg-surface border border-border/50 hover:border-accent-ai/50 rounded-xl text-left transition-all hover:bg-white/5"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-xs text-text-primary">{preset.name}</span>
+                              <span className={cn("text-[8px] font-bold px-1 py-0.5 rounded uppercase", preset.badgeColor)}>
+                                {preset.logoTag}
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-text-muted truncate mt-0.5">{preset.description}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">URL / Web-Link</label>
+                      <input type="url" required value={linkModal.url} onChange={e => setLinkModal({...linkModal, url: e.target.value})} className="w-full bg-surface border border-border/50 rounded-lg py-3 md:py-2.5 px-4 text-sm font-bold text-text-primary focus:outline-none focus:border-accent-ai shadow-sm font-mono" placeholder="https://..." autoFocus />
+                      <p className="text-[10px] text-text-muted mt-2 font-medium">{t('integration_desc')}</p>
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">URL / Web-Link</label>
-                    <input type="url" required value={linkModal.url} onChange={e => setLinkModal({...linkModal, url: e.target.value})} className="w-full bg-surface border border-border/50 rounded-lg py-3 md:py-2.5 px-4 text-sm font-bold text-text-primary focus:outline-none focus:border-accent-ai shadow-sm font-mono" placeholder="https://..." autoFocus />
-                    <p className="text-[10px] text-text-muted mt-2 font-medium">{t('integration_desc')}</p>
+                  <div className="p-4 md:p-6 flex flex-col sm:flex-row justify-end gap-3 border-t border-border/50 bg-surface/90 shrink-0 z-10">
+                    <button type="button" onClick={() => setLinkModal(null)} className="w-full sm:w-auto px-6 py-3 md:py-2.5 text-sm font-bold text-text-primary border border-border sm:border-transparent rounded-lg transition-colors">{t('cancel')}</button>
+                    <button type="submit" disabled={isSavingLink || !linkModal.url} className="w-full sm:w-auto px-8 py-3 md:py-2.5 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                      {isSavingLink ? <Loader2 size={16} className="animate-spin"/> : null} {t('save')}
+                    </button>
                   </div>
                 </form>
-
-                <div className="p-4 md:p-6 flex flex-col sm:flex-row justify-end gap-3 border-t border-border/50 bg-surface/90 shrink-0 sticky bottom-0">
-                  <button type="button" onClick={() => setLinkModal(null)} className="w-full sm:w-auto px-6 py-3 md:py-2.5 text-sm font-bold text-text-primary border border-border sm:border-transparent rounded-lg transition-colors">{t('cancel')}</button>
-                  <button type="submit" disabled={isSavingLink || !linkModal.url} className="w-full sm:w-auto px-8 py-3 md:py-2.5 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
-                    {isSavingLink ? <Loader2 size={16} className="animate-spin"/> : null} {t('save')}
-                  </button>
-                </div>
               </motion.div>
             </div>
           )}

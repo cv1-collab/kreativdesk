@@ -317,7 +317,8 @@ export default function TemplatesTab({
     const boundContent = bindTemplateVariables(rawContent, {
       company: companyProfile,
       project: activeProject,
-      language: lang
+      language: lang,
+      highlightVariables: true
     });
 
     const title = tpl.title[lang] || tpl.title.de;
@@ -332,7 +333,8 @@ export default function TemplatesTab({
     const boundContent = bindTemplateVariables(rawContent, {
       company: companyProfile,
       project: activeProject,
-      language: lang
+      language: lang,
+      highlightVariables: false
     });
 
     navigator.clipboard.writeText(boundContent);
@@ -801,8 +803,8 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
 
       {/* KI-Vorlagen- & Vertrags-Generator Modal */}
       {isAiModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
-          <div className="bg-surface border border-border p-5 sm:p-7 rounded-3xl max-w-2xl w-full shadow-2xl space-y-5 max-h-[92vh] overflow-y-auto custom-scrollbar">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200 overflow-y-auto">
+          <div className="bg-surface border border-border p-5 sm:p-7 rounded-3xl max-w-2xl w-full shadow-2xl space-y-5 max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-3.5rem)] min-h-0 overflow-y-auto custom-scrollbar m-auto">
             
             {/* Modal Header */}
             <div className="flex items-start justify-between gap-3 border-b border-border/50 pb-4">

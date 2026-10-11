@@ -3581,9 +3581,9 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
         <>
           <AnimatePresence>
             {showAiRender && (
-              <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
-                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-surface border border-border rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col md:flex-row overflow-hidden">
-                  <div className="w-full md:w-1/2 bg-background border-r border-border p-6 flex flex-col items-center justify-center min-h-[300px] relative">
+              <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-4 overflow-y-auto">
+                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-surface border border-border rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col md:flex-row overflow-hidden max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-3.5rem)] min-h-0 m-auto">
+                  <div className="w-full md:w-1/2 bg-background border-b md:border-b-0 md:border-r border-border p-4 sm:p-6 flex flex-col items-center justify-center min-h-[220px] sm:min-h-[300px] relative shrink-0 md:shrink overflow-hidden">
                     {renderedImage ? (
                       <img src={renderedImage} alt="Rendered Result" className="w-full h-full object-contain rounded-xl shadow-lg animate-in fade-in" />
                     ) : isRendering ? (
@@ -3604,8 +3604,8 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
                     )}
                   </div>
                   
-                  <div className="w-full md:w-1/2 p-8 flex flex-col">
-                    <div className="flex justify-between items-start mb-6">
+                  <div className="w-full md:w-1/2 p-5 sm:p-8 flex flex-col flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+                    <div className="flex justify-between items-start mb-6 shrink-0">
                       <div>
                         <div className="flex items-center gap-2.5 mb-1">
                           <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
@@ -3618,7 +3618,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
                       <button onClick={() => setShowAiRender(false)} className="text-text-muted hover:text-text-primary"><X size={20} /></button>
                     </div>
 
-                    <div className="flex-1 flex flex-col justify-center">
+                    <div className="flex-1 flex flex-col justify-center min-h-0">
                       <label className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-3">Stil & Kreativität</label>
                       <div className="grid grid-cols-2 gap-2 mb-4">
                         {[
@@ -3675,14 +3675,14 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
 
             {/* CROP STUDIO MODAL (MINI-PHOTOSHOP) */}
             {isCropping && cropTargetItem && (
-              <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in">
+              <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-4 overflow-y-auto animate-in fade-in">
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  className="bg-surface border border-border rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+                  className="bg-surface border border-border rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-3.5rem)] min-h-0 m-auto"
                 >
-                  <div className="p-4 border-b border-border flex items-center justify-between bg-surface shrink-0">
+                  <div className="p-4 border-b border-border flex items-center justify-between bg-surface shrink-0 z-10">
                     <div className="flex items-center gap-2">
                       <div className="p-2 rounded-lg bg-accent-ai/10 text-accent-ai">
                         <Crop size={18} />
@@ -3700,13 +3700,13 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
                     </button>
                   </div>
 
-                  <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-                    <div className="flex-1 bg-background/90 p-6 flex items-center justify-center relative overflow-hidden select-none min-h-[320px]">
-                      <div className="relative inline-block max-w-full max-h-[60vh] shadow-2xl rounded-lg overflow-hidden border border-border/50">
+                  <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden">
+                    <div className="flex-1 bg-background/90 p-4 sm:p-6 flex items-center justify-center relative overflow-hidden select-none min-h-[220px] sm:min-h-[320px]">
+                      <div className="relative inline-block max-w-full max-h-[50vh] sm:max-h-[60vh] shadow-2xl rounded-lg overflow-hidden border border-border/50">
                         <img
                           src={cropTargetItem.src}
                           alt="Crop Source"
-                          className="max-w-full max-h-[60vh] object-contain block"
+                          className="max-w-full max-h-[50vh] sm:max-h-[60vh] object-contain block"
                         />
                         <div
                           className="absolute border-2 border-accent-ai shadow-[0_0_0_9999px_rgba(0,0,0,0.65)] pointer-events-none transition-all"
@@ -3732,7 +3732,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
                       </div>
                     </div>
 
-                    <div className="w-full md:w-80 bg-surface border-t md:border-t-0 md:border-l border-border p-5 flex flex-col justify-between shrink-0 space-y-4">
+                    <div className="w-full md:w-80 bg-surface border-t md:border-t-0 md:border-l border-border p-4 sm:p-5 flex flex-col justify-between shrink-0 overflow-y-auto custom-scrollbar space-y-4">
                       <div className="space-y-4">
                         <div>
                           <label className="text-[11px] font-bold text-text-muted uppercase tracking-wider block mb-2">
@@ -3854,14 +3854,14 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
 
             {/* FREISTELLEN MODAL (MINI-PHOTOSHOP) */}
             {showFreistellenModal && freistellenTargetItem && (
-              <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in">
+              <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-4 overflow-y-auto animate-in fade-in">
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  className="bg-surface border border-border rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col"
+                  className="bg-surface border border-border rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-3.5rem)] min-h-0 m-auto"
                 >
-                  <div className="p-4 border-b border-border flex items-center justify-between bg-surface shrink-0">
+                  <div className="p-4 border-b border-border flex items-center justify-between bg-surface shrink-0 z-10">
                     <div className="flex items-center gap-2">
                       <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400">
                         <Scissors size={18} />
@@ -3879,7 +3879,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
                     </button>
                   </div>
 
-                  <div className="p-6 space-y-5">
+                  <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 flex-1 min-h-0 overflow-y-auto custom-scrollbar">
                     <div className="grid grid-cols-2 gap-3">
                       <button
                         type="button"
@@ -3985,7 +3985,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
                       </div>
                     </div>
 
-                    <div className="flex justify-end gap-3 pt-2">
+                    <div className="flex justify-end gap-3 pt-3 border-t border-border shrink-0 z-10 bg-surface/80 backdrop-blur-sm">
                       <button
                         type="button"
                         onClick={() => { setShowFreistellenModal(false); setFreistellenTargetItem(null); }}
@@ -4021,8 +4021,8 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
 
           {/* TEXT MODAL */}
           {textPrompt && (
-            <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-              <div className="bg-surface border border-border rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in fade-in zoom-in-95">
+            <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+              <div className="bg-surface border border-border rounded-2xl p-4 sm:p-6 w-full max-w-md shadow-2xl max-h-[calc(100dvh-2rem)] min-h-0 overflow-y-auto m-auto animate-in fade-in zoom-in-95">
                 <div className="flex items-center gap-2.5 mb-4">
                   <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
                     <Type size={16} />
@@ -4041,9 +4041,9 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
           )}
           {/* KI AUDIT MODAL */}
           {isAiAuditModalOpen && (
-            <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm pointer-events-auto">
-              <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-surface border border-border/50 rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden relative flex flex-col max-h-[85vh]">
-                <div className="p-4 border-b border-border/50 flex items-center justify-between bg-surface/50">
+            <div className="fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm pointer-events-auto overflow-y-auto">
+              <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-surface border border-border/50 rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden relative flex flex-col max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-3.5rem)] min-h-0 m-auto">
+                <div className="p-4 border-b border-border/50 flex items-center justify-between bg-surface/50 shrink-0 z-10">
                   <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center justify-center shrink-0 shadow-xs">
                       <Sparkles size={16} />
@@ -4055,7 +4055,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
                   </button>
                 </div>
 
-                <div className="p-6 overflow-y-auto custom-scrollbar space-y-4 flex-1">
+                <div className="p-6 overflow-y-auto custom-scrollbar space-y-4 flex-1 min-h-0">
                   {isAiAuditing ? (
                     <div className="py-12 flex flex-col items-center justify-center text-center space-y-4">
                       <Loader2 size={40} className="animate-spin text-purple-500" />
@@ -4069,7 +4069,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
                   )}
                 </div>
 
-                <div className="p-4 border-t border-border/50 bg-background flex justify-between items-center">
+                <div className="p-4 border-t border-border/50 bg-background flex justify-between items-center shrink-0 z-10">
                   <button onClick={handleRunAiAudit} disabled={isAiAuditing} className="px-4 py-2 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-lg text-xs font-bold hover:bg-purple-500/20 transition-colors flex items-center gap-2">
                     <RefreshCw size={14} className={isAiAuditing ? "animate-spin" : ""} /> Audit erneut ausführen
                   </button>

@@ -868,8 +868,8 @@ export default function GuestMeet() {
       </div>
 
       {showBgModal && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-[999999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-surface border border-border/50 rounded-3xl p-6 w-full max-w-xl shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
+        <div className="fixed inset-0 z-[999999] bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-surface border border-border/50 rounded-2xl sm:rounded-3xl p-4 sm:p-6 w-full max-w-xl shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[calc(100dvh-2rem)] sm:max-h-[85vh] min-h-0 m-auto">
             <div className="flex items-center justify-between mb-4 border-b border-border/50 pb-4 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-accent-ai/10 text-accent-ai rounded-xl flex items-center justify-center">

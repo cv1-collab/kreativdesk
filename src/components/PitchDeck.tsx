@@ -1256,8 +1256,8 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
 
       {/* SHARE MODAL OVERLAY */}
       {isShareModalOpen && (
-        <div className="fixed inset-0 z-[150000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-md shadow-2xl p-6 space-y-5">
+        <div className="fixed inset-0 z-[150000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-md shadow-2xl p-4 sm:p-6 space-y-5 max-h-[calc(100dvh-2rem)] min-h-0 overflow-y-auto custom-scrollbar m-auto">
             <div className="flex justify-between items-center border-b border-border/50 pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center justify-center shrink-0 shadow-xs">
@@ -1324,8 +1324,8 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
 
       {/* EXPORT FORMAT SELECTION MODAL */}
       {isFormatModalOpen && (
-        <div className="fixed inset-0 z-[150000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-3xl w-full max-w-lg shadow-2xl p-6 space-y-6">
+        <div className="fixed inset-0 z-[150000] flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-4 overflow-y-auto">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-3xl w-full max-w-lg shadow-2xl p-4 sm:p-6 space-y-6 max-h-[calc(100dvh-2rem)] min-h-0 overflow-y-auto custom-scrollbar m-auto">
             <div className="flex justify-between items-center border-b border-border/50 pb-4">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center shrink-0 shadow-xs">

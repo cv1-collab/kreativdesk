@@ -145,7 +145,7 @@ export async function sendAcceptanceConfirmationEmail(payload: EmailDispatchPayl
           html: htmlContent
         })
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (data.success) {
         return {
           success: true,

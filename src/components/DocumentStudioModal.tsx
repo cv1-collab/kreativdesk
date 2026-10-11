@@ -20,7 +20,7 @@ import { safeStorage } from '../utils/safeStorage';
 // Universal PDF Studio Engine Imports
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
-import { fetchCompanyProfileAsync, getCachedCompanyProfile } from '../utils/templateVariableEngine';
+import { fetchCompanyProfileAsync, getCachedCompanyProfile, highlightPlaceholdersInHtml } from '../utils/templateVariableEngine';
 
 interface DocumentStudioModalProps {
   isOpen: boolean;
@@ -54,12 +54,25 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     upload_logo: 'Upload Logo',
     remove_logo: 'Remove Logo',
     accent_color: 'Accent Color',
-    recipient_address: '4. Recipient Address',
+    contract_project_data: '4. Contract & Project Data',
+    project_number_ref: 'Project Ref Number',
+    project_name: 'Project Name',
+    project_location: 'Site Location / Property',
+    fee_budget: 'Fee / Budget (CHF)',
+    jurisdiction: 'Jurisdiction / Venue',
+    highlight_placeholders: 'Highlight Variables',
+    variables_highlighted: 'Variables Highlighted',
+    clean_view: 'Clean View',
+    freely_editable: 'Freely editable',
+    sync_all_text: 'Sync in Contract Text',
+    fields_customizable: 'customizable fields',
+    highlight_tooltip: 'Visually highlight all customizable passages (Ref No., Client, Budget, etc.)',
+    recipient_address: '5. Recipient Address',
     recipient_name: 'Recipient Name / Company',
-    date_reference: '5. Date & Reference',
+    date_reference: '6. Date & Reference',
     place_date: 'Place, Date',
     reference: 'Reference / Project',
-    signatories: '6. Signatures & Footer',
+    signatories: '7. Signatures & Footer',
     show_signatures: 'Show Signature Blocks',
     client_signatory: 'Client (Building Owner)',
     architect_signatory: 'Contractor (Architect / Planner)',
@@ -110,12 +123,25 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     upload_logo: 'Logo hochladen',
     remove_logo: 'Logo entfernen',
     accent_color: 'Briefkopf Akzentfarbe',
-    recipient_address: '4. Empfänger-Adresse',
+    contract_project_data: '4. Vertrags- & Projektdaten',
+    project_number_ref: 'Projektnummer / Ref.-Nr.',
+    project_name: 'Projektname',
+    project_location: 'Projektstandort / Liegenschaft',
+    fee_budget: 'Honorar / Budget (CHF)',
+    jurisdiction: 'Gerichtsstand',
+    highlight_placeholders: 'Platzhalter hervorheben',
+    variables_highlighted: 'Variablen markiert',
+    clean_view: 'Normalansicht',
+    freely_editable: 'Frei editierbar',
+    sync_all_text: 'Im Vertragstext synchronisieren',
+    fields_customizable: 'Felder anpassbar',
+    highlight_tooltip: 'Alle anpassbaren Textpassagen (Ref-Nr., Kunde, Budget, etc.) visuell hervorheben',
+    recipient_address: '5. Empfänger-Adresse',
     recipient_name: 'Empfänger Name / Firma',
-    date_reference: '5. Datum & Referenz',
+    date_reference: '6. Datum & Referenz',
     place_date: 'Ort, Datum',
     reference: 'Referenz / Projekt',
-    signatories: '6. Unterschriften & Fusszeile',
+    signatories: '7. Unterschriften & Fusszeile',
     show_signatures: 'Unterschriften-Blöcke anzeigen',
     client_signatory: 'Auftraggeber (Bauherr)',
     architect_signatory: 'Auftragnehmer (Architekt / Planer)',
@@ -213,7 +239,7 @@ function normalizeMarkupToHtml(content: string): string {
   if (!content) return '<p>Hier Ihren Vertragstext, Briefinhalt oder Ihr Protokoll verfassen...</p>';
   
   // If already contains HTML paragraph/heading/span tags
-  if (/<(?:p|div|br|strong|b|span|h[1-6]|ul|li|hr)[\s>]/i.test(content)) {
+  if (/<(?:p|div|br|strong|b|span|mark|h[1-6]|ul|li|hr)[\s>]/i.test(content)) {
     return content
       .replace(/\[(?:bold|b)\]([\s\S]*?)\[\/(?:bold|b)\]/gi, '<strong>$1</strong>')
       .replace(/\[(?:semibold|sb)\]([\s\S]*?)\[\/(?:semibold|sb)\]/gi, '<span style="font-weight: 600">$1</span>')
@@ -385,7 +411,7 @@ function extractBlocksFromHtmlOrText(content: string): StudioBlock[] {
   return blocks;
 }
 
-// Recursive Tag & HTML Parser for Word-like Formatting (Bold, Semibold, Light, Book, Colors)
+// Recursive Tag & HTML Parser for Word-like Formatting (Bold, Semibold, Light, Book, Colors, Placeholders)
 const parseStyledTokens = (
   text: string,
   isPdf: boolean,
@@ -393,7 +419,7 @@ const parseStyledTokens = (
 ): React.ReactNode[] => {
   if (!text) return [];
 
-  const tagRegex = /(<strong[^>]*>[\s\S]*?<\/strong>|<b[^>]*>[\s\S]*?<\/b>|<span[^>]*>[\s\S]*?<\/span>|<font[^>]*>[\s\S]*?<\/font>|\*\*[\s\S]*?\*\*|\[(?:bold|b)\][\s\S]*?\[\/(?:bold|b)\]|\[(?:semibold|sb)\][\s\S]*?\[\/(?:semibold|sb)\]|\[(?:light|l)\][\s\S]*?\[\/(?:light|l)\]|\[(?:book|regular)\][\s\S]*?\[\/(?:book|regular)\]|\[color:(#[0-9a-fA-F]{3,8}|[a-zA-Z]+)\][\s\S]*?\[\/color\])/gi;
+  const tagRegex = /(<mark[^>]*>[\s\S]*?<\/mark>|<strong[^>]*>[\s\S]*?<\/strong>|<b[^>]*>[\s\S]*?<\/b>|<span[^>]*>[\s\S]*?<\/span>|<font[^>]*>[\s\S]*?<\/font>|\*\*[\s\S]*?\*\*|\[(?:bold|b)\][\s\S]*?\[\/(?:bold|b)\]|\[(?:semibold|sb)\][\s\S]*?\[\/(?:semibold|sb)\]|\[(?:light|l)\][\s\S]*?\[\/(?:light|l)\]|\[(?:book|regular)\][\s\S]*?\[\/(?:book|regular)\]|\[color:(#[0-9a-fA-F]{3,8}|[a-zA-Z]+)\][\s\S]*?\[\/color\])/gi;
 
   const parts = text.split(tagRegex);
   const nodes: React.ReactNode[] = [];
@@ -401,7 +427,31 @@ const parseStyledTokens = (
   parts.forEach((part, idx) => {
     if (!part) return;
 
-    if (/^<(strong|b)[^>]*>([\s\S]*?)<\/(strong|b)>$/i.test(part)) {
+    if (/^<mark[^>]*>([\s\S]*?)<\/mark>$/i.test(part)) {
+      const match = part.match(/^<mark([^>]*)>([\s\S]*?)<\/mark>$/i);
+      const attrs = match ? match[1] : '';
+      const inner = match ? match[2] : '';
+      const isPlaceholder = /doc-placeholder/i.test(attrs);
+      if (isPdf) {
+        // PDF mode: render cleanly with semibold accent, without colored background box
+        const nextStyle = { ...activeStyle, weight: (activeStyle.weight || 'semibold') as any };
+        nodes.push(renderTokenNode(parseStyledTokens(inner, isPdf, nextStyle), nextStyle, isPdf, `mk-pdf-${idx}`));
+      } else {
+        // HTML mode: interactive highlight badge
+        const badgeClasses = isPlaceholder
+          ? "doc-placeholder bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200 border-b-2 border-rose-400 px-1 py-0.5 rounded font-semibold inline"
+          : "doc-var bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border-b-2 border-amber-400 dark:border-amber-500 px-1 py-0.5 rounded font-semibold inline hover:bg-amber-200 transition-colors cursor-pointer";
+        nodes.push(
+          <mark
+            key={`mk-${idx}`}
+            className={badgeClasses}
+            title={isPlaceholder ? "Erfordert projektspezifische Ergänzung" : "Anpassbares Vertragsfeld"}
+          >
+            {parseStyledTokens(inner, isPdf, activeStyle)}
+          </mark>
+        );
+      }
+    } else if (/^<(strong|b)[^>]*>([\s\S]*?)<\/(strong|b)>$/i.test(part)) {
       const match = part.match(/^<(?:strong|b)[^>]*>([\s\S]*?)<\/(?:strong|b)>$/i);
       const inner = match ? match[1] : '';
       const nextStyle = { ...activeStyle, weight: 'bold' as const };
@@ -831,6 +881,17 @@ export default function DocumentStudioModal({
   const [isPdfStudioOpen, setIsPdfStudioOpen] = useState(false);
   const [mobileTab, setMobileTab] = useState<'form' | 'preview'>('form');
 
+  // Highlight mode toggle (default true for easy template adaptation)
+  const [highlightVariables, setHighlightVariables] = useState(true);
+
+  // Dedicated editable Contract & Project Metadata
+  const defaultProjNumber = activeProject?.number || (activeProject?.id ? `PRJ-${activeProject.id.slice(0, 6).toUpperCase()}` : 'PRJ-2026-001');
+  const [projectNumber, setProjectNumber] = useState(defaultProjNumber);
+  const [projectName, setProjectName] = useState(activeProject?.name || 'Projekt Neubau / Umbau 2026');
+  const [projectLocation, setProjectLocation] = useState(activeProject?.location || activeProject?.address || 'Zürich, Schweiz');
+  const [projectBudget, setProjectBudget] = useState(activeProject?.budget ? String(activeProject.budget) : "150'000.00");
+  const [jurisdiction, setJurisdiction] = useState('Zürich, Schweiz');
+
   // Recipient details
   const [recipientName, setRecipientName] = useState('Erika & Hans Muster');
   const [recipientStreet, setRecipientStreet] = useState('Musterstrasse 12');
@@ -884,9 +945,202 @@ export default function DocumentStudioModal({
 
   useEffect(() => {
     setDocTitle(initialTitle || 'KI-Vorlage (Vertrag / Brief)');
-    const normalized = normalizeMarkupToHtml(initialContent || '');
+    let raw = initialContent || '';
+    raw = highlightPlaceholdersInHtml(raw, currentLang === 'de');
+    const normalized = normalizeMarkupToHtml(raw);
     setDocContent(normalized);
-  }, [initialTitle, initialContent]);
+
+    // Parse initial Ref-Nr.
+    const numMatch = raw.match(/(?:Ref-Nr\.|Ref No\.|Referenz-Nr\.|Projektnummer)[:\s]+(?:<mark[^>]*>)?([A-Za-z0-9-_./]+)/i);
+    if (numMatch && numMatch[1]) {
+      setProjectNumber(numMatch[1]);
+    } else if (activeProject?.number || activeProject?.id) {
+      setProjectNumber(activeProject.number || `PRJ-${activeProject.id.slice(0, 6).toUpperCase()}`);
+    }
+
+    // Parse initial Project Name
+    const projMatch = raw.match(/(?:Projekt|Project)[:\s]+(?:<mark[^>]*>)?([^\n|<]+)/i);
+    if (projMatch && projMatch[1]) {
+      const cleanPName = projMatch[1].replace(/^[„"']+|[“"']+$/g, '').trim();
+      setProjectName(cleanPName);
+      setDocReference(`Ref: ${cleanPName}`);
+    } else if (activeProject?.name) {
+      setProjectName(activeProject.name);
+      setDocReference(`Ref: ${activeProject.name}`);
+    }
+
+    // Parse initial Location
+    const locMatch = raw.match(/(?:Projektstandort|Ausstellungsort|Ausführungsort|Project Site)[:\s]+(?:<mark[^>]*>)?([^\n|<]+)/i);
+    if (locMatch && locMatch[1]) {
+      setProjectLocation(locMatch[1].trim());
+    }
+
+    // Parse initial Budget
+    const budMatch = raw.match(/(?:Kostendach|Gesamtbudget|Total Project Budget|Werkvertragssumme netto|Honorar beträgt pauschal)[^0-9CHF$€]*([0-9'.,]+)/i);
+    if (budMatch && budMatch[1]) {
+      setProjectBudget(budMatch[1].trim());
+    }
+
+    // Parse initial Jurisdiction
+    const jurMatch = raw.match(/(?:Gerichtsstand ist|venue of jurisdiction is)[:\s]+(?:<mark[^>]*>)?([^\n|<.]+)/i);
+    if (jurMatch && jurMatch[1]) {
+      setJurisdiction(jurMatch[1].trim());
+    }
+  }, [initialTitle, initialContent, currentLang, activeProject?.id, activeProject?.name, activeProject?.number]);
+
+  // Synchronize field changes live into the document content & editor DOM
+  const handleUpdateProjectNumber = (newVal: string) => {
+    const oldVal = projectNumber;
+    setProjectNumber(newVal);
+
+    setDocContent(prev => {
+      let updated = prev;
+      updated = updated.replace(
+        /(<mark[^>]*data-var="project\.number"[^>]*>)([\s\S]*?)(<\/mark>)/gi,
+        `$1${newVal}$3`
+      );
+      if (oldVal && oldVal !== newVal) {
+        const escapedOld = oldVal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        updated = updated.replace(new RegExp(`(Ref-Nr\\.:\\s*|Ref No\\.:\\s*)${escapedOld}`, 'gi'), `$1${newVal}`);
+      }
+      return updated;
+    });
+
+    const el = getActiveEditor();
+    if (el) {
+      const marks = el.querySelectorAll('mark[data-var="project.number"]');
+      marks.forEach(m => { m.textContent = newVal; });
+    }
+  };
+
+  const handleUpdateProjectName = (newVal: string) => {
+    const oldVal = projectName;
+    setProjectName(newVal);
+    setDocReference(`Ref: ${newVal}`);
+
+    setDocContent(prev => {
+      let updated = prev;
+      updated = updated.replace(
+        /(<mark[^>]*data-var="project\.name"[^>]*>)([\s\S]*?)(<\/mark>)/gi,
+        `$1${newVal}$3`
+      );
+      if (oldVal && oldVal !== newVal) {
+        const escapedOld = oldVal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        updated = updated.replace(new RegExp(`(Projekt:\\s*|Project:\\s*)„?${escapedOld}“?`, 'gi'), `$1${newVal}`);
+      }
+      return updated;
+    });
+
+    const el = getActiveEditor();
+    if (el) {
+      const marks = el.querySelectorAll('mark[data-var="project.name"]');
+      marks.forEach(m => { m.textContent = newVal; });
+    }
+  };
+
+  const handleUpdateProjectLocation = (newVal: string) => {
+    setProjectLocation(newVal);
+    setDocContent(prev => {
+      return prev.replace(
+        /(<mark[^>]*data-var="project\.siteLocation"[^>]*>)([\s\S]*?)(<\/mark>)/gi,
+        `$1${newVal}$3`
+      );
+    });
+    const el = getActiveEditor();
+    if (el) {
+      const marks = el.querySelectorAll('mark[data-var="project.siteLocation"]');
+      marks.forEach(m => { m.textContent = newVal; });
+    }
+  };
+
+  const handleUpdateProjectBudget = (newVal: string) => {
+    setProjectBudget(newVal);
+    setDocContent(prev => {
+      return prev.replace(
+        /(<mark[^>]*data-var="project\.budget"[^>]*>)([\s\S]*?)(<\/mark>)/gi,
+        `$1${newVal}$3`
+      );
+    });
+    const el = getActiveEditor();
+    if (el) {
+      const marks = el.querySelectorAll('mark[data-var="project.budget"]');
+      marks.forEach(m => { m.textContent = newVal; });
+    }
+  };
+
+  const handleUpdateJurisdiction = (newVal: string) => {
+    setJurisdiction(newVal);
+    setDocContent(prev => {
+      return prev.replace(
+        /(<mark[^>]*data-var="jurisdiction"[^>]*>)([\s\S]*?)(<\/mark>)/gi,
+        `$1${newVal}$3`
+      );
+    });
+    const el = getActiveEditor();
+    if (el) {
+      const marks = el.querySelectorAll('mark[data-var="jurisdiction"]');
+      marks.forEach(m => { m.textContent = newVal; });
+    }
+  };
+
+  const handleUpdateRecipientName = (newVal: string) => {
+    setRecipientName(newVal);
+    setDocContent(prev => {
+      return prev.replace(
+        /(<mark[^>]*data-var="(?:client\.name|client\.company)"[^>]*>)([\s\S]*?)(<\/mark>)/gi,
+        `$1${newVal}$3`
+      );
+    });
+    const el = getActiveEditor();
+    if (el) {
+      const marks = el.querySelectorAll('mark[data-var="client.name"], mark[data-var="client.company"]');
+      marks.forEach(m => { m.textContent = newVal; });
+    }
+  };
+
+  const handleUpdateRecipientStreet = (newVal: string) => {
+    setRecipientStreet(newVal);
+    setDocContent(prev => {
+      return prev.replace(
+        /(<mark[^>]*data-var="client\.address"[^>]*>)([\s\S]*?)(<\/mark>)/gi,
+        `$1${newVal}$3`
+      );
+    });
+    const el = getActiveEditor();
+    if (el) {
+      const marks = el.querySelectorAll('mark[data-var="client.address"]');
+      marks.forEach(m => { m.textContent = newVal; });
+    }
+  };
+
+  const handleUpdateRecipientZipCity = (newVal: string) => {
+    setRecipientZipCity(newVal);
+    setDocContent(prev => {
+      return prev.replace(
+        /(<mark[^>]*data-var="client\.zipCity"[^>]*>)([\s\S]*?)(<\/mark>)/gi,
+        `$1${newVal}$3`
+      );
+    });
+    const el = getActiveEditor();
+    if (el) {
+      const marks = el.querySelectorAll('mark[data-var="client.zipCity"]');
+      marks.forEach(m => { m.textContent = newVal; });
+    }
+  };
+
+  const handleSyncAllMetadataIntoDoc = () => {
+    handleUpdateProjectNumber(projectNumber);
+    handleUpdateProjectName(projectName);
+    handleUpdateProjectLocation(projectLocation);
+    handleUpdateProjectBudget(projectBudget);
+    handleUpdateJurisdiction(jurisdiction);
+    handleUpdateRecipientName(recipientName);
+    handleUpdateRecipientStreet(recipientStreet);
+    handleUpdateRecipientZipCity(recipientZipCity);
+    addToast(currentLang === 'de' ? 'Vertragsdaten im Text synchronisiert!' : 'Contract data synchronized!', 'success');
+  };
+
+  const customizableFieldsCount = (docContent.match(/<mark[^>]*class="(?:doc-var|doc-placeholder)"/gi) || []).length;
 
   useEffect(() => {
     if (!isTypingRef.current) {
@@ -1086,14 +1340,19 @@ export default function DocumentStudioModal({
   const handleApplyProjectData = (projId: string) => {
     const proj = projects.find((p: any) => p.id === projId);
     if (!proj) return;
-    setDocReference(`Ref: ${proj.name}`);
+    const pNumber = proj.number || `PRJ-${proj.id.slice(0, 6).toUpperCase()}`;
+    handleUpdateProjectNumber(pNumber);
+    handleUpdateProjectName(proj.name);
     if (proj.client || proj.client_name) {
-      setRecipientName(proj.client || proj.client_name);
+      handleUpdateRecipientName(proj.client || proj.client_name);
     }
     if (proj.location || proj.address) {
-      setRecipientStreet(proj.location || proj.address);
+      handleUpdateProjectLocation(proj.location || proj.address);
     }
-    addToast(`Projektdaten von "${proj.name}" übernommen!`, 'info');
+    if (proj.budget) {
+      handleUpdateProjectBudget(String(proj.budget));
+    }
+    addToast(currentLang === 'de' ? `Projektdaten von "${proj.name}" übernommen!` : `Project data from "${proj.name}" applied!`, 'info');
   };
 
   // Save to Supabase with proper folder_id & project_id association
@@ -1334,6 +1593,54 @@ ${footerText}
 
   return (
     <div className="fixed inset-0 z-[100000] bg-black/80 backdrop-blur-md flex flex-col justify-between overflow-hidden animate-in fade-in duration-200 print:bg-white print:static print:h-auto print:overflow-visible">
+      {/* Styles for dynamic placeholder & variable highlighting in DIN-A4 live editor */}
+      <style>{`
+        .highlight-vars-active mark.doc-var {
+          background-color: #fef08a !important;
+          color: #713f12 !important;
+          border-bottom: 2px solid #eab308 !important;
+          padding: 1px 4px !important;
+          border-radius: 4px !important;
+          font-weight: 600 !important;
+          cursor: pointer !important;
+          box-shadow: 0 1px 2px rgba(234, 179, 8, 0.15) !important;
+          transition: all 0.15s ease-in-out !important;
+          display: inline !important;
+        }
+        .highlight-vars-active mark.doc-var:hover {
+          background-color: #fde047 !important;
+          border-bottom-color: #ca8a04 !important;
+        }
+        .highlight-vars-active mark.doc-placeholder {
+          background-color: #fee2e2 !important;
+          color: #991b1b !important;
+          border-bottom: 2px solid #ef4444 !important;
+          padding: 1px 4px !important;
+          border-radius: 4px !important;
+          font-weight: 600 !important;
+          box-shadow: 0 1px 2px rgba(239, 68, 68, 0.15) !important;
+          display: inline !important;
+        }
+        .highlight-vars-disabled mark.doc-var,
+        .highlight-vars-disabled mark.doc-placeholder {
+          background-color: transparent !important;
+          color: inherit !important;
+          border-bottom: none !important;
+          padding: 0 !important;
+          font-weight: inherit !important;
+          box-shadow: none !important;
+        }
+        .dark .highlight-vars-active mark.doc-var {
+          background-color: rgba(245, 158, 11, 0.25) !important;
+          color: #fde68a !important;
+          border-bottom-color: #f59e0b !important;
+        }
+        .dark .highlight-vars-active mark.doc-placeholder {
+          background-color: rgba(239, 68, 68, 0.25) !important;
+          color: #fca5a5 !important;
+          border-bottom-color: #ef4444 !important;
+        }
+      `}</style>
       
       {/* Top Header Control Toolbar */}
       <header className="h-auto md:h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 md:px-6 py-3 md:py-0 flex flex-col md:flex-row items-stretch md:items-center justify-between shrink-0 z-50 shadow-md gap-3 print:hidden">
@@ -1347,13 +1654,18 @@ ${footerText}
               <span className="px-2 py-0.5 rounded text-[10px] bg-sky-500 text-white font-bold uppercase shrink-0 shadow-xs">
                 {t('din_a4_live')} ({pages.length} {pages.length === 1 ? 'Seite' : 'Seiten'})
               </span>
+              {customizableFieldsCount > 0 && (
+                <span className="px-2 py-0.5 rounded text-[10px] bg-amber-100 text-amber-900 dark:bg-amber-950/70 dark:text-amber-200 border border-amber-300 dark:border-amber-700 font-bold shrink-0 shadow-2xs hidden sm:flex items-center gap-1">
+                  ✨ {customizableFieldsCount} {t('fields_customizable')}
+                </span>
+              )}
             </h2>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate">{t('studio_subtitle')}</p>
           </div>
         </div>
 
         {/* Action Buttons Toolbar */}
-        <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar w-full md:w-auto shrink-0 pb-1 md:pb-0 justify-end">
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto shrink-0 pb-1 md:pb-0 justify-end">
           <button
             onClick={() => setIsPdfStudioOpen(true)}
             className="hidden md:flex px-3 md:px-4 py-2 bg-gradient-to-r from-sky-500 via-blue-600 to-sky-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-xs rounded-xl shadow-md items-center gap-1.5 cursor-pointer transition-all uppercase tracking-wider whitespace-nowrap shrink-0"
@@ -1757,7 +2069,94 @@ ${footerText}
 
           <hr className="border-slate-200 dark:border-slate-800" />
 
-          {/* 4. Recipient Details Edit */}
+          {/* 4. Vertrags- & Projektdaten (Ref.-Nr., Projekt, Budget, Gerichtsstand) */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                {t('contract_project_data')}
+              </label>
+              <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 px-2 py-0.5 rounded-md border border-amber-300 dark:border-amber-700">
+                {t('freely_editable')}
+              </span>
+            </div>
+
+            {/* Projektnummer / Ref.-Nr. */}
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300">{t('project_number_ref')}:</span>
+                <span className="text-[9px] text-slate-400 font-mono">z.B. PRJ-8363D2</span>
+              </div>
+              <input
+                type="text"
+                value={projectNumber}
+                onChange={e => handleUpdateProjectNumber(e.target.value)}
+                placeholder="z.B. PRJ-2026-001"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white font-mono font-bold focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 outline-none"
+              />
+            </div>
+
+            {/* Projektname */}
+            <div>
+              <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 block mb-1">{t('project_name')}:</span>
+              <input
+                type="text"
+                value={projectName}
+                onChange={e => handleUpdateProjectName(e.target.value)}
+                placeholder="z.B. Dekorationen Pädagogische Hochschule Chur"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white font-bold focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 outline-none"
+              />
+            </div>
+
+            {/* Projektstandort */}
+            <div>
+              <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 block mb-1">{t('project_location')}:</span>
+              <input
+                type="text"
+                value={projectLocation}
+                onChange={e => handleUpdateProjectLocation(e.target.value)}
+                placeholder="z.B. Chur, Graubünden"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white font-medium focus:border-amber-500 outline-none"
+              />
+            </div>
+
+            {/* Budget & Gerichtsstand */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 block mb-1">{t('fee_budget')}:</span>
+                <input
+                  type="text"
+                  value={projectBudget}
+                  onChange={e => handleUpdateProjectBudget(e.target.value)}
+                  placeholder="150'000.00"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white font-mono font-medium focus:border-amber-500 outline-none"
+                />
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 block mb-1">{t('jurisdiction')}:</span>
+                <input
+                  type="text"
+                  value={jurisdiction}
+                  onChange={e => handleUpdateJurisdiction(e.target.value)}
+                  placeholder="Zürich, Schweiz"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white font-medium focus:border-amber-500 outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Live Sync Button */}
+            <button
+              type="button"
+              onClick={handleSyncAllMetadataIntoDoc}
+              className="w-full py-1.5 px-3 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700/60 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-colors shadow-2xs mt-2"
+            >
+              <Sparkles size={12} className="text-amber-600 dark:text-amber-400" />
+              <span>{t('sync_all_text')}</span>
+            </button>
+          </div>
+
+          <hr className="border-slate-200 dark:border-slate-800" />
+
+          {/* 5. Recipient Details Edit */}
           <div className="space-y-3">
             <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               {t('recipient_address')}
@@ -1765,21 +2164,21 @@ ${footerText}
             <input
               type="text"
               value={recipientName}
-              onChange={e => setRecipientName(e.target.value)}
+              onChange={e => handleUpdateRecipientName(e.target.value)}
               placeholder={t('recipient_name')}
               className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-sky-500 outline-none font-bold"
             />
             <input
               type="text"
               value={recipientStreet}
-              onChange={e => setRecipientStreet(e.target.value)}
+              onChange={e => handleUpdateRecipientStreet(e.target.value)}
               placeholder={t('street')}
               className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-sky-500 outline-none font-medium"
             />
             <input
               type="text"
               value={recipientZipCity}
-              onChange={e => setRecipientZipCity(e.target.value)}
+              onChange={e => handleUpdateRecipientZipCity(e.target.value)}
               placeholder={t('zip_city')}
               className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-sky-500 outline-none font-medium"
             />
@@ -1787,7 +2186,7 @@ ${footerText}
 
           <hr className="border-slate-200 dark:border-slate-800" />
 
-          {/* 5. Date & Reference */}
+          {/* 6. Date & Reference */}
           <div className="space-y-3">
             <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               {t('date_reference')}
@@ -1810,7 +2209,7 @@ ${footerText}
 
           <hr className="border-slate-200 dark:border-slate-800" />
 
-          {/* 6. Signatories & Footer Edit */}
+          {/* 7. Signatories & Footer Edit */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('signatories')}</label>
@@ -1911,7 +2310,27 @@ ${footerText}
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 hidden sm:inline">
+              <button
+                type="button"
+                onClick={() => setHighlightVariables(!highlightVariables)}
+                title={highlightVariables ? t('clean_view') : t('variables_highlighted')}
+                className={cn(
+                  "px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border cursor-pointer",
+                  highlightVariables
+                    ? "bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700/60 shadow-xs"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:text-slate-900 dark:hover:text-white"
+                )}
+              >
+                <Sparkles size={13} className={highlightVariables ? "text-amber-600 dark:text-amber-400 animate-pulse" : "text-slate-400"} />
+                <span className="hidden sm:inline">
+                  {highlightVariables ? t('variables_highlighted') : t('clean_view')}
+                </span>
+                <span className="sm:hidden">
+                  {highlightVariables ? 'Markiert' : 'Normal'}
+                </span>
+              </button>
+
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 hidden md:inline border-l border-slate-200 dark:border-slate-700 pl-2">
                 Schrift: <strong className="text-slate-900 dark:text-white">{activeFont.label}</strong>
               </span>
             </div>
@@ -2118,7 +2537,10 @@ ${footerText}
                       isTypingRef.current = false;
                       setDocContent(e.currentTarget.innerHTML);
                     }}
-                    className="outline-none min-h-[460px] text-xs md:text-sm leading-relaxed text-slate-800 focus:bg-sky-50/20 focus:ring-1 focus:ring-sky-500/30 rounded-lg p-2 transition-all"
+                    className={cn(
+                      "outline-none min-h-[460px] text-xs md:text-sm leading-relaxed text-slate-800 focus:bg-sky-50/20 focus:ring-1 focus:ring-sky-500/30 rounded-lg p-2 transition-all",
+                      highlightVariables ? "highlight-vars-active" : "highlight-vars-disabled"
+                    )}
                     style={{ fontFamily: activeFont.fontStack }}
                   />
                 </div>
@@ -2261,7 +2683,10 @@ ${footerText}
                       )}
 
                       {/* Rendered Text Content for this Page */}
-                      <div className="text-xs md:text-sm leading-relaxed text-slate-800">
+                      <div className={cn(
+                        "text-xs md:text-sm leading-relaxed text-slate-800",
+                        highlightVariables ? "highlight-vars-active" : "highlight-vars-disabled"
+                      )}>
                         {renderFormattedBlocks(page.blocks || extractBlocksFromHtmlOrText(page.content), accentColor)}
                       </div>
                     </div>
@@ -2447,7 +2872,10 @@ ${footerText}
                       isTypingRef.current = false;
                       setDocContent(e.currentTarget.innerHTML);
                     }}
-                    className="w-full bg-slate-50/70 dark:bg-slate-800/70 hover:bg-slate-50 focus:bg-white dark:focus:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:border-sky-500 rounded-xl p-4 text-xs md:text-sm text-slate-800 dark:text-slate-100 leading-relaxed outline-none min-h-[460px] transition-all"
+                    className={cn(
+                      "w-full bg-slate-50/70 dark:bg-slate-800/70 hover:bg-slate-50 focus:bg-white dark:focus:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:border-sky-500 rounded-xl p-4 text-xs md:text-sm text-slate-800 dark:text-slate-100 leading-relaxed outline-none min-h-[460px] transition-all",
+                      highlightVariables ? "highlight-vars-active" : "highlight-vars-disabled"
+                    )}
                     style={{ fontFamily: activeFont.fontStack }}
                   />
                 </div>

@@ -204,9 +204,9 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
       setUploadProgress(100);
       setIsSuccess(true);
       addToast(isVcard ? 'Visitenkarte per KI analysiert & gesendet!' : 'Beleg erfolgreich übertragen!', 'success');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Upload Error:', error);
-      addToast('Upload fehlgeschlagen. Bitte erneut versuchen.', 'error');
+      addToast(error?.message ? `Upload fehlgeschlagen: ${error.message}` : 'Upload fehlgeschlagen. Bitte erneut versuchen.', 'error');
     } finally {
       setIsUploading(false);
     }
@@ -244,8 +244,8 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
             company_id: sessionId || 'global',
             project_id: null,
             name: `Baurapport_${rapportData.date}.json`,
-            url: photos[0] || 'https://via.placeholder.com/300',
-            file_url: photos[0] || 'https://via.placeholder.com/300',
+            url: photos[0] || '',
+            file_url: photos[0] || '',
             size: '1 KB',
             type: 'application/json',
             category: 'temp_receipt',
@@ -273,8 +273,8 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
 
       setRapportSuccess(true);
       addToast('Baurapport & Fotos erfolgreich übertragen!', 'success');
-    } catch (err) {
-      addToast('Fehler beim Senden des Baurapports', 'error');
+    } catch (err: any) {
+      addToast(err?.message ? `Fehler beim Senden des Baurapports: ${err.message}` : 'Fehler beim Senden des Baurapports', 'error');
     } finally {
       setIsSubmittingRapport(false);
     }

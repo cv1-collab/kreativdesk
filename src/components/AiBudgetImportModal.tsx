@@ -553,8 +553,8 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
   };
 
   return (
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-6 bg-slate-900/40 dark:bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-[#121214] border border-slate-200 dark:border-zinc-800 rounded-3xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden transition-colors">
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-6 bg-slate-900/40 dark:bg-black/80 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
+      <div className="bg-white dark:bg-[#121214] border border-slate-200 dark:border-zinc-800 rounded-3xl shadow-2xl w-full max-w-4xl max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-3rem)] flex flex-col min-h-0 overflow-hidden transition-colors m-auto">
         
         {/* MODAL HEADER */}
         <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-zinc-800/80 flex items-center justify-between bg-slate-50/80 dark:bg-[#18181b]/80 backdrop-blur-sm shrink-0">
@@ -599,7 +599,7 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
         </div>
 
         {/* MODAL BODY */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-5 sm:p-6 space-y-6 bg-white dark:bg-[#121214]">
+        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-5 sm:p-6 space-y-6 bg-white dark:bg-[#121214]">
 
           {/* STEP 1: INPUT SCREEN (Shown when no parsed groups yet) */}
           {!parsedGroups ? (
@@ -1046,7 +1046,7 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
         </div>
 
         {/* MODAL FOOTER */}
-        <div className="p-4 sm:p-5 border-t border-slate-200 dark:border-zinc-800 bg-slate-50/90 dark:bg-zinc-900/90 backdrop-blur-sm flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+        <div className="p-4 sm:p-5 border-t border-slate-200 dark:border-zinc-800 bg-slate-50/90 dark:bg-zinc-900/90 backdrop-blur-sm flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0 z-10">
           <button
             onClick={onClose}
             className="w-full sm:w-auto px-4 py-2.5 bg-white dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 border border-slate-200 dark:border-zinc-700 text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 font-bold text-xs rounded-xl transition-all cursor-pointer shadow-sm"

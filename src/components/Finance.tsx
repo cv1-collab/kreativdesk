@@ -1798,8 +1798,8 @@ export default function Finance() {
   if (isLandscapeMode) {
     if (isPortrait && !forceLandscapeView) {
       return createPortal(
-        <div style={{ zIndex: 999999 }} className="fixed inset-0 bg-background/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center animate-in fade-in zoom-in-95">
-          <div className="bg-surface border border-border p-6 sm:p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm w-full">
+        <div style={{ zIndex: 999999 }} className="fixed inset-0 bg-background/95 backdrop-blur-xl flex flex-col items-center justify-center p-4 sm:p-6 text-center animate-in fade-in zoom-in-95 overflow-y-auto">
+          <div className="bg-surface border border-border p-5 sm:p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm w-full max-h-[calc(100dvh-2rem)] min-h-0 overflow-y-auto m-auto">
             <RotateCw size={48} className="mb-4 text-accent-ai animate-[spin_3s_linear_infinite]" />
             <h2 className="text-xl font-bold mb-2 text-text-primary">Tabellenansicht im Vollbild</h2>
             <p className="text-sm text-text-muted mb-6 font-medium">Drehe dein Smartphone ins Querformat oder öffne die Vollbild-Tabelle direkt.</p>
@@ -3370,9 +3370,9 @@ export default function Finance() {
 
       {/* MODALS */}
       {isMounted && showTimeModal && createPortal(
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/40 dark:bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-lg shadow-2xl flex flex-col overflow-hidden">
-            <div className="p-4 border-b border-border/50 flex justify-between items-center bg-surface/50">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/40 dark:bg-black/80 backdrop-blur-md p-3 sm:p-4 animate-in fade-in duration-200 overflow-y-auto">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-3.5rem)] min-h-0 overflow-hidden m-auto">
+            <div className="p-4 border-b border-border/50 flex justify-between items-center bg-surface/80 backdrop-blur-sm shrink-0 z-10">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-orange-500/10 text-orange-400 border border-orange-500/20 flex items-center justify-center shrink-0 shadow-xs">
                   <Clock size={16} />
@@ -3381,7 +3381,7 @@ export default function Finance() {
               </div>
               <button onClick={() => setShowTimeModal(false)} className="h-8 w-8 flex items-center justify-center text-text-muted hover:text-text-primary bg-background border border-border/50 rounded-lg cursor-pointer transition-colors shadow-xs"><X size={16} /></button>
             </div>
-            <div className="p-6 overflow-y-auto max-h-[85vh] custom-scrollbar">
+            <div className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0 custom-scrollbar">
               <form id="time-form" onSubmit={handleTimeSubmit} className="space-y-4">
 
                 <div className="flex bg-background border border-border/50 rounded-lg p-1">
@@ -3634,7 +3634,7 @@ export default function Finance() {
 
               </form>
             </div>
-            <div className="p-4 border-t border-border bg-surface flex justify-end gap-3 shrink-0">
+            <div className="p-4 border-t border-border bg-surface/80 backdrop-blur-sm flex justify-end gap-3 shrink-0 z-10">
               <button onClick={() => setShowTimeModal(false)} className="px-5 py-2 text-sm font-bold text-text-muted border border-border rounded-lg hover:text-text-primary transition-colors">{t('cancel')}</button>
               <button form="time-form" type="submit" disabled={isSubmitting} className="px-5 py-2 bg-orange-500 text-white rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-orange-600 transition-colors shadow-lg shadow-orange-500/20 disabled:opacity-50">
                 {isSubmitting && <Loader2 size={16} className="animate-spin" />} {t('book_submit_btn')}
@@ -3645,8 +3645,8 @@ export default function Finance() {
       )}
 
       {isMounted && showReceiptStudio && createPortal(
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/40 dark:bg-black/80 backdrop-blur-md p-4 sm:p-6 animate-in fade-in duration-200">
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-5xl shadow-2xl flex flex-col lg:flex-row overflow-hidden max-h-[92vh] h-[92vh] lg:h-[820px]">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/40 dark:bg-black/80 backdrop-blur-md p-2 sm:p-4 md:p-6 animate-in fade-in duration-200 overflow-y-auto">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-5xl shadow-2xl flex flex-col lg:flex-row overflow-hidden max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-3rem)] lg:h-[min(820px,calc(100dvh-3rem))] min-h-0 m-auto">
 
             {/* LEFT SIDE: UNIFIED BELEG- & SCANNER-HUB */}
             <div className="w-full lg:w-5/12 p-5 sm:p-6 border-b lg:border-b-0 lg:border-r border-border bg-background/50 flex flex-col overflow-y-auto custom-scrollbar min-h-0 h-full">
@@ -4147,9 +4147,9 @@ export default function Finance() {
       </AnimatePresence>
 
       {isMounted && showCsvImportModal && createPortal(
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/40 dark:bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-xl shadow-2xl flex flex-col overflow-hidden">
-            <div className="p-4 border-b border-border/50 flex justify-between items-center bg-surface/50">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/40 dark:bg-black/80 backdrop-blur-md p-3 sm:p-4 animate-in fade-in duration-200 overflow-y-auto">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-xl shadow-2xl flex flex-col max-h-[calc(100dvh-2rem)] min-h-0 overflow-hidden m-auto">
+            <div className="p-4 border-b border-border/50 flex justify-between items-center bg-surface/80 backdrop-blur-sm shrink-0 z-10">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
                   <Plus size={16} />
@@ -4158,7 +4158,7 @@ export default function Finance() {
               </div>
               <button onClick={() => setShowCsvImportModal(false)} className="h-8 w-8 flex items-center justify-center text-text-muted hover:text-text-primary bg-background border border-border/50 rounded-lg cursor-pointer transition-colors shadow-xs"><X size={16} /></button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-4 sm:p-6 space-y-4 flex-1 min-h-0 overflow-y-auto custom-scrollbar">
               <p className="text-xs text-text-muted">Füge CSV-Zeilen im Format <code>Pos;Bezeichnung;Menge;Einheit;Einheitspreis</code> ein:</p>
               <textarea
                 value={csvImportText}
@@ -4167,7 +4167,7 @@ export default function Finance() {
                 placeholder="211;Mauerarbeiten Ziegel;120;m2;85&#10;212;Betonarbeiten Fundament;15;m3;320"
               />
             </div>
-            <div className="p-4 border-t border-border bg-surface flex justify-end gap-3 shrink-0">
+            <div className="p-4 border-t border-border bg-surface/80 backdrop-blur-sm flex justify-end gap-3 shrink-0 z-10">
               <button onClick={() => setShowCsvImportModal(false)} className="h-9 px-4 text-xs font-bold text-text-muted border border-border/60 rounded-xl hover:text-text-primary transition-colors cursor-pointer">{t('cancel')}</button>
               <button onClick={handleImportCSV} disabled={!csvImportText.trim()} className="h-9 px-4 bg-accent-ai text-white rounded-xl text-xs font-bold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-xs disabled:opacity-50 cursor-pointer">
                 Positionen Importieren
@@ -4190,9 +4190,9 @@ export default function Finance() {
 
       {/* FX & Currency Settings Modal */}
       {isMounted && showFxSettingsModal && createPortal(
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/50 dark:bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
-            <div className="p-4 border-b border-border/50 flex justify-between items-center bg-surface/50">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/50 dark:bg-black/80 backdrop-blur-md p-3 sm:p-4 animate-in fade-in duration-200 overflow-y-auto">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[calc(100dvh-2rem)] min-h-0 overflow-hidden m-auto">
+            <div className="p-4 border-b border-border/50 flex justify-between items-center bg-surface/80 backdrop-blur-sm shrink-0 z-10">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center">
                   <Coins size={18} />
@@ -4207,7 +4207,7 @@ export default function Finance() {
               </button>
             </div>
 
-            <div className="p-5 space-y-5">
+            <div className="p-4 sm:p-5 space-y-5 flex-1 min-h-0 overflow-y-auto custom-scrollbar">
               {/* Mode Selection */}
               <div className="space-y-2">
                 <label className="text-xs font-bold text-text-muted uppercase tracking-wider block">Umrechnungs-Modus</label>
@@ -4313,7 +4313,7 @@ export default function Finance() {
               </div>
             </div>
 
-            <div className="p-4 border-t border-border bg-surface flex justify-end gap-2.5 shrink-0">
+            <div className="p-4 border-t border-border bg-surface/80 backdrop-blur-sm flex justify-end gap-2.5 shrink-0 z-10">
               <button
                 type="button"
                 onClick={() => setShowFxSettingsModal(false)}

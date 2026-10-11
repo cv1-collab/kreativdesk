@@ -161,8 +161,8 @@ export async function callGeminiEmbedAPI(model: string, contents: any) {
   });
 
   if (!response.ok) {
-    const errData = await response.json();
-    throw new Error(errData.error || 'API Request failed');
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData?.error || `API Request failed with status ${response.status}`);
   }
 
   return await response.json();

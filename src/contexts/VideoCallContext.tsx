@@ -256,7 +256,11 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         
         Object.values(pcsRef.current).forEach(pc => {
           const sender = pc.getSenders().find(s => s.track?.kind === 'video');
-          if (sender) sender.replaceTrack(screenTrack);
+          if (sender) {
+            sender.replaceTrack(screenTrack);
+          } else {
+            pc.addTrack(screenTrack, displayStream);
+          }
         });
 
         setScreenStream(displayStream);
@@ -269,17 +273,18 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const stopScreenShare = () => {
-    if (screenStream) { screenStream.getTracks().forEach(t => t.stop()); setScreenStream(null); }
-    setIsScreenSharing(false);
-    if (localStream) {
-      const camTrack = localStream.getVideoTracks()[0];
-      if (camTrack) {
-        Object.values(pcsRef.current).forEach(pc => {
-          const sender = pc.getSenders().find(s => s.track?.kind === 'video');
-          if (sender) sender.replaceTrack(camTrack);
-        });
-      }
+    if (screenStream) {
+      screenStream.getTracks().forEach(t => t.stop());
+      setScreenStream(null);
     }
+    setIsScreenSharing(false);
+    const camTrack = localStream?.getVideoTracks()[0] || null;
+    Object.values(pcsRef.current).forEach(pc => {
+      const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+      if (sender) {
+        sender.replaceTrack(camTrack);
+      }
+    });
   };
 
   const activeChannelRef = useRef<any>(null);

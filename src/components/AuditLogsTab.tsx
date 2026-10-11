@@ -36,7 +36,7 @@ function parseLogDetails(details: any): ParsedDetails {
   }
 
   if (parsedObj) {
-    let title = parsedObj.title || null;
+    const title = parsedObj.title || null;
     let msg = parsedObj.message || parsedObj.desc || parsedObj.description || null;
     
     // Intelligent fallback for message when details contains common audit attributes

@@ -1606,8 +1606,8 @@ export default function Calendar() {
 
         {isMounted && isLandscapeMode && (
           !isNativeLandscape && !forceLandscapeView ? createPortal(
-            <div style={{ zIndex: 999999 }} className="fixed inset-0 bg-background/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center animate-in fade-in zoom-in-95">
-              <div className="bg-surface border border-border p-6 sm:p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm w-full">
+            <div style={{ zIndex: 999999 }} className="fixed inset-0 bg-background/95 backdrop-blur-xl flex flex-col items-center justify-center p-4 sm:p-6 text-center animate-in fade-in zoom-in-95 overflow-y-auto">
+              <div className="bg-surface border border-border p-5 sm:p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm w-full max-h-[calc(100dvh-2rem)] min-h-0 overflow-y-auto m-auto">
                 <RotateCw size={48} className="mb-4 text-accent-ai animate-[spin_3s_linear_infinite]" />
                 <h2 className="text-xl font-semibold mb-2 text-text-primary">Masterplan im Vollbild</h2>
                 <p className="text-sm text-text-muted mb-6 font-medium">Drehe dein Smartphone ins Querformat oder öffne die Vollbild-Ansicht direkt.</p>
