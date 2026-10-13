@@ -494,9 +494,16 @@ export default function GuestMeet() {
       try {
         const { error: insErr } = await supabase.from('chat_messages').insert(payloadGuest);
         if (insErr) {
-          // Retry with standard columns if file_url doesn't exist
+          // Retry with standard columns or secure RPC if anon insert is restricted
           delete payloadGuest.file_url;
-          await supabase.from('chat_messages').insert(payloadGuest);
+          const { error: retryErr } = await supabase.from('chat_messages').insert(payloadGuest);
+          if (retryErr) {
+            await supabase.rpc('send_guest_chat_message', {
+              p_call_id: joinId,
+              p_sender_name: guestName || 'Gast',
+              p_message: textWithFile
+            });
+          }
         }
       } catch (e) {}
     } catch (err) {
@@ -545,16 +552,24 @@ export default function GuestMeet() {
       });
 
       if (err1) {
-        try {
-          await supabase.from('chat_messages').insert({
-            id: msgId + '-fb',
-            call_id: joinId,
-            sender_id: 'guest-' + Date.now(),
-            sender_name: guestName,
-            message: text,
-            created_at: new Date().toISOString()
-          });
-        } catch (fbErr) {}
+        // Secure RPC Fallback when direct table insert is restricted for anon users
+        const { error: rpcErr } = await supabase.rpc('send_guest_chat_message', {
+          p_call_id: joinId,
+          p_sender_name: guestName || 'Gast',
+          p_message: text
+        });
+        if (rpcErr) {
+          try {
+            await supabase.from('chat_messages').insert({
+              id: msgId + '-fb',
+              call_id: joinId,
+              sender_id: 'guest-' + Date.now(),
+              sender_name: guestName,
+              message: text,
+              created_at: new Date().toISOString()
+            });
+          } catch (fbErr) {}
+        }
       }
     } catch (err) {}
   };
