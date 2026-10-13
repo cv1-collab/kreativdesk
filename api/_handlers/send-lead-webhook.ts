@@ -1,19 +1,23 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabaseAdmin } from '../_auth.js';
+import { supabaseAdmin, verifyAuth } from '../_auth.js';
 
 function isSafeExternalUrl(urlStr: string): boolean {
   try {
     const parsed = new URL(urlStr);
-    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
+    if (parsed.protocol !== 'https:') return false;
     const hostname = parsed.hostname.toLowerCase();
     if (
       hostname === 'localhost' ||
       hostname === '127.0.0.1' ||
       hostname === '0.0.0.0' ||
+      hostname === '::1' ||
+      hostname === '[::1]' ||
       hostname === '169.254.169.254' ||
+      hostname.endsWith('.local') ||
+      hostname.endsWith('.internal') ||
       hostname.startsWith('10.') ||
       hostname.startsWith('192.168.') ||
-      hostname.startsWith('172.')
+      /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname)
     ) {
       return false;
     }
@@ -42,6 +46,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Missing companyId or leadData' });
     }
 
+    const user = await verifyAuth(req);
+
     const { data: company } = await supabaseAdmin
       .from('companies')
       .select('*')
@@ -52,7 +58,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(404).json({ error: 'Company not found' });
     }
 
-    let webhookUrl = (company as any)?.webhook_url || req.body?.webhookUrl || process.env.WELCOME_WEBHOOK_URL;
+    // Only allow req.body.webhookUrl override if the request is authenticated
+    let webhookUrl = (company as any)?.webhook_url || (user ? req.body?.webhookUrl : undefined) || process.env.WELCOME_WEBHOOK_URL;
     if (!webhookUrl) {
       const { data: doc } = await supabaseAdmin
         .from('documents')

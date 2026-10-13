@@ -1,4 +1,21 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { verifyAuth, supabaseAdmin } from '../_auth.js';
+
+const emailRateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+function checkEmailRateLimit(ip: string, maxPerMinute = 5): boolean {
+  const now = Date.now();
+  const entry = emailRateLimitMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    emailRateLimitMap.set(ip, { count: 1, resetAt: now + 60_000 });
+    return true;
+  }
+  if (entry.count >= maxPerMinute) {
+    return false;
+  }
+  entry.count += 1;
+  return true;
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -14,11 +31,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { recipientEmail, quoteData } = req.body || {};
+    const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+    if (!checkEmailRateLimit(clientIp, 5)) {
+      return res.status(429).json({ error: 'Too many email requests. Please wait a minute.' });
+    }
+
+    const { recipientEmail, quoteData, proposalId } = req.body || {};
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!recipientEmail || typeof recipientEmail !== 'string' || !emailRegex.test(recipientEmail.trim()) || !quoteData) {
       return res.status(400).json({ error: 'Missing or invalid recipientEmail or quoteData' });
+    }
+
+    // Verify caller is either authenticated or referencing an existing proposal
+    const user = await verifyAuth(req);
+    if (!user) {
+      const isDemo = typeof proposalId === 'string' && (proposalId.startsWith('demo') || proposalId.startsWith('prop_'));
+      if (proposalId && !isDemo) {
+        const { data: prop } = await supabaseAdmin
+          .from('smart_proposals')
+          .select('id')
+          .eq('id', proposalId)
+          .maybeSingle();
+        if (!prop) {
+          return res.status(403).json({ error: 'Forbidden: Invalid proposal reference' });
+        }
+      } else if (!proposalId && !quoteData?.quoteNumber) {
+        return res.status(401).json({ error: 'Unauthorized: Missing proposal reference' });
+      }
     }
 
     const cleanRecipientEmail = recipientEmail.trim();
@@ -27,6 +67,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const cleanTotal = Number(quoteData.totalCHF) || 0;
 
     const resendKey = process.env.RESEND_API_KEY;
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'Kreativ Desk <onboarding@resend.dev>';
     let sentLive = false;
 
     if (resendKey) {
@@ -59,7 +100,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            from: 'Kreativ Desk <onboarding@resend.dev>',
+            from: fromEmail,
             to: cleanRecipientEmail,
             subject: emailSubject,
             html: emailHtml

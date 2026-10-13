@@ -316,8 +316,13 @@ export default function SettingsTab() {
   const [isResetLoading, setIsResetLoading] = useState(false);
   const [is2FAEnabled, setIs2FAEnabled] = useState(false);
   const [show2FASetup, setShow2FASetup] = useState(false);
+  const [totpInputCode, setTotpInputCode] = useState('');
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
+  const [mfaSecretOverride, setMfaSecretOverride] = useState<string | null>(null);
+  const [mfaUriOverride, setMfaUriOverride] = useState<string | null>(null);
 
   const user2FASecret = React.useMemo(() => {
+    if (mfaSecretOverride) return mfaSecretOverride;
     const uid = currentUser?.uid || 'user';
     const stored = safeStorage.getString(`user_2fa_secret_${uid}`);
     if (stored) return stored;
@@ -328,9 +333,54 @@ export default function SettingsTab() {
     }
     safeStorage.setItem(`user_2fa_secret_${uid}`, generated);
     return generated;
-  }, [currentUser?.uid]);
+  }, [currentUser?.uid, mfaSecretOverride]);
 
-  const otpAuthUrl = `otpauth://totp/KreativDesk:${encodeURIComponent(currentUser?.email || 'User')}?secret=${user2FASecret}&issuer=KreativDesk`;
+  const otpAuthUrl = mfaUriOverride || `otpauth://totp/KreativDesk:${encodeURIComponent(currentUser?.email || 'User')}?secret=${user2FASecret}&issuer=KreativDesk`;
+
+  const verifyTotpTokenRfc6238 = async (base32Secret: string, token: string): Promise<boolean> => {
+    const cleanToken = token.trim();
+    if (!/^\d{6}$/.test(cleanToken)) return false;
+    try {
+      const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+      const cleaned = base32Secret.toUpperCase().replace(/[^A-Z2-7]/g, '');
+      let bits = '';
+      for (const ch of cleaned) {
+        const val = alphabet.indexOf(ch);
+        if (val >= 0) bits += val.toString(2).padStart(5, '0');
+      }
+      const keyBytes = new Uint8Array(Math.floor(bits.length / 8));
+      for (let i = 0; i < keyBytes.length; i++) {
+        keyBytes[i] = parseInt(bits.slice(i * 8, i * 8 + 8), 2);
+      }
+      const cryptoKey = await window.crypto.subtle.importKey(
+        'raw',
+        keyBytes,
+        { name: 'HMAC', hash: 'SHA-1' },
+        false,
+        ['sign']
+      );
+      const currentCounter = Math.floor(Date.now() / 1000 / 30);
+      for (const offset of [-1, 0, 1]) {
+        const counter = currentCounter + offset;
+        const buf = new ArrayBuffer(8);
+        const view = new DataView(buf);
+        view.setUint32(0, Math.floor(counter / 0x100000000), false);
+        view.setUint32(4, counter >>> 0, false);
+        const sig = new Uint8Array(await window.crypto.subtle.sign('HMAC', cryptoKey, buf));
+        const dynamicOffset = sig[sig.length - 1] & 0x0f;
+        const binary =
+          ((sig[dynamicOffset] & 0x7f) << 24) |
+          ((sig[dynamicOffset + 1] & 0xff) << 16) |
+          ((sig[dynamicOffset + 2] & 0xff) << 8) |
+          (sig[dynamicOffset + 3] & 0xff);
+        const otp = String(binary % 1_000_000).padStart(6, '0');
+        if (otp === cleanToken) return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
 
   const [activeSubTab, setActiveSubTab] = useState<'general' | 'api'>(() => (safeStorage.getString('settings_active_subtab') as any) || 'general');
 
@@ -619,10 +669,12 @@ export default function SettingsTab() {
       // Persist brand color across instance and storage
       applyBrandColor(primaryColor, true);
       safeStorage.setItem('custom_accent_color', primaryColor);
-      try {
-        const existingGlobal = await fetchSystemConfigJSON<any>('global_master', 'global') || {};
-        await saveSystemConfigJSON('global_master', { ...existingGlobal, accentColor: primaryColor }, 'global', currentUser?.uid || 'global');
-      } catch (_) {}
+      if (checkIsSuperAdmin(currentUser?.email)) {
+        try {
+          const existingGlobal = await fetchSystemConfigJSON<any>('global_master', 'global') || {};
+          await saveSystemConfigJSON('global_master', { ...existingGlobal, accentColor: primaryColor }, 'global', currentUser?.uid || 'global');
+        } catch (_) {}
+      }
 
       // Update existing columns on companies table
       await supabase.from('companies').update({
@@ -1659,8 +1711,13 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
   // 2FA states
   const [show2FASetup, setShow2FASetup] = useState(false);
   const [is2FAEnabled, setIs2FAEnabled] = useState(() => safeStorage.getItem<string>(`user_2fa_enabled_${currentUser?.uid}`, 'false') === 'true');
+  const [totpInputCode, setTotpInputCode] = useState('');
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
+  const [mfaSecretOverride, setMfaSecretOverride] = useState<string | null>(null);
+  const [mfaUriOverride, setMfaUriOverride] = useState<string | null>(null);
 
   const user2FASecret = React.useMemo(() => {
+    if (mfaSecretOverride) return mfaSecretOverride;
     const uid = currentUser?.uid || 'user';
     const stored = safeStorage.getString(`user_2fa_secret_${uid}`);
     if (stored) return stored;
@@ -1671,9 +1728,54 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
     }
     safeStorage.setItem(`user_2fa_secret_${uid}`, generated);
     return generated;
-  }, [currentUser?.uid]);
+  }, [currentUser?.uid, mfaSecretOverride]);
 
-  const otpAuthUrl = `otpauth://totp/KreativDesk:${encodeURIComponent(currentUser?.email || 'User')}?secret=${user2FASecret}&issuer=KreativDesk`;
+  const otpAuthUrl = mfaUriOverride || `otpauth://totp/KreativDesk:${encodeURIComponent(currentUser?.email || 'User')}?secret=${user2FASecret}&issuer=KreativDesk`;
+
+  const verifyTotpTokenRfc6238 = async (base32Secret: string, token: string): Promise<boolean> => {
+    const cleanToken = token.trim();
+    if (!/^\d{6}$/.test(cleanToken)) return false;
+    try {
+      const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+      const cleaned = base32Secret.toUpperCase().replace(/[^A-Z2-7]/g, '');
+      let bits = '';
+      for (const ch of cleaned) {
+        const val = alphabet.indexOf(ch);
+        if (val >= 0) bits += val.toString(2).padStart(5, '0');
+      }
+      const keyBytes = new Uint8Array(Math.floor(bits.length / 8));
+      for (let i = 0; i < keyBytes.length; i++) {
+        keyBytes[i] = parseInt(bits.slice(i * 8, i * 8 + 8), 2);
+      }
+      const cryptoKey = await window.crypto.subtle.importKey(
+        'raw',
+        keyBytes,
+        { name: 'HMAC', hash: 'SHA-1' },
+        false,
+        ['sign']
+      );
+      const currentCounter = Math.floor(Date.now() / 1000 / 30);
+      for (const offset of [-1, 0, 1]) {
+        const counter = currentCounter + offset;
+        const buf = new ArrayBuffer(8);
+        const view = new DataView(buf);
+        view.setUint32(0, Math.floor(counter / 0x100000000), false);
+        view.setUint32(4, counter >>> 0, false);
+        const sig = new Uint8Array(await window.crypto.subtle.sign('HMAC', cryptoKey, buf));
+        const dynamicOffset = sig[sig.length - 1] & 0x0f;
+        const binary =
+          ((sig[dynamicOffset] & 0x7f) << 24) |
+          ((sig[dynamicOffset + 1] & 0xff) << 16) |
+          ((sig[dynamicOffset + 2] & 0xff) << 8) |
+          (sig[dynamicOffset + 3] & 0xff);
+        const otp = String(binary % 1_000_000).padStart(6, '0');
+        if (otp === cleanToken) return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
 
   // Role display label
   const rawRole = (currentUser?.role || '').toLowerCase().trim();
@@ -2199,7 +2301,23 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
           </button>
           <button 
             type="button"
-            onClick={() => setShow2FASetup(prev => !prev)}
+            onClick={async () => {
+              const nextOpen = !show2FASetup;
+              setShow2FASetup(nextOpen);
+              if (nextOpen && !mfaFactorId && supabase?.auth?.mfa) {
+                try {
+                  const { data: enrollData } = await supabase.auth.mfa.enroll({
+                    factorType: 'totp',
+                    friendlyName: `KreativDesk-${Date.now()}`
+                  });
+                  if (enrollData?.id && enrollData?.totp?.secret) {
+                    setMfaFactorId(enrollData.id);
+                    setMfaSecretOverride(enrollData.totp.secret);
+                    if (enrollData.totp.uri) setMfaUriOverride(enrollData.totp.uri);
+                  }
+                } catch (_) {}
+              }
+            }}
             className={cn(
               "flex-1 py-3 border rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer",
               is2FAEnabled ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-background border-border text-text-primary hover:bg-white/5"
@@ -2232,18 +2350,44 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
                 </p>
                 <div className="flex items-center gap-3">
                   <input 
-                    type="text" 
+                    type="text"
+                    inputMode="numeric"
+                    value={totpInputCode}
+                    onChange={(e) => setTotpInputCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     placeholder={currentLang === 'en' ? '6-digit code' : '6-stelliger Code'}
                     className="px-4 py-2 bg-surface border border-border rounded-lg text-sm font-mono text-text-primary outline-none focus:border-emerald-500 w-36 shadow-inner" 
                     maxLength={6} 
                   />
                   <button 
                     type="button"
-                    onClick={() => {
+                    onClick={async () => {
+                      const cleanCode = totpInputCode.trim();
+                      if (!/^\d{6}$/.test(cleanCode)) {
+                        addToast(currentLang === 'en' ? 'Please enter a valid 6-digit Authenticator code.' : 'Bitte gib den 6-stelligen Code aus deiner Authenticator-App ein.', 'error');
+                        return;
+                      }
+                      let verified = false;
+                      if (mfaFactorId && supabase?.auth?.mfa) {
+                        try {
+                          const { error: mfaErr } = await supabase.auth.mfa.challengeAndVerify({
+                            factorId: mfaFactorId,
+                            code: cleanCode
+                          });
+                          if (!mfaErr) verified = true;
+                        } catch (_) {}
+                      }
+                      if (!verified) {
+                        verified = await verifyTotpTokenRfc6238(user2FASecret, cleanCode);
+                      }
+                      if (!verified) {
+                        addToast(currentLang === 'en' ? 'Invalid 2FA code. Please check your Authenticator app.' : 'Ungültiger 2FA-Code. Bitte prüfe deine Authenticator-App.', 'error');
+                        return;
+                      }
                       setIs2FAEnabled(true);
                       safeStorage.setItem(`user_2fa_enabled_${currentUser?.uid}`, 'true');
+                      setTotpInputCode('');
                       setShow2FASetup(false);
-                      addToast(currentLang === 'en' ? 'Two-Factor Authentication (2FA) successfully activated!' : 'Zwei-Faktor-Authentifizierung (2FA) erfolgreich aktiviert!', 'success');
+                      addToast(currentLang === 'en' ? 'Two-Factor Authentication (2FA) successfully activated!' : 'Zwei-Faktor-Authentifizierung (2FA) erfolgreich verifiziert und aktiviert!', 'success');
                     }}
                     className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-all shadow-md cursor-pointer"
                   >

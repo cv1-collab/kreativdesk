@@ -34,20 +34,27 @@ export function useProjectTimeEntries() {
         setTimeEntries(localTimes);
       }
 
-      const { data: times } = await supabase
+      const { data: times, error: timesErr } = await supabase
         .from('time_entries')
         .select('*')
         .eq('company_id', safeCompanyId);
 
-      let configTime: any = null;
-      try {
-        configTime = await fetchSystemConfigJSON<{ entries?: any[] }>(`time_entries_${safeCompanyId}`, safeCompanyId);
-      } catch (e) {}
-
-      const configTimes = (configTime as any)?.data?.entries || configTime?.entries || [];
       const timeMap = new Map();
+      // If SQL query succeeded, use SQL as authoritative source so deleted entries do not resurrect from localStorage
+      let sourceEntries: any[] = [];
+      if (!timesErr && Array.isArray(times)) {
+        sourceEntries = times;
+        if (sourceEntries.length === 0) {
+          try {
+            const configTime = await fetchSystemConfigJSON<{ entries?: any[] }>(`time_entries_${safeCompanyId}`, safeCompanyId);
+            sourceEntries = (configTime as any)?.data?.entries || configTime?.entries || [];
+          } catch (_) {}
+        }
+      } else {
+        sourceEntries = localTimes;
+      }
 
-      [...localTimes, ...configTimes, ...(times || [])].forEach((t: any) => {
+      sourceEntries.forEach((t: any) => {
         if (t && (t.id || t.description || t.hours)) {
           const tId = t.id || `time-${t.date}-${t.hours}`;
           timeMap.set(tId, {
@@ -108,16 +115,8 @@ export function useProjectTimeEntries() {
     });
 
     try {
-      const existingConfig = await fetchSystemConfigJSON<{ entries?: any[] }>(`time_entries_${safeCompanyId}`, safeCompanyId);
-      const existingEntries = existingConfig?.entries || [];
-      await saveSystemConfigJSON(`time_entries_${safeCompanyId}`, { entries: [newEntry, ...existingEntries], companyId: safeCompanyId }, safeCompanyId);
-    } catch (err) {
-      console.warn('addTimeEntry backup warning:', err);
-    }
-
-    try {
       const isIdUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(newEntry.id);
-      const dbPayload: any = {
+      const basePayload: any = {
         user_id: newEntry.userId,
         project_id: newEntry.projectId && newEntry.projectId !== 'global' ? newEntry.projectId : null,
         date: newEntry.date,
@@ -127,9 +126,20 @@ export function useProjectTimeEntries() {
         created_at: new Date().toISOString()
       };
       if (isIdUuid) {
-        dbPayload.id = newEntry.id;
+        basePayload.id = newEntry.id;
       }
-      await supabase.from('time_entries').insert(dbPayload);
+
+      const extendedPayload: any = {
+        ...basePayload,
+        hourly_rate: newEntry.hourlyRate,
+        is_billable: newEntry.isBillable
+      };
+
+      const { error: insertErr } = await supabase.from('time_entries').insert(extendedPayload);
+      if (insertErr) {
+        // Fallback if optional columns are not yet migrated in DB
+        await supabase.from('time_entries').insert(basePayload);
+      }
     } catch (err) {
       console.warn('addTimeEntry insert warning:', err);
     }

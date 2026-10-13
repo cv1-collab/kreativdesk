@@ -137,11 +137,51 @@ export function useProjectTeam() {
     return [];
   }, []);
 
-  const addCompanyUser = useCallback(async (safeCompanyId: string) => {
+  const addCompanyUser = useCallback(async (safeCompanyId: string, userData?: any) => {
+    if (safeCompanyId && userData && (userData.name || userData.email)) {
+      try {
+        await supabase.from('company_users').insert({
+          company_id: safeCompanyId,
+          name: userData.name || userData.email?.split('@')[0] || 'Teammitglied',
+          email: (userData.email || '').toLowerCase().trim(),
+          phone: userData.phone || '',
+          role: userData.role || 'Internal Staff',
+          department: userData.department || '',
+          hourly_rate: Number(userData.hourlyRate ?? userData.hourly_rate ?? 0) || null,
+          status: userData.status || 'aktiv',
+          created_at: new Date().toISOString()
+        } as any);
+      } catch (e) {
+        console.error('Fehler beim Hinzufügen des Benutzers:', e);
+      }
+    }
     await fetchCompanyUsers(safeCompanyId);
   }, [fetchCompanyUsers]);
 
-  const updateCompanyUser = useCallback(async (safeCompanyId: string) => {
+  const updateCompanyUser = useCallback(async (safeCompanyId: string, id?: string, userData?: any) => {
+    if (safeCompanyId && id && userData) {
+      try {
+        const updatePayload: Record<string, any> = {};
+        if (userData.name !== undefined) updatePayload.name = userData.name;
+        if (userData.email !== undefined) updatePayload.email = userData.email.toLowerCase().trim();
+        if (userData.phone !== undefined) updatePayload.phone = userData.phone;
+        if (userData.role !== undefined) updatePayload.role = userData.role;
+        if (userData.department !== undefined) updatePayload.department = userData.department;
+        if (userData.status !== undefined) updatePayload.status = userData.status;
+        if (userData.hourlyRate !== undefined || userData.hourly_rate !== undefined) {
+          updatePayload.hourly_rate = Number(userData.hourlyRate ?? userData.hourly_rate ?? 0);
+        }
+        if (Object.keys(updatePayload).length > 0) {
+          await supabase
+            .from('company_users')
+            .update(updatePayload as any)
+            .eq('company_id', safeCompanyId)
+            .or(`id.eq.${id},user_id.eq.${id}`);
+        }
+      } catch (e) {
+        console.error('Fehler beim Aktualisieren des Benutzers:', e);
+      }
+    }
     await fetchCompanyUsers(safeCompanyId);
   }, [fetchCompanyUsers]);
 

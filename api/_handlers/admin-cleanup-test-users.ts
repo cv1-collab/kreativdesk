@@ -1,27 +1,54 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { supabaseAdmin } from '../_auth.js';
 
-const SUPER_ADMIN_EMAILS = ['cv1@gmx.ch', 'carlo@vesciodesign.ch'];
-
-const TEST_EMAIL_PATTERNS = [
-  'test',
-  'lifecycle',
-  'probe',
-  'demo',
-  'agent',
-  'example.com',
-  'yopmail',
-  'mailinator',
-  'mailto.plus',
-  'mailnesia',
-  'faxpad'
+const SUPER_ADMIN_EMAILS = [
+  'cv1@gmx.ch',
+  'carlo@vesciodesign.ch',
+  'admin@kreativdesk.ch',
+  'info@kreativdesk.ch',
+  'interactv@gmx.ch'
 ];
+
+const PROTECTED_COMPANY_IDS = new Set([
+  'dce2daae-e8d5-4596-a264-a3fcdb326a6c'
+]);
+
+const TEST_EMAIL_DOMAINS = new Set([
+  'example.com',
+  'example.org',
+  'example.net',
+  'kreativdesk.test',
+  'workspace.local',
+  'yopmail.com',
+  'mailinator.com',
+  'mailto.plus',
+  'mailnesia.com',
+  'faxpad.com'
+]);
+
+const INTERNAL_TEST_LOCALPART_REGEX = /^(test([._-]|$)|qa_test|demo([._-]|$)|probe([._-]|$)|e2e([._-]|$)|.*_lifecycle_)/i;
 
 function isTestUser(email: string | undefined | null): boolean {
   if (!email) return false;
   const mail = email.toLowerCase().trim();
   if (SUPER_ADMIN_EMAILS.includes(mail)) return false;
-  return TEST_EMAIL_PATTERNS.some(pattern => mail.includes(pattern));
+
+  const atIndex = mail.lastIndexOf('@');
+  if (atIndex <= 0) return false;
+
+  const localPart = mail.slice(0, atIndex);
+  const domain = mail.slice(atIndex + 1);
+
+  if (TEST_EMAIL_DOMAINS.has(domain)) {
+    return true;
+  }
+
+  // Only match test prefixes on our own internal domain, never on customer domains
+  if (domain === 'kreativdesk.ch' && INTERNAL_TEST_LOCALPART_REGEX.test(localPart)) {
+    return true;
+  }
+
+  return false;
 }
 
 async function deleteSingleUserCascade(uid: string, email?: string | null) {
@@ -45,6 +72,10 @@ async function deleteSingleUserCascade(uid: string, email?: string | null) {
           'knowledge_docs', 'embeddings', 'goals'
         ];
         for (const comp of ownedCompanies) {
+          if (PROTECTED_COMPANY_IDS.has(comp.id)) {
+            console.warn(`[admin-cleanup] Skipping protected platform company: ${comp.id}`);
+            continue;
+          }
           for (const table of tables) {
             try { await supabaseAdmin.from(table).delete().eq('company_id', comp.id); } catch (_) {}
           }
@@ -54,7 +85,7 @@ async function deleteSingleUserCascade(uid: string, email?: string | null) {
       }
     } catch (_) {}
 
-    await supabaseAdmin.from('companies').update({ owner_id: null }).eq('owner_id', uid);
+    await supabaseAdmin.from('companies').update({ owner_id: null }).eq('owner_id', uid).not('id', 'in', `(${Array.from(PROTECTED_COMPANY_IDS).join(',')})`);
 
     // 2. Remove project relations & entries
     await supabaseAdmin.from('project_members').delete().eq('user_id', uid);

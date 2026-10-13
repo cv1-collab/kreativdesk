@@ -27,6 +27,8 @@ export interface RawTimeEntry {
   hours?: number | string;
   hourly_rate?: number | string;
   hourlyRate?: number | string;
+  is_billable?: boolean;
+  isBillable?: boolean;
   description?: string;
   date?: string;
   created_at?: string;
@@ -84,6 +86,7 @@ export function convertTimeEntriesToTransactions(
 
   for (const t of timeEntries) {
     if (!t) continue;
+    if (t.is_billable === false || t.isBillable === false) continue;
     const hoursNum = Math.max(0, Number(t.hours || 0));
     if (hoursNum <= 0 && !t.id) continue;
 

@@ -1221,7 +1221,7 @@ export interface Database {
         Returns: boolean;
       };
       get_proposal_by_share_token: {
-        Args: { p_token: string };
+        Args: { p_token: string; p_pin?: string };
         Returns: Database['public']['Tables']['smart_proposals']['Row'][];
       };
       sign_accept_proposal: {

@@ -84,7 +84,6 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(resolvedKey),
       'process.env.VITE_SUPABASE_URL': JSON.stringify(resolvedUrl),
       'process.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(resolvedKey),
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.VITE_GEMINI_API_KEY || ''),
       global: 'window',
       'process.env.NODE_ENV': JSON.stringify(mode === 'production' ? 'production' : 'development'),
     },
@@ -112,7 +111,7 @@ export default defineConfig(({ mode }) => {
     build: {
       target: 'esnext',
       sourcemap: false,
-      minify: false,
+      minify: true,
       commonjsOptions: {
         transformMixedEsModules: true,
       },

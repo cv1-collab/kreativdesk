@@ -1,18 +1,23 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { verifyAuth, supabaseAdmin } from '../_auth.js';
 
 function isSafeExternalUrl(urlStr: string): boolean {
   try {
     const parsed = new URL(urlStr);
-    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
+    if (parsed.protocol !== 'https:') return false;
     const hostname = parsed.hostname.toLowerCase();
     if (
       hostname === 'localhost' ||
       hostname === '127.0.0.1' ||
       hostname === '0.0.0.0' ||
+      hostname === '::1' ||
+      hostname === '[::1]' ||
       hostname === '169.254.169.254' ||
+      hostname.endsWith('.local') ||
+      hostname.endsWith('.internal') ||
       hostname.startsWith('10.') ||
       hostname.startsWith('192.168.') ||
-      hostname.startsWith('172.')
+      /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname)
     ) {
       return false;
     }
@@ -36,11 +41,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { event = 'PROPOSAL_ACCEPTED', proposalId, acceptanceData, acceptedAt, webhookUrl } = req.body || {};
+    const { event = 'PROPOSAL_ACCEPTED', proposalId, companyId, acceptanceData, acceptedAt, webhookUrl, ...rest } = req.body || {};
+    const user = await verifyAuth(req);
+
+    // Only allow client-supplied webhookUrl override when caller is an authenticated user
+    let targetUrl: string | undefined = user && webhookUrl ? webhookUrl : undefined;
+
+    if (!targetUrl && (companyId || proposalId)) {
+      let resolvedCompanyId = companyId;
+      if (!resolvedCompanyId && proposalId) {
+        const { data: prop } = await supabaseAdmin
+          .from('smart_proposals')
+          .select('company_id')
+          .eq('id', proposalId)
+          .maybeSingle();
+        resolvedCompanyId = (prop as any)?.company_id;
+      }
+      if (resolvedCompanyId) {
+        const { data: comp } = await supabaseAdmin
+          .from('companies')
+          .select('webhook_url')
+          .eq('id', resolvedCompanyId)
+          .maybeSingle();
+        targetUrl = (comp as any)?.webhook_url;
+      }
+    }
+
+    if (!targetUrl) {
+      targetUrl = process.env.LEAD_WEBHOOK_URL || process.env.WELCOME_WEBHOOK_URL;
+    }
 
     let forwarded = false;
-    const targetUrl = webhookUrl || process.env.LEAD_WEBHOOK_URL || process.env.WELCOME_WEBHOOK_URL;
-
     if (targetUrl && isSafeExternalUrl(targetUrl)) {
       try {
         const whRes = await fetch(targetUrl, {
@@ -49,7 +80,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           body: JSON.stringify({
             event,
             proposalId,
+            companyId,
             acceptanceData,
+            ...rest,
             acceptedAt: acceptedAt || new Date().toISOString(),
             source: 'KreativDesk'
           })

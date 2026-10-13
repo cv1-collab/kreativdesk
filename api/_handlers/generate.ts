@@ -1,6 +1,40 @@
 import { GoogleGenAI } from '@google/genai';
 import { verifyAuth } from '../_auth.js';
 
+const publicRateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+function checkPublicRateLimit(ip: string, maxPerMinute = 10): boolean {
+  const now = Date.now();
+  const entry = publicRateLimitMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    publicRateLimitMap.set(ip, { count: 1, resetAt: now + 60_000 });
+    return true;
+  }
+  if (entry.count >= maxPerMinute) {
+    return false;
+  }
+  entry.count += 1;
+  return true;
+}
+
+function isAllowedPublicPrompt(contents: any): boolean {
+  try {
+    const serialized = typeof contents === 'string' ? contents : JSON.stringify(contents || '');
+    // Only allow the 2 legitimate public features:
+    // 1. Landing Page Kreativ-Desk OS FAQ Concierge
+    // 2. Public Lead Form / Mobile Upload Business Card OCR
+    const isLandingFaq =
+      serialized.includes('Du bist der offizielle KI-Assistent von Kreativ-Desk OS') &&
+      serialized.length <= 6000;
+    const isBusinessCardOcr =
+      serialized.includes('Analysiere diese Visitenkarte') &&
+      serialized.length <= 2_500_000; // base64 image + short OCR prompt
+    return isLandingFaq || isBusinessCardOcr;
+  } catch {
+    return false;
+  }
+}
+
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -13,11 +47,14 @@ export default async function handler(req: any, res: any) {
       return res.status(401).json({ error: 'Unauthorized: Authentication required' });
     }
 
-    // Safety guard for unauthenticated public requests (Landing Page / Public Lead Form)
-    if (!user && isPublic) {
-      const payloadLength = typeof contents === 'string' ? contents.length : JSON.stringify(contents || '').length;
-      if (payloadLength > 25000) {
-        return res.status(400).json({ error: 'Payload too large for public requests' });
+    // Strict guard for unauthenticated public requests (Landing Page FAQ / Business Card OCR only)
+    if (!user) {
+      const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+      if (!checkPublicRateLimit(clientIp, 10)) {
+        return res.status(429).json({ error: 'Too many requests. Please try again in a minute.' });
+      }
+      if (!isAllowedPublicPrompt(contents)) {
+        return res.status(401).json({ error: 'Unauthorized: Public access is restricted to official widget intents' });
       }
     }
 
@@ -48,10 +85,14 @@ export default async function handler(req: any, res: any) {
       }
     }
 
+    const safeConfig = !user
+      ? { temperature: 0.2, maxOutputTokens: 600 }
+      : config;
+
     const response = await ai.models.generateContent({
       model: safeModel,
       contents: safeContents,
-      config
+      config: safeConfig
     });
 
     const generatedText = typeof response.text === 'function' ? (response as any).text() : (response.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || '');

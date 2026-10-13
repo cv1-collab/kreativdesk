@@ -27,6 +27,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const effectiveApiKey = apiKey || process.env.RESEND_API_KEY;
+    const effectiveFrom = from || process.env.RESEND_FROM_EMAIL || 'Kreativ Desk <onboarding@resend.dev>';
+    let resendWarning: string | undefined;
 
     if (effectiveApiKey && (provider === 'resend' || !provider)) {
       try {
@@ -37,7 +39,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            from: from || 'Kreativ Desk <onboarding@resend.dev>',
+            from: effectiveFrom,
             to: Array.isArray(to) ? to : [to],
             subject,
             html
@@ -54,19 +56,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           });
         } else {
           const errText = await resendResponse.text();
+          resendWarning = errText;
           console.warn('Resend API error response:', errText);
         }
-      } catch (resendErr) {
+      } catch (resendErr: any) {
+        resendWarning = resendErr?.message;
         console.warn('Resend dispatch failed, falling back to simulated dispatch:', resendErr);
       }
     }
 
-    // Fallback: Dispatched simulated confirmation
+    // Fallback: Dispatched simulated confirmation (with warning if live provider failed)
     return res.status(200).json({
       success: true,
       messageId: `sim_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
       provider: provider || 'simulator',
-      mode: 'simulated'
+      mode: 'simulated',
+      warning: resendWarning
     });
   } catch (error: any) {
     console.error('Email send error:', error);

@@ -12,6 +12,7 @@ import { useProjectTimeEntries, TimeEntry } from '../hooks/useProjectTimeEntries
 import { queryClient } from '../lib/queryClient';
 import { PROJECTS_QUERY_KEY } from '../hooks/queries/useProjectsQuery';
 import { safeStorage } from '../utils/safeStorage';
+import { checkIsSuperAdmin } from '../config/admins';
 
 export type { Defect, CompanyUser, ProjectMember, TimeEntry };
 
@@ -93,7 +94,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
   const getSafeCompanyId = useCallback(() => {
     if (!currentUser) return '';
-    const previewCompanyId = safeStorage.session.getString('admin_preview_company_id');
+    const isSuper = checkIsSuperAdmin(currentUser.email) || currentUser.role === 'super_admin';
+    const previewCompanyId = isSuper ? safeStorage.session.getString('admin_preview_company_id') : '';
     return previewCompanyId || currentUser.companyId || (currentUser as any)?.company_id || currentUser.uid || '';
   }, [currentUser]);
 
@@ -176,31 +178,32 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     fetchProjectDetails();
 
     const safeCompanyId = getSafeCompanyId();
+    const companyFilter = safeCompanyId ? `company_id=eq.${safeCompanyId}` : undefined;
     const channel = supabase
       .channel(`schema-db-changes-${safeCompanyId || 'global'}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'projects', filter: companyFilter }, () => {
         fetchProjects();
         queryClient.invalidateQueries({ queryKey: [PROJECTS_QUERY_KEY] });
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'company_users' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'company_users', filter: companyFilter }, () => {
         fetchCompanyUsers();
         fetchProjectDetails();
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: companyFilter }, () => {
         fetchCompanyUsers();
         fetchProjectDetails();
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'project_members' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'project_members', filter: companyFilter }, () => {
         fetchProjectDetails();
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'defects' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'defects', filter: companyFilter }, () => {
         fetchProjectDetails();
       })
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
         table: 'time_entries', 
-        filter: safeCompanyId ? `company_id=eq.${safeCompanyId}` : undefined 
+        filter: companyFilter 
       }, () => {
         fetchProjectDetails();
       })
@@ -390,14 +393,14 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     await updateProject(id, { name: newName.trim() });
   };
 
-  const addCompanyUser = async (_userData: any) => {
+  const addCompanyUser = async (userData: any) => {
     const safeCompanyId = getSafeCompanyId();
-    await addTeamUser(safeCompanyId);
+    await addTeamUser(safeCompanyId, userData);
   };
 
-  const updateCompanyUser = async (_id: string, _userData: any) => {
+  const updateCompanyUser = async (id: string, userData: any) => {
     const safeCompanyId = getSafeCompanyId();
-    await updateTeamUser(safeCompanyId);
+    await updateTeamUser(safeCompanyId, id, userData);
   };
 
   const removeCompanyUser = async (id: string) => {

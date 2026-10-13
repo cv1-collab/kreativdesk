@@ -382,14 +382,34 @@ CREATE POLICY "Strict profile read" ON public.profiles
     OR company_id::text = get_my_company_id()
   );
 
--- Nur der Inhaber darf sein Profil aktualisieren; Rollen-Erhöhung auf 'super_admin' wird strikt blockiert!
+-- Nur der Inhaber selbst, ein Firmen-Admin/-Owner derselben Firma oder Super-Admin darf Profile aktualisieren;
+-- Rollen-Erhöhung auf 'super_admin' wird strikt blockiert (zusätzlich abgesichert durch trg_enforce_profile_security).
 CREATE POLICY "Strict profile update" ON public.profiles
   FOR UPDATE TO authenticated
-  USING (is_super_admin() OR id = auth.uid())
+  USING (
+    is_super_admin() 
+    OR id = auth.uid()
+    OR (
+      company_id::text = get_my_company_id()
+      AND EXISTS (
+        SELECT 1 FROM public.profiles p
+        WHERE p.id = auth.uid() AND p.role IN ('owner', 'admin')
+      )
+    )
+  )
   WITH CHECK (
     is_super_admin() 
     OR (
-      id = auth.uid() 
+      (
+        id = auth.uid()
+        OR (
+          company_id::text = get_my_company_id()
+          AND EXISTS (
+            SELECT 1 FROM public.profiles p
+            WHERE p.id = auth.uid() AND p.role IN ('owner', 'admin')
+          )
+        )
+      )
       AND (
         role IS NULL 
         OR role != 'super_admin' 
@@ -408,17 +428,55 @@ GRANT ALL ON public.companies TO authenticated, service_role;
 DROP POLICY IF EXISTS "Full Access Companies" ON public.companies;
 DROP POLICY IF EXISTS "Authenticated users access companies" ON public.companies;
 DROP POLICY IF EXISTS "Strict company isolation companies" ON public.companies;
+DROP POLICY IF EXISTS "Strict company select" ON public.companies;
+DROP POLICY IF EXISTS "Strict company insert" ON public.companies;
+DROP POLICY IF EXISTS "Strict company update" ON public.companies;
+DROP POLICY IF EXISTS "Strict company delete" ON public.companies;
 
-CREATE POLICY "Strict company isolation companies" ON public.companies
-  FOR ALL TO authenticated
+CREATE POLICY "Strict company select" ON public.companies
+  FOR SELECT TO authenticated
   USING (
     is_super_admin() 
     OR id::text = get_my_company_id() 
     OR owner_id::text = auth.uid()::text
+  );
+
+CREATE POLICY "Strict company insert" ON public.companies
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    is_super_admin() 
+    OR owner_id::text = auth.uid()::text
+  );
+
+CREATE POLICY "Strict company update" ON public.companies
+  FOR UPDATE TO authenticated
+  USING (
+    is_super_admin() 
+    OR owner_id::text = auth.uid()::text
+    OR (
+      id::text = get_my_company_id()
+      AND EXISTS (
+        SELECT 1 FROM public.profiles p
+        WHERE p.id = auth.uid() AND p.role IN ('owner', 'admin')
+      )
+    )
   )
   WITH CHECK (
     is_super_admin() 
-    OR id::text = get_my_company_id() 
+    OR owner_id::text = auth.uid()::text
+    OR (
+      id::text = get_my_company_id()
+      AND EXISTS (
+        SELECT 1 FROM public.profiles p
+        WHERE p.id = auth.uid() AND p.role IN ('owner', 'admin')
+      )
+    )
+  );
+
+CREATE POLICY "Strict company delete" ON public.companies
+  FOR DELETE TO authenticated
+  USING (
+    is_super_admin() 
     OR owner_id::text = auth.uid()::text
   );
 

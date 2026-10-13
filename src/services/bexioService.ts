@@ -70,7 +70,7 @@ export function getBexioConfig(): { apiToken: string; autoSync: boolean; qrIban:
 /**
  * Speichert Bexio Konfiguration im LocalStorage
  */
-export function saveBexioConfig(config: { apiToken?: string; autoSync?: boolean; qrIban?: string; enabled?: boolean }) {
+export function saveBexioConfig(config: { apiToken?: string; autoSync?: boolean; qrIban?: string; enabled?: boolean; companyId?: string }) {
   if (typeof window === 'undefined') return;
 
   if (config.apiToken !== undefined) {
@@ -80,6 +80,44 @@ export function saveBexioConfig(config: { apiToken?: string; autoSync?: boolean;
   if (config.autoSync !== undefined) safeStorage.setItem('bexio_auto_sync', String(config.autoSync));
   if (config.qrIban !== undefined) safeStorage.setItem('bexio_qr_iban', config.qrIban);
   if (config.enabled !== undefined) safeStorage.setItem('bexio_integration_active', String(config.enabled));
+
+  // Persist server-readable config for external client proposal acceptance
+  supabase.auth.getUser().then(async ({ data }) => {
+    const uid = data?.user?.id;
+    if (!uid) return;
+    let compId = config.companyId;
+    if (!compId) {
+      const { data: prof } = await supabase.from('profiles').select('company_id').eq('id', uid).maybeSingle();
+      compId = (prof as any)?.company_id || uid;
+    }
+    if (compId) {
+      const merged = getBexioConfig();
+      const payloadStr = JSON.stringify(merged);
+      const cfgName = `bexio_config_${compId}`;
+      const { data: existing } = await supabase
+        .from('documents')
+        .select('id')
+        .eq('category', 'system_config')
+        .eq('name', cfgName)
+        .limit(1);
+      if (existing && existing.length > 0) {
+        await supabase.from('documents').update({ url: payloadStr, file_url: payloadStr, uploaded_at: new Date().toISOString() }).eq('id', existing[0].id);
+      } else {
+        await supabase.from('documents').insert({
+          company_id: compId,
+          owner_id: uid,
+          uploaded_by: uid,
+          category: 'system_config',
+          name: cfgName,
+          folder_id: 'root',
+          is_folder: false,
+          url: payloadStr,
+          file_url: payloadStr,
+          type: 'application/json'
+        });
+      }
+    }
+  }).catch(() => {});
 }
 
 /**

@@ -11,7 +11,48 @@ if (!supabaseUrl || !serviceKey) {
 
 const supabaseAdmin = createClient(supabaseUrl, serviceKey);
 
-const SUPER_ADMIN_EMAILS = ['cv1@gmx.ch', 'carlo@vesciodesign.ch'];
+const SUPER_ADMIN_EMAILS = [
+  'cv1@gmx.ch',
+  'carlo@vesciodesign.ch',
+  'admin@kreativdesk.ch',
+  'info@kreativdesk.ch',
+  'interactv@gmx.ch'
+];
+
+const PROTECTED_COMPANY_IDS = new Set([
+  'dce2daae-e8d5-4596-a264-a3fcdb326a6c'
+]);
+
+const TEST_EMAIL_DOMAINS = new Set([
+  'example.com',
+  'example.org',
+  'example.net',
+  'kreativdesk.test',
+  'workspace.local',
+  'yopmail.com',
+  'mailinator.com',
+  'mailto.plus',
+  'mailnesia.com',
+  'faxpad.com'
+]);
+
+const INTERNAL_TEST_LOCALPART_REGEX = /^(test([._-]|$)|qa_test|demo([._-]|$)|probe([._-]|$)|e2e([._-]|$)|.*_lifecycle_)/i;
+
+function isTestUser(email) {
+  if (!email) return false;
+  const mail = email.toLowerCase().trim();
+  if (SUPER_ADMIN_EMAILS.includes(mail)) return false;
+
+  const atIndex = mail.lastIndexOf('@');
+  if (atIndex <= 0) return false;
+
+  const localPart = mail.slice(0, atIndex);
+  const domain = mail.slice(atIndex + 1);
+
+  if (TEST_EMAIL_DOMAINS.has(domain)) return true;
+  if (domain === 'kreativdesk.ch' && INTERNAL_TEST_LOCALPART_REGEX.test(localPart)) return true;
+  return false;
+}
 
 const CASCADE_TABLES = [
   'projects', 'time_entries', 'defects', 'documents', 'leads', 
@@ -38,7 +79,7 @@ async function getAllAuthUsers() {
 }
 
 async function cleanupUsers() {
-  console.log("=== STARTING SUPABASE USER CLEANUP ===");
+  console.log("=== STARTING SAFE SUPABASE TEST USER CLEANUP ===");
 
   let users = [];
   try {
@@ -54,52 +95,17 @@ async function cleanupUsers() {
   for (const user of users) {
     const userEmail = (user.email || '').toLowerCase().trim();
     
-    if (SUPER_ADMIN_EMAILS.includes(userEmail)) {
-      console.log(`\n⭐ KEEPING Super Admin User: ${user.email} (ID: ${user.id})`);
-      
-      const { data: profile } = await supabaseAdmin.from('profiles').select('*').eq('id', user.id).maybeSingle();
-      
-      if (!profile) {
-        await supabaseAdmin.from('profiles').insert({
-          id: user.id,
-          email: user.email,
-          role: 'super_admin',
-          plan: 'Enterprise',
-          full_name: userEmail === 'cv1@gmx.ch' ? 'Carlo Vescio (Super Admin)' : 'Carlo Vescio (Admin)'
-        });
-      } else {
-        await supabaseAdmin.from('profiles').update({
-          role: 'super_admin',
-          plan: 'Enterprise',
-          has_active_subscription: true,
-          can_view_finance: true,
-          can_approve_budget: true
-        }).eq('id', user.id);
-      }
-      
+    if (SUPER_ADMIN_EMAILS.includes(userEmail) || !isTestUser(userEmail)) {
+      console.log(`⭐ KEEPING User: ${user.email} (ID: ${user.id})`);
       keptCount++;
     } else {
-      console.log(`🗑️ Deleting user & company data: ${user.email} (ID: ${user.id})...`);
-      
-      // Delete user's company and dependent tables to avoid FK constraint errors
-      const { data: profile } = await supabaseAdmin.from('profiles').select('company_id').eq('id', user.id).maybeSingle();
-      if (profile?.company_id) {
-        const companyId = profile.company_id;
-        for (const table of CASCADE_TABLES) {
-          try {
-            await supabaseAdmin.from(table).delete().eq('company_id', companyId);
-          } catch (_) {}
-        }
-        try {
-          await supabaseAdmin.from('profiles').update({ company_id: null }).eq('company_id', companyId);
-          await supabaseAdmin.from('companies').delete().eq('id', companyId);
-        } catch (_) {}
-      }
+      console.log(`🗑️ Deleting verified test user & owned test company data: ${user.email} (ID: ${user.id})...`);
 
       try {
         const { data: ownedCompanies } = await supabaseAdmin.from('companies').select('id').eq('owner_id', user.id);
         if (ownedCompanies && ownedCompanies.length > 0) {
           for (const comp of ownedCompanies) {
+            if (PROTECTED_COMPANY_IDS.has(comp.id)) continue;
             for (const table of CASCADE_TABLES) {
               try { await supabaseAdmin.from(table).delete().eq('company_id', comp.id); } catch (_) {}
             }

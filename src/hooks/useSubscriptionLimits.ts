@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
-export type PlanName = 'Starter' | 'Pro' | 'Team Starter' | 'Expert' | 'Studio' | 'Agency' | 'Enterprise' | 'Free Trial';
+export type PlanName = 'Starter' | 'Pro' | 'Team Starter' | 'Expert' | 'Expert Trial' | 'Studio' | 'Agency' | 'Enterprise' | 'Free Trial';
 
 export interface SubscriptionLimits {
   maxProjects: number;      // -1 means unlimited
@@ -20,6 +20,14 @@ export const PLAN_LIMITS: Record<PlanName, SubscriptionLimits> = {
     hasInvoicing: false,
     hasApiAccess: false,
     hasCustomBranding: false,
+  },
+  'Expert Trial': {
+    maxProjects: -1,
+    maxStorageGB: 250,
+    maxSeats: 3,
+    hasInvoicing: true,
+    hasApiAccess: true,
+    hasCustomBranding: true,
   },
   'Starter': {
     maxProjects: 3,
@@ -85,13 +93,19 @@ export function useSubscriptionLimits() {
 
   return useMemo(() => {
     let plan = rawPlan as PlanName;
-    if (rawPlan.includes('Trial')) {
+    if (rawPlan === 'Expert Trial' || rawPlan.toLowerCase().includes('expert')) {
+      plan = 'Expert Trial';
+    } else if (rawPlan.includes('Trial')) {
       plan = 'Free Trial';
-    } else if (rawPlan.includes('Workspace') || !PLAN_LIMITS[plan]) {
+    } else if (rawPlan.toLowerCase().includes('enterprise')) {
       plan = 'Enterprise';
+    } else if (rawPlan.includes('Workspace')) {
+      plan = 'Pro';
+    } else if (!PLAN_LIMITS[plan]) {
+      plan = 'Free Trial';
     }
     
-    const limits = PLAN_LIMITS[plan] || PLAN_LIMITS['Enterprise'] || PLAN_LIMITS['Free Trial'];
+    const limits = PLAN_LIMITS[plan] || PLAN_LIMITS['Free Trial'];
 
     return { limits, currentPlan: plan };
   }, [rawPlan]);

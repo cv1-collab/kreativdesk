@@ -165,23 +165,35 @@ export async function getCompanyProposals(companyId: string, projectId?: string,
 /**
  * Holt eine Proposal anhand ihres unikalen Share-Tokens (öffentlich für Kunden)
  */
-export async function getProposalByShareToken(shareToken: string): Promise<SmartProposal | null> {
+export async function getProposalByShareToken(shareToken: string, pinCode?: string): Promise<SmartProposal | null> {
   try {
     if (supabase) {
-      // 1. Secure RPC lookup first (prevents public table scans)
+      // 1. Secure RPC lookup first (prevents public table scans & verifies PIN server-side)
       try {
-        const { data: rpcData, error: rpcErr } = await supabase.rpc('get_proposal_by_share_token', { p_token: shareToken });
+        const rpcArgs: { p_token: string; p_pin?: string } = { p_token: shareToken };
+        if (pinCode !== undefined) {
+          rpcArgs.p_pin = pinCode;
+        }
+        let { data: rpcData, error: rpcErr } = await supabase.rpc('get_proposal_by_share_token', rpcArgs);
+        // Fallback if 1-arg RPC signature is currently deployed in DB
+        if (rpcErr && pinCode !== undefined) {
+          const fallbackRes = await supabase.rpc('get_proposal_by_share_token', { p_token: shareToken });
+          rpcData = fallbackRes.data;
+          rpcErr = fallbackRes.error;
+        }
         const rows: any = rpcData;
         const row = Array.isArray(rows) && rows.length > 0 ? rows[0] : (rows && !Array.isArray(rows) ? rows : null);
         if (!rpcErr && row) {
-          incrementProposalViews(row.id, row.views_count || 0);
+          if (row.pin_code !== '__PIN_REQUIRED__') {
+            incrementProposalViews(row.id, row.views_count || 0);
+          }
           return mapDbToProposal(row);
         }
       } catch {
         // Fallback to direct query below
       }
 
-      // 2. Direct query fallback
+      // 2. Direct query fallback (for authenticated company members)
       const { data, error } = await supabase
         .from('smart_proposals')
         .select('*')
@@ -189,7 +201,6 @@ export async function getProposalByShareToken(shareToken: string): Promise<Smart
         .maybeSingle();
 
       if (!error && data) {
-        // Increment view count asynchronously
         incrementProposalViews(data.id, data.views_count || 0);
         return mapDbToProposal(data);
       }
@@ -463,6 +474,7 @@ export async function acceptProposalByClient(
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          proposalId,
           recipientEmail: acceptanceData.email,
           quoteData: {
             quoteNumber: `OFF-${proposalId.slice(-6)}`,

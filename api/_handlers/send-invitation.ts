@@ -93,7 +93,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            from: 'Kreativ Desk <onboarding@resend.dev>',
+            from: process.env.RESEND_FROM_EMAIL || 'Kreativ Desk <onboarding@resend.dev>',
             to: recipientList,
             subject: emailSubject,
             html: formattedHtml

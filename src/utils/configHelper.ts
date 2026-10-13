@@ -3,12 +3,32 @@ import { safeStorage } from './safeStorage';
 
 export async function fetchSystemConfigJSON<T = any>(configKey: string, companyId: string = 'global'): Promise<T | null> {
   try {
-    const { data: doc } = await supabase
+    let query = supabase
       .from('documents')
-      .select('url, file_url')
+      .select('url, file_url, company_id')
       .eq('category', 'system_config')
       .eq('name', configKey)
-      .maybeSingle();
+      .order('uploaded_at', { ascending: false })
+      .limit(1);
+
+    if (companyId && companyId !== 'global') {
+      query = query.eq('company_id', companyId);
+    }
+
+    let { data: rows } = await query;
+    let doc = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+
+    // Legacy fallback if document was previously saved without company_id filter
+    if (!doc && companyId && companyId !== 'global' && configKey.includes(companyId)) {
+      const { data: legacyRows } = await supabase
+        .from('documents')
+        .select('url, file_url, company_id')
+        .eq('category', 'system_config')
+        .eq('name', configKey)
+        .order('uploaded_at', { ascending: false })
+        .limit(1);
+      doc = Array.isArray(legacyRows) && legacyRows.length > 0 ? legacyRows[0] : null;
+    }
 
     if (doc?.file_url || doc?.url) {
       try {
@@ -31,15 +51,24 @@ export async function saveSystemConfigJSON(configKey: string, payload: any, comp
     const payloadStr = JSON.stringify(payload);
     safeStorage.setItem(`sys_cfg_${configKey}`, payloadStr);
 
-    const { data: existingDoc } = await supabase
+    let findQuery = supabase
       .from('documents')
       .select('id')
       .eq('category', 'system_config')
       .eq('name', configKey)
-      .maybeSingle();
+      .order('uploaded_at', { ascending: false })
+      .limit(1);
+
+    if (companyId && companyId !== 'global') {
+      findQuery = findQuery.eq('company_id', companyId);
+    }
+
+    const { data: existingRows } = await findQuery;
+    const existingDoc = Array.isArray(existingRows) && existingRows.length > 0 ? existingRows[0] : null;
 
     if (existingDoc?.id) {
       await supabase.from('documents').update({
+        company_id: companyId,
         url: payloadStr,
         file_url: payloadStr,
         uploaded_at: new Date().toISOString()

@@ -1969,9 +1969,33 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
     doc.save(`QR_Rechnung_Anzahlung_${getTranslatedProposalTitle(proposal.title).replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
   };
 
-  const handlePinSubmit = (e: React.FormEvent) => {
+  const handlePinSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (proposal && proposal.pinCode === pinInput.trim()) {
+    if (!proposal) return;
+    const trimmedPin = pinInput.trim();
+    if (!trimmedPin) {
+      setPinError(true);
+      return;
+    }
+
+    if (proposal.pinCode === '__PIN_REQUIRED__') {
+      const effectiveToken = shareToken || proposal.shareToken || 'interactv';
+      const unlocked = await getProposalByShareToken(effectiveToken, trimmedPin);
+      if (unlocked && unlocked.pinCode !== '__PIN_REQUIRED__') {
+        setProposal(unlocked);
+        const defaultSelected = (unlocked.options || [])
+          .filter(o => o.selectedByDefault)
+          .map(o => o.id);
+        setSelectedOptionIds(defaultSelected);
+        setIsPinUnlocked(true);
+        setPinError(false);
+      } else {
+        setPinError(true);
+      }
+      return;
+    }
+
+    if (proposal.pinCode === trimmedPin) {
       setIsPinUnlocked(true);
       setPinError(false);
     } else {

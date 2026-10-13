@@ -103,38 +103,14 @@ export async function callGeminiAPI(model: string, rawContents: any, config?: an
     )) {
       throw proxyErr;
     }
-    console.warn("Server proxy generation failed, falling back to direct client API:", proxyErr);
+    console.warn("Server proxy generation failed:", proxyErr);
+    throw proxyErr;
   }
 
-  // 2. Client-side direct fallback if server proxy failed or was not configured
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || 
-                 import.meta.env.VITE_GOOGLE_AI_KEY || 
-                 (typeof process !== 'undefined' && (process.env?.GEMINI_API_KEY || process.env?.VITE_GEMINI_API_KEY));
-  if (!apiKey) {
-    if (lastHttpStatus && lastHttpStatus !== 404) {
-      throw new Error(`KI-Anfrage fehlgeschlagen (Server Status ${lastHttpStatus}${lastHttpErrorText ? `: ${lastHttpErrorText}` : ''}).`);
-    }
-    throw new Error('KI-API-Schlüssel auf dem Server & Client nicht konfiguriert.');
+  if (lastHttpStatus && lastHttpStatus !== 404) {
+    throw new Error(`KI-Anfrage fehlgeschlagen (Server Status ${lastHttpStatus}${lastHttpErrorText ? `: ${lastHttpErrorText}` : ''}).`);
   }
-
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${safeModel}:generateContent?key=${apiKey}`;
-  const directResponse = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contents, generationConfig: config })
-  });
-
-  if (!directResponse.ok) {
-    const errText = await directResponse.text();
-    throw new Error(`KI-Generierung fehlgeschlagen (${directResponse.status}): ${errText.slice(0, 100)}`);
-  }
-
-  const directData = await directResponse.json();
-  const textOutput = directData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  return {
-    text: textOutput,
-    candidates: directData?.candidates
-  };
+  throw new Error('KI-Dienst momentan nicht erreichbar (Server-Proxy nicht verfügbar).');
 }
 
 export async function callGeminiChatAPI(model: string, message: string, history: any[] = [], config?: any) {

@@ -122,8 +122,14 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_inv record;
+  v_safe_role text;
 BEGIN
   IF p_token IS NULL OR p_user_id IS NULL THEN
+    RETURN false;
+  END IF;
+
+  -- Sicherheitscheck: Aufrufer muss der einzulösende Benutzer selbst (oder Super-Admin) sein
+  IF auth.uid() IS NOT NULL AND auth.uid() != p_user_id AND NOT is_super_admin() THEN
     RETURN false;
   END IF;
 
@@ -136,6 +142,8 @@ BEGIN
     RETURN false;
   END IF;
 
+  v_safe_role := CASE WHEN v_inv.role = 'super_admin' THEN 'admin' ELSE coalesce(v_inv.role, 'employee') END;
+
   -- Einladung auf 'used' setzen
   UPDATE public.invites
   SET status = 'used', used_by = p_user_id, used_at = now()
@@ -144,18 +152,19 @@ BEGIN
   -- Profil des Benutzers der Firma zuordnen
   UPDATE public.profiles
   SET company_id = v_inv.company_id, 
-      role = coalesce(v_inv.role, 'employee')
+      role = v_safe_role
   WHERE id = p_user_id;
 
   RETURN true;
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.accept_invite_by_token(text, uuid) TO anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.accept_invite_by_token(text, uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.accept_invite_by_token(text, uuid) TO authenticated, service_role;
 
 
 -------------------------------------------------------------------------------
--- 3. KUNDEN-OFFERTEN (smart_proposals) ABSICHERN
+-- 3. KUNDEN-OFFERTEN (smart_proposals) ABSICHERN (INKL. SERVERSEITIGEM PIN-SCHUTZ)
 -------------------------------------------------------------------------------
 ALTER TABLE IF EXISTS public.smart_proposals ENABLE ROW LEVEL SECURITY;
 
@@ -183,22 +192,53 @@ CREATE POLICY "Company users can manage own company proposals" ON public.smart_p
     OR owner_id = auth.uid()::text
   );
 
--- Sichere RPC-Funktion: Offerte nur abrufen, wenn der exakte Share-Token bekannt ist
-CREATE OR REPLACE FUNCTION public.get_proposal_by_share_token(p_token text)
+-- Sichere RPC-Funktion: Offerte nur abrufen, wenn Share-Token (und ggf. PIN) stimmt!
+DROP FUNCTION IF EXISTS public.get_proposal_by_share_token(text);
+CREATE OR REPLACE FUNCTION public.get_proposal_by_share_token(p_token text, p_pin text DEFAULT NULL)
 RETURNS SETOF public.smart_proposals
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
-  SELECT * FROM public.smart_proposals
+DECLARE
+  v_prop public.smart_proposals%ROWTYPE;
+BEGIN
+  SELECT * INTO v_prop
+  FROM public.smart_proposals
   WHERE share_token = p_token
     AND status IN ('active', 'accepted')
     AND (expires_at IS NULL OR expires_at > now())
   LIMIT 1;
+
+  IF NOT FOUND THEN
+    RETURN;
+  END IF;
+
+  -- Falls Offerte mit PIN geschützt ist und der übergebene PIN nicht übereinstimmt:
+  -- Sensible Daten (Preise, Folien, Optionen, echter PIN) maskieren!
+  IF v_prop.pin_code IS NOT NULL AND trim(v_prop.pin_code) <> '' THEN
+    IF p_pin IS NULL OR trim(p_pin) <> trim(v_prop.pin_code) THEN
+      v_prop.pin_code := '__PIN_REQUIRED__';
+      v_prop.base_price := 0;
+      v_prop.intro_text := '';
+      v_prop.hero_video_url := '';
+      v_prop.slides := '[]'::jsonb;
+      v_prop.options := '[]'::jsonb;
+      v_prop.attachments := '[]'::jsonb;
+      v_prop.payment_milestones := '[]'::jsonb;
+      RETURN NEXT v_prop;
+      RETURN;
+    END IF;
+  END IF;
+
+  -- PIN niemals im Klartext an den Browser ausliefern
+  v_prop.pin_code := '';
+  RETURN NEXT v_prop;
+END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.get_proposal_by_share_token(text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_proposal_by_share_token(text, text) TO anon, authenticated;
 
 -- Sichere RPC-Funktion: Digitale Signatur / Annahme der Offerte
 CREATE OR REPLACE FUNCTION public.sign_accept_proposal(p_share_token text, p_acceptance_data jsonb)
@@ -410,5 +450,106 @@ CREATE INDEX IF NOT EXISTS idx_chat_messages_call_id ON public.chat_messages (ca
 ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS photo_url text;
 ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS avatar text;
 ALTER TABLE IF EXISTS public.company_users ADD COLUMN IF NOT EXISTS avatar text;
+
+-------------------------------------------------------------------------------
+-- 8. ANTI-PRIVILEGE-ESCALATION (PROFILES & COMPANIES)
+-------------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.enforce_profile_security()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_caller_role text;
+  v_caller_company uuid;
+  v_is_company_admin boolean := false;
+BEGIN
+  -- Service-Role (Backend-API / Stripe-Webhook) und Super-Admins dürfen alles
+  IF current_setting('role', true) = 'service_role' OR auth.uid() IS NULL OR is_super_admin() THEN
+    RETURN NEW;
+  END IF;
+
+  -- Niemand ausser Super-Admin / Service-Role darf 'super_admin' vergeben
+  IF NEW.role = 'super_admin' AND OLD.role IS DISTINCT FROM 'super_admin' THEN
+    RAISE EXCEPTION 'Forbidden: Cannot escalate role to super_admin';
+  END IF;
+
+  SELECT role, company_id INTO v_caller_role, v_caller_company
+  FROM public.profiles
+  WHERE id = auth.uid();
+
+  IF v_caller_role IN ('owner', 'admin') AND v_caller_company IS NOT NULL AND v_caller_company = OLD.company_id THEN
+    v_is_company_admin := true;
+  END IF;
+
+  -- Normale Benutzer (Mitarbeiter, Gäste, Kunden) dürfen weder ihre Rolle noch ihr Abo/Rechte selbst erhöhen
+  IF NOT v_is_company_admin THEN
+    IF OLD.role IS NOT NULL AND NEW.role IS DISTINCT FROM OLD.role THEN
+      NEW.role := OLD.role;
+    END IF;
+    IF OLD.company_id IS NOT NULL AND NEW.company_id IS DISTINCT FROM OLD.company_id THEN
+      NEW.company_id := OLD.company_id;
+    END IF;
+    IF OLD.can_view_finance IS NOT NULL AND NEW.can_view_finance IS DISTINCT FROM OLD.can_view_finance THEN
+      NEW.can_view_finance := OLD.can_view_finance;
+    END IF;
+    IF OLD.can_edit_projects IS NOT NULL AND NEW.can_edit_projects IS DISTINCT FROM OLD.can_edit_projects THEN
+      NEW.can_edit_projects := OLD.can_edit_projects;
+    END IF;
+    IF OLD.can_manage_team IS NOT NULL AND NEW.can_manage_team IS DISTINCT FROM OLD.can_manage_team THEN
+      NEW.can_manage_team := OLD.can_manage_team;
+    END IF;
+  END IF;
+
+  -- Plan- und Subscription-Felder dürfen nur durch Service-Role / Super-Admin geändert werden
+  IF OLD.plan IS NOT NULL AND NEW.plan IS DISTINCT FROM OLD.plan THEN
+    NEW.plan := OLD.plan;
+  END IF;
+  IF OLD.has_active_subscription IS NOT NULL AND NEW.has_active_subscription IS DISTINCT FROM OLD.has_active_subscription THEN
+    NEW.has_active_subscription := OLD.has_active_subscription;
+  END IF;
+  IF OLD.trial_ends_at IS NOT NULL AND NEW.trial_ends_at IS DISTINCT FROM OLD.trial_ends_at THEN
+    NEW.trial_ends_at := OLD.trial_ends_at;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_enforce_profile_security ON public.profiles;
+CREATE TRIGGER trg_enforce_profile_security
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION public.enforce_profile_security();
+
+CREATE OR REPLACE FUNCTION public.enforce_company_security()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF current_setting('role', true) = 'service_role' OR auth.uid() IS NULL OR is_super_admin() THEN
+    RETURN NEW;
+  END IF;
+
+  -- Lizenz-Plan und gekaufte Seats (max_seats) dürfen nicht direkt vom Client hochgesetzt werden
+  IF OLD.plan IS NOT NULL AND NEW.plan IS DISTINCT FROM OLD.plan THEN
+    NEW.plan := OLD.plan;
+  END IF;
+  IF OLD.max_seats IS NOT NULL AND NEW.max_seats IS DISTINCT FROM OLD.max_seats THEN
+    NEW.max_seats := OLD.max_seats;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_enforce_company_security ON public.companies;
+CREATE TRIGGER trg_enforce_company_security
+  BEFORE UPDATE ON public.companies
+  FOR EACH ROW
+  EXECUTE FUNCTION public.enforce_company_security();
 
 COMMIT;

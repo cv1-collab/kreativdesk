@@ -1,6 +1,22 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenAI } from '@google/genai';
 
+const chatRateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+function checkChatRateLimit(ip: string, maxPerMinute = 15): boolean {
+  const now = Date.now();
+  const entry = chatRateLimitMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    chatRateLimitMap.set(ip, { count: 1, resetAt: now + 60_000 });
+    return true;
+  }
+  if (entry.count >= maxPerMinute) {
+    return false;
+  }
+  entry.count += 1;
+  return true;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -15,10 +31,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+    if (!checkChatRateLimit(clientIp, 15)) {
+      return res.status(429).json({ error: 'Zu viele Anfragen. Bitte warte einen Moment.' });
+    }
+
     const { language = 'de', proposalContext, userQuestion, messageHistory = [] } = req.body || {};
 
-    if (!userQuestion || !proposalContext) {
+    if (!userQuestion || typeof userQuestion !== 'string' || !proposalContext || typeof proposalContext !== 'object') {
       return res.status(400).json({ error: 'Missing userQuestion or proposalContext' });
+    }
+
+    if (userQuestion.length > 1200) {
+      return res.status(400).json({ error: 'Frage ist zu lang (max. 1200 Zeichen).' });
     }
 
     const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || process.env.GOOGLE_AI_KEY;
