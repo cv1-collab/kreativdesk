@@ -1404,18 +1404,8 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
           {/* Modul-Guide Button (Nummer 9) */}
           <ModuleGuideButton moduleId="team" />
 
-          {/* Visitenkarte KI Scanner Button */}
-          <button 
-            onClick={() => setIsScannerModalOpen(true)} 
-            className="tour-crm-scanner h-9 px-3 sm:px-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs md:text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
-            title="Visitenkarte scannen & per KI auslesen"
-          >
-            <Camera size={15} /> <span>Visitenkarte scannen</span>
-          </button>
-
+          {/* Zusammengefasste Export / Import Dropdown */}
           <input type="file" accept=".vcf" ref={vcfInputRef} className="hidden" onChange={handleVcfImport} />
-
-          {/* Zusammengefasste Export / Import Dropdown (Nummer 8) */}
           <div className="tour-crm-export relative shrink-0" ref={exportImportRef}>
             <button
               onClick={() => setIsExportImportOpen(!isExportImportOpen)}
@@ -1440,8 +1430,11 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                     initial={{ opacity: 0, y: 6, scale: 0.96 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 4, scale: 0.96 }}
-                    className="absolute right-0 top-full mt-1.5 w-56 bg-surface border border-border rounded-xl shadow-2xl p-1.5 z-[101] space-y-1"
+                    className="absolute right-0 top-full mt-1.5 w-60 bg-surface border border-border rounded-xl shadow-2xl p-1.5 z-[101] space-y-1"
                   >
+                    <div className="px-2.5 py-1 text-[10px] font-bold text-text-muted uppercase tracking-wider">
+                      Export
+                    </div>
                     <button
                       onClick={() => {
                         setIsExportImportOpen(false);
@@ -1463,12 +1456,27 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                       <FileText size={14} className="text-emerald-400 shrink-0" />
                       <span>{t('export_csv')} (Excel / CSV)</span>
                     </button>
+
+                    <div className="border-t border-border/50 my-1"></div>
+                    <div className="px-2.5 py-1 text-[10px] font-bold text-text-muted uppercase tracking-wider">
+                      Import & Erfassung
+                    </div>
+                    <button
+                      onClick={() => {
+                        setIsExportImportOpen(false);
+                        setIsScannerModalOpen(true);
+                      }}
+                      className="tour-crm-scanner w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/5 text-left text-xs font-semibold text-text-primary transition-colors cursor-pointer"
+                    >
+                      <Camera size={14} className="text-indigo-400 shrink-0" />
+                      <span>Visitenkarte scannen (KI)</span>
+                    </button>
                     <button
                       onClick={() => {
                         setIsExportImportOpen(false);
                         vcfInputRef.current?.click();
                       }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/5 text-left text-xs font-semibold text-text-primary transition-colors border-t border-border/50 cursor-pointer"
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/5 text-left text-xs font-semibold text-text-primary transition-colors cursor-pointer"
                     >
                       <FileUp size={14} className="text-blue-400 shrink-0" />
                       <span>{t('vcf_import')} (vCard .vcf)</span>

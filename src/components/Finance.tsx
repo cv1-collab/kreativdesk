@@ -680,6 +680,8 @@ export default function Finance() {
   const [showAiBudgetModal, setShowAiBudgetModal] = useState(false);
   const [showCsvMenu, setShowCsvMenu] = useState(false);
   const csvMenuRef = useRef<HTMLDivElement>(null);
+  const [showCreateMenu, setShowCreateMenu] = useState(false);
+  const createMenuRef = useRef<HTMLDivElement>(null);
   const [csvImportText, setCsvImportText] = useState('');
   const [timeData, setTimeData] = useState({
     type: 'internal',
@@ -707,11 +709,14 @@ export default function Finance() {
   const [opCostSessionId] = useState(() => Math.random().toString(36).substring(2, 15));
   const mobileUploadUrl = `${window.location.origin}/mobile-upload/extern/${opCostSessionId}`;
 
-  // Close CSV dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (csvMenuRef.current && !csvMenuRef.current.contains(e.target as Node)) {
         setShowCsvMenu(false);
+      }
+      if (createMenuRef.current && !createMenuRef.current.contains(e.target as Node)) {
+        setShowCreateMenu(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -2274,60 +2279,113 @@ export default function Finance() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
-            {/* Primary Action Buttons */}
-            <div className="grid grid-cols-2 sm:flex flex-wrap gap-2 w-full sm:w-auto items-center">
-              <ModuleGuideButton moduleId="finance" className="h-9" />
+            {/* Module Guide Button */}
+            <ModuleGuideButton moduleId="finance" className="h-9 shrink-0" />
+
+            {/* + Erfassen Dropdown */}
+            <div className="relative shrink-0" ref={createMenuRef}>
               <button
-                onClick={() => setShowTimeModal(true)}
-                className="flex-1 sm:flex-none flex items-center justify-center px-3 sm:px-3.5 bg-surface border border-border/50 rounded-xl text-xs sm:text-sm font-bold hover:bg-white/5 hover:text-orange-400 transition-colors shadow-xs gap-1.5 h-9 cursor-pointer"
+                onClick={() => setShowCreateMenu(prev => !prev)}
+                className={cn(
+                  "tour-finance-invoices flex items-center justify-center px-3 sm:px-3.5 bg-accent-ai text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-accent-ai/90 transition-all shadow-xs gap-1.5 h-9 cursor-pointer",
+                  showCreateMenu && "ring-2 ring-accent-ai/40"
+                )}
+                title="Neue Buchung oder Dokument erfassen"
               >
-                <Clock size={16} className="text-orange-400 shrink-0" /> <span>{t('book_hours')}</span>
+                <Plus size={16} className="shrink-0" />
+                <span>{t('create') || 'Erfassen'}</span>
+                <ChevronDown size={14} className={cn("transition-transform duration-200", showCreateMenu ? "rotate-180" : "")} />
               </button>
-              <button
-                onClick={() => setShowQuoteModal(true)}
-                className="flex-1 sm:flex-none flex items-center justify-center px-3 sm:px-3.5 bg-surface border border-border/50 rounded-xl text-xs sm:text-sm font-bold hover:bg-white/5 hover:text-accent-ai transition-colors shadow-xs gap-1.5 h-9 cursor-pointer"
-              >
-                <FileSignature size={16} className="text-accent-ai shrink-0" /> <span>{t('quote')}</span>
-              </button>
-              <button
-                onClick={() => { setReceiptType('expense'); setShowReceiptStudio(true); }}
-                className="flex-1 sm:flex-none flex items-center justify-center px-3 sm:px-3.5 bg-surface border border-border/50 rounded-xl text-xs sm:text-sm font-bold hover:bg-white/5 hover:text-red-400 transition-colors shadow-xs gap-1.5 h-9 cursor-pointer"
-              >
-                <Receipt size={16} className="text-red-400 shrink-0" /> <span>{t('book_receipt')}</span>
-              </button>
-              <button
-                onClick={() => setShowInvoiceModal(true)}
-                className="tour-finance-invoices flex-1 sm:flex-none flex items-center justify-center px-3 sm:px-3.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl text-xs sm:text-sm font-bold hover:bg-emerald-500/20 transition-colors shadow-xs gap-1.5 h-9 cursor-pointer"
-              >
-                <Send size={16} className="shrink-0" /> <span>{t('invoice')}</span>
-              </button>
-              <button
-                onClick={() => setIsPdfStudioOpen(true)}
-                className="tour-finance-pdf hidden md:flex items-center justify-center px-3 sm:px-3.5 bg-surface border border-border/50 text-text-primary rounded-xl text-xs sm:text-sm font-bold hover:bg-white/5 hover:text-accent-ai transition-colors shadow-xs gap-1.5 h-9 cursor-pointer shrink-0"
-              >
-                <FileText size={16} className="text-accent-ai shrink-0" /> <span>PDF Studio</span>
-              </button>
+
+              {showCreateMenu && (
+                <div className="absolute left-0 sm:left-auto sm:right-0 mt-1.5 w-64 bg-surface/95 backdrop-blur-xl border border-border rounded-xl shadow-2xl z-50 py-1.5 animate-in fade-in slide-in-from-top-2">
+                  <div className="px-3.5 py-1 text-[10px] font-bold text-text-muted uppercase tracking-wider">
+                    Zeiterfassung & Belege
+                  </div>
+                  <button
+                    onClick={() => { setShowTimeModal(true); setShowCreateMenu(false); }}
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-bold text-text-primary hover:bg-orange-500/10 hover:text-orange-400 transition-colors text-left cursor-pointer"
+                  >
+                    <Clock size={16} className="text-orange-400 shrink-0" />
+                    <div>
+                      <div>{t('book_hours')}</div>
+                      <div className="text-[10px] text-text-muted font-normal">Interne & externe Stunden buchen</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => { setReceiptType('expense'); setShowReceiptStudio(true); setShowCreateMenu(false); }}
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-bold text-text-primary hover:bg-red-500/10 hover:text-red-400 transition-colors text-left cursor-pointer"
+                  >
+                    <Receipt size={16} className="text-red-400 shrink-0" />
+                    <div>
+                      <div>{t('book_receipt')}</div>
+                      <div className="text-[10px] text-text-muted font-normal">Spesen & Ausgabenbeleg erfassen</div>
+                    </div>
+                  </button>
+
+                  <div className="border-t border-border/40 my-1" />
+                  <div className="px-3.5 py-1 text-[10px] font-bold text-text-muted uppercase tracking-wider">
+                    Offerten & Rechnungen
+                  </div>
+                  <button
+                    onClick={() => { setShowQuoteModal(true); setShowCreateMenu(false); }}
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-bold text-text-primary hover:bg-accent-ai/10 hover:text-accent-ai transition-colors text-left cursor-pointer"
+                  >
+                    <FileSignature size={16} className="text-accent-ai shrink-0" />
+                    <div>
+                      <div>{t('quote')}</div>
+                      <div className="text-[10px] text-text-muted font-normal">Neue Offerte erstellen</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => { setShowInvoiceModal(true); setShowCreateMenu(false); }}
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-bold text-emerald-400 hover:bg-emerald-500/10 transition-colors text-left cursor-pointer"
+                  >
+                    <Send size={16} className="shrink-0" />
+                    <div>
+                      <div>{t('invoice')}</div>
+                      <div className="text-[10px] text-text-muted font-normal">Kunden- oder Lieferantenrechnung</div>
+                    </div>
+                  </button>
+                </div>
+              )}
             </div>
 
-            <div className="hidden lg:block w-px h-6 bg-border/50 mx-1"></div>
-
-            {/* CSV & Export / Import Dropdown */}
-            <div className="relative" ref={csvMenuRef}>
+            {/* Export / Import Dropdown */}
+            <div className="relative shrink-0" ref={csvMenuRef}>
               <button
                 onClick={() => setShowCsvMenu(prev => !prev)}
-                className="tour-finance-export flex items-center justify-center px-3 sm:px-3.5 bg-surface border border-border/50 text-text-primary rounded-xl text-xs font-bold hover:bg-white/5 transition-all shadow-xs gap-1.5 h-9 cursor-pointer shrink-0"
-                title="CSV Export- & Import-Aktionen"
+                className={cn(
+                  "tour-finance-export flex items-center justify-center px-3 sm:px-3.5 border rounded-xl text-xs sm:text-sm font-bold transition-all shadow-xs gap-1.5 h-9 cursor-pointer",
+                  showCsvMenu
+                    ? "bg-accent-ai/15 text-accent-ai border-accent-ai/40"
+                    : "bg-surface border-border text-text-primary hover:bg-background"
+                )}
+                title="Export & Import Aktionen"
               >
-                <Download size={15} className="text-accent-ai shrink-0" />
-                <span>CSV & Export</span>
+                <Download size={15} />
+                <span>Export / Import</span>
                 <ChevronDown size={14} className={cn("text-text-muted transition-transform duration-200", showCsvMenu ? "rotate-180" : "")} />
               </button>
 
               {showCsvMenu && (
                 <div className="absolute right-0 mt-1.5 w-64 bg-surface/95 backdrop-blur-xl border border-border rounded-xl shadow-2xl z-50 py-1.5 animate-in fade-in slide-in-from-top-2">
+                  <div className="px-3.5 py-1 text-[10px] font-bold text-text-muted uppercase tracking-wider">
+                    Export & PDF Studio
+                  </div>
+                  <button
+                    onClick={() => { setIsPdfStudioOpen(true); setShowCsvMenu(false); }}
+                    className="tour-finance-pdf w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-bold text-text-primary hover:bg-accent-ai/10 hover:text-accent-ai transition-colors text-left cursor-pointer"
+                  >
+                    <FileText size={16} className="text-accent-ai shrink-0" />
+                    <div>
+                      <div>PDF Studio</div>
+                      <div className="text-[10px] text-text-muted font-normal">Budget & Finanzberichte exportieren</div>
+                    </div>
+                  </button>
                   <button
                     onClick={() => { exportBudgetCSV(); setShowCsvMenu(false); }}
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-bold text-text-primary hover:bg-accent-ai/10 hover:text-accent-ai transition-colors text-left cursor-pointer"
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-bold text-text-primary hover:bg-accent-ai/10 hover:text-accent-ai transition-colors text-left cursor-pointer"
                   >
                     <Download size={15} className="text-accent-ai shrink-0" />
                     <div>
@@ -2337,7 +2395,7 @@ export default function Finance() {
                   </button>
                   <button
                     onClick={() => { exportLedgerCSV(); setShowCsvMenu(false); }}
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-bold text-text-primary hover:bg-accent-ai/10 hover:text-accent-ai transition-colors text-left cursor-pointer"
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-bold text-text-primary hover:bg-accent-ai/10 hover:text-accent-ai transition-colors text-left cursor-pointer"
                   >
                     <Download size={15} className="text-accent-ai shrink-0" />
                     <div>
@@ -2346,6 +2404,9 @@ export default function Finance() {
                     </div>
                   </button>
                   <div className="border-t border-border/40 my-1" />
+                  <div className="px-3.5 py-1 text-[10px] font-bold text-text-muted uppercase tracking-wider">
+                    Import
+                  </div>
                   <button
                     onClick={() => { setShowAiBudgetModal(true); setShowCsvMenu(false); }}
                     className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-bold text-text-primary hover:bg-white/5 transition-colors text-left cursor-pointer"

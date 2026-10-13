@@ -15,7 +15,7 @@ import {
   Box, Layers, Eye, EyeOff, Maximize, Rotate3D,
   ShieldAlert, Sparkles, ArrowUp, ArrowDown, SplitSquareVertical,
   Ruler, Camera, Loader2, Image as ImageIcon, X, UploadCloud, Upload, Video, Download, 
-  Hand, CheckCircle2, Plus, Edit2, Trash2, FileText, Cloud, PenTool, Smartphone, LayoutDashboard, CalendarDays, Users, AlertTriangle, DollarSign, MonitorPlay, Map
+  Hand, CheckCircle2, Plus, Edit2, Trash2, FileText, Cloud, PenTool, Smartphone, LayoutDashboard, CalendarDays, Users, AlertTriangle, DollarSign, MonitorPlay, Map, ChevronDown
 } from 'lucide-react';
 import { cn } from '../utils';
 import { safeRequestFullscreen, safeExitFullscreen, isFullscreenActive, addFullscreenChangeListener } from '../utils/fullscreen';
@@ -353,6 +353,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
   const [selectedDetails, setSelectedDetails] = useState<any>(null);
   
   const [auditMode, setAuditMode] = useState(false);
+  const [isReportMenuOpen, setIsReportMenuOpen] = useState(false);
   const [isAuditing, setIsAuditing] = useState(false);
   const [auditReport, setAuditReport] = useState<string | null>(null);
   
@@ -1189,12 +1190,74 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
           
           <div className="flex flex-wrap items-center gap-2">
             <ModuleGuideButton moduleId="bim" />
-            <button onClick={handleAudit} className={cn("tour-bim-audit px-3 py-1.5 sm:px-4 sm:py-2 border rounded-xl text-xs sm:text-sm font-semibold transition-colors flex items-center gap-1.5 h-8.5 sm:h-9 cursor-pointer", auditMode ? "bg-accent-warning/20 border-accent-warning text-accent-warning" : "bg-surface border-accent-ai/50 text-accent-ai hover:bg-accent-ai/10")}>
-              <Sparkles size={14} /><span>{auditMode ? t('analyzing_model') : t('audit_report')}</span>
-            </button>
-            <button onClick={handleOpenPdfStudio} className="tour-bim-pdf hidden sm:flex px-3 py-1.5 sm:px-4 sm:py-2 bg-surface border border-border text-text-primary rounded-xl text-xs sm:text-sm font-semibold hover:bg-background transition-colors items-center gap-1.5 shadow-sm h-8.5 sm:h-9 cursor-pointer">
-              <FileText size={14} /> <span>{t('create_pdf_btn')}</span>
-            </button>
+
+            {/* Konsolidierte Berichte & Export Dropdown */}
+            <div className="relative shrink-0">
+              <button
+                onClick={() => setIsReportMenuOpen(!isReportMenuOpen)}
+                className={cn(
+                  "tour-bim-audit px-3 py-1.5 sm:px-4 sm:py-2 border rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 h-8.5 sm:h-9 cursor-pointer shadow-xs",
+                  isReportMenuOpen || auditMode
+                    ? "bg-accent-ai/15 text-accent-ai border-accent-ai/40"
+                    : "bg-surface border-border text-text-primary hover:bg-background"
+                )}
+                title="Berichte & Modell-Audit"
+              >
+                <Download size={14} />
+                <span>Berichte & Export</span>
+                <ChevronDown size={13} className={cn("transition-transform duration-200 text-text-muted", isReportMenuOpen && "rotate-180")} />
+              </button>
+
+              <AnimatePresence>
+                {isReportMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-[100]" onClick={() => setIsReportMenuOpen(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 4, scale: 0.96 }}
+                      className="absolute right-0 top-full mt-1.5 w-64 bg-surface border border-border rounded-xl shadow-2xl p-1.5 z-[101] space-y-1"
+                    >
+                      <div className="px-2.5 py-1 text-[10px] font-bold text-text-muted uppercase tracking-wider">
+                        Dokumentation
+                      </div>
+                      <button
+                        onClick={() => {
+                          setIsReportMenuOpen(false);
+                          handleOpenPdfStudio();
+                        }}
+                        className="tour-bim-pdf w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/5 text-left text-xs font-semibold text-text-primary transition-colors cursor-pointer"
+                      >
+                        <FileText size={14} className="text-red-400 shrink-0" />
+                        <div>
+                          <div>{t('create_pdf_btn')}</div>
+                          <div className="text-[10px] text-text-muted font-normal">3D Modell-Dossier & Datenblatt</div>
+                        </div>
+                      </button>
+
+                      <div className="border-t border-border/50 my-1"></div>
+                      <div className="px-2.5 py-1 text-[10px] font-bold text-text-muted uppercase tracking-wider">
+                        KI-Analyse
+                      </div>
+                      <button
+                        onClick={() => {
+                          setIsReportMenuOpen(false);
+                          handleAudit();
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/5 text-left text-xs font-semibold text-text-primary transition-colors cursor-pointer"
+                      >
+                        <Sparkles size={14} className="text-purple-400 shrink-0" />
+                        <div>
+                          <div className="text-accent-ai font-semibold">{auditMode ? t('analyzing_model') : t('audit_report')}</div>
+                          <div className="text-[10px] text-text-muted font-normal">KI Modell-Audit & Prüfbericht</div>
+                        </div>
+                      </button>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+
             <button onClick={handleOpenRenderModal} className="px-3 py-1.5 sm:px-4 sm:py-2 bg-accent-ai text-white rounded-xl text-xs sm:text-sm font-semibold hover:bg-accent-ai/90 transition-colors shadow-md flex items-center gap-1.5 h-8.5 sm:h-9 cursor-pointer">
               <Camera size={14} /><span>{t('ai_render')}</span>
             </button>

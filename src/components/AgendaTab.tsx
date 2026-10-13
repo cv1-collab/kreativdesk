@@ -8,7 +8,7 @@ import { DOCUMENTS_QUERY_KEY } from '../hooks/queries/useDocumentsQuery';
 import { supabase } from '../lib/supabase';
 import {
   Clock, Play, Pause, Square, Trash2, CalendarDays, Plus,
-  ChevronLeft, ChevronRight, Video, Download, X, Mail, UserCheck,
+  ChevronLeft, ChevronRight, ChevronDown, Video, Download, X, Mail, UserCheck,
   FileText, Link as LinkIcon, Save, Edit3, Users, Sparkles, Filter, AlertCircle, Calendar, Loader2
 } from 'lucide-react';
 import { cn } from '../utils';
@@ -276,6 +276,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
   const [realUsers, setRealUsers] = useState<any[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
   const [editExternalEmailInput, setEditExternalEmailInput] = useState<string>('');
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
 
   const handleAddEditExternalEmail = () => {
     if (!editExternalEmailInput || !editExternalEmailInput.includes('@') || !selectedEvent) return;
@@ -1274,20 +1275,104 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
 
         <div className="tour-agenda-actions flex flex-wrap gap-2 items-center">
           <ModuleGuideButton moduleId="agenda" className="h-9" />
-          <button onClick={handleExportICal} className="h-9 flex items-center gap-2 px-3 sm:px-3.5 bg-surface border border-border/50 hover:bg-background text-text-primary rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer">
-            <Download size={14} /> iCal Export (.ics)
-          </button>
-          <button onClick={handleGenerateAIRapport} disabled={isGeneratingAIRapport} className="h-9 flex items-center gap-2 px-3 sm:px-3.5 bg-accent-ai/10 border border-accent-ai/20 text-accent-ai hover:bg-accent-ai/20 rounded-xl text-xs font-bold transition-all shadow-xs disabled:opacity-50 cursor-pointer">
-            {isGeneratingAIRapport ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} KI-Baustellenrapport
-          </button>
-          {canWriteTimeAndEvents && (
-            <button onClick={() => { setPrintType('rapport'); setIsPdfStudioOpen(true); }} className="hidden md:flex h-9 items-center gap-2 px-3 sm:px-3.5 bg-surface border border-border/50 hover:bg-background text-text-primary rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer">
-              <FileText size={14} /> {t('rapport')} PDF
+
+          {/* Konsolidierte Export & Berichte Dropdown */}
+          <div className="relative shrink-0">
+            <button
+              onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+              className={cn(
+                "h-9 px-3 sm:px-3.5 border rounded-xl text-xs md:text-sm font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer",
+                isExportMenuOpen 
+                  ? "bg-accent-ai/15 text-accent-ai border-accent-ai/40" 
+                  : "bg-surface border-border text-text-primary hover:bg-background"
+              )}
+              title="Export & Berichte"
+            >
+              <Download size={14} />
+              <span>Export & Berichte</span>
+              <ChevronDown size={14} className={cn("transition-transform duration-200 text-text-muted", isExportMenuOpen && "rotate-180")} />
             </button>
-          )}
-          <button onClick={() => { setPrintType('agenda'); setIsPdfStudioOpen(true); }} className="hidden md:flex h-9 items-center gap-2 px-3 sm:px-3.5 bg-surface border border-border/50 hover:bg-background text-text-primary rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer">
-            <FileText size={14} /> {t('agenda')} PDF
-          </button>
+
+            <AnimatePresence>
+              {isExportMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-[100]" onClick={() => setIsExportMenuOpen(false)} />
+                  <motion.div
+                    initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 4, scale: 0.96 }}
+                    className="absolute right-0 top-full mt-1.5 w-64 bg-surface border border-border rounded-xl shadow-2xl p-1.5 z-[101] space-y-1"
+                  >
+                    <div className="px-2.5 py-1 text-[10px] font-bold text-text-muted uppercase tracking-wider">
+                      PDF & Druck
+                    </div>
+                    <button
+                      onClick={() => {
+                        setIsExportMenuOpen(false);
+                        setPrintType('agenda');
+                        setIsPdfStudioOpen(true);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/5 text-left text-xs font-semibold text-text-primary transition-colors cursor-pointer"
+                    >
+                      <FileText size={14} className="text-red-400 shrink-0" />
+                      <div>
+                        <div>{t('agenda')} PDF</div>
+                        <div className="text-[10px] text-text-muted font-normal">Termine & Meetings als Dokument</div>
+                      </div>
+                    </button>
+                    {canWriteTimeAndEvents && (
+                      <button
+                        onClick={() => {
+                          setIsExportMenuOpen(false);
+                          setPrintType('rapport');
+                          setIsPdfStudioOpen(true);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/5 text-left text-xs font-semibold text-text-primary transition-colors cursor-pointer"
+                      >
+                        <FileText size={14} className="text-emerald-400 shrink-0" />
+                        <div>
+                          <div>{t('rapport')} PDF</div>
+                          <div className="text-[10px] text-text-muted font-normal">Stunden- & Leistungsnachweis</div>
+                        </div>
+                      </button>
+                    )}
+
+                    <div className="border-t border-border/50 my-1"></div>
+                    <div className="px-2.5 py-1 text-[10px] font-bold text-text-muted uppercase tracking-wider">
+                      KI & Synchronisation
+                    </div>
+                    <button
+                      onClick={() => {
+                        setIsExportMenuOpen(false);
+                        handleGenerateAIRapport();
+                      }}
+                      disabled={isGeneratingAIRapport}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/5 text-left text-xs font-semibold text-text-primary transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      {isGeneratingAIRapport ? <Loader2 size={14} className="animate-spin text-purple-400 shrink-0" /> : <Sparkles size={14} className="text-purple-400 shrink-0" />}
+                      <div>
+                        <div className="text-accent-ai font-semibold">KI-Baustellenrapport</div>
+                        <div className="text-[10px] text-text-muted font-normal">Automatischer KI-Tagesbericht</div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsExportMenuOpen(false);
+                        handleExportICal();
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/5 text-left text-xs font-semibold text-text-primary transition-colors cursor-pointer"
+                    >
+                      <Download size={14} className="text-blue-400 shrink-0" />
+                      <div>
+                        <div>iCal Export (.ics)</div>
+                        <div className="text-[10px] text-text-muted font-normal">Sync für Apple, Outlook & Google</div>
+                      </div>
+                    </button>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
 

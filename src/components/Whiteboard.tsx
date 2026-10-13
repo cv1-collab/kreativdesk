@@ -2557,18 +2557,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
             </div>
 
 
-            {/* 3. DIREKTER 1-KLICK SPEICHER-BUTTON (CLOUD) */}
-            <button
-              onClick={handleSaveToCloud}
-              disabled={isSavingToCloud}
-              className="h-9 px-3 bg-blue-500/10 text-blue-500 border border-blue-500/25 rounded-xl text-xs sm:text-sm font-bold hover:bg-blue-500/20 transition-all flex items-center gap-2 shadow-xs disabled:opacity-50 cursor-pointer shrink-0"
-              title={t('save_cloud_title')}
-            >
-              {isSavingToCloud ? <Loader2 size={15} className="animate-spin shrink-0" /> : <Cloud size={15} className="shrink-0" />}
-              <span className="hidden md:inline">{isSavingToCloud ? t('saving_cloud') : t('save_cloud')}</span>
-            </button>
-
-            {/* 4. EXPORT & FREIGABE DROPDOWN (Konsolidiert inkl. PDF Studio) */}
+            {/* 3. EXPORT & WEITERGABE DROPDOWN (Konsolidiert inkl. Cloud-Speichern & PDF Studio) */}
             <div className="relative shrink-0">
               <button
                 onClick={() => { setShowExportMenu(!showExportMenu); setShowAiMenu(false); }}
@@ -2593,9 +2582,33 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
                       initial={{ opacity: 0, y: 5, scale: 0.96 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 5, scale: 0.96 }}
-                      className="fixed top-20 right-4 md:right-8 mt-1 bg-surface border border-border rounded-xl shadow-2xl z-[1001] w-64 py-2 overflow-hidden text-left"
+                      className="fixed top-20 right-4 md:right-8 mt-1 bg-surface border border-border rounded-xl shadow-2xl z-[1001] w-72 py-2 overflow-hidden text-left"
                     >
-                      <div className="px-3 py-1 text-[9px] font-bold text-text-muted uppercase tracking-widest border-b border-border mb-1">
+                      {/* CLOUD & SPEICHERN */}
+                      <div className="px-3 py-1 text-[9px] font-bold text-text-muted uppercase tracking-widest border-b border-border/50 mb-1">
+                        {language === 'de' ? 'Cloud & Bauakte' : 'Cloud & Project'}
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          setShowExportMenu(false);
+                          handleSaveToCloud();
+                        }}
+                        disabled={isSavingToCloud}
+                        className="w-full text-left px-3 py-2.5 text-xs font-semibold flex items-center gap-2.5 text-text-primary hover:bg-blue-500/10 hover:text-blue-400 transition-colors cursor-pointer disabled:opacity-50"
+                      >
+                        <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400 shrink-0">
+                          {isSavingToCloud ? <Loader2 size={16} className="animate-spin text-blue-500" /> : <Cloud size={16} className="text-blue-500" />}
+                        </div>
+                        <div>
+                          <div className="leading-tight font-bold">{t('save_cloud')}</div>
+                          <div className="text-[10px] font-normal text-text-muted mt-0.5">{t('save_cloud_title')}</div>
+                        </div>
+                      </button>
+
+                      <div className="h-px bg-border/50 my-1" />
+
+                      <div className="px-3 py-1 text-[9px] font-bold text-text-muted uppercase tracking-widest border-b border-border/50 mb-1">
                         {t('export_header')}
                       </div>
 
@@ -2606,9 +2619,11 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
                         }}
                         className="w-full text-left px-3 py-2.5 text-xs font-semibold flex items-center gap-2.5 text-text-primary hover:bg-red-500/10 hover:text-red-400 transition-colors cursor-pointer"
                       >
-                        <FileDown size={16} className="text-red-400 shrink-0" />
+                        <div className="p-1.5 rounded-lg bg-red-500/10 text-red-400 shrink-0">
+                          <FileDown size={16} className="text-red-400" />
+                        </div>
                         <div>
-                          <div className="leading-tight">PDF Studio</div>
+                          <div className="leading-tight font-bold">PDF Studio</div>
                           <div className="text-[10px] font-normal text-text-muted mt-0.5">{t('pdf_studio_sub')}</div>
                         </div>
                       </button>
@@ -2620,9 +2635,11 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
                         }}
                         className="w-full text-left px-3 py-2.5 text-xs font-semibold flex items-center gap-2.5 text-text-primary hover:bg-emerald-500/10 hover:text-emerald-400 transition-colors border-t border-border/50 cursor-pointer"
                       >
-                        <Download size={16} className="text-emerald-400 shrink-0" />
+                        <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0">
+                          <Download size={16} className="text-emerald-400" />
+                        </div>
                         <div>
-                          <div className="leading-tight">{t('export_img')}</div>
+                          <div className="leading-tight font-bold">{t('export_img')}</div>
                           <div className="text-[10px] font-normal text-text-muted mt-0.5">{t('export_img_sub')}</div>
                         </div>
                       </button>
@@ -2635,9 +2652,11 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
                         disabled={isSending || sendSuccess}
                         className="w-full text-left px-3 py-2.5 text-xs font-semibold flex items-center gap-2.5 text-text-primary hover:bg-purple-500/10 hover:text-purple-300 transition-colors border-t border-border/50 disabled:opacity-50 cursor-pointer"
                       >
-                        {isSending ? <Loader2 size={16} className="animate-spin text-purple-400 shrink-0" /> : sendSuccess ? <CheckCircle2 size={16} className="text-emerald-500 shrink-0" /> : <Presentation size={16} className="text-purple-400 shrink-0" />}
+                        <div className="p-1.5 rounded-lg bg-purple-500/10 text-purple-400 shrink-0">
+                          {isSending ? <Loader2 size={16} className="animate-spin text-purple-400" /> : sendSuccess ? <CheckCircle2 size={16} className="text-emerald-500" /> : <Presentation size={16} className="text-purple-400" />}
+                        </div>
                         <div>
-                          <div className="leading-tight">{isSending ? t('sending') : sendSuccess ? t('sent') : t('send_slides')}</div>
+                          <div className="leading-tight font-bold">{isSending ? t('sending') : sendSuccess ? t('sent') : t('send_slides')}</div>
                           <div className="text-[10px] font-normal text-text-muted mt-0.5">{t('send_slides_sub')}</div>
                         </div>
                       </button>

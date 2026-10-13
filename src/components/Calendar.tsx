@@ -720,6 +720,7 @@ export default function Calendar() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [activeScheduleId, setActiveScheduleId] = useState<string | null>(null);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
 
   const [isLandscapeMode, setIsLandscapeMode] = useState(false);
   const [forceLandscapeView, setForceLandscapeView] = useState(false);
@@ -1592,15 +1593,83 @@ export default function Calendar() {
               <button onClick={() => setViewMode('day')} className={cn("flex-1 sm:flex-none h-7.5 px-3 sm:px-3.5 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap", viewMode === 'day' ? "bg-white/10 text-text-primary shadow-xs border border-border/50" : "text-text-muted hover:text-text-primary")}><AlignJustify size={14}/> {t('day_focus')}</button>
             </div>
 
-            <button 
-              onClick={() => {
-                setPdfExportMode(viewMode);
-                setIsPdfStudioOpen(true);
-              }} 
-              className="tour-calendar-pdf hidden md:flex px-3 sm:px-3.5 bg-surface border border-border/50 text-text-primary rounded-xl text-xs sm:text-sm font-bold hover:bg-white/5 transition-colors shadow-xs items-center gap-1.5 h-9 cursor-pointer shrink-0"
-            >
-               <FileText size={15} /> <span>{t('generate_pdf')}</span>
-            </button>
+            {/* Konsolidiertes Export-Dropdown */}
+            <div className="relative shrink-0">
+              <button 
+                onClick={() => setIsExportMenuOpen(!isExportMenuOpen)} 
+                className={cn(
+                  "tour-calendar-pdf hidden md:flex px-3 sm:px-3.5 border rounded-xl text-xs sm:text-sm font-bold transition-all shadow-xs items-center gap-1.5 h-9 cursor-pointer shrink-0",
+                  isExportMenuOpen
+                    ? "bg-accent-ai/15 text-accent-ai border-accent-ai/40"
+                    : "bg-surface border-border/50 text-text-primary hover:bg-white/5"
+                )}
+                title="Zeitplan als PDF exportieren"
+              >
+                <Download size={14} />
+                <span>Export</span>
+                <ChevronDown size={14} className={cn("transition-transform duration-200 text-text-muted", isExportMenuOpen && "rotate-180")} />
+              </button>
+
+              <AnimatePresence>
+                {isExportMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-[100]" onClick={() => setIsExportMenuOpen(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 4, scale: 0.96 }}
+                      className="absolute right-0 top-full mt-1.5 w-64 bg-surface border border-border rounded-xl shadow-2xl p-1.5 z-[101] space-y-1"
+                    >
+                      <div className="px-2.5 py-1 text-[10px] font-bold text-text-muted uppercase tracking-wider">
+                        PDF Studio Export
+                      </div>
+                      <button
+                        onClick={() => {
+                          setIsExportMenuOpen(false);
+                          setPdfExportMode('gantt');
+                          setIsPdfStudioOpen(true);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/5 text-left text-xs font-semibold text-text-primary transition-colors cursor-pointer"
+                      >
+                        <Columns size={14} className="text-accent-ai shrink-0" />
+                        <div>
+                          <div>Masterplan PDF</div>
+                          <div className="text-[10px] text-text-muted font-normal">Jahresüberblick & Gantt-Diagramm</div>
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsExportMenuOpen(false);
+                          setPdfExportMode('month');
+                          setIsPdfStudioOpen(true);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/5 text-left text-xs font-semibold text-text-primary transition-colors cursor-pointer"
+                      >
+                        <LayoutTemplate size={14} className="text-blue-400 shrink-0" />
+                        <div>
+                          <div>Monatsfokus PDF</div>
+                          <div className="text-[10px] text-text-muted font-normal">Monatsraster & Phasenagenda</div>
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsExportMenuOpen(false);
+                          setPdfExportMode('day');
+                          setIsPdfStudioOpen(true);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/5 text-left text-xs font-semibold text-text-primary transition-colors cursor-pointer"
+                      >
+                        <AlignJustify size={14} className="text-emerald-400 shrink-0" />
+                        <div>
+                          <div>Tagesübersicht PDF</div>
+                          <div className="text-[10px] text-text-muted font-normal">Tagesagenda & Notizen</div>
+                        </div>
+                      </button>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </header>
 

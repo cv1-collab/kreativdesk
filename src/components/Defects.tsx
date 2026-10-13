@@ -261,6 +261,20 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
   
   const [showQrScanner, setShowQrScanner] = useState(false);
   const [isPdfStudioOpen, setIsPdfStudioOpen] = useState(false);
+  const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
+  const actionMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (actionMenuRef.current && !actionMenuRef.current.contains(e.target as Node)) {
+        setIsActionMenuOpen(false);
+      }
+    };
+    if (isActionMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isActionMenuOpen]);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
 
@@ -798,16 +812,90 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
                 <button onClick={() => setViewMode('list')} className={cn("px-3 py-1 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer", viewMode === 'list' ? "bg-accent-ai/10 text-accent-ai shadow-xs border border-accent-ai/20" : "text-text-muted hover:text-text-primary border border-transparent")}><ListIcon size={15} /> {t('list')}</button>
               </div>
               
-              <button onClick={generateAIInsights} disabled={isAnalyzing} className="h-9 px-3 bg-purple-500/10 text-purple-400 border border-purple-500/25 rounded-xl text-xs sm:text-sm font-bold hover:bg-purple-500/20 transition-colors flex items-center justify-center gap-1.5 shadow-xs disabled:opacity-50 cursor-pointer whitespace-nowrap" title={t('ai_insights')}>
-                {isAnalyzing ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
-                <span>{isAnalyzing ? t('ai_analyzing_defects') : t('ai_insights')}</span>
-              </button>
+              {/* EXPORT & ANALYSE DROPDOWN */}
+              <div className="relative z-50 shrink-0" ref={actionMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsActionMenuOpen(prev => !prev)}
+                  className={cn(
+                    "tour-defects-pdf h-9 px-3.5 bg-surface border border-border text-text-primary rounded-xl text-xs sm:text-sm font-bold hover:bg-background transition-colors flex items-center justify-center gap-1.5 shadow-xs cursor-pointer whitespace-nowrap",
+                    isActionMenuOpen && "bg-accent-ai/15 text-accent-ai border-accent-ai/40"
+                  )}
+                  title={currentLang === 'de' ? 'Export & KI-Analyse Optionen' : 'Export & AI Analysis Options'}
+                >
+                  <FileText size={15} />
+                  <span>{currentLang === 'de' ? 'Export & Analyse' : 'Export & Analysis'}</span>
+                  <ChevronDown size={14} className={cn("transition-transform duration-200 text-text-muted", isActionMenuOpen && "rotate-180")} />
+                </button>
+
+                <AnimatePresence>
+                  {isActionMenuOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 4, scale: 0.96 }}
+                      className="absolute right-0 top-full mt-2 w-72 bg-surface/98 backdrop-blur-2xl border border-border rounded-2xl shadow-2xl p-2 z-[9999] space-y-1.5"
+                    >
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted px-2.5 pt-1 pb-0.5">
+                        {currentLang === 'de' ? 'Dokumente & Export' : 'Documents & Export'}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsActionMenuOpen(false);
+                          setIsPdfStudioOpen(true);
+                        }}
+                        className="w-full flex items-start gap-2.5 p-2.5 rounded-xl hover:bg-white/5 text-left text-text-primary transition-colors group cursor-pointer border border-transparent hover:border-border"
+                      >
+                        <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400 group-hover:bg-blue-500/20 shrink-0 mt-0.5">
+                          <FileText size={16} />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold flex items-center gap-1.5">
+                            {currentLang === 'de' ? 'Mängelprotokoll PDF' : 'Defect Report PDF'}
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 font-extrabold">SIA-118</span>
+                          </div>
+                          <div className="text-[10px] text-text-muted leading-tight mt-0.5">
+                            {currentLang === 'de' ? 'Druckfertiges Mängelprotokoll mit Fotos, Gewerken und Fristen' : 'Printable defect report with photos, trades, and due dates'}
+                          </div>
+                        </div>
+                      </button>
+
+                      <div className="h-px bg-border/60 my-1" />
+
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted px-2.5 pt-1 pb-0.5">
+                        {currentLang === 'de' ? 'KI & Intelligenz' : 'AI & Intelligence'}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsActionMenuOpen(false);
+                          generateAIInsights();
+                        }}
+                        disabled={isAnalyzing}
+                        className="w-full flex items-start gap-2.5 p-2.5 rounded-xl hover:bg-white/5 text-left text-text-primary transition-colors group cursor-pointer disabled:opacity-40 border border-transparent hover:border-border"
+                      >
+                        <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400 group-hover:bg-purple-500/20 shrink-0 mt-0.5">
+                          {isAnalyzing ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold flex items-center gap-1.5 text-purple-400">
+                            {isAnalyzing ? (currentLang === 'de' ? 'Analysiert Mängel...' : 'Analyzing...') : t('ai_insights')}
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-400 font-extrabold">KI</span>
+                          </div>
+                          <div className="text-[10px] text-text-muted leading-tight mt-0.5">
+                            {currentLang === 'de' ? 'Mustererkennung & Häufungen bei Gewerken und Fristen' : 'Pattern recognition & clustering across trades and deadlines'}
+                          </div>
+                        </div>
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
 
               <ModuleGuideButton moduleId="defects" />
-
-              <button onClick={() => setIsPdfStudioOpen(true)} className="tour-defects-pdf hidden sm:flex h-9 px-3.5 bg-surface border border-border text-text-primary rounded-xl text-xs sm:text-sm font-bold hover:bg-background transition-colors items-center justify-center gap-1.5 shadow-xs cursor-pointer whitespace-nowrap">
-                <FileText size={15} /> <span>PDF Export</span>
-              </button>
 
               <button onClick={openAddModal} className="tour-defects-add flex-1 sm:flex-none h-9 px-4 bg-accent-ai text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-accent-ai/90 transition-colors shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer">
                 <Plus size={15} /> <span>{t('add_defect')}</span>

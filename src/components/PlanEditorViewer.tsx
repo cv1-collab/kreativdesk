@@ -732,6 +732,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [showRightPanel, setShowRightPanel] = useState(true);
   const exportMenuRef = useRef<HTMLDivElement>(null);
+  const planFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -2622,26 +2623,6 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           <div className="flex flex-wrap items-center gap-2">
             <ModuleGuideButton moduleId="plans" />
 
-            {/* PLAN HOCHLADEN */}
-            <label 
-              onClick={(e) => {
-                if (isDemoMode || currentProjectId === 'demo-1') {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  addToast('Upload von neuen Plänen ist in der Demo deaktiviert. Erstelle einen kostenlosen Account!', 'info');
-                }
-              }}
-              title={t('upload_plan_tooltip')}
-              className={cn(
-                "tour-plan-upload px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-sm transition-all flex items-center gap-1.5 h-8.5 sm:h-9 whitespace-nowrap shrink-0",
-                (isDemoMode || currentProjectId === 'demo-1') ? "opacity-70 cursor-not-allowed" : "cursor-pointer"
-              )}
-            >
-              {isUploading ? <Loader2 size={14} className="animate-spin"/> : <UploadCloud size={14}/>}
-              <span>{t('upload_plan_btn')}</span>
-              <input type="file" accept="image/*,application/pdf" onChange={handleFileChange} disabled={isUploading || isDemoMode || currentProjectId === 'demo-1'} className="hidden" />
-            </label>
-
             {/* PLAN SPEICHERN */}
             <button 
               onClick={handleManualSave} 
@@ -2653,7 +2634,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
               <span>{t('save')}</span>
             </button>
 
-            {/* EXPORT & WEITERGABE DROPDOWN */}
+            {/* EXPORT & IMPORT DROPDOWN */}
             <div className="relative z-50 shrink-0" ref={exportMenuRef}>
               <button 
                 type="button"
@@ -2661,17 +2642,16 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                   e.stopPropagation();
                   setExportMenuOpen(prev => !prev);
                 }}
-                disabled={!planImage}
                 className={cn(
-                  "tour-plan-pdf px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold border transition-all shadow-sm flex items-center gap-1.5 h-8.5 sm:h-9 cursor-pointer whitespace-nowrap shrink-0",
+                  "tour-plan-pdf tour-plan-upload px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold border transition-all shadow-sm flex items-center gap-1.5 h-8.5 sm:h-9 cursor-pointer whitespace-nowrap shrink-0",
                   exportMenuOpen 
                     ? "bg-accent-ai/15 text-accent-ai border-accent-ai/40" 
                     : "bg-surface hover:bg-background text-text-primary border-border"
                 )}
-                title={planImage ? (currentLang === 'de' ? 'Exportieren & Präsentieren' : 'Export & Presentation') : t('export_pdf_tooltip_disabled')}
+                title={currentLang === 'de' ? 'Export & Import Optionen' : 'Export & Import Options'}
               >
                 <Download size={14} />
-                <span>{t('export_dropdown')}</span>
+                <span>Export / Import</span>
                 <ChevronDown size={13} className={cn("transition-transform duration-200 text-text-muted", exportMenuOpen && "rotate-180")} />
               </button>
 
@@ -2683,6 +2663,44 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                     exit={{ opacity: 0, y: 4, scale: 0.96 }}
                     className="absolute right-0 top-full mt-2 w-72 bg-surface/98 backdrop-blur-2xl border border-border rounded-2xl shadow-2xl p-2 z-[9999] space-y-1.5"
                   >
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted px-2.5 pt-1 pb-0.5">
+                      {currentLang === 'de' ? 'Import & Upload' : 'Import & Upload'}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExportMenuOpen(false);
+                        if (isDemoMode || currentProjectId === 'demo-1') {
+                          addToast('Upload von neuen Plänen ist in der Demo deaktiviert. Erstelle einen kostenlosen Account!', 'info');
+                          return;
+                        }
+                        planFileInputRef.current?.click();
+                      }}
+                      disabled={isUploading}
+                      className="tour-plan-upload w-full flex items-start gap-2.5 p-2.5 rounded-xl hover:bg-white/5 text-left text-text-primary transition-colors group cursor-pointer disabled:opacity-40 border border-transparent hover:border-border"
+                    >
+                      <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400 group-hover:bg-blue-500/20 shrink-0 mt-0.5">
+                        {isUploading ? <Loader2 size={16} className="animate-spin"/> : <UploadCloud size={16} />}
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold flex items-center gap-1.5">
+                          {t('upload_plan_btn')}
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 font-extrabold">PDF / Bild</span>
+                        </div>
+                        <div className="text-[10px] text-text-muted leading-tight mt-0.5">
+                          {t('upload_plan_tooltip')}
+                        </div>
+                      </div>
+                    </button>
+
+                    <div className="h-px bg-border/60 my-1" />
+
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted px-2.5 pt-1 pb-0.5">
+                      {currentLang === 'de' ? 'Export & Weitergabe' : 'Export & Share'}
+                    </div>
+
                     <button
                       type="button"
                       onClick={(e) => {
@@ -2741,6 +2759,15 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                   </motion.div>
                 )}
               </AnimatePresence>
+
+              <input 
+                ref={planFileInputRef}
+                type="file" 
+                accept="image/*,application/pdf" 
+                onChange={handleFileChange} 
+                disabled={isUploading || isDemoMode || currentProjectId === 'demo-1'} 
+                className="hidden" 
+              />
             </div>
 
             {/* EBENEN TOGGLE */}
