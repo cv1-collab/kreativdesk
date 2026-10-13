@@ -1,3 +1,4 @@
+import { useTeamPresence } from '../contexts/TeamPresenceContext';
 import { checkIsSuperAdmin } from '../config/admins';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
@@ -119,6 +120,9 @@ export default function CompanyDashboard() {
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT?.(key) || key;
   
   const { currentUser, logout = async () => {} } = useAuth() || {};
+  const { onlineUsers } = useTeamPresence();
+  const [showMobileUserMenu, setShowMobileUserMenu] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const { projects = [], companyUsers = [], setActiveProject = () => {}, removeProject, updateProject, renameProject, updateProjectStatus, addProject, fetchProjects, refreshAllData } = useProject() as any;
   const navigate = useNavigate();
   
@@ -783,6 +787,33 @@ export default function CompanyDashboard() {
              </h2>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2.5">
+            {/* LIVE TEAM PRESENCE AVATAR STACK */}
+            {onlineUsers && onlineUsers.length > 0 && (
+              <div 
+                className="hidden sm:flex items-center -space-x-1.5 overflow-hidden pl-1 pr-1.5 py-1 bg-background/80 border border-border/60 rounded-xl shadow-xs shrink-0 cursor-default" 
+                title={onlineUsers.map(u => u.name).join(', ') + ' ist/sind online'}
+              >
+                {onlineUsers.slice(0, 3).map((ou) => (
+                  <div key={ou.userId} className="relative group/ou shrink-0">
+                    <div className="w-6 h-6 rounded-full bg-accent-ai/20 border border-surface flex items-center justify-center text-[10px] font-bold text-accent-ai overflow-hidden shadow-xs">
+                      {ou.photoURL ? (
+                        <img src={ou.photoURL} alt={ou.name} className="w-full h-full object-cover" />
+                      ) : (
+                        (ou.name || 'U').charAt(0).toUpperCase()
+                      )}
+                    </div>
+                    <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 border border-surface" />
+                  </div>
+                ))}
+                {onlineUsers.length > 3 && (
+                  <span className="pl-2 text-[10px] font-bold text-emerald-400">+{onlineUsers.length - 3}</span>
+                )}
+                <span className="pl-1.5 pr-0.5 text-[10px] font-bold text-emerald-400 hidden xl:inline flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  {onlineUsers.length} live
+                </span>
+              </div>
+            )}
             <button onClick={handleInstallApp} className="h-8 sm:h-9 px-2 sm:px-3 flex items-center justify-center gap-1.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer" title={t('install_app')}>
               <span className="text-sm">📱</span> <span className="hidden sm:inline">{t('install_app')}</span>
             </button>
@@ -815,6 +846,66 @@ export default function CompanyDashboard() {
                 <Shield size={15} /> <span className="hidden sm:inline text-xs font-semibold">{t('admin')}</span>
               </button>
             )}
+
+            {/* USER PROFIL & ABMELDEN BUTTON (SMARTPHONE / IPHONE OPTIMIERT) */}
+            <div className="relative md:hidden" ref={userMenuRef}>
+              <button
+                type="button"
+                onClick={() => setShowMobileUserMenu(!showMobileUserMenu)}
+                className="w-8 h-8 rounded-xl bg-accent-ai/20 border border-accent-ai/40 flex items-center justify-center text-accent-ai text-xs font-bold shrink-0 cursor-pointer shadow-xs active:scale-95 transition-transform"
+                title={currentUser?.email || 'User'}
+                aria-label="User Profile & Logout"
+              >
+                {(currentUser?.displayName || currentUser?.name || currentUser?.email || 'U').charAt(0).toUpperCase()}
+              </button>
+              <AnimatePresence>
+                {showMobileUserMenu && (
+                  <>
+                    <div className="fixed inset-0 z-[1001] bg-black/40 backdrop-blur-xs" onClick={() => setShowMobileUserMenu(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, y: 6, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 6, scale: 0.95 }}
+                      className="absolute right-0 top-10 mt-1 bg-surface border border-border rounded-2xl shadow-2xl z-[1002] w-64 p-3.5 text-left"
+                    >
+                      <div className="flex items-center gap-3 pb-3 border-b border-border/70">
+                        <div className="w-10 h-10 rounded-xl bg-accent-ai/20 border border-accent-ai/30 flex items-center justify-center text-accent-ai font-bold text-sm shrink-0">
+                          {(currentUser?.displayName || currentUser?.name || currentUser?.email || 'U').charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-text-primary truncate">
+                            {currentUser?.displayName || currentUser?.name || (currentUser?.email === 'cv1@gmx.ch' ? 'Carlo Vescio' : 'Benutzer')}
+                          </p>
+                          <p className="text-[10px] text-text-muted truncate">{currentUser?.email}</p>
+                          <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-accent-ai/10 text-accent-ai border border-accent-ai/20">
+                            {userRole || 'User'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="pt-2.5 space-y-1.5">
+                        <button
+                          type="button"
+                          onClick={() => { setShowMobileUserMenu(false); setActiveTab('settings'); }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-text-primary hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
+                        >
+                          <Settings size={15} className="text-text-muted" />
+                          <span>{t('settings')}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setShowMobileUserMenu(false); handleLogout(); }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-red-500 hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer border border-red-500/20"
+                        >
+                          <LogOut size={15} />
+                          <span>{t('logout')}</span>
+                        </button>
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </header>
 

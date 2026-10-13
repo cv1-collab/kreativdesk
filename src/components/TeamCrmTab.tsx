@@ -1,3 +1,4 @@
+import { useTeamPresence } from '../contexts/TeamPresenceContext';
 import { checkIsSuperAdmin } from '../config/admins';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
@@ -129,6 +130,7 @@ const safeStr = (str: any, maxLen: number) => {
 
 export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) {
   const { currentUser } = useAuth();
+  const { isUserOnline } = useTeamPresence();
   const queryClient = useQueryClient();
   const { addToast } = useToast();
   const { fetchCompanyUsers, isDemoMode, projects = [], activeProjectId } = useProject() as any;
@@ -1556,8 +1558,13 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                 >
                   <div className="flex items-center gap-3 overflow-hidden">
                     {isSelectionMode && <div className={cn("w-5 h-5 rounded flex items-center justify-center border shrink-0 transition-colors bg-surface", isChecked ? "bg-accent-ai border-accent-ai text-white" : "border-border")}>{isChecked && <CheckSquare size={12} />}</div>}
-                    <div className={cn("w-11 h-11 rounded-2xl flex items-center justify-center font-bold overflow-hidden shrink-0 border border-border/50 shadow-sm text-base", isTeam ? "bg-purple-500/10 text-purple-500" : "bg-blue-500/10 text-blue-500")}>
-                      {sanitizeUrl(contact.photoURL) ? <img src={sanitizeUrl(contact.photoURL)} className="w-full h-full object-cover" /> : formatName(contact).charAt(0).toUpperCase()}
+                    <div className="relative shrink-0">
+                      <div className={cn("w-11 h-11 rounded-2xl flex items-center justify-center font-bold overflow-hidden border border-border/50 shadow-sm text-base", isTeam ? "bg-purple-500/10 text-purple-500" : "bg-blue-500/10 text-blue-500")}>
+                        {sanitizeUrl(contact.photoURL) ? <img src={sanitizeUrl(contact.photoURL)} className="w-full h-full object-cover" /> : formatName(contact).charAt(0).toUpperCase()}
+                      </div>
+                      {isUserOnline(contact.id || contact.email) && (
+                        <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-surface shadow-[0_0_6px_rgba(16,185,129,0.7)] animate-pulse" title="Online" />
+                      )}
                     </div>
                     <div className="overflow-hidden">
                       <div className={cn("font-bold text-sm truncate", (isSelected && !isSelectionMode) ? "text-accent-ai" : "text-text-primary")}>{formatName(contact)}</div>
@@ -1621,7 +1628,20 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                   {sanitizeUrl(selectedContact.photoURL) ? <img src={sanitizeUrl(selectedContact.photoURL)} className="w-full h-full object-cover" /> : formatName(selectedContact).charAt(0).toUpperCase()}
                 </div>
                 <div className="space-y-2">
-                  <h2 className="text-4xl font-bold text-text-primary tracking-tight">{formatName(selectedContact)}</h2>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <h2 className="text-4xl font-bold text-text-primary tracking-tight">{formatName(selectedContact)}</h2>
+                    {isUserOnline(selectedContact.id || selectedContact.email) ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.25)]">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                        Online
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-text-muted/70 bg-surface border border-border/50">
+                        <span className="w-2 h-2 rounded-full bg-slate-500/40" />
+                        Offline
+                      </span>
+                    )}
+                  </div>
                   <div className="flex flex-wrap items-center gap-2 pt-1">
                     {!selectedContact.isExternal ? (
                       <>

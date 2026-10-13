@@ -1,3 +1,4 @@
+import { useTeamPresence } from '../contexts/TeamPresenceContext';
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom'; 
@@ -41,6 +42,7 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
   const { projectId } = useParams();
   const { companyUsers = [], projectMembers = [], activeProjectId, addProjectMember, updateProjectMemberRole, removeProjectMember, isDemoMode } = useProject() as any;
   const { currentUser } = useAuth();
+  const { isUserOnline } = useTeamPresence();
   const { addToast } = useToast();
   const { language, t: globalT } = useLanguage();
   
@@ -289,15 +291,33 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
                   <tr key={member.id} className="hover:bg-background transition-colors group">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-accent-ai/10 text-accent-ai flex items-center justify-center font-bold text-xs border border-accent-ai/20 shrink-0 overflow-hidden">
-                          {sanitizeUrl(user.photoURL || user.avatar) ? (
-                            <img src={sanitizeUrl(user.photoURL || user.avatar)} alt={user.name} className="w-full h-full object-cover" />
-                          ) : (
-                            user.name?.charAt(0).toUpperCase() || 'U'
+                        <div className="relative shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-accent-ai/10 text-accent-ai flex items-center justify-center font-bold text-xs border border-accent-ai/20 overflow-hidden shadow-xs">
+                            {sanitizeUrl(user.photoURL || user.avatar) ? (
+                              <img src={sanitizeUrl(user.photoURL || user.avatar)} alt={user.name} className="w-full h-full object-cover" />
+                            ) : (
+                              user.name?.charAt(0).toUpperCase() || 'U'
+                            )}
+                          </div>
+                          {isUserOnline(user.id || user.userId || user.email) && (
+                            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-surface shadow-[0_0_6px_rgba(16,185,129,0.7)] animate-pulse" />
                           )}
                         </div>
                         <div>
-                          <div className="font-bold text-text-primary">{user.name}</div>
+                          <div className="font-bold text-text-primary flex items-center gap-2">
+                            <span>{user.name}</span>
+                            {isUserOnline(user.id || user.userId || user.email) ? (
+                              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.2)]">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                Online
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] text-text-muted/60 font-medium">
+                                <span className="w-1.5 h-1.5 rounded-full bg-slate-500/30" />
+                                Offline
+                              </span>
+                            )}
+                          </div>
                           <div className="text-xs text-text-muted font-medium">{user.email}</div>
                         </div>
                       </div>
@@ -347,15 +367,33 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
                 <div key={member.id} className="bg-surface border border-border rounded-2xl p-5 flex flex-col gap-4 shadow-sm relative overflow-hidden">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-accent-ai/10 text-accent-ai flex items-center justify-center font-bold text-lg border border-accent-ai/20 overflow-hidden">
-                        {sanitizeUrl(user.photoURL || user.avatar) ? (
-                          <img src={sanitizeUrl(user.photoURL || user.avatar)} alt={user.name} className="w-full h-full object-cover" />
-                        ) : (
-                          user.name?.charAt(0).toUpperCase() || 'U'
+                      <div className="relative shrink-0">
+                        <div className="w-12 h-12 rounded-2xl bg-accent-ai/10 text-accent-ai flex items-center justify-center font-bold text-lg border border-accent-ai/20 overflow-hidden shadow-xs">
+                          {sanitizeUrl(user.photoURL || user.avatar) ? (
+                            <img src={sanitizeUrl(user.photoURL || user.avatar)} alt={user.name} className="w-full h-full object-cover" />
+                          ) : (
+                            user.name?.charAt(0).toUpperCase() || 'U'
+                          )}
+                        </div>
+                        {isUserOnline(user.id || user.userId || user.email) && (
+                          <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-surface shadow-[0_0_8px_rgba(16,185,129,0.7)] animate-pulse" />
                         )}
                       </div>
-                      <div className="min-w-0">
-                        <div className="font-bold text-text-primary truncate text-base">{user.name}</div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-bold text-text-primary truncate text-base flex items-center gap-2">
+                          <span className="truncate">{user.name}</span>
+                          {isUserOnline(user.id || user.userId || user.email) ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shrink-0">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                              Online
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] text-text-muted/60 font-medium shrink-0">
+                              <span className="w-1.5 h-1.5 rounded-full bg-slate-500/30" />
+                              Offline
+                            </span>
+                          )}
+                        </div>
                         <div className="text-xs text-text-muted truncate font-medium">{user.email}</div>
                       </div>
                     </div>

@@ -1,3 +1,4 @@
+import { TeamPresenceProvider } from './contexts/TeamPresenceContext';
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
@@ -161,7 +162,8 @@ export default function App() {
         <ToastProvider>
           <AuthProvider>
             <ProjectProvider>
-              <AIProvider>
+              <TeamPresenceProvider>
+                <AIProvider>
                 <TourProvider>
                   <BrowserRouter>
                     <RecoveryRedirectGuard>
@@ -279,6 +281,7 @@ export default function App() {
                   </BrowserRouter>
                 </TourProvider>
               </AIProvider>
+              </TeamPresenceProvider>
             </ProjectProvider>
           </AuthProvider>
         </ToastProvider>

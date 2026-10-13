@@ -48,7 +48,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     swiss: 'Swiss Minimal (SIA)', neo_brutalism: 'Neo-Brutalism (Bold)', glassmorphism: 'Glassmorphism (Luxury)', cyberpunk: 'BIM Cyberpunk', minimal_tech: 'Eco Timber (Warm)', master_logo: 'Master Logo', change_logo: 'Change Logo', upload_logo: 'Upload Logo',
     delete_logo: 'Remove Logo', font_weight: 'Font Weight', weight_bold: 'Bold', weight_regular: 'Regular', title_weight: 'Title Style', text_weight: 'Text Style',
     accent_color: 'Accent Color', footer_text: 'Footer Text', import_app_data: 'Project Reporting',
-    load_budget: 'Import Budget Table', load_team: 'Import Project Team', generate_roadmap: 'Import Smart Calendar',
+    load_budget: 'Project Budget (Table & Chart)', load_team: 'Import Project Team', generate_roadmap: 'Import Smart Calendar',
     import_cad: 'Import CAD Plans', import_bim: 'Import 3D BIM', import_renderings: 'Import Renderings',
     import_defects: 'Import Defects & Tickets', import_whiteboard: 'Import Whiteboard Sketches', slides_count: 'Slides',
     standard_layouts: 'Standard Layouts', title_slide: 'Title Slide', text_and_image: 'Text & Image',
@@ -126,7 +126,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     swiss: 'Swiss Minimal (SIA)', neo_brutalism: 'Neo-Brutalism (Bold)', glassmorphism: 'Glassmorphism (Luxury)', cyberpunk: 'BIM Cyberpunk', minimal_tech: 'Eco Timber (Holzbau)', master_logo: 'Master Logo', change_logo: 'Logo ändern', upload_logo: 'Logo hochladen',
     delete_logo: 'Logo entfernen', font_weight: 'Schriftschnitt', weight_bold: 'Fett (Bold)', weight_regular: 'Normal (Regular)', title_weight: 'Titel-Schriftschnitt', text_weight: 'Text-Schriftschnitt',
     accent_color: 'Akzentfarbe', footer_text: 'Fusszeile', import_app_data: 'Projekt-Berichterstattung',
-    load_budget: 'Budget Tabelle', load_team: 'Projekt-Team', generate_roadmap: 'Smart Calendar',
+    load_budget: 'Projekt-Budget (Tabelle & Chart)', load_team: 'Projekt-Team', generate_roadmap: 'Smart Calendar',
     import_cad: 'CAD & Pläne', import_bim: '3D BIM Modelle', import_renderings: '3D Renderings',
     import_defects: 'Mängel & Tickets', import_whiteboard: 'Whiteboard Skizzen', slides_count: 'Folien',
     standard_layouts: 'Standard Layouts', title_slide: 'Titel-Folie', text_and_image: 'Text & Bild',
@@ -6090,13 +6090,9 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                     <span className="flex items-center gap-3"><Layers size={18} className="text-purple-600 dark:text-purple-400"/> 3-Varianten-Vergleich</span>
                     <span className="text-[10px] px-2 py-0.5 bg-purple-200/80 dark:bg-purple-900/60 text-purple-900 dark:text-purple-200 border border-purple-300/60 dark:border-purple-700/50 rounded-md font-sans font-bold">Pitch</span>
                   </button>
-                  <button type="button" onClick={() => handleOpenBudgetPicker('table')} className="w-full p-3.5 rounded-xl bg-emerald-50 hover:bg-emerald-100/80 dark:bg-emerald-950/20 dark:hover:bg-emerald-900/30 text-emerald-950 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800/40 flex items-center justify-between font-bold">
+                  <button type="button" onClick={() => handleOpenBudgetPicker('table')} className="w-full p-3.5 rounded-xl bg-emerald-50 hover:bg-emerald-100/80 dark:bg-emerald-950/20 dark:hover:bg-emerald-900/30 text-emerald-950 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800/40 flex items-center justify-between font-bold shadow-sm">
                     <span className="flex items-center gap-3"><DollarSign size={18} className="text-emerald-600 dark:text-emerald-400"/>{t('load_budget')}</span>
-                    <span className="text-[10px] px-2 py-0.5 bg-emerald-200/80 dark:bg-emerald-900/60 text-emerald-900 dark:text-emerald-200 border border-emerald-300/60 dark:border-emerald-700/50 rounded-md font-sans font-bold">{t('badge_table')}</span>
-                  </button>
-                  <button type="button" onClick={() => handleOpenBudgetPicker('chart')} className="w-full p-3.5 rounded-xl bg-indigo-50 hover:bg-indigo-100/80 dark:bg-indigo-950/20 dark:hover:bg-indigo-900/30 text-indigo-950 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800/40 flex items-center justify-between font-bold">
-                    <span className="flex items-center gap-3"><PieChart size={18} className="text-indigo-600 dark:text-indigo-400"/> Baukosten Chart</span>
-                    <span className="text-[10px] px-2 py-0.5 bg-indigo-200/80 dark:bg-indigo-900/60 text-indigo-900 dark:text-indigo-200 border border-indigo-300/60 dark:border-indigo-700/50 rounded-md font-sans font-bold">Donut</span>
+                    <span className="text-[10px] px-2 py-0.5 bg-emerald-200/80 dark:bg-emerald-900/60 text-emerald-900 dark:text-emerald-200 border border-emerald-300/60 dark:border-emerald-700/50 rounded-md font-sans font-bold">BKP</span>
                   </button>
                   <button type="button" onClick={handleGenerateTimelineSlide} className="w-full p-3.5 rounded-xl bg-amber-50 hover:bg-amber-100/80 dark:bg-amber-950/20 dark:hover:bg-amber-900/30 text-amber-950 dark:text-amber-200 border border-amber-200 dark:border-amber-800/40 flex items-center justify-between font-bold">
                     <span className="flex items-center gap-3"><CalendarDays size={18} className="text-amber-600 dark:text-amber-400"/>{t('generate_roadmap')}</span>
@@ -6239,11 +6235,7 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                   </button>
                   <button type="button" onClick={() => handleOpenBudgetPicker('table')} className="w-full p-2.5 rounded-lg bg-emerald-50 hover:bg-emerald-100/80 dark:bg-emerald-950/20 dark:hover:bg-emerald-900/30 text-emerald-950 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800/40 flex items-center justify-between transition-all text-xs font-bold shadow-sm cursor-pointer">
                     <span className="flex items-center gap-2.5 truncate"><DollarSign size={15} className="text-emerald-600 dark:text-emerald-400 shrink-0"/> <span className="truncate">{t('load_budget')}</span></span>
-                    <span className="text-[9px] px-2 py-0.5 rounded-md font-sans font-bold bg-emerald-200/80 dark:bg-emerald-900/60 text-emerald-900 dark:text-emerald-200 shrink-0 border border-emerald-300/60 dark:border-emerald-700/50">{t('badge_table')}</span>
-                  </button>
-                  <button type="button" onClick={() => handleOpenBudgetPicker('chart')} className="w-full p-2.5 rounded-lg bg-indigo-50 hover:bg-indigo-100/80 dark:bg-indigo-950/20 dark:hover:bg-indigo-900/30 text-indigo-950 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800/40 flex items-center justify-between transition-all text-xs font-bold shadow-sm cursor-pointer">
-                    <span className="flex items-center gap-2.5 truncate"><PieChart size={15} className="text-indigo-600 dark:text-indigo-400 shrink-0"/> <span className="truncate">{t('construction_cost_chart')}</span></span>
-                    <span className="text-[9px] px-2 py-0.5 rounded-md font-sans font-bold bg-indigo-200/80 dark:bg-indigo-900/60 text-indigo-900 dark:text-indigo-200 shrink-0 border border-indigo-300/60 dark:border-indigo-700/50">Donut</span>
+                    <span className="text-[9px] px-2 py-0.5 rounded-md font-sans font-bold bg-emerald-200/80 dark:bg-emerald-900/60 text-emerald-900 dark:text-emerald-200 shrink-0 border border-emerald-300/60 dark:border-emerald-700/50">BKP</span>
                   </button>
                   <button type="button" onClick={handleGenerateAgendaSlide} className="w-full p-2.5 rounded-lg bg-blue-50 hover:bg-blue-100/80 dark:bg-blue-950/20 dark:hover:bg-blue-900/30 text-blue-950 dark:text-blue-200 border border-blue-200 dark:border-blue-800/40 flex items-center justify-between transition-all text-xs font-bold shadow-sm cursor-pointer">
                     <span className="flex items-center gap-2.5 truncate"><BookOpen size={15} className="text-blue-600 dark:text-blue-400 shrink-0"/> <span className="truncate">{t('table_of_contents_agenda')}</span></span>
@@ -6343,20 +6335,20 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
         <div className={cn("flex-1 flex flex-col relative min-w-0 transition-colors", deckSettings.colorMode === 'light' ? "bg-slate-100 text-slate-900" : "bg-[#09090b] text-white")}>
           
           {/* RESPONSIVE TOP HEADER TOOLBAR */}
-          <header className="h-16 flex items-center justify-between px-4 lg:px-6 border-b border-border bg-surface shadow-sm z-20 shrink-0 gap-2">
-            <div className="flex items-center gap-3 shrink-0">
-              <button type="button" onClick={()=>setIsPreviewMode(!isPreviewMode)} className={cn("px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all shrink-0", isPreviewMode?"bg-purple-600 text-white shadow-lg shadow-purple-600/20":"border border-border text-text-muted hover:bg-background")}>
-                <Eye size={14}/> <span>{isPreviewMode?t('preview_active'):t('editor_mode')}</span>
+          <header className="h-16 flex items-center justify-between px-3 sm:px-4 lg:px-6 border-b border-border bg-surface shadow-sm z-20 shrink-0 gap-2 overflow-x-auto hide-scrollbar">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 flex-1">
+              <button type="button" onClick={()=>setIsPreviewMode(!isPreviewMode)} className={cn("px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shrink-0", isPreviewMode?"bg-purple-600 text-white shadow-lg shadow-purple-600/20":"border border-border text-text-muted hover:bg-background")}>
+                <Eye size={14} className="shrink-0"/> <span className="hidden md:inline">{isPreviewMode?t('preview_active'):t('editor_mode')}</span>
               </button>
 
               <button 
                 type="button" 
                 onClick={() => updateDeckSettings({ colorMode: deckSettings.colorMode === 'dark' ? 'light' : 'dark' })} 
-                className={cn("px-2.5 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-colors shrink-0", deckSettings.colorMode === 'light' ? "bg-amber-500/20 border-amber-500/40 text-amber-400" : "bg-background border-border text-text-muted hover:text-text-primary")}
+                className={cn("p-2 sm:px-2.5 sm:py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-colors shrink-0", deckSettings.colorMode === 'light' ? "bg-amber-500/20 border-amber-500/40 text-amber-400" : "bg-background border-border text-text-muted hover:text-text-primary")}
                 title="Zwischen Hell- und Dunkelmodus wechseln"
               >
                 {deckSettings.colorMode === 'light' ? <Sun size={14} /> : <Moon size={14} />}
-                <span className="hidden xl:inline">{deckSettings.colorMode === 'light' ? t('light_mode') : t('dark_mode')}</span>
+                <span className="hidden 2xl:inline">{deckSettings.colorMode === 'light' ? t('light_mode') : t('dark_mode')}</span>
               </button>
 
               {/* UNDO / REDO & DELETE BUTTON GROUP (NUR IN KOPFZEILE) */}
@@ -6391,17 +6383,17 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                   aria-label={t('delete_current_slide')}
                 >
                   <Trash2 size={15} />
-                  <span className="hidden xl:inline text-[11px] font-sans">Löschen</span>
+                  <span className="hidden 2xl:inline text-[11px] font-sans">Löschen</span>
                 </button>
               </div>
 
               {activeSlide && (
-                <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-border text-xs text-text-muted">
-                  <span className="font-semibold text-text-primary truncate max-w-[160px] lg:max-w-[280px]">
+                <div className="hidden sm:flex items-center gap-1.5 pl-2 border-l border-border text-xs text-text-muted min-w-0 overflow-hidden">
+                  <span className="font-semibold text-text-primary truncate max-w-[90px] md:max-w-[140px] lg:max-w-[200px] xl:max-w-[280px]" title={activeSlide.title}>
                     {activeSlide.title || (currentLang === 'de' ? 'Aktuelle Folie' : 'Current Slide')}
                   </span>
                   {activeSlide.stamp && (
-                    <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded text-[9px] font-black uppercase tracking-wider">
+                    <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded text-[9px] font-black uppercase tracking-wider shrink-0">
                       {activeSlide.stamp}
                     </span>
                   )}
@@ -6423,7 +6415,7 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                 className="tour-pitch-present tour-deck-present px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/30 rounded-lg text-xs font-bold gap-1.5 items-center shadow-sm disabled:opacity-50 transition-all flex shrink-0 cursor-pointer relative z-30 font-sans"
                 title={t('present_tooltip')}
               >
-                <Play size={14} className="fill-current"/> <span>{t('present_btn')}</span>
+                <Play size={14} className="fill-current shrink-0"/> <span className="hidden lg:inline">{t('present_btn')}</span>
               </button>
 
               {/* UNIFIED FREIGABE & EXPORT DROPDOWN MENU */}
@@ -6434,7 +6426,7 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                   className="tour-pitch-export tour-deck-export px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg text-xs font-bold gap-1.5 items-center shadow-md transition-all flex shrink-0 cursor-pointer font-sans"
                   title={t('share_export_tooltip')}
                 >
-                  <Share2 size={14}/> <span>{t('share_export')}</span>
+                  <Share2 size={14} className="shrink-0"/> <span className="hidden lg:inline">{t('share_export')}</span>
                   <ChevronDown size={13} className={cn("transition-transform duration-150", showExportShareMenu && "rotate-180")} />
                 </button>
                 <AnimatePresence>
@@ -6508,7 +6500,7 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                 className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all border border-red-500/40 shadow-sm shrink-0 cursor-pointer font-sans" 
                 title={t('exit_studio_tooltip')}
               >
-                <LogOut size={14} /> <span className="hidden xl:inline">{t('close_studio')}</span>
+                <LogOut size={14} className="shrink-0" /> <span className="hidden lg:inline">{t('close_studio')}</span>
               </button>
             </div>
           </header>
