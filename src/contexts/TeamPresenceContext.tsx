@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
@@ -121,7 +122,7 @@ export const TeamPresenceProvider: React.FC<{ children: React.ReactNode }> = ({ 
         supabase.removeChannel(channel);
       } catch (_) {}
     };
-  }, [currentUser?.id, safeCompanyId, activeProjectId]);
+  }, [currentUser, safeCompanyId, activeProjectId]);
 
   const onlineKeys = useMemo(() => {
     const set = new Set<string>();
