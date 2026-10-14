@@ -217,7 +217,7 @@ function getDeterministicUUID(str: string): string {
   // 2. Seed Demo Team Members & Profiles (Avatars)
   if (Array.isArray(template.members)) {
     for (const m of template.members) {
-      const demoUserId = getDeterministicUUID(m.name || m.email || 'demo_user');
+      const demoUserId = getDeterministicUUID(`${realCompanyId}_${m.name || m.email || 'demo_user'}`);
 
       // Ensure profile exists with photoURL / avatar
       try {
@@ -642,8 +642,19 @@ export async function purgeAllDummyData(companyId: string) {
       }
     }
 
-    // Delete demo user profiles
-    await supabase.from('profiles').delete().eq('company_id', companyId).like('id', 'demo_user_%');
+    // Delete deterministic demo user profiles (00000000-0000-4000-8000-*) without triggering UUID .like() operator error
+    const { data: compProfiles } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('company_id', companyId);
+
+    const demoProfileIds = (compProfiles || [])
+      .map((p: any) => String(p.id))
+      .filter((id) => id.startsWith('00000000-0000-4000-8000-'));
+
+    if (demoProfileIds.length > 0) {
+      await supabase.from('profiles').delete().eq('company_id', companyId).in('id', demoProfileIds);
+    }
   } catch (err) {
     console.error('Error purging dummy data:', err);
   }

@@ -48,13 +48,24 @@ export default async function handler(req: any, res: any) {
         // Double check membership in company_users as fallback
         const { data: cuMembership } = await supabase
           .from('company_users')
-          .select('id, role')
+          .select('id, role, is_external, status')
           .eq('company_id', companyId)
           .or(`user_id.eq.${authUser.id},email.ilike.${authUser.email}`)
           .maybeSingle();
 
         const cuRoleStr = String(cuMembership?.role || '').toLowerCase();
-        if (!cuMembership || cuRoleStr.includes('guest') || cuRoleStr.includes('extern') || cuRoleStr.includes('partner') || cuRoleStr.includes('contractor') || cuRoleStr.includes('handwerker') || cuRoleStr === 'client') {
+        const cuStatusStr = String((cuMembership as any)?.status || '').toLowerCase();
+        const isCuExternal = Boolean((cuMembership as any)?.is_external) || cuStatusStr === 'external';
+        if (
+          !cuMembership ||
+          isCuExternal ||
+          cuRoleStr.includes('guest') ||
+          cuRoleStr.includes('extern') ||
+          cuRoleStr.includes('partner') ||
+          cuRoleStr.includes('contractor') ||
+          cuRoleStr.includes('handwerker') ||
+          cuRoleStr === 'client'
+        ) {
           return res.status(403).json({ error: 'Forbidden: Access denied to company financial records' });
         }
       }

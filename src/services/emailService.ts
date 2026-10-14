@@ -124,10 +124,10 @@ export async function sendAcceptanceConfirmationEmail(payload: EmailDispatchPayl
 </html>
   `;
 
-  // Wenn ein Live API-Key hinterlegt ist, senden wir über Backend-Route
-  if (config.apiKey && config.apiKey.length > 5) {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
+  // Wenn der User eingeloggt ist oder ein eigener API-Key hinterlegt ist, senden wir über die Backend-Route (nutzt Server-RESEND_API_KEY als Fallback)
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token || (config.apiKey && config.apiKey.length > 5)) {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (session?.access_token) {
         headers['Authorization'] = `Bearer ${session.access_token}`;
@@ -138,8 +138,8 @@ export async function sendAcceptanceConfirmationEmail(payload: EmailDispatchPayl
         headers,
         body: JSON.stringify({
           provider: config.provider,
-          apiKey: config.apiKey,
-          from: `${config.senderName} <${config.senderEmail}>`,
+          apiKey: config.apiKey || undefined,
+          from: config.senderEmail ? `${config.senderName} <${config.senderEmail}>` : undefined,
           to: payload.to,
           subject: payload.subject,
           html: htmlContent
@@ -150,15 +150,15 @@ export async function sendAcceptanceConfirmationEmail(payload: EmailDispatchPayl
         return {
           success: true,
           messageId: data.messageId || `msg_${Date.now()}`,
-          provider: config.provider,
+          provider: data.provider || config.provider,
           recipient: payload.to,
           timestamp: new Date().toISOString(),
-          mode: 'live'
+          mode: data.mode || 'live'
         };
       }
-    } catch (e) {
-      console.warn('E-Mail Server-Dispatch fehlgeschlagen, nutze Simulation', e);
     }
+  } catch (e) {
+    console.warn('E-Mail Server-Dispatch fehlgeschlagen, nutze Simulation', e);
   }
 
   // Simulation Fallback

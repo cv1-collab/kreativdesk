@@ -26,6 +26,7 @@ import { sendNotification } from '../lib/notifications';
 import { safeStorage } from '../utils/safeStorage';
 import ModuleGuideButton from './ModuleGuideButton';
 import { getFileCategory } from '../utils/documentClassifier';
+import { checkStorageLimit, incrementStorage } from '../utils/storageGuard';
 
 const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
   en: { 
@@ -316,7 +317,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
   const queryClient = useQueryClient();
   const { addToast } = useToast();
   const navigate = useNavigate();
-  const { projects = [], activeProjectId, isDemoMode } = useProject() as any;
+  const { projects = [], activeProjectId, isDemoMode, demoData } = useProject() as any;
   const { language, t: globalT } = useLanguage();
   const { hasPermission } = usePermissions();
   
@@ -352,17 +353,17 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
   const docsStorageKey = `docs_state_${defaultProjId || 'global'}`;
 
   const [activeTab, setActiveTabRaw] = useState<'company' | 'projects' | 'proposals'>(() => {
-    if (isProjectMode) return 'projects';
+    if (isProjectMode || isExternalPartner) return 'projects';
     const saved = safeStorage.getString(`${docsStorageKey}_tab`);
     if (saved && (saved === 'company' || saved === 'projects' || saved === 'proposals')) return saved as any;
     return 'company';
   });
 
   const setActiveTab = useCallback((tab: 'company' | 'projects' | 'proposals') => {
-    const nextTab = isProjectMode && tab === 'company' ? 'projects' : tab;
+    const nextTab = (isProjectMode || isExternalPartner) && tab !== 'projects' ? 'projects' : tab;
     setActiveTabRaw(nextTab);
     safeStorage.setItem(`${docsStorageKey}_tab`, nextTab);
-  }, [isProjectMode, docsStorageKey]);
+  }, [isProjectMode, isExternalPartner, docsStorageKey]);
 
   const [showPitchModal, setShowPitchModal] = useState(false);
   const [pitchModalInitialPublish, setPitchModalInitialPublish] = useState(false);
@@ -420,7 +421,13 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
 
   useEffect(() => {
     if (defaultProjId) {
-      setSelectedProjectId(defaultProjId);
+      setSelectedProjectId(prev => {
+        if (prev && prev !== defaultProjId) {
+          setCurrentFolderIdRaw('root');
+          setFolderPathRaw([{ id: 'root', name: 'Root' }]);
+        }
+        return defaultProjId;
+      });
     }
   }, [defaultProjId]);
 
@@ -577,7 +584,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
     handleDownloadFile(item);
   };
 
-  const handleOpenInStudio = (item: any) => {
+  const handleOpenInStudio = async (item: any) => {
     if (isExternalPartner) {
       handleDownloadFile(item);
       return;
@@ -594,8 +601,22 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
     if (fileUrl && fileUrl.startsWith('data:text')) {
       try {
         const parts = fileUrl.split(',');
+        const meta = parts[0] || '';
         const rawData = parts[1] || '';
-        textContent = decodeURIComponent(rawData);
+        if (meta.includes('base64')) {
+          textContent = decodeURIComponent(escape(atob(rawData)));
+        } else {
+          textContent = decodeURIComponent(rawData);
+        }
+      } catch (e) {
+        textContent = '';
+      }
+    } else if (fileUrl && fileUrl.startsWith('http')) {
+      try {
+        const res = await fetch(fileUrl);
+        if (res.ok) {
+          textContent = await res.text();
+        }
       } catch (e) {
         textContent = '';
       }
@@ -653,13 +674,49 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
   }, [isDemo, invalidateDocuments]);
 
   useEffect(() => {
+    if (isDemo) {
+      const nowIso = new Date().toISOString();
+      const targetProjId = defaultProjId || activeProjectId || 'demo-1';
+      const demoFolders = [
+        { id: 'demo-f-1', name: '01_VORLAGEN', isFolder: true, is_folder: true, folderId: 'root', folder_id: 'root', category: 'company', projectId: 'global', project_id: 'global', createdAt: nowIso },
+        { id: 'demo-f-2', name: '02_RECHTLICHES', isFolder: true, is_folder: true, folderId: 'root', folder_id: 'root', category: 'company', projectId: 'global', project_id: 'global', createdAt: nowIso },
+        { id: 'demo-f-3', name: '03_FINANZEN_TREUHAND', isFolder: true, is_folder: true, folderId: 'root', folder_id: 'root', category: 'company', projectId: 'global', project_id: 'global', createdAt: nowIso },
+        { id: 'demo-f-4', name: '04_PERSONAL_HR', isFolder: true, is_folder: true, folderId: 'root', folder_id: 'root', category: 'company', projectId: 'global', project_id: 'global', createdAt: nowIso },
+        { id: 'demo-f-5', name: '05_MARKETING_PR', isFolder: true, is_folder: true, folderId: 'root', folder_id: 'root', category: 'company', projectId: 'global', project_id: 'global', createdAt: nowIso },
+        { id: 'demo-pf-1', name: '01_Baupläne & CAD', isFolder: true, is_folder: true, folderId: 'root', folder_id: 'root', category: 'project', projectId: targetProjId, project_id: targetProjId, createdAt: nowIso },
+        { id: 'demo-pf-2', name: '02_Offerten & Verträge (SIA)', isFolder: true, is_folder: true, folderId: 'root', folder_id: 'root', category: 'project', projectId: targetProjId, project_id: targetProjId, createdAt: nowIso },
+        { id: 'demo-pf-3', name: '03_Behörden & Bewilligungen', isFolder: true, is_folder: true, folderId: 'root', folder_id: 'root', category: 'project', projectId: targetProjId, project_id: targetProjId, createdAt: nowIso },
+      ];
+      const rawDemoDocs = Array.isArray(demoData?.documents) ? demoData.documents : [];
+      const mappedDemoDocs = rawDemoDocs.map((d: any, idx: number) => ({
+        id: d.id || `demo-doc-${idx}`,
+        name: d.name || 'Dokument.pdf',
+        type: d.type || 'PDF',
+        size: d.size || '2.4 MB',
+        isFolder: false,
+        is_folder: false,
+        folderId: 'root',
+        folder_id: 'root',
+        category: d.category || 'project',
+        projectId: targetProjId,
+        project_id: targetProjId,
+        uploadedBy: d.uploadedBy || 'Bauleitung',
+        createdAt: d.date || nowIso,
+      }));
+      const companySampleDocs = [
+        { id: 'demo-cdoc-1', name: 'SIA_102_Architekturvertrag_Vorlage.pdf', type: 'PDF', size: '1.8 MB', isFolder: false, is_folder: false, folderId: 'root', folder_id: 'root', category: 'company', projectId: 'global', project_id: 'global', uploadedBy: 'Geschäftsleitung', createdAt: nowIso },
+        { id: 'demo-cdoc-2', name: 'BKP_Kostenplan_Referenz_2026.xlsx', type: 'XLSX', size: '940 KB', isFolder: false, is_folder: false, folderId: 'root', folder_id: 'root', category: 'company', projectId: 'global', project_id: 'global', uploadedBy: 'Controlling', createdAt: nowIso },
+      ];
+      setDocuments([...demoFolders, ...companySampleDocs, ...mappedDemoDocs] as any);
+      return;
+    }
     if (queryDocuments && !isDemo) {
       setDocuments(queryDocuments as any);
       if (safeCompanyId) {
         autoOrganizeLooseContracts(queryDocuments as any, safeCompanyId);
       }
     }
-  }, [queryDocuments, isDemo, safeCompanyId, autoOrganizeLooseContracts]);
+  }, [queryDocuments, isDemo, demoData, defaultProjId, activeProjectId, safeCompanyId, autoOrganizeLooseContracts]);
 
   const handleSeedDemoData = async () => {
     if (!currentUser) return;
@@ -739,6 +796,13 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
     }
 
     const safeCompanyId = currentUser.companyId || currentUser.uid;
+    const canProceedStorage = await checkStorageLimit(safeCompanyId, file.size);
+    if (!canProceedStorage) {
+      addToast('Speicherlimit Ihres Abonnements erreicht. Bitte upgraden Sie Ihren Plan.', 'error');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     setIsUploading(true);
     try {
       const fileUrl = await uploadFileWithFallback(file, file.name, safeCompanyId, 'documents');
@@ -767,6 +831,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
         uploaded_at: new Date().toISOString()
       });
 
+      await incrementStorage(safeCompanyId, file.size);
       queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
       addToast('Datei erfolgreich hochgeladen', 'success');
       fetchDocuments();
@@ -848,27 +913,35 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
     try {
       const safeCompanyId = currentUser?.companyId || currentUser?.uid;
 
+      // Collect all descendant IDs recursively when deleting a folder
+      const collectDescendantDocs = (parentFolderId: string): any[] => {
+        const directChildren = documents.filter(d => d.folder_id === parentFolderId);
+        let allDescendants = [...directChildren];
+        for (const child of directChildren) {
+          if (child.is_folder) {
+            allDescendants = allDescendants.concat(collectDescendantDocs(child.id));
+          }
+        }
+        return allDescendants;
+      };
+
+      const descendantDocs = isFolder ? collectDescendantDocs(id) : [];
+
       // Storage-Bereinigung: Verhindert verwaiste Dateien im Supabase Storage Bucket
       if (!isFolder && (targetDoc?.url || targetDoc?.file_url)) {
         await deleteFileFromStorage(targetDoc.file_url || targetDoc.url);
       } else if (isFolder) {
-        const subDocs = documents.filter(d => d.folder_id === id);
-        for (const sub of subDocs) {
-          if (sub.url || sub.file_url) {
+        for (const sub of descendantDocs) {
+          if (!sub.is_folder && (sub.url || sub.file_url)) {
             await deleteFileFromStorage(sub.file_url || sub.url);
           }
         }
       }
 
-      let delQuery = supabase.from('documents').delete().eq('id', id);
+      const idsToDelete = [id, ...descendantDocs.map(d => d.id)];
+      let delQuery = supabase.from('documents').delete().in('id', idsToDelete);
       if (safeCompanyId) delQuery = delQuery.eq('company_id', safeCompanyId);
       await delQuery;
-
-      if (isFolder) {
-        let subDelQuery = supabase.from('documents').delete().eq('folder_id', id);
-        if (safeCompanyId) subDelQuery = subDelQuery.eq('company_id', safeCompanyId);
-        await subDelQuery;
-      }
 
       if (safeCompanyId) {
         try {
@@ -1200,7 +1273,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
         <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-2.5">
           {/* 1. Category Switcher (Pill Style) */}
           <div className="tour-docs-tabs flex items-center gap-1 bg-background/80 p-1 rounded-xl border border-border/60 overflow-x-auto custom-scrollbar shrink-0">
-            {!isProjectMode && (
+            {!isProjectMode && !isExternalPartner && (
               <button
                 onClick={() => {
                   setActiveTab('company');
@@ -1240,22 +1313,24 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
               {isProjectMode ? 'Bauakte & Unterlagen' : t('project_docs')}
             </button>
 
-            <button
-              onClick={() => {
-                setActiveTab('proposals');
-                setCurrentFolderId('root');
-                setSelectedDocIds([]);
-              }}
-              className={cn(
-                "px-3.5 py-1.5 font-bold text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap",
-                activeTab === 'proposals'
-                  ? "bg-surface text-purple-600 dark:text-purple-400 shadow-sm border border-border/60"
-                  : "text-text-muted hover:text-text-primary"
-              )}
-            >
-              <Sparkles size={15} className={activeTab === 'proposals' ? "text-purple-500 animate-pulse" : "text-purple-400"} />
-              {t('proposals_tab')}
-            </button>
+            {!isExternalPartner && (
+              <button
+                onClick={() => {
+                  setActiveTab('proposals');
+                  setCurrentFolderId('root');
+                  setSelectedDocIds([]);
+                }}
+                className={cn(
+                  "px-3.5 py-1.5 font-bold text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap",
+                  activeTab === 'proposals'
+                    ? "bg-surface text-purple-600 dark:text-purple-400 shadow-sm border border-border/60"
+                    : "text-text-muted hover:text-text-primary"
+                )}
+              >
+                <Sparkles size={15} className={activeTab === 'proposals' ? "text-purple-500 animate-pulse" : "text-purple-400"} />
+                {t('proposals_tab')}
+              </button>
+            )}
           </div>
 
           {/* 2. Controls & Search Cluster (Rechts zusammengefasst) */}

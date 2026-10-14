@@ -13,9 +13,9 @@ const __dirname = path.dirname(__filename);
 
 // === SUPABASE ADMIN INIT ===
 const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://jtgfrogbrkrllzdwzdrt.supabase.co';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholder';
 
-if (!supabaseServiceKey) {
+if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
   console.warn('⚠️ SUPABASE_SERVICE_ROLE_KEY fehlt in der .env Datei. Admin-Funktionen könnten fehlschlagen.');
 }
 
@@ -27,7 +27,7 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
 });
 
 // === STRIPE INIT ===
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder', {
   apiVersion: '2025-02-24.acacia' as any,
 });
 

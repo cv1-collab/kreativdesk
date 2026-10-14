@@ -489,11 +489,10 @@ const CADPlanPDFDocument = ({ settings, docHeader, planImage, elements, layers, 
                       <Text style={{ position: 'absolute', left: tbWidth*0.6 + 4 * SCALE_X, top: h*0.86, color: tCol, fontSize: 2.5 * MM_TO_PX * SCALE_AVG * el.scale, opacity: 0.6, fontFamily: 'Helvetica' }}>{t('drawn_by')}</Text>
                       <Text style={{ position: 'absolute', left: tbWidth*0.6 + 4 * SCALE_X, top: h*0.95, color: tCol, fontSize: 3.5 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold' }}>{el.data.gez}</Text>
 
-                      <Rect x={`${tbWidth * 0.8}px`} y={`${35 * MM_TO_PX}px`} width={`${tbWidth * 0.2}px`} height={`${10 * MM_TO_PX}px`} fill={tCol} />
-                      {/* @ts-expect-error - React-PDF typings are missing some properties */}
-                      <Text x={`${tbWidth * 0.8 + (4 * MM_TO_PX)}px`} y={`${39 * MM_TO_PX}px`} fill="#ffffff" fontSize={`${2 * MM_TO_PX}px`} opacity={0.8} fontFamily="sans-serif">{t('plan_no')}</Text>
-                      {/* @ts-expect-error - React-PDF typings are missing some properties */}
-                      <Text x={`${tbWidth * 0.8 + (4 * MM_TO_PX)}px`} y={`${43 * MM_TO_PX}px`} fill="#ffffff" fontSize={`${4 * MM_TO_PX}px`} fontWeight="900" fontFamily="sans-serif">{el.data.planNummer}</Text>
+                      <View style={{ position: 'absolute', left: tbWidth * 0.8, top: h * 0.78, width: tbWidth * 0.2, height: h * 0.22, backgroundColor: tCol, justifyContent: 'center', paddingLeft: 4 * SCALE_X }}>
+                        <Text style={{ color: '#ffffff', fontSize: 2 * MM_TO_PX * SCALE_AVG * el.scale, opacity: 0.8, fontFamily: 'Helvetica' }}>{t('plan_no')}</Text>
+                        <Text style={{ color: '#ffffff', fontSize: 4 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold', marginTop: 1 }}>{el.data.planNummer}</Text>
+                      </View>
                    </View>
                  );
               }
@@ -809,15 +808,15 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         title: `CAD Plan: ${planName}`,
         content: `TrueScale™ 1:${planScale} (${paperFormat} ${paperOrientation})`,
         layout: 'image-focus',
-        imageUrl: planImage || dummySvgPlan,
+        image_url: planImage || dummySvgPlan,
         order_index: 99,
         company_id: safeCompanyId,
-        owner_id: currentUser.uid,
         project_id: targetProjectId,
         created_at: new Date().toISOString()
       };
 
-      await supabase.from('slides').insert(newSlide as any);
+      const { error } = await supabase.from('slides').insert(newSlide as any);
+      if (error) throw error;
       addToast('CAD-Plan als Folie im Pitch Deck gespeichert!', 'success');
     } catch (err) {
       console.error("Save snapshot to Pitch Deck error:", err);
@@ -976,13 +975,17 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
        return; 
     }
 
-    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    const safeCompanyId = safeStorage.session.getString('admin_preview_company_id') || currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
     const fetchPlans = async () => {
       try {
-        const { data: plans, error: fetchErr } = await supabase
+        let plansQuery = supabase
           .from('cad_plans')
           .select('*')
           .eq('project_id', currentProjectId);
+        if (safeCompanyId) {
+          plansQuery = plansQuery.eq('company_id', safeCompanyId);
+        }
+        const { data: plans, error: fetchErr } = await plansQuery;
 
         if (fetchErr) {
           console.warn("Fehler beim Abrufen der CAD-Pläne:", fetchErr);
@@ -990,10 +993,14 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
         let dbDefects: any[] = [];
         try {
-          const { data: dData } = await supabase
+          let defectsQuery = supabase
             .from('defects')
             .select('*')
             .eq('project_id', currentProjectId);
+          if (safeCompanyId) {
+            defectsQuery = defectsQuery.eq('company_id', safeCompanyId);
+          }
+          const { data: dData } = await defectsQuery;
           if (dData && dData.length > 0) dbDefects = dData;
         } catch (_) {}
 
@@ -1093,6 +1100,30 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       }
     };
     fetchPlans();
+
+    const cadChannel = supabase
+      .channel(`cad_realtime_${safeCompanyId || 'tenant'}_${currentProjectId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'cad_plans',
+        filter: `project_id=eq.${currentProjectId}`
+      }, () => {
+        fetchPlans();
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'defects',
+        filter: `project_id=eq.${currentProjectId}`
+      }, () => {
+        fetchPlans();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(cadChannel).catch(() => {});
+    };
   }, [currentProjectId, currentUser, isDemoMode, demoData, activeProject?.name, getCachedPlan, loadPlanDataToEditor, setActivePlanId]);
 
   const handleAddLayer = () => {
@@ -1586,6 +1617,16 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       if (elementsBeforeDragRef.current && elementsBeforeDragRef.current !== elements) {
         setHistory(prev => [...prev.slice(-30), elementsBeforeDragRef.current!]);
         setFuture([]);
+        if (draggingElementId && !isDemoMode && currentUser) {
+          const movedEl = elements.find(el => el.id === draggingElementId);
+          if (movedEl && movedEl.type === 'defect' && !movedEl.id.startsWith('el')) {
+            supabase.from('defects').update({
+              position: { x: movedEl.x, y: movedEl.y, z: 0 }
+            }).eq('id', movedEl.id).then(() => {
+              queryClient.invalidateQueries({ queryKey: [DEFECTS_QUERY_KEY] });
+            });
+          }
+        }
       }
       elementsBeforeDragRef.current = null;
     }
@@ -2524,12 +2565,9 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       if (defectPrompt.file && safeCompanyId) {
         try {
           const file = defectPrompt.file;
-          const fileExt = file.name.split('.').pop() || 'jpg';
-          const filePath = `${safeCompanyId}/defects/${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
-          const { error: uploadErr } = await supabase.storage.from('defects').upload(filePath, file, { upsert: true });
-          if (!uploadErr) {
-            const { data: urlData } = supabase.storage.from('defects').getPublicUrl(filePath);
-            imageUrl = urlData?.publicUrl || null;
+          const uploadedUrl = await uploadFileWithFallback(file, file.name, safeCompanyId, 'defects');
+          if (uploadedUrl) {
+            imageUrl = uploadedUrl;
             newPin.imageUrl = imageUrl;
           }
         } catch (uploadErr) {
@@ -2581,7 +2619,8 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           plan_image: planImage,
           paper_format: paperFormat,
           paper_orientation: paperOrientation,
-          plan_scale: planScale
+          plan_scale: planScale,
+          is_calibrated: isCalibrated
         };
         const elementsToPersist = [...updatedElements.filter((el: any) => el?.id !== '__plan_meta__'), metaEl];
         supabase.from('cad_plans').update({
@@ -2661,7 +2700,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                     initial={{ opacity: 0, y: 6, scale: 0.96 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 4, scale: 0.96 }}
-                    className="absolute right-0 top-full mt-2 w-72 bg-surface/98 backdrop-blur-2xl border border-border rounded-2xl shadow-2xl p-2 z-[9999] space-y-1.5"
+                    className="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 w-72 max-w-[calc(100vw-2rem)] bg-surface/98 backdrop-blur-2xl border border-border rounded-2xl shadow-2xl p-2 z-[9999] space-y-1.5"
                   >
                     <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted px-2.5 pt-1 pb-0.5">
                       {currentLang === 'de' ? 'Import & Upload' : 'Import & Upload'}

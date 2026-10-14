@@ -218,32 +218,6 @@ export default function UniversalPDFStudio({
 
   if (!isOpen || !isMounted) return null;
 
-  // 📱 Smartphone-Schutz: PDF Studio auf mobilen Geräten sperren & informieren
-  if (isMobile) {
-    return createPortal(
-      <div className="fixed inset-0 z-[1000000] flex items-center justify-center p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-        <div className="bg-surface border border-border rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center shadow-2xl space-y-4">
-          <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-500 mx-auto flex items-center justify-center shadow-inner">
-            <Monitor size={28} />
-          </div>
-          <div>
-            <h3 className="font-bold text-lg text-text-primary">{t('desktop_only_title')}</h3>
-            <p className="text-xs text-text-muted mt-2 leading-relaxed font-medium">
-              {t('desktop_only_desc')}
-            </p>
-          </div>
-          <button 
-            onClick={onClose} 
-            className="w-full py-3 rounded-xl bg-accent-ai hover:bg-accent-ai/90 text-white font-bold text-xs tracking-wider transition-all cursor-pointer shadow-lg shadow-accent-ai/20"
-          >
-            {t('understood')}
-          </button>
-        </div>
-      </div>,
-      document.body
-    );
-  }
-
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isDemoMode) {
       addToast(t('logo_demo_protected'), 'info');
@@ -372,6 +346,48 @@ export default function UniversalPDFStudio({
       setIsUploading(false);
     }
   };
+
+  // 📱 Smartphone-Modus: Direktes Speichern in Datenraum & PDF-Download ohne schweres Desktop-Iframe
+  if (isMobile) {
+    return createPortal(
+      <div className="fixed inset-0 z-[1000000] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+        <div className="bg-surface border border-border rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center shadow-2xl space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-500 mx-auto flex items-center justify-center shadow-inner">
+            <Monitor size={28} />
+          </div>
+          <div>
+            <h3 className="font-bold text-lg text-text-primary">{title || t('desktop_only_title')}</h3>
+            <p className="text-xs text-text-muted mt-2 leading-relaxed font-medium">
+              {t('desktop_only_desc')}
+            </p>
+          </div>
+          <div className="space-y-2.5 pt-1">
+            <button
+              onClick={() => generatePDF(true)}
+              disabled={isUploading || isGenerating}
+              className="w-full py-3 rounded-xl bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 font-bold text-xs tracking-wider hover:bg-indigo-500/25 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+            >
+              {isUploading ? <Loader2 className="animate-spin" size={16} /> : <Cloud size={16} />} {t('save_cloud')}
+            </button>
+            <button
+              onClick={() => generatePDF(false)}
+              disabled={isGenerating || isUploading}
+              className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-blue-500/20 disabled:opacity-50"
+            >
+              {isGenerating ? <Loader2 className="animate-spin" size={16} /> : <Download size={16} />} {t('download_desktop')}
+            </button>
+            <button 
+              onClick={onClose} 
+              className="w-full py-2.5 rounded-xl bg-background border border-border text-text-muted hover:text-text-primary font-bold text-xs tracking-wider transition-all cursor-pointer"
+            >
+              {t('understood')}
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body
+    );
+  }
 
   return createPortal(
     <div className="fixed inset-0 z-[1000000] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">

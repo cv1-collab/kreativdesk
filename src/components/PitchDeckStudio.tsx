@@ -1800,7 +1800,9 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
           imageUrl: finalUrl,
           notes: `Importiert aus PDF ${file.name} - Seite ${p}`,
           order_index: slides.length + p - 1,
-          ownerId: currentUser?.uid || 'guest'
+          ownerId: currentUser?.uid || 'guest',
+          companyId: safeCompanyId,
+          projectId: targetId
         };
         newCreatedSlides.push(newSlide);
 
@@ -2349,9 +2351,11 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
       else if (slide.layout === 'text-only') { 
         const lns = docPdf.splitTextToSize(slide.content || '', pw - 30); docPdf.text(lns, 15, cy); 
       }
-      else if (slide.layout === 'split' && slide.imageUrl) { 
-        const lns = docPdf.splitTextToSize(slide.content || '', (pw/2)-20); docPdf.text(lns, 15, cy); 
-        await addSafeImage(slide.imageUrl, pw/2, cy-5, (pw/2)-15, ph-55, true);
+      else if (slide.layout === 'split') { 
+        const lns = docPdf.splitTextToSize(slide.content || '', slide.imageUrl ? (pw/2)-20 : pw - 30); docPdf.text(lns, 15, cy); 
+        if (slide.imageUrl) {
+          await addSafeImage(slide.imageUrl, pw/2, cy-5, (pw/2)-15, ph-55, true);
+        }
       }
       else if (slide.layout === 'image-focus' && slide.imageUrl) { 
         await addSafeImage(slide.imageUrl, 15, cy-5, pw-30, ph-55, true);
@@ -3192,7 +3196,11 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
         if (idx !== variantIndex) return v;
         return { ...v, [field]: value };
       });
-      return { ...s, dataPayload: { ...s.dataPayload, comparisonVariants: updated } };
+      const updatedSlide = { ...s, dataPayload: { ...s.dataPayload, comparisonVariants: updated } };
+      if (!isDemoMode && currentUser && !slideId.startsWith('slide-demo-')) {
+        supabase.from('slides').update(serializeSlideForDb(updatedSlide)).eq('id', slideId).then(() => {});
+      }
+      return updatedSlide;
     }));
   };
 
@@ -3206,7 +3214,11 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
         currentHp[highlightIndex] = value;
         return { ...v, highlightPoints: currentHp };
       });
-      return { ...s, dataPayload: { ...s.dataPayload, comparisonVariants: updated } };
+      const updatedSlide = { ...s, dataPayload: { ...s.dataPayload, comparisonVariants: updated } };
+      if (!isDemoMode && currentUser && !slideId.startsWith('slide-demo-')) {
+        supabase.from('slides').update(serializeSlideForDb(updatedSlide)).eq('id', slideId).then(() => {});
+      }
+      return updatedSlide;
     }));
   };
 
@@ -4012,7 +4024,7 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                   const newPayload = { ...(slide.dataPayload || {}), hideTextOverlay: nextClean, overlayOpacity: nextClean ? 0 : (slide.dataPayload?.overlayOpacity ?? 40) };
                   setSlides(prev => prev.map(s => s.id === slide.id ? { ...s, layout: nextLayout, dataPayload: newPayload } : s));
                   if (!isPreviewMode) {
-                    supabase.from('slides').update(serializeSlideForDb({ ...slide, layout: nextLayout, dataPayload: newPayload })).then(()=>{});
+                    supabase.from('slides').update(serializeSlideForDb({ ...slide, layout: nextLayout, dataPayload: newPayload })).eq('id', slide.id).then(()=>{});
                   }
                 }}
                 className={cn(
@@ -7066,7 +7078,7 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                                         const newPayload = { ...(activeSlide.dataPayload || {}), hideTextOverlay: true, overlayOpacity: activeSlide.dataPayload?.overlayOpacity ?? 0 };
                                         setSlides(prev => prev.map(s => s.id === activeSlide.id ? { ...s, layout: 'full-image-clean', dataPayload: newPayload } : s));
                                         if (!isPreviewMode) {
-                                          supabase.from('slides').update(serializeSlideForDb({ ...activeSlide, layout: 'full-image-clean', dataPayload: newPayload })).then(()=>{});
+                                          supabase.from('slides').update(serializeSlideForDb({ ...activeSlide, layout: 'full-image-clean', dataPayload: newPayload })).eq('id', activeSlide.id).then(()=>{});
                                         }
                                       }}
                                       className={cn(
@@ -7085,7 +7097,7 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                                         const newPayload = { ...(activeSlide.dataPayload || {}), hideTextOverlay: false, overlayOpacity: activeSlide.dataPayload?.overlayOpacity ?? 40 };
                                         setSlides(prev => prev.map(s => s.id === activeSlide.id ? { ...s, layout: 'full-image', dataPayload: newPayload } : s));
                                         if (!isPreviewMode) {
-                                          supabase.from('slides').update(serializeSlideForDb({ ...activeSlide, layout: 'full-image', dataPayload: newPayload })).then(()=>{});
+                                          supabase.from('slides').update(serializeSlideForDb({ ...activeSlide, layout: 'full-image', dataPayload: newPayload })).eq('id', activeSlide.id).then(()=>{});
                                         }
                                       }}
                                       className={cn(

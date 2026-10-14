@@ -23,7 +23,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 };
 
 const SuccessPage = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, refreshUserProfile } = useAuth();
   const navigate = useNavigate();
   const { language, t: globalT } = useLanguage();
   const [searchParams] = useSearchParams();
@@ -33,6 +33,20 @@ const SuccessPage = () => {
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
   useEffect(() => {
+    try {
+      sessionStorage.removeItem('pending_checkout_plan');
+      sessionStorage.removeItem('pending_checkout_billing');
+    } catch (_) {}
+
+    const syncSubscriptionState = async () => {
+      try {
+        await refreshUserProfile();
+      } catch (err) {
+        console.warn('Could not refresh profile on success page:', err);
+      }
+    };
+    syncSubscriptionState();
+
     const duration = 3 * 1000;
     const animationEnd = Date.now() + duration;
     const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
@@ -47,7 +61,7 @@ const SuccessPage = () => {
     }, 250);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [refreshUserProfile]);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#09090b] text-slate-900 dark:text-[#fafafa] flex flex-col items-center justify-center p-6 text-center transition-colors duration-200">

@@ -31,14 +31,32 @@ export default async function handler(req: any, res: any) {
       targetCustomerId = bodyCustomerId;
     }
 
+    if (!targetCustomerId && authUser.email) {
+      const existingCustomers = await stripe.customers.list({
+        email: authUser.email,
+        limit: 1
+      });
+      if (existingCustomers.data.length > 0) {
+        targetCustomerId = existingCustomers.data[0].id;
+        await supabaseAdmin
+          .from('profiles')
+          .update({ stripe_customer_id: targetCustomerId })
+          .eq('id', authUser.id);
+      }
+    }
+
     if (!targetCustomerId) {
-      return res.status(400).json({ error: 'Stripe customer ID missing on account' });
+      return res.status(400).json({ error: 'Kein aktives Stripe-Kundenkonto gefunden. Bitte wähle zuerst ein Abo aus.' });
     }
 
     const domainURL = req.headers.origin || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://www.kreativdesk.ch'));
+    const validReturnUrl = typeof returnUrl === 'string' && (returnUrl.startsWith('https://') || returnUrl.startsWith('http://'))
+      ? returnUrl
+      : `${domainURL}/app`;
+
     const session = await stripe.billingPortal.sessions.create({
       customer: targetCustomerId,
-      return_url: returnUrl || `${domainURL}/app`, 
+      return_url: validReturnUrl, 
     });
 
     return res.status(200).json({ url: session.url });

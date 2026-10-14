@@ -57,6 +57,9 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
 
   const currentProjectId = propProjectId || projectId || activeProjectId;
   const isDemo = isDemoMode || currentProjectId === 'demo-1' || currentProjectId?.startsWith('demo-');
+  const userRoleLower = String(currentUser?.role || '').toLowerCase().trim();
+  const isExternalViewer = !isDemo && ['guest', 'client', 'external', 'partner', 'subcontractor', 'handwerker', 'bauherr', 'field guest', 'external planner'].includes(userRoleLower);
+  const canManageProjectTeam = !isExternalViewer;
   const dbMembers = (projectMembers || []).filter((m: any) => m.projectId === currentProjectId);
   const currentMembers = dbMembers.length > 0 ? dbMembers : (isDemo ? DEFAULT_DEMO_USERS : []);
   const allCompanyUsers = companyUsers.length > 0 ? companyUsers : (isDemo ? DEFAULT_DEMO_USERS : []);
@@ -80,29 +83,35 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
 
     // Nur interne Mitarbeiter zählen gegen das bezahlte Seat-Kontingent!
     // Handwerker (Field Guest), Bauherren (Client Guest) und externe Fachplaner sind kostenlos & unbegrenzt.
-    const isTargetInternal = targetRole === 'Internal' || targetRole === 'employee' || targetRole === 'management';
-    if (targetRole && !isTargetInternal) {
+    const roleLower = (targetRole || '').trim().toLowerCase();
+    const isTargetInternal = roleLower === 'internal' || roleLower === 'employee' || roleLower === 'management' || roleLower === 'project_lead' || roleLower === 'owner';
+    if (!isTargetInternal) {
       return true;
     }
 
     const plan = currentUser.companyPlan || currentUser.plan || 'Starter';
     if (plan.includes('Trial') || plan === 'Enterprise' || plan.includes('Workspace')) return true;
 
-    let maxSeats = 1;
-    const planLower = plan.toLowerCase();
-    if (planLower.includes('starter') && !planLower.includes('team')) maxSeats = 1;
-    else if (planLower.includes('pro')) maxSeats = 1;
-    else if (planLower.includes('team')) maxSeats = 3;
-    else if (planLower.includes('studio')) maxSeats = 5;
-    else if (planLower.includes('agency')) maxSeats = 15;
-    else if (planLower.includes('enterprise')) maxSeats = 25;
+    let maxSeats = currentUser.maxSeats || 1;
+    if (!currentUser.maxSeats) {
+      const planLower = plan.toLowerCase();
+      if (planLower.includes('starter') && !planLower.includes('team')) maxSeats = 1;
+      else if (planLower.includes('pro')) maxSeats = 1;
+      else if (planLower.includes('team') || planLower.includes('expert')) maxSeats = 3;
+      else if (planLower.includes('studio')) maxSeats = 5;
+      else if (planLower.includes('agency')) maxSeats = 15;
+      else if (planLower.includes('enterprise')) maxSeats = 25;
+    }
 
-    const internalMembers = (currentMembers || []).filter((cm: any) => {
-      const r = (cm.companyRole || cm.role || '').toLowerCase();
-      return r === 'internal' || r === 'employee' || r === 'management' || r === 'owner';
+    const internalCompanyMembers = (companyUsers || []).filter((cu: any) => {
+      if (cu.is_external === true || cu.isExternal === true || cu.status === 'external') return false;
+      if (cu.status === 'team' || cu.is_external === false) return true;
+      const r = (cu.companyRole || cu.role || '').toLowerCase();
+      return r === 'internal' || r === 'employee' || r === 'management' || r === 'project_lead' || r === 'owner';
     });
 
-    if (internalMembers.length >= maxSeats) {
+    const effectiveInternalCount = Math.max(1, internalCompanyMembers.length);
+    if (effectiveInternalCount >= maxSeats) {
       addToast(`Seat-Limit (${maxSeats} interne Lizenzen) für deinen ${plan}-Plan erreicht. Externe Handwerker & Bauherren sind unbegrenzt kostenlos.`, 'info');
       window.dispatchEvent(new CustomEvent('open-upgrade-modal'));
       return false;
@@ -120,7 +129,7 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
     const safeCompanyId = currentUser.companyId || currentUser.uid;
     const selectedUser = companyUsers.find((u: any) => u.id === selectedUserId);
     const targetRole = selectedUser?.role || 'External Partner';
-    if (!checkSeatLimit(targetRole)) return;
+    // Adding an existing company user to a project does not consume an additional company seat
     setIsProcessing(true);
     try {
       await addProjectMember(currentProjectId, {
@@ -151,13 +160,23 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
     if (!checkSeatLimit(newUserCompanyRole)) return;
     setIsProcessing(true);
     try {
-      const newUserId = `user-${Date.now()}`;
+      const newUserId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+            const r = (Math.random() * 16) | 0;
+            const v = c === 'x' ? r : (r & 0x3) | 0x8;
+            return v.toString(16);
+          });
+      const roleLower = (newUserCompanyRole || '').trim().toLowerCase();
+      const isInternalRole = roleLower === 'internal' || roleLower === 'employee' || roleLower === 'management' || roleLower === 'project_lead' || roleLower === 'owner';
       
       const { error: insertErr } = await (supabase.from('company_users') as any).insert({ 
         id: newUserId, 
         name: newUserName, 
         email: newUserEmail, 
         role: newUserCompanyRole,
+        is_external: !isInternalRole,
+        status: isInternalRole ? 'team' : 'external',
         trade: newUserTrade || null,
         company_id: safeCompanyId 
       });
@@ -172,6 +191,8 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
           name: newUserName, 
           email: newUserEmail, 
           role: newUserCompanyRole,
+          is_external: !isInternalRole,
+          status: isInternalRole ? 'team' : 'external',
           notes: fallbackNotes,
           company_id: safeCompanyId 
         });
@@ -267,9 +288,11 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
           </div>
           <div className="flex items-center gap-2 w-full md:w-auto">
             <ModuleGuideButton moduleId="team" className="h-9" />
-            <button onClick={() => setIsAddMemberModalOpen(true)} className="tour-team-add-btn flex-1 md:flex-none h-9 px-3.5 sm:px-4 bg-accent-ai text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-accent-ai/90 transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer">
-              <UserPlus size={16} /> {t('add_person')}
-            </button>
+            {canManageProjectTeam && (
+              <button onClick={() => setIsAddMemberModalOpen(true)} className="tour-team-add-btn flex-1 md:flex-none h-9 px-3.5 sm:px-4 bg-accent-ai text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-accent-ai/90 transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer">
+                <UserPlus size={16} /> {t('add_person')}
+              </button>
+            )}
           </div>
         </header>
 
@@ -340,12 +363,14 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <select value={member.projectRole} onChange={(e) => handleRoleChange(member.id, e.target.value)} className="bg-background border border-border/50 rounded-lg px-3 py-1.5 text-xs font-bold text-text-primary focus:outline-none focus:border-accent-ai cursor-pointer">
+                      <select disabled={!canManageProjectTeam} value={member.projectRole} onChange={(e) => handleRoleChange(member.id, e.target.value)} className="bg-background border border-border/50 rounded-lg px-3 py-1.5 text-xs font-bold text-text-primary focus:outline-none focus:border-accent-ai cursor-pointer disabled:opacity-60 disabled:cursor-default">
                         <option value="Viewer">{t('viewer_role')}</option><option value="Editor">{t('editor_role')}</option><option value="Admin">{t('admin_role')}</option><option value="Owner">{t('owner_role')}</option>
                       </select>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button onClick={() => handleRemoveMember(member.userId)} className="text-text-muted hover:text-red-500 p-2 rounded-md hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100" title={t('remove')}><Trash2 size={16} /></button>
+                      {canManageProjectTeam && (
+                        <button onClick={() => handleRemoveMember(member.userId)} className="text-text-muted hover:text-red-500 p-2 rounded-md hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100" title={t('remove')}><Trash2 size={16} /></button>
+                      )}
                     </td>
                   </tr>
                 );
@@ -397,7 +422,9 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
                         <div className="text-xs text-text-muted truncate font-medium">{user.email}</div>
                       </div>
                     </div>
-                    <button onClick={() => handleRemoveMember(member.userId)} className="text-text-muted hover:text-red-500 p-2 bg-background rounded-xl border border-border/50 transition-colors shrink-0"><Trash2 size={18} /></button>
+                    {canManageProjectTeam && (
+                      <button onClick={() => handleRemoveMember(member.userId)} className="text-text-muted hover:text-red-500 p-2 bg-background rounded-xl border border-border/50 transition-colors shrink-0"><Trash2 size={18} /></button>
+                    )}
                   </div>
 
                   <div className="flex items-center justify-between gap-2 pt-3 border-t border-border/50">
@@ -416,7 +443,7 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
                         );
                       })()}
                     </div>
-                    <select value={member.projectRole} onChange={(e) => handleRoleChange(member.id, e.target.value)} className="bg-background border border-border/50 rounded-lg px-2.5 py-1 text-xs font-bold text-text-primary focus:outline-none focus:border-accent-ai cursor-pointer">
+                    <select disabled={!canManageProjectTeam} value={member.projectRole} onChange={(e) => handleRoleChange(member.id, e.target.value)} className="bg-background border border-border/50 rounded-lg px-2.5 py-1 text-xs font-bold text-text-primary focus:outline-none focus:border-accent-ai cursor-pointer disabled:opacity-60 disabled:cursor-default">
                       <option value="Viewer">{t('viewer_role')}</option><option value="Editor">{t('editor_role')}</option><option value="Admin">{t('admin_role')}</option><option value="Owner">{t('owner_role')}</option>
                     </select>
                   </div>

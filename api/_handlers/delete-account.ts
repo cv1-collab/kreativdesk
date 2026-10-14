@@ -2,10 +2,6 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
 import { supabaseAdmin } from '../_auth.js';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: '2025-02-24.acacia' as any,
-});
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -39,13 +35,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { stripe_customer_id: stripeCustomerId, role, company_id: companyId } = profile;
 
     // 1. STRIPE: Cancel active subscriptions
-    if (stripeCustomerId) {
-      const subscriptions = await stripe.subscriptions.list({
-        customer: stripeCustomerId,
-        status: 'active',
-      });
-      for (const sub of subscriptions.data) {
-        await stripe.subscriptions.cancel(sub.id);
+    if (stripeCustomerId && process.env.STRIPE_SECRET_KEY) {
+      try {
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+          apiVersion: '2025-02-24.acacia' as any,
+        });
+        const subscriptions = await stripe.subscriptions.list({
+          customer: stripeCustomerId,
+          status: 'active',
+        });
+        for (const sub of subscriptions.data) {
+          await stripe.subscriptions.cancel(sub.id);
+        }
+      } catch (stripeErr) {
+        console.warn('Could not cancel Stripe subscriptions during account deletion:', stripeErr);
       }
     }
 

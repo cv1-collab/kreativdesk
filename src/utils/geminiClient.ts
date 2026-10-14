@@ -1,36 +1,60 @@
 import { supabase } from '../lib/supabase';
 import { compressBase64ImageIfNeeded } from './imageCompressor';
 
+async function normalizePart(part: any): Promise<any> {
+  if (typeof part === 'string') {
+    return { text: part };
+  }
+  if (part && part.inlineData) {
+    let inlineData = part.inlineData;
+    if (inlineData.data && inlineData.mimeType?.startsWith('image/')) {
+      const compressed = await compressBase64ImageIfNeeded(
+        inlineData.data,
+        inlineData.mimeType,
+        1_200_000 // approx 900KB
+      );
+      inlineData = { data: compressed.data, mimeType: compressed.mimeType };
+    }
+    return { ...part, inlineData };
+  }
+  if (part && part.text && !part.parts) {
+    return { text: part.text };
+  }
+  return part;
+}
+
 async function normalizeContents(contents: any): Promise<any> {
   if (typeof contents === 'string') {
-    return [{ parts: [{ text: contents }] }];
+    return [{ role: 'user', parts: [{ text: contents }] }];
   }
   if (Array.isArray(contents)) {
-    const normalized = await Promise.all(
+    const isMultiTurnContent = contents.every((item) => item && Array.isArray(item.parts));
+    if (isMultiTurnContent) {
+      return Promise.all(
+        contents.map(async (turn) => ({
+          ...turn,
+          role: turn.role || 'user',
+          parts: await Promise.all(turn.parts.map(normalizePart))
+        }))
+      );
+    }
+    // Array of parts (e.g. [{ inlineData }, { text }]) -> combine into a single multimodal user turn
+    const parts = await Promise.all(
       contents.map(async (item) => {
-        if (typeof item === 'string') {
-          return { parts: [{ text: item }] };
+        if (item && Array.isArray(item.parts)) {
+          return Promise.all(item.parts.map(normalizePart));
         }
-        if (item && item.text && !item.parts) {
-          return { parts: [{ text: item.text }] };
-        }
-        if (item && item.inlineData && !item.parts) {
-          // Automatic compression safety shield for large inline image payloads
-          let inlineData = item.inlineData;
-          if (inlineData.data && inlineData.mimeType?.startsWith('image/')) {
-            const compressed = await compressBase64ImageIfNeeded(
-              inlineData.data,
-              inlineData.mimeType,
-              1_200_000 // approx 900KB
-            );
-            inlineData = { data: compressed.data, mimeType: compressed.mimeType };
-          }
-          return { parts: [{ inlineData }] };
-        }
-        return item;
+        return normalizePart(item);
       })
     );
-    return normalized;
+    return [{ role: 'user', parts: parts.flat() }];
+  }
+  if (contents && Array.isArray(contents.parts)) {
+    return [{
+      ...contents,
+      role: contents.role || 'user',
+      parts: await Promise.all(contents.parts.map(normalizePart))
+    }];
   }
   return contents;
 }

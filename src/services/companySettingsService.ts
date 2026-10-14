@@ -92,23 +92,30 @@ export function saveCompanySettings(settings: Partial<CompanySettings>, companyI
       };
 
       // Upsert into documents table under company_settings category
-      supabase
+      let docQuery = supabase
         .from('documents')
         .select('id')
         .eq('category', 'company_settings')
-        .eq('name', 'company_profile_config')
+        .eq('name', 'company_profile_config');
+      if (safeId && safeId !== 'global') {
+        docQuery = docQuery.eq('company_id', safeId);
+      }
+      docQuery
         .maybeSingle()
         .then(({ data: existing }) => {
           if (existing?.id) {
-            supabase
+            let upd = supabase
               .from('documents')
               .update({
                 url: JSON.stringify(profileData),
                 file_url: JSON.stringify(profileData),
                 uploaded_at: new Date().toISOString()
               })
-              .eq('id', existing.id)
-              .then(() => {});
+              .eq('id', existing.id);
+            if (safeId && safeId !== 'global') {
+              upd = upd.eq('company_id', safeId);
+            }
+            upd.then(() => {});
           } else {
             supabase
               .from('documents')

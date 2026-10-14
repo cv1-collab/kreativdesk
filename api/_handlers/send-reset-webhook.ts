@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabaseAdmin } from '../_auth.js';
+import { supabaseAdmin, verifyAuth } from '../_auth.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -15,9 +15,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    const user = await verifyAuth(req);
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
     const { email } = req.body || {};
     if (!email) {
       return res.status(400).json({ error: 'Email missing' });
+    }
+
+    if (!(user as any).isSuperAdmin && user.email?.toLowerCase().trim() !== String(email).toLowerCase().trim()) {
+      return res.status(403).json({ error: 'Forbidden: Cannot request recovery link for another account' });
     }
 
     const { data, error } = await supabaseAdmin.auth.admin.generateLink({

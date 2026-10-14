@@ -13,6 +13,9 @@ export interface OfflineDefect {
   description: string;
   status: string;
   severity: string;
+  trade?: string;
+  location?: string;
+  due_date?: string;
   position: { x: number; y: number; z: number };
   image_url?: string;
   created_at: string;
@@ -94,12 +97,16 @@ export const offlineSyncManager = {
           const cleanProjectId = (d.project_id && d.project_id !== 'global') ? d.project_id : null;
           const { error } = await supabase.from('defects').insert({
             project_id: cleanProjectId,
-            company_id: d.company_id,
-            owner_id: d.owner_id,
+            company_id: d.company_id || null,
+            owner_id: d.owner_id || null,
             prompt: d.prompt,
             description: fullDesc,
             status: d.status,
             severity: d.severity,
+            trade: d.trade || null,
+            location: d.location || null,
+            due_date: d.due_date || null,
+            image_url: d.image_url || null,
             position: d.position,
             created_at: d.created_at
           });

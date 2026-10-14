@@ -145,19 +145,23 @@ export default function CompanyDashboard() {
   const notificationRef = useRef<HTMLDivElement>(null);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
+  const location = useLocation();
+
   useEffect(() => {
-    const rawPath = window.location.pathname.replace(/^\//, '').toLowerCase();
+    const rawPath = location.pathname.replace(/^\//, '').toLowerCase();
+    const mappedPath = rawPath === 'crm' ? 'team' : rawPath;
     const validTabs = ['dashboard', 'projects', 'proposals', 'team', 'documents', 'finance', 'templates', 'leads', 'agenda', 'settings', 'audit', 'meet'];
-    if (validTabs.includes(rawPath)) {
-      setActiveTab(rawPath as any);
+    if (validTabs.includes(mappedPath)) {
+      setActiveTab(mappedPath as any);
     } else {
-      const params = new URLSearchParams(window.location.search);
-      const tabParam = params.get('tab');
+      const params = new URLSearchParams(location.search);
+      const rawTabParam = params.get('tab')?.toLowerCase() || '';
+      const tabParam = rawTabParam === 'crm' ? 'team' : rawTabParam;
       if (tabParam && validTabs.includes(tabParam)) {
         setActiveTab(tabParam as any);
       }
     }
-  }, []);
+  }, [location.pathname, location.search]);
 
   useEffect(() => {
     const handleBeforeInstall = (e: Event) => {
@@ -196,7 +200,16 @@ export default function CompanyDashboard() {
   };
 
   const isSuperAdmin = checkIsSuperAdmin(currentUser?.email);
-  const userRole = isSuperAdmin ? 'owner' : (userProfile?.role || 'employee');
+  const rawRole = String(userProfile?.role || currentUser?.role || 'employee').toLowerCase().trim();
+  const isExternalUser = !isSuperAdmin && ['guest', 'client', 'external', 'partner', 'subcontractor', 'handwerker', 'bauherr', 'field guest', 'external planner'].includes(rawRole);
+  const userRole = isSuperAdmin ? 'owner' : (userProfile?.role || currentUser?.role || 'employee');
+
+  useEffect(() => {
+    if (isExternalUser && !['projects', 'meet', 'agenda'].includes(activeTab)) {
+      setActiveTabRaw('projects');
+      safeStorage.setItem('company_activeTab', 'projects');
+    }
+  }, [isExternalUser, activeTab]);
 
   const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
 
@@ -210,8 +223,8 @@ export default function CompanyDashboard() {
     const onboardingDoneInStorage = safeStorage.getString(onboardingKey) === 'true';
     const tourDoneInStorage = safeStorage.getString(tourKey) === 'true';
 
-    const needsOnboarding = currentUser.hasCompletedOnboarding !== true && !onboardingDoneInStorage;
-    const needsTour = currentUser.hasSeenTour !== true && !tourDoneInStorage;
+    const needsOnboarding = !isExternalUser && currentUser.hasCompletedOnboarding !== true && !onboardingDoneInStorage;
+    const needsTour = !isExternalUser && currentUser.hasSeenTour !== true && !tourDoneInStorage;
 
     if (needsOnboarding) {
       setShowOnboarding(true);
@@ -226,12 +239,12 @@ export default function CompanyDashboard() {
     } else {
       setShowOnboarding(false);
     }
-  }, [currentUser, startTour]);
+  }, [currentUser, startTour, isExternalUser]);
   const { hasPermission } = usePermissions();
   const { limits } = useSubscriptionLimits();
-  const canSeeFinances = hasPermission('canViewFinance');
-  const canManageSettings = hasPermission('canManageCompany');
-  const canCreateProjects = hasPermission('canCreateProject');
+  const canSeeFinances = !isExternalUser && hasPermission('canViewFinance');
+  const canManageSettings = !isExternalUser && hasPermission('canManageCompany');
+  const canCreateProjects = !isExternalUser && hasPermission('canCreateProject');
   const [allDocuments, setAllDocuments] = useState<any[]>([]);
   
   const [unreadNotifications, setUnreadNotifications] = useState(0);
@@ -300,6 +313,19 @@ export default function CompanyDashboard() {
     window.addEventListener('hashchange', handleHash);
     return () => window.removeEventListener('hashchange', handleHash);
   }, []);
+
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    try {
+      const pendingPlan = sessionStorage.getItem('pending_checkout_plan');
+      const pendingBilling = sessionStorage.getItem('pending_checkout_billing') || 'yearly';
+      const effectivePlan = String(currentUser.companyPlan || currentUser.plan || 'Free Trial');
+      const isOwner = !currentUser.role || currentUser.role.toLowerCase() === 'owner';
+      if (pendingPlan && isOwner && effectivePlan.toLowerCase().includes('trial')) {
+        navigate(`/pricing?plan=${encodeURIComponent(pendingPlan)}&billing=${encodeURIComponent(pendingBilling)}`);
+      }
+    } catch (_) {}
+  }, [currentUser, navigate]);
   
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<'blank' | 'construction'>('blank');
@@ -669,29 +695,32 @@ export default function CompanyDashboard() {
       if (isNotificationOpen && notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
         if (!(event.target as Element).closest('button[aria-label="Notifications"]')) setIsNotificationOpen(false);
       }
+      if (showMobileUserMenu && userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setShowMobileUserMenu(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [activeDropdownId, isNotificationOpen]);
+  }, [activeDropdownId, isNotificationOpen, showMobileUserMenu]);
 
   const navGroups = [
     { title: t('central'), items: [
-      { id: 'dashboard', icon: LayoutDashboard, label: t('dashboard'), className: 'tour-dashboard' },
-      { id: 'projects', icon: Building2, label: t('projects'), count: safeProjects.length, className: 'tour-projects' },
-      { id: 'proposals', icon: Globe, label: t('proposals'), className: 'tour-proposals' },
-      { id: 'finance', icon: DollarSign, label: t('finance_budget'), hide: !canSeeFinances, className: 'tour-finance' }
+      { id: 'dashboard', icon: LayoutDashboard, label: t('dashboard'), hide: isExternalUser, className: 'tour-dashboard' },
+      { id: 'projects', icon: Building2, label: t('projects'), count: safeProjects.length, hide: false, className: 'tour-projects' },
+      { id: 'proposals', icon: Globe, label: t('proposals'), hide: isExternalUser, className: 'tour-proposals' },
+      { id: 'finance', icon: DollarSign, label: t('finance_budget'), hide: !canSeeFinances || isExternalUser, className: 'tour-finance' }
     ]},
     { title: t('workspace'), items: [
-      { id: 'documents', icon: FileText, label: t('documents'), className: 'tour-documents' },
-      { id: 'templates', icon: LayoutTemplate, label: t('templates'), className: 'tour-templates' },
-      { id: 'leads', icon: Megaphone, label: t('crm_leads'), count: safeLeads.filter(l => l.status === 'neu' || l.status === 'New').length, className: 'tour-leads' },
-      { id: 'team', icon: Users, label: t('project_team'), count: safeCompanyUsers.filter((u: any) => u && (u.id || u.email || u.name || u.firstName)).length, className: 'tour-crm' },
-      { id: 'meet', icon: Video, label: 'Meet & Chat', className: 'tour-meet' },
-      { id: 'agenda', icon: CalendarDays, label: t('agenda_rapport'), className: 'tour-agenda' }
+      { id: 'documents', icon: FileText, label: t('documents'), hide: isExternalUser, className: 'tour-documents' },
+      { id: 'templates', icon: LayoutTemplate, label: t('templates'), hide: isExternalUser, className: 'tour-templates' },
+      { id: 'leads', icon: Megaphone, label: t('crm_leads'), count: safeLeads.filter(l => l.status === 'neu' || l.status === 'New').length, hide: isExternalUser, className: 'tour-leads' },
+      { id: 'team', icon: Users, label: t('project_team'), count: safeCompanyUsers.filter((u: any) => u && (u.id || u.email || u.name || u.firstName)).length, hide: isExternalUser, className: 'tour-crm' },
+      { id: 'meet', icon: Video, label: 'Meet & Chat', hide: false, className: 'tour-meet' },
+      { id: 'agenda', icon: CalendarDays, label: t('agenda_rapport'), hide: false, className: 'tour-agenda' }
     ]},
     { title: t('system'), items: [ 
-      { id: 'settings', icon: Settings, label: t('settings'), className: 'tour-settings' },
-      { id: 'audit', icon: Shield, label: t('audit_logs'), hide: !hasPermission('canManageCompany'), className: 'tour-audit' }
+      { id: 'settings', icon: Settings, label: t('settings'), hide: isExternalUser, className: 'tour-settings' },
+      { id: 'audit', icon: Shield, label: t('audit_logs'), hide: !hasPermission('canManageCompany') || isExternalUser, className: 'tour-audit' }
     ] }
   ];
 
@@ -909,9 +938,29 @@ export default function CompanyDashboard() {
           </div>
         </header>
 
-        <div className="md:hidden flex items-center gap-2 px-3 py-3 bg-surface/95 backdrop-blur-xl border-b border-border/50 overflow-x-auto hide-scrollbar shrink-0 w-full z-30 shadow-sm sticky top-14">
+        <div
+          className="md:hidden flex items-center gap-2 px-3 py-3 bg-surface/95 backdrop-blur-xl border-b border-border/50 overflow-x-auto hide-scrollbar shrink-0 w-full z-30 shadow-sm sticky top-14"
+          style={{ top: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}
+        >
           {navGroups.flatMap(g => g.items).filter(item => !item.hide).map(item => (
-            <button key={item.id} onClick={() => setActiveTab(item.id as any)} className={cn("flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap border shrink-0", activeTab === item.id ? "bg-accent-ai text-white border-accent-ai shadow-md" : "bg-background text-text-muted border-border hover:bg-white/5", (item as any).className)}>{item.label}</button>
+            <button
+              key={item.id}
+              onClick={() => {
+                setActiveTab(item.id as any);
+                if (item.id === 'documents') {
+                  setHasNewDocBadge(false);
+                  safeStorage.removeItem('has_new_document');
+                }
+              }}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap border shrink-0 transition-all cursor-pointer",
+                activeTab === item.id ? "bg-accent-ai text-white border-accent-ai shadow-md" : "bg-background text-text-muted border-border hover:bg-white/5",
+                (item as any).className
+              )}
+            >
+              <item.icon size={14} className="shrink-0" />
+              <span>{item.label}</span>
+            </button>
           ))}
         </div>
 
@@ -990,7 +1039,7 @@ export default function CompanyDashboard() {
                         <div key={p.id} onClick={() => handleProjectClick(p.id)} className="bg-surface border border-border hover:border-accent-ai/50 rounded-2xl p-5 cursor-pointer transition-all hover:shadow-lg group flex flex-col relative">
                           <div className="flex justify-between items-start mb-3">
                             <div className="w-12 h-12 rounded-xl bg-background border border-border flex items-center justify-center text-text-muted group-hover:text-accent-ai transition-colors"><Building2 size={24} /></div>
-                            {(hasPermission('canDeleteProject') || isSuperAdmin || userRole === 'owner' || userRole === 'employee' || !userRole) && (
+                            {!isExternalUser && (hasPermission('canDeleteProject') || isSuperAdmin || userRole === 'owner' || userRole === 'employee' || !userRole) && (
                               <div className="dropdown-container relative shrink-0">
                                 <button onClick={(e) => { e.stopPropagation(); setActiveDropdownId(activeDropdownId === p.id ? null : p.id); }} className="p-2 text-text-muted hover:text-text-primary hover:bg-background rounded-lg transition-colors"><MoreVertical size={16} /></button>
                                 {activeDropdownId === p.id && (
@@ -1014,13 +1063,15 @@ export default function CompanyDashboard() {
                           <div className="flex-1">
                             <div className="flex items-start justify-between gap-1 group/title">
                               <h3 className="font-bold text-base md:text-lg text-text-primary mb-1 group-hover:text-accent-ai transition-colors line-clamp-2">{p.name}</h3>
-                              <button 
-                                onClick={(e) => handleOpenEditProject(p, e)} 
-                                className="opacity-0 group-hover:opacity-100 p-1 text-text-muted hover:text-accent-ai rounded transition-opacity shrink-0" 
-                                title={t('rename_project')}
-                              >
-                                <Edit2 size={14} />
-                              </button>
+                              {!isExternalUser && (
+                                <button 
+                                  onClick={(e) => handleOpenEditProject(p, e)} 
+                                  className="opacity-0 group-hover:opacity-100 p-1 text-text-muted hover:text-accent-ai rounded transition-opacity shrink-0" 
+                                  title={t('rename_project')}
+                                >
+                                  <Edit2 size={14} />
+                                </button>
+                              )}
                             </div>
                             <p className="text-text-muted text-xs md:text-sm line-clamp-2">{p.description || t('no_description')}</p>
                           </div>

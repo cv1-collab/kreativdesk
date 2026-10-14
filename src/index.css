@@ -41,10 +41,11 @@
 }
 
 @utility top-safe {
-  top: env(safe-area-inset-top, 0px);
+  top: max(1rem, env(safe-area-inset-top, 1rem));
 }
 
 @theme {
+  --breakpoint-xs: 30rem;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   
   --color-background: var(--bg-color);
@@ -112,6 +113,16 @@ body {
 }
 
 /* Scrollbar Customization */
+.no-scrollbar,
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar,
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 .custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: var(--border-color) transparent;

@@ -19,8 +19,6 @@ interface RenderResult {
   error?: string;
 }
 
-const FAL_DEFAULT_KEY = '74ab3a75-7a36-4c81-b6b1-e7efde8627e0:396cf0c00fcf01484883bc3e6850a073';
-
 /**
  * Resizes an image data URL down to maximum 1024x1024 JPEG to ensure fast upload
  * and eliminate Vercel 4.5MB payload limits.
@@ -107,14 +105,20 @@ export async function requestAIRender(options: RenderOptions): Promise<RenderRes
       console.warn('[AIRenderService] Server proxy fetch error, attempting direct Fal:', proxyErr);
     }
 
-    // 2. Secondary Direct Fallback: Fal.run Flux Dev
+    // 2. Secondary Fallback: Authenticated Server FAL Proxy (/api/fal/proxy)
     try {
-      const falRes = await fetch('https://fal.run/fal-ai/flux/dev/image-to-image', {
+      const { data: { session } } = await supabase.auth.getSession();
+      const proxyHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'x-fal-target-url': 'https://fal.run/fal-ai/flux/dev/image-to-image'
+      };
+      if (session?.access_token) {
+        proxyHeaders['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
+      const falRes = await fetch('/api/fal/proxy', {
         method: 'POST',
-        headers: {
-          'Authorization': `Key ${FAL_DEFAULT_KEY}`,
-          'Content-Type': 'application/json'
-        },
+        headers: proxyHeaders,
         body: JSON.stringify({
           prompt: options.prompt,
           image_url: optimizedImage,
@@ -132,11 +136,11 @@ export async function requestAIRender(options: RenderOptions): Promise<RenderRes
         }
       } else {
         const falErr = await falRes.text();
-        console.error('[AIRenderService] Direct Fal failed:', falRes.status, falErr);
+        console.error('[AIRenderService] FAL proxy failed:', falRes.status, falErr);
         return { success: false, error: `KI-Render-Fehler (${falRes.status}): ${falErr.slice(0, 120)}` };
       }
     } catch (directErr: any) {
-      console.error('[AIRenderService] Direct Fal exception:', directErr);
+      console.error('[AIRenderService] FAL proxy exception:', directErr);
       return { success: false, error: directErr?.message || 'Verbindungsfehler zur KI-Engine' };
     }
 

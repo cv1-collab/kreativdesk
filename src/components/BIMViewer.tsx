@@ -711,8 +711,10 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
       const dataUrl = typeof (window as any).captureBimSnapshot === 'function' ? (window as any).captureBimSnapshot() : canvasRef.current?.toDataURL('image/png');
       const base64Data = dataUrl?.split(',')[1];
       if (!base64Data) throw new Error("No image data");
+      const mimeMatch = dataUrl?.match(/^data:(image\/[a-zA-Z0-9+.-]+);base64,/);
+      const detectedMime = mimeMatch ? mimeMatch[1] : 'image/png';
       const prompt = language === 'de' ? `Du bist ein erfahrener BIM-Auditor. Analysiere diesen Screenshot. Erstelle einen Prüfbericht in 3 Stichpunkten auf Deutsch. Verwende ausschliesslich Schweizer Rechtschreibung (immer "ss", niemals "ß").` : `You are an expert BIM auditor. Analyze this screenshot. Provide a report in 3 bullet points in English.`;
-      const response = await callGeminiAPI('gemini-2.5-flash', [ { inlineData: { data: base64Data, mimeType: 'image/png' } }, { text: prompt } ]);
+      const response = await callGeminiAPI('gemini-2.5-flash', [ { inlineData: { data: base64Data, mimeType: detectedMime } }, { text: prompt } ]);
       const text = typeof response === 'string' ? response : (response?.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || '');
       setAuditReport(text || 'Audit completed with no findings.');
       addToast(t('ai_audit_complete'), "success");
@@ -783,28 +785,46 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
 
       if (!dataUrl) throw new Error("Kein 3D-Snapshot vorhanden.");
 
-      let styleStrength = 0.50; // Calibrated for strict architectural geometry and massing preservation
-      if (activeStyle === 'sketch') styleStrength = 0.38;
-      if (activeStyle === 'cyberpunk') styleStrength = 0.58;
-      if (activeStyle === 'photoreal') styleStrength = 0.48;
-
+      let styleStrength = 0.50;
+      let mappedStyle: 'photoreal' | 'sketch' | 'comic' | 'cyberpunk' | 'twilight' = 'photoreal';
       const basePrompt = renderPrompt || 'Modern architectural building, authentic materials, natural daylight';
-      const prompt = `Architectural competition visualization of ${basePrompt}. STRICT RULE: Keep the exact 3D building volume, geometry, proportions, massing, perspective and structural lines from the image. Add realistic architectural materials (fair-faced concrete, Swiss larch timber slats, triple-glazed curtain facade), balanced soft ambient daylight, subtle glass reflections, natural surrounding landscape with pine trees. Shot on 24mm tilt-shift architectural lens, photorealistic 8K global illumination.`;
+      let prompt = '';
+
+      if (activeStyle === 'sketch') {
+        styleStrength = 0.38;
+        mappedStyle = 'sketch';
+        prompt = `Architectural hand-drawn pencil and fine-liner sketch of ${basePrompt}. STRICT RULE: Keep the exact 3D building volume, geometry, proportions, massing, perspective and structural lines from the image. Clean technical architectural drawing style on textured paper.`;
+      } else if (activeStyle === 'cyberpunk') {
+        styleStrength = 0.58;
+        mappedStyle = 'cyberpunk';
+        prompt = `Futuristic cyberpunk architectural visualization of ${basePrompt}. STRICT RULE: Keep the exact 3D building volume, geometry, proportions, massing, perspective and structural lines from the image. Neon lighting accents, wet reflections, night atmosphere, 8K Unreal Engine 5 architectural render.`;
+      } else if (activeStyle === 'bluehour' || activeStyle === 'twilight') {
+        styleStrength = 0.48;
+        mappedStyle = 'twilight';
+        prompt = `Architectural competition twilight visualization during blue hour of ${basePrompt}. STRICT RULE: Keep the exact 3D building volume, geometry, proportions, massing, perspective and structural lines from the image. Warm glowing interior lights, deep blue evening sky, subtle glass reflections, photorealistic 8K global illumination.`;
+      } else {
+        styleStrength = 0.48;
+        mappedStyle = 'photoreal';
+        prompt = `Architectural competition visualization of ${basePrompt}. STRICT RULE: Keep the exact 3D building volume, geometry, proportions, massing, perspective and structural lines from the image. Add realistic architectural materials (fair-faced concrete, Swiss larch timber slats, triple-glazed curtain facade), balanced soft ambient daylight, subtle glass reflections, natural surrounding landscape. Shot on 24mm tilt-shift architectural lens, photorealistic 8K global illumination.`;
+      }
 
       const renderRes = await requestAIRender({
         prompt,
         image: dataUrl,
         strength: styleStrength,
-        style: activeStyle as any
+        style: mappedStyle
       });
 
-      if (!renderRes.success || !renderRes.imageUrl) {
-        throw new Error(renderRes.error || t('error_generating_render'));
+      if (renderRes.success && renderRes.imageUrl) {
+        setGeneratedImage(renderRes.imageUrl);
+        setGeneratedImageUrl(renderRes.imageUrl);
+        addToast('KI Rendering erfolgreich erstellt!', 'success');
+      } else {
+        const fallbackImg = await generateEnhancedSnapshotFallback(dataUrl, activeStyle);
+        setGeneratedImage(fallbackImg);
+        setGeneratedImageUrl(fallbackImg);
+        addToast('lokales Architektur-Filter-Rendering erstellt.', 'info');
       }
-
-      setGeneratedImage(renderRes.imageUrl);
-      setGeneratedImageUrl(renderRes.imageUrl);
-      addToast('KI Rendering erfolgreich erstellt!', 'success');
     } catch (error: any) { 
       console.error("AI Render error:", error);
       addToast(error?.message || t('error_generating_render'), "error"); 
@@ -1216,7 +1236,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
                       initial={{ opacity: 0, y: 6, scale: 0.96 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 4, scale: 0.96 }}
-                      className="absolute right-0 top-full mt-1.5 w-64 bg-surface border border-border rounded-xl shadow-2xl p-1.5 z-[101] space-y-1"
+                      className="absolute left-0 sm:left-auto sm:right-0 top-full mt-1.5 w-64 max-w-[calc(100vw-2rem)] bg-surface border border-border rounded-xl shadow-2xl p-1.5 z-[101] space-y-1"
                     >
                       <div className="px-2.5 py-1 text-[10px] font-bold text-text-muted uppercase tracking-wider">
                         Dokumentation
@@ -1417,7 +1437,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
 
       {portalNode && createPortal(
         <>
-          {showRenderModal && !isMobile && (
+          {showRenderModal && (
             <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
               <div className="bg-surface border border-border rounded-2xl w-full max-w-5xl shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-3.5rem)] min-h-0 overflow-hidden m-auto">
                 <div className="p-4 sm:p-5 border-b border-border flex items-center justify-between bg-surface shrink-0 z-10">

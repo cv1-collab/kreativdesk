@@ -13,7 +13,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const token = authHeader.split('Bearer ')[1];
     const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
-    const SUPER_ADMINS = ['cv1@gmx.ch', 'carlo@vesciodesign.ch'];
+    const SUPER_ADMINS = ['cv1@gmx.ch', 'carlo@vesciodesign.ch', 'admin@kreativdesk.ch'];
     if (authErr || !user || !SUPER_ADMINS.includes(user.email?.toLowerCase() || '')) {
       return res.status(403).json({ error: 'Forbidden: Super Admin access required' });
     }

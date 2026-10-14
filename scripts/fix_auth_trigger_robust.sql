@@ -62,12 +62,13 @@ BEGIN
       LIMIT 1;
     END IF;
 
-    -- 3. STUFE 3: Vorregistrierter Kontakt in company_users (CRM) suchen
-    IF v_inv_id IS NULL AND NEW.email IS NOT NULL THEN
+    -- 3. STUFE 3: Vorregistrierter Kontakt in company_users (CRM) suchen (auch wenn Invite existiert, um v_cu_id zu verknüpfen!)
+    IF NEW.email IS NOT NULL THEN
       SELECT id, company_id, role 
       INTO v_cu_id, v_cu_company_id, v_cu_role 
       FROM public.company_users 
       WHERE lower(email) = lower(NEW.email) 
+        AND (v_inv_company_id IS NULL OR company_id = v_inv_company_id)
         AND company_id IS NOT NULL 
       ORDER BY created_at DESC 
       LIMIT 1;
@@ -101,10 +102,14 @@ BEGIN
       FROM public.companies 
       WHERE id = target_company_id LIMIT 1;
 
-      -- Normalisiere Rolle
+      -- Normalisiere Rolle (Externe Handwerker/Bauherren bleiben kostenlos als guest/client!)
       target_role := CASE 
         WHEN lower(target_role) IN ('owner', 'super_admin', 'management', 'project_lead', 'employee', 'client', 'guest') 
           THEN lower(target_role)
+        WHEN lower(target_role) IN ('bauherr')
+          THEN 'client'
+        WHEN lower(target_role) IN ('external', 'partner', 'subcontractor', 'field guest', 'external planner', 'handwerker')
+          THEN 'guest'
         ELSE 'employee'
       END;
 
@@ -139,12 +144,13 @@ BEGIN
         WHERE id = target_company_id AND (owner_id IS NULL OR target_role = 'owner');
       END IF;
 
-      -- Firmen-Lizenz-Zähler dynamisch und fehlerfrei synchronisieren:
+      -- Firmen-Lizenz-Zähler dynamisch und fehlerfrei synchronisieren (nur interne Seats, keine externen Gäste/Handwerker!):
       UPDATE public.companies 
       SET used_seats = GREATEST(1, (
         SELECT count(DISTINCT lower(COALESCE(p.email, p.id::text)))
         FROM public.profiles p
         WHERE p.company_id = target_company_id
+          AND lower(COALESCE(p.role, 'employee')) NOT IN ('guest', 'client', 'external', 'partner', 'subcontractor', 'field guest', 'external planner', 'bauherr', 'handwerker')
       ))
       WHERE id = target_company_id;
 
@@ -152,12 +158,31 @@ BEGIN
       IF v_cu_id IS NOT NULL THEN
         UPDATE public.company_users
         SET user_id = NEW.id,
-            status = 'team',
+            status = CASE WHEN target_role IN ('guest', 'client') THEN 'external' ELSE 'team' END,
+            is_external = CASE WHEN target_role IN ('guest', 'client') THEN true ELSE false END,
             role = target_role
         WHERE id = v_cu_id;
+
+        -- Vorab zugewiesene Projekt-Mitgliedschaften auf die finale Auth-UUID migrieren
+        BEGIN
+          UPDATE public.project_members
+          SET user_id = NEW.id::text
+          WHERE company_id = target_company_id
+            AND user_id = v_cu_id::text;
+        EXCEPTION WHEN OTHERS THEN
+          NULL;
+        END;
       ELSE
-        INSERT INTO public.company_users (company_id, name, email, role, status, user_id)
-        VALUES (target_company_id, user_full_name, NEW.email, target_role, 'team', NEW.id)
+        INSERT INTO public.company_users (company_id, name, email, role, status, is_external, user_id)
+        VALUES (
+          target_company_id,
+          user_full_name,
+          NEW.email,
+          target_role,
+          CASE WHEN target_role IN ('guest', 'client') THEN 'external' ELSE 'team' END,
+          CASE WHEN target_role IN ('guest', 'client') THEN true ELSE false END,
+          NEW.id
+        )
         ON CONFLICT DO NOTHING;
       END IF;
 

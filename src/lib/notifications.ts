@@ -88,7 +88,8 @@ export const sendNotification = async ({
 
       try {
         const { data: authData } = await supabase.auth.getUser();
-        const actorId = authData?.user?.id || (notifObj as any).userId || 'system';
+        const rawActorId = authData?.user?.id || (notifObj as any).userId || null;
+        const actorId = rawActorId && isUUID(rawActorId) ? rawActorId : null;
         await supabase.from('audit_logs').insert({
           company_id: companyId,
           user_id: actorId,

@@ -18,6 +18,11 @@ export const offboardProject = async (projectId: string, companyId?: string) => 
     await supabase.from('transactions').delete().eq('project_id', projectId);
     await supabase.from('time_entries').delete().eq('project_id', projectId);
     await supabase.from('documents').delete().eq('category', 'system_config').in('name', [`schedule_${projectId}`, `finance_${projectId}`]);
+    try { await supabase.from('smart_proposals').delete().eq('project_id', projectId); } catch {}
+    try { await supabase.from('tasks').delete().eq('project_id', projectId); } catch {}
+    try { await supabase.from('audio_notes').delete().eq('project_id', projectId); } catch {}
+    try { await supabase.from('whiteboard_exports').delete().eq('project_id', projectId); } catch {}
+    try { await supabase.from('site_data').delete().eq('project_id', projectId); } catch {}
 
     // 2. Delete main project record by ID directly
     const { error } = await supabase

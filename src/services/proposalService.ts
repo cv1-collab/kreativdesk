@@ -381,21 +381,40 @@ export async function extendProposalExpiry(proposalId: string, days: number = 30
  */
 export async function acceptProposalByClient(
   proposalId: string, 
-  acceptanceData: { name: string; email: string; signatureNote?: string; selectedOptionIds: string[]; finalPrice: number }
+  acceptanceData: {
+    name: string;
+    email: string;
+    signatureNote?: string;
+    selectedOptionIds: string[];
+    finalPrice: number;
+    shareToken?: string;
+    companyId?: string;
+    title?: string;
+  }
 ): Promise<boolean> {
   const now = new Date().toISOString();
   const all = safeStorage.getItem<SmartProposal[]>(STORAGE_KEY, []);
   const item = all.find(p => p.id === proposalId);
 
+  let resolvedCompanyId = acceptanceData.companyId || item?.companyId;
+  let resolvedTitle = acceptanceData.title || item?.title || 'Offerte';
+
   try {
     if (supabase) {
-      const { data: propRow } = await supabase
-        .from('smart_proposals')
-        .select('company_id, title, project_id, share_token')
-        .eq('id', proposalId)
-        .maybeSingle();
+      let propRow: any = null;
+      try {
+        const { data } = await supabase
+          .from('smart_proposals')
+          .select('company_id, title, project_id, share_token')
+          .eq('id', proposalId)
+          .maybeSingle();
+        propRow = data;
+      } catch (_) {}
 
-      const shareToken = (propRow as any)?.share_token || (item as any)?.shareToken;
+      if (propRow?.company_id) resolvedCompanyId = propRow.company_id;
+      if (propRow?.title) resolvedTitle = propRow.title;
+
+      const shareToken = acceptanceData.shareToken || (propRow as any)?.share_token || (item as any)?.shareToken;
 
       let rpcSuccess = false;
       if (shareToken) {
@@ -413,31 +432,22 @@ export async function acceptProposalByClient(
       }
 
       if (!rpcSuccess) {
-        await supabase
-          .from('smart_proposals')
-          .update({
-            status: 'accepted',
-            accepted_at: now,
-            accepted_by: acceptanceData,
-            updated_at: now
-          })
-          .eq('id', proposalId);
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          await supabase
+            .from('smart_proposals')
+            .update({
+              status: 'accepted',
+              accepted_at: now,
+              accepted_by: acceptanceData,
+              updated_at: now
+            })
+            .eq('id', proposalId);
+        }
       }
 
-      const targetCompanyId = propRow?.company_id || item?.companyId;
-      if (targetCompanyId) {
-        const priceText = typeof acceptanceData.finalPrice === 'number'
-          ? ` (CHF ${acceptanceData.finalPrice.toLocaleString('de-CH')})`
-          : '';
-        await supabase.from('notifications').insert({
-          company_id: targetCompanyId,
-          title: 'Offerte digital angenommen',
-          message: `${acceptanceData.name} hat die Offerte «${propRow?.title || item?.title || 'Offerte'}»${priceText} digital unterzeichnet.`,
-          type: 'proposal_accepted',
-          read: false,
-          created_at: now
-        });
-      }
+      // Note: Server-side notification is created by /api/webhook/lead using supabaseAdmin
+      // so unauthenticated external customers don't hit RLS errors on notifications.
     }
   } catch (e) {
     console.warn('Supabase accept error:', e);
@@ -454,13 +464,24 @@ export async function acceptProposalByClient(
   // Trigger Webhook Event for Outbound CRM & Team Notification
   try {
     const customWebhookUrl = safeStorage.getString('interactv_webhook_url', '') || null;
+    const { data: { session } } = await supabase.auth.getSession();
+    const whHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (session?.access_token) {
+      whHeaders['Authorization'] = `Bearer ${session.access_token}`;
+    }
     fetch('/api/webhook/lead', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: whHeaders,
       body: JSON.stringify({
         event: 'PROPOSAL_ACCEPTED',
         proposalId,
-        acceptanceData,
+        companyId: resolvedCompanyId,
+        proposalTitle: resolvedTitle,
+        acceptanceData: {
+          ...acceptanceData,
+          acceptedByName: acceptanceData.name,
+          finalTotalCHF: acceptanceData.finalPrice
+        },
         acceptedAt: now,
         webhookUrl: customWebhookUrl
       })
@@ -517,11 +538,15 @@ export async function deleteProposal(proposalId: string): Promise<boolean> {
 function incrementProposalViews(id: string, currentViews: number) {
   try {
     if (supabase) {
-      supabase
-        .from('smart_proposals')
-        .update({ views_count: currentViews + 1, last_viewed_at: new Date().toISOString() })
-        .eq('id', id)
-        .then();
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.access_token) {
+          supabase
+            .from('smart_proposals')
+            .update({ views_count: currentViews + 1, last_viewed_at: new Date().toISOString() })
+            .eq('id', id)
+            .then();
+        }
+      }).catch(() => {});
     }
   } catch (e) {}
 }

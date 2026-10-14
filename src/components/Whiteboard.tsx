@@ -56,10 +56,33 @@ interface LayerData {
   items: any[]; 
 }
 
-let wbCache = {
-  layers: [{ id: 'layer-1', name: 'Ebene 1 (Basis)', visible: true, items: [] }] as LayerData[],
-  activeLayerId: 'layer-1', bgImageSrc: null as string | null, bgImagePos: { x: 0, y: 0 },
-  stageScale: 1, stagePos: { x: 0, y: 0 }, activeColor: '#3b82f6'
+interface WbCacheEntry {
+  layers: LayerData[];
+  activeLayerId: string;
+  bgImageSrc: string | null;
+  bgImagePos: { x: number; y: number };
+  stageScale: number;
+  stagePos: { x: number; y: number };
+  activeColor: string;
+}
+
+const createDefaultWbState = (): WbCacheEntry => ({
+  layers: [{ id: 'layer-1', name: 'Ebene 1 (Basis)', visible: true, items: [] }],
+  activeLayerId: 'layer-1',
+  bgImageSrc: null,
+  bgImagePos: { x: 0, y: 0 },
+  stageScale: 1,
+  stagePos: { x: 0, y: 0 },
+  activeColor: '#3b82f6'
+});
+
+const wbCacheByProject: Record<string, WbCacheEntry> = {};
+const getProjectWbCache = (pid: string | undefined): WbCacheEntry => {
+  const key = pid || 'global';
+  if (!wbCacheByProject[key]) {
+    wbCacheByProject[key] = createDefaultWbState();
+  }
+  return wbCacheByProject[key];
 };
 
 const getDraftStorageKey = (pid: string | undefined) => `wb_draft_${pid || 'global'}`;
@@ -67,7 +90,7 @@ const getDraftStorageKey = (pid: string | undefined) => `wb_draft_${pid || 'glob
 const loadProjectDraft = (pid: string | undefined) => {
   try {
     const key = getDraftStorageKey(pid);
-    const saved = safeStorage.getItem<any>(key, null) || safeStorage.getItem<any>('wb_draft_latest', null);
+    const saved = safeStorage.getItem<any>(key, null);
     if (saved && Array.isArray(saved.layers) && saved.layers.length > 0) {
       return saved;
     }
@@ -388,12 +411,13 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
   };
 
   const initialDraft = useRef(loadProjectDraft(projectId)).current;
+  const initialCache = getProjectWbCache(projectId);
 
   const [mobileTab, setMobileTab] = useState<'whiteboard' | 'audio'>('whiteboard');
   const [tool, setTool] = useState('pen');
-  const [activeColor, setActiveColor] = useState(initialDraft?.activeColor || wbCache.activeColor);
+  const [activeColor, setActiveColor] = useState(initialDraft?.activeColor || initialCache.activeColor);
   const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
-  const [layers, setLayers] = useState<LayerData[]>(initialDraft?.layers || wbCache.layers);
+  const [layers, setLayers] = useState<LayerData[]>(initialDraft?.layers || initialCache.layers);
   const [history, setHistory] = useState<LayerData[][]>([]);
   const [future, setFuture] = useState<LayerData[][]>([]);
   const layersBeforeActionRef = useRef<LayerData[] | null>(null);
@@ -441,13 +465,13 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
       return prevFuture.slice(1);
     });
   }, []);
-  const [activeLayerId, setActiveLayerId] = useState<string>(initialDraft?.activeLayerId || wbCache.activeLayerId);
+  const [activeLayerId, setActiveLayerId] = useState<string>(initialDraft?.activeLayerId || initialCache.activeLayerId);
   const [showLayersPanel, setShowLayersPanel] = useState(false);
 
-  const [stageScale, setStageScale] = useState(initialDraft?.stageScale || wbCache.stageScale);
-  const [stagePos, setStagePos] = useState(initialDraft?.stagePos || wbCache.stagePos);
-  const [bgImagePos, setBgImagePos] = useState(initialDraft?.bgImagePos || wbCache.bgImagePos);
-  const [bgImageSrc, setBgImageSrc] = useState<string | null>(initialDraft?.bgImageSrc || wbCache.bgImageSrc);
+  const [stageScale, setStageScale] = useState(initialDraft?.stageScale || initialCache.stageScale);
+  const [stagePos, setStagePos] = useState(initialDraft?.stagePos || initialCache.stagePos);
+  const [bgImagePos, setBgImagePos] = useState(initialDraft?.bgImagePos || initialCache.bgImagePos);
+  const [bgImageSrc, setBgImageSrc] = useState<string | null>(initialDraft?.bgImageSrc || initialCache.bgImageSrc);
   const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
 
   const wbChannelRef = useRef<any>(null);
@@ -488,7 +512,7 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
   useEffect(() => {
     let isMounted = true;
 
-    // A) Lokalen Entwurf sofort anzeigen für reaktionsschnelles Laden
+    // A) Lokalen Entwurf sofort anzeigen für reaktionsschnelles Laden (oder sauber zurücksetzen bei Projektwechsel)
     const draft = loadProjectDraft(projectId);
     if (draft && Array.isArray(draft.layers) && draft.layers.length > 0) {
       setLayers(draft.layers);
@@ -502,6 +526,15 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
       setStageScale(draft.stageScale || 1);
       setStagePos(draft.stagePos || { x: 0, y: 0 });
       setActiveColor(draft.activeColor || '#3b82f6');
+    } else {
+      const cleanState = getProjectWbCache(projectId);
+      setLayers(cleanState.layers);
+      setActiveLayerId(cleanState.activeLayerId);
+      setBgImageSrc(cleanState.bgImageSrc);
+      setBgImagePos(cleanState.bgImagePos);
+      setStageScale(cleanState.stageScale);
+      setStagePos(cleanState.stagePos);
+      setActiveColor(cleanState.activeColor);
     }
 
     // B) Zentralen Projekt-Stand aus Supabase site_data abrufen (Team-Stand)
@@ -526,7 +559,7 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
             if (cloud.stagePos) setStagePos(cloud.stagePos);
             if (cloud.activeColor) setActiveColor(cloud.activeColor);
 
-            wbCache = {
+            wbCacheByProject[projectId || 'global'] = {
               layers: cloud.layers,
               activeLayerId: cloud.activeLayerId || 'layer-1',
               bgImageSrc: cloud.bgImageSrc || null,
@@ -651,7 +684,7 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    wbCache = { layers, activeLayerId, bgImageSrc, bgImagePos, stageScale, stagePos, activeColor };
+    wbCacheByProject[projectId || 'global'] = { layers, activeLayerId, bgImageSrc, bgImagePos, stageScale, stagePos, activeColor };
     
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
@@ -671,7 +704,6 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
         };
         const key = getDraftStorageKey(projectId);
         safeStorage.setItem(key, draftData);
-        safeStorage.setItem('wb_draft_latest', draftData);
 
         // In Supabase site_data sichern, wenn ein echtes Projekt aktiv ist und keine Remote-Aktualisierung empfangen wird
         const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || activeProject?.company_id || null;
@@ -1303,8 +1335,6 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
     window.addEventListener('paste', handlePaste);
     return () => window.removeEventListener('paste', handlePaste);
   }, []);
-
-  useEffect(() => { wbCache = { layers, activeLayerId, bgImageSrc, bgImagePos, stageScale, stagePos, activeColor }; }, [layers, activeLayerId, bgImageSrc, bgImagePos, stageScale, stagePos, activeColor]);
 
   useEffect(() => {
     if (bgImageSrc) { const img = new window.Image(); img.crossOrigin = 'anonymous'; img.src = bgImageSrc; img.onload = () => setBgImage(img); } 

@@ -518,7 +518,7 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
 
       await supabase.from('transactions').insert({ 
         type: 'operating_cost', 
-        amount: Number(opCostData.amount), 
+        amount: -Math.abs(Number(opCostData.amount) || 0), 
         category: opCostData.category, 
         description: enrichedDescription, 
         date: opCostData.date, 
@@ -870,7 +870,7 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
                           )}
                           <button 
                             onClick={() => setOpCostReceipts(opCostReceipts.filter((_, i) => i !== index))} 
-                            className="absolute inset-0 bg-red-500/85 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                            className="absolute inset-0 bg-red-500/85 text-white flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity cursor-pointer"
                           >
                             <Trash2 size={20} />
                           </button>
@@ -972,15 +972,13 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
             <button 
               onClick={() => setIsPdfStudioOpen(true)} 
               disabled={!opCostData.amount || isAnalyzingAI || isSubmitting} 
-              className="hidden md:flex w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-sky-500 via-blue-600 to-sky-600 hover:from-sky-400 hover:to-blue-500 text-white rounded-xl font-bold text-xs sm:text-sm shadow-lg shadow-sky-500/20 transition-all disabled:opacity-50 items-center justify-center gap-2 cursor-pointer active:scale-95"
+              className="flex w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-sky-500 via-blue-600 to-sky-600 hover:from-sky-400 hover:to-blue-500 text-white rounded-xl font-bold text-xs sm:text-sm shadow-lg shadow-sky-500/20 transition-all disabled:opacity-50 items-center justify-center gap-2 cursor-pointer active:scale-95"
             >
               {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
-              <span>Universal PDF Beleg erstellen & Verbuchen</span>
+              <span className="md:hidden">Beleg speichern & Verbuchen</span>
+              <span className="hidden md:inline">Universal PDF Beleg erstellen & Verbuchen</span>
               <ArrowUpRight size={15} />
             </button>
-            <div className="md:hidden text-center text-xs text-text-muted font-medium py-1">
-              PDF-Belegerstellung ist am Desktop verfügbar.
-            </div>
           </div>
 
         </div>

@@ -231,17 +231,37 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const setupMediaSources = async () => {
     if (!navigator?.mediaDevices?.getUserMedia) {
-      addToast("Kamera oder Mikrofon wird auf diesem Gerät nicht unterstützt.", "info");
-      return null;
+      addToast("Kamera oder Mikrofon wird auf diesem Gerät nicht unterstützt – Beitritt im Zuhörer-Modus.", "info");
+      const emptyStream = new MediaStream();
+      setLocalStream(emptyStream);
+      setIsCamOn(false);
+      setIsMicOn(false);
+      return emptyStream;
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       setLocalStream(stream);
+      setIsCamOn(true);
+      setIsMicOn(true);
       return stream;
     } catch (error: any) {
-      console.warn("Media access not allowed or unavailable:", error?.message || error);
-      addToast("Kamera oder Mikrofon Zugriff nicht gestattet.", "info");
-      return null;
+      console.warn("Video+Audio access failed, trying audio-only fallback:", error?.message || error);
+      try {
+        const audioStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+        setLocalStream(audioStream);
+        setIsCamOn(false);
+        setIsMicOn(true);
+        addToast("Kamera nicht verfügbar – Audio-Modus aktiviert.", "info");
+        return audioStream;
+      } catch (audioErr: any) {
+        console.warn("Audio-only access also failed, falling back to receive-only stream:", audioErr?.message || audioErr);
+        addToast("Kamera/Mikrofon nicht freigegeben – Beitritt im Zuhörer-Modus.", "info");
+        const emptyStream = new MediaStream();
+        setLocalStream(emptyStream);
+        setIsCamOn(false);
+        setIsMicOn(false);
+        return emptyStream;
+      }
     }
   };
 
@@ -289,6 +309,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const activeChannelRef = useRef<any>(null);
   const iceCandidateQueueRef = useRef<Record<string, RTCIceCandidateInit[]>>({});
+  const makingOfferRef = useRef<Record<string, boolean>>({});
 
   const processIceQueue = async (peerId: string, pc: RTCPeerConnection) => {
     const queue = iceCandidateQueueRef.current[peerId];
@@ -312,6 +333,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       delete pcsRef.current[peerId];
     }
     delete iceCandidateQueueRef.current[peerId];
+    delete makingOfferRef.current[peerId];
     delete pcsRemoteStreamsRef.current[peerId];
     setRemoteStreams(prev => {
       if (!prev[peerId]) return prev;
@@ -356,9 +378,23 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const pc = new RTCPeerConnection(servers);
     pcsRef.current[peerId] = pc;
 
-    stream.getTracks().forEach(track => {
-      pc.addTrack(track, stream);
-    });
+    const activeScreenTrack = screenStreamRef.current?.getVideoTracks()[0];
+    const audioTracks = stream.getAudioTracks();
+    const videoTracks = stream.getVideoTracks();
+
+    if (audioTracks.length > 0) {
+      audioTracks.forEach(track => pc.addTrack(track, stream));
+    } else {
+      try { pc.addTransceiver('audio', { direction: 'recvonly' }); } catch (e) {}
+    }
+
+    if (activeScreenTrack && screenStreamRef.current) {
+      pc.addTrack(activeScreenTrack, screenStreamRef.current);
+    } else if (videoTracks.length > 0) {
+      videoTracks.forEach(track => pc.addTrack(track, stream));
+    } else {
+      try { pc.addTransceiver('video', { direction: 'recvonly' }); } catch (e) {}
+    }
 
     setTimeout(adjustMeshBandwidth, 400);
 
@@ -409,20 +445,25 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             (pc as any).restartIce();
           }
           if (myIdRef.current < peerId && activeChannelRef.current) {
-            const offer = await pc.createOffer({ iceRestart: true });
-            await pc.setLocalDescription(offer);
-            activeChannelRef.current.send({
-              type: 'broadcast',
-              event: 'signal',
-              payload: {
-                from: myIdRef.current,
-                fromName: getMyDisplayName(),
-                fromAvatar: getMyAvatar(),
-                to: peerId,
-                type: 'offer',
-                offer: { sdp: offer.sdp, type: offer.type }
-              }
-            });
+            makingOfferRef.current[peerId] = true;
+            try {
+              const offer = await pc.createOffer({ iceRestart: true });
+              await pc.setLocalDescription(offer);
+              activeChannelRef.current.send({
+                type: 'broadcast',
+                event: 'signal',
+                payload: {
+                  from: myIdRef.current,
+                  fromName: getMyDisplayName(),
+                  fromAvatar: getMyAvatar(),
+                  to: peerId,
+                  type: 'offer',
+                  offer: { sdp: offer.sdp, type: offer.type }
+                }
+              });
+            } finally {
+              makingOfferRef.current[peerId] = false;
+            }
           }
         } catch (e) {
           console.error("ICE restart error:", e);
@@ -432,11 +473,42 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       } else if (pc.iceConnectionState === 'closed') {
         cleanUpPeer(peerId);
       } else if (pc.iceConnectionState === 'disconnected') {
-        setTimeout(() => {
-          if (pcsRef.current[peerId] && pcsRef.current[peerId].iceConnectionState === 'disconnected') {
-            cleanUpPeer(peerId);
+        // Attempt graceful ICE recovery after 4s; only drop peer if still disconnected after 15s
+        setTimeout(async () => {
+          const currentPc = pcsRef.current[peerId];
+          if (currentPc && currentPc.iceConnectionState === 'disconnected') {
+            if (myIdRef.current < peerId && activeChannelRef.current && currentPc.signalingState === 'stable') {
+              try {
+                makingOfferRef.current[peerId] = true;
+                const offer = await currentPc.createOffer({ iceRestart: true });
+                await currentPc.setLocalDescription(offer);
+                activeChannelRef.current.send({
+                  type: 'broadcast',
+                  event: 'signal',
+                  payload: {
+                    from: myIdRef.current,
+                    fromName: getMyDisplayName(),
+                    fromAvatar: getMyAvatar(),
+                    to: peerId,
+                    type: 'offer',
+                    offer: { sdp: offer.sdp, type: offer.type }
+                  }
+                });
+              } catch (e) {
+                console.warn("Graceful ICE restart on disconnect failed:", e);
+              } finally {
+                makingOfferRef.current[peerId] = false;
+              }
+            }
           }
         }, 4000);
+
+        setTimeout(() => {
+          const currentPc = pcsRef.current[peerId];
+          if (currentPc && (currentPc.iceConnectionState === 'disconnected' || currentPc.iceConnectionState === 'failed')) {
+            cleanUpPeer(peerId);
+          }
+        }, 15000);
       }
     };
 
@@ -444,6 +516,16 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const joinMeshNetwork = async (currentCallId: string, stream: MediaStream) => {
+    // Clean up any existing active mesh channel before joining a new one
+    if (activeChannelRef.current) {
+      try {
+        activeChannelRef.current.untrack().catch(() => {});
+        activeChannelRef.current.unsubscribe();
+      } catch (e) {}
+      activeChannelRef.current = null;
+    }
+    Object.keys(pcsRef.current).forEach(pid => cleanUpPeer(pid));
+
     const myId = myIdRef.current;
     const myName = getMyDisplayName();
     const myAvatar = getMyAvatar();
@@ -456,6 +538,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const initiateOfferToPeer = async (peerId: string) => {
       if (peerId !== myId && !pcsRef.current[peerId]) {
         try {
+          makingOfferRef.current[peerId] = true;
           const pc = createPeerConnection(peerId, currentCallId, stream);
           const offer = await pc.createOffer();
           await pc.setLocalDescription(offer);
@@ -473,6 +556,8 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           });
         } catch (err) {
           console.error(`Error creating WebRTC offer for ${peerId}:`, err);
+        } finally {
+          makingOfferRef.current[peerId] = false;
         }
       }
     };
@@ -487,49 +572,75 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
         let pc = pcsRef.current[peerId];
 
-        if (payload.type === 'offer') {
-          if (!pc || pc.signalingState === 'closed') {
-            pc = createPeerConnection(peerId, currentCallId, stream);
-          }
-          await pc.setRemoteDescription(new RTCSessionDescription(payload.offer));
-          await processIceQueue(peerId, pc);
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-          channel.send({
-            type: 'broadcast',
-            event: 'signal',
-            payload: {
-              from: myId,
-              fromName: myName,
-              fromAvatar: myAvatar,
-              to: peerId,
-              type: 'answer',
-              answer: { sdp: answer.sdp, type: answer.type }
+        try {
+          if (payload.type === 'offer') {
+            if (!pc || pc.signalingState === 'closed') {
+              pc = createPeerConnection(peerId, currentCallId, stream);
             }
-          });
-        } else if (payload.type === 'answer') {
-          if (pc && pc.signalingState !== 'stable') {
-            await pc.setRemoteDescription(new RTCSessionDescription(payload.answer));
+            const isPolite = myId > peerId;
+            const offerCollision = makingOfferRef.current[peerId] || pc.signalingState !== 'stable';
+            if (offerCollision) {
+              if (!isPolite) {
+                return;
+              }
+              await Promise.all([
+                pc.setLocalDescription({ type: 'rollback' }),
+                pc.setRemoteDescription(new RTCSessionDescription(payload.offer))
+              ]);
+            } else {
+              await pc.setRemoteDescription(new RTCSessionDescription(payload.offer));
+            }
             await processIceQueue(peerId, pc);
-          }
-        } else if (payload.type === 'candidate') {
-          if (pc && pc.remoteDescription && pc.remoteDescription.type) {
-            await pc.addIceCandidate(new RTCIceCandidate(payload.candidate)).catch(console.error);
-          } else {
-            if (!iceCandidateQueueRef.current[peerId]) {
-              iceCandidateQueueRef.current[peerId] = [];
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            channel.send({
+              type: 'broadcast',
+              event: 'signal',
+              payload: {
+                from: myId,
+                fromName: myName,
+                fromAvatar: myAvatar,
+                to: peerId,
+                type: 'answer',
+                answer: { sdp: answer.sdp, type: answer.type }
+              }
+            });
+          } else if (payload.type === 'answer') {
+            if (pc && pc.signalingState === 'have-local-offer') {
+              await pc.setRemoteDescription(new RTCSessionDescription(payload.answer));
+              await processIceQueue(peerId, pc);
             }
-            iceCandidateQueueRef.current[peerId].push(payload.candidate);
+          } else if (payload.type === 'candidate') {
+            if (pc && pc.remoteDescription && pc.remoteDescription.type) {
+              await pc.addIceCandidate(new RTCIceCandidate(payload.candidate)).catch(console.error);
+            } else {
+              if (!iceCandidateQueueRef.current[peerId]) {
+                iceCandidateQueueRef.current[peerId] = [];
+              }
+              iceCandidateQueueRef.current[peerId].push(payload.candidate);
+            }
           }
+        } catch (sigErr) {
+          console.warn(`[WebRTC] Signaling error with peer ${peerId}:`, sigErr);
         }
       })
       .on('broadcast', { event: 'join' }, async ({ payload }) => {
         const peerId = payload.peerId;
+        if (!peerId || peerId === myId) return;
         if (payload.name) {
           setPeerInfo(prev => ({ ...prev, [peerId]: { name: payload.name, avatar: payload.avatar } }));
         }
-        if (peerId !== myId && !pcsRef.current[peerId] && myId < peerId) {
-          await initiateOfferToPeer(peerId);
+        if (!pcsRef.current[peerId]) {
+          if (myId < peerId) {
+            await initiateOfferToPeer(peerId);
+          } else {
+            // Announce ourselves back so the smaller-ID peer immediately initiates an offer without waiting for Presence sync
+            channel.send({
+              type: 'broadcast',
+              event: 'join',
+              payload: { peerId: myId, name: myName, avatar: myAvatar }
+            });
+          }
         }
       })
       .on('broadcast', { event: 'leave' }, ({ payload }) => {

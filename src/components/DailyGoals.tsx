@@ -69,9 +69,17 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
         .order('created_at', { ascending: false });
 
       if (data) {
-        setGoals(data.map(d => {
+        const parsed = data.map(d => {
           let priorityVal: 'Low' | 'Medium' | 'High' = 'Medium';
           let displayTitle = d.title || '';
+          let goalProjId = (d as any).project_id || '';
+
+          const projMatch = displayTitle.match(/^\[Proj:([^\]]+)\]\s*/);
+          if (projMatch) {
+            goalProjId = projMatch[1];
+            displayTitle = displayTitle.replace(projMatch[0], '');
+          }
+
           if (displayTitle.startsWith('[High] ')) {
             priorityVal = 'High';
             displayTitle = displayTitle.replace('[High] ', '');
@@ -88,9 +96,14 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
             completed: d.current_value === 1 || (d as any).completed === true,
             priority: priorityVal,
             createdAt: d.created_at,
-            projectId
+            projectId: goalProjId || 'global'
           };
-        }));
+        });
+
+        const scoped = (projectId && projectId !== 'global')
+          ? parsed.filter(g => g.projectId === projectId || g.projectId === 'global')
+          : parsed;
+        setGoals(scoped);
       }
     } catch (err) {
       console.error("Error fetching goals:", err);
@@ -112,11 +125,23 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
 
   const handleAddGoal = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newGoal.trim() || !currentUser) return;
+    if (!newGoal.trim()) return;
+    if (isDemoMode) {
+      setGoals(prev => [
+        { id: `demo-${Date.now()}`, title: newGoal.trim(), completed: false, priority, projectId },
+        ...prev
+      ]);
+      setNewGoal('');
+      setIsAdding(false);
+      return;
+    }
+    if (!currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     try {
-      const fullTitle = priority !== 'Medium' ? `[${priority}] ${newGoal.trim()}` : newGoal.trim();
+      const projPrefix = (projectId && projectId !== 'global') ? `[Proj:${projectId}] ` : '';
+      const prioPrefix = priority !== 'Medium' ? `[${priority}] ` : '';
+      const fullTitle = `${projPrefix}${prioPrefix}${newGoal.trim()}`;
       await supabase.from('goals').insert({
         title: fullTitle,
         company_id: safeCompanyId,
@@ -134,6 +159,10 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
   };
 
   const handleToggleGoal = async (goalId: string, currentCompleted: boolean) => {
+    if (isDemoMode) {
+      setGoals(prev => prev.map(g => g.id === goalId ? { ...g, completed: !currentCompleted } : g));
+      return;
+    }
     try {
       await supabase.from('goals').update({ current_value: !currentCompleted ? 1 : 0 }).eq('id', goalId);
       setGoals(prev => prev.map(g => g.id === goalId ? { ...g, completed: !currentCompleted } : g));
@@ -143,6 +172,10 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
   };
 
   const handleDeleteGoal = async (goalId: string) => {
+    if (isDemoMode) {
+      setGoals(prev => prev.filter(g => g.id !== goalId));
+      return;
+    }
     try {
       await supabase.from('goals').delete().eq('id', goalId);
       setGoals(prev => prev.filter(g => g.id !== goalId));
@@ -172,10 +205,11 @@ Antworte als reines JSON-Array von Strings, z.B. ["Bewehrung EG prüfen", "Elekt
       if (Array.isArray(suggestions)) {
         const safeCompanyId = currentUser?.companyId || currentUser?.uid;
         if (safeCompanyId) {
+          const projPrefix = (projectId && projectId !== 'global') ? `[Proj:${projectId}] ` : '';
           for (const title of suggestions) {
             await supabase.from('goals').insert({
               company_id: safeCompanyId,
-              title: `[High] ${title}`,
+              title: `${projPrefix}[High] ${title}`,
               target_value: 1,
               current_value: 0,
               created_at: new Date().toISOString()

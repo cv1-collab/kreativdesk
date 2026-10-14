@@ -89,7 +89,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               Die Details und Projektunterlagen werden nun in die Bearbeitung übergeben. Bei Fragen stehen wir Ihnen jederzeit gerne zur Verfügung.
             </p>
             <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
-            <p style="color: #94a3b8; font-size: 12px; margin: 0;">Kreativ Desk OS • interacTV AG</p>
+            <p style="color: #94a3b8; font-size: 12px; margin: 0;">${String(quoteData.senderCompany || 'Kreativ Desk OS').replace(/[<>&"]/g, '')}</p>
           </div>
         `;
 

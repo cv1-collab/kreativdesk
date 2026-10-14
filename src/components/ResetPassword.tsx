@@ -23,17 +23,50 @@ export default function ResetPassword() {
   const isGerman = language === 'de';
 
   useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+
+    // 1. Check for expired or invalid recovery link errors in URL hash or query
+    const errorCode = hashParams.get('error_code') || searchParams.get('error_code');
+    const errorDesc = hashParams.get('error_description') || searchParams.get('error_description');
+    if (errorCode || errorDesc) {
+      setError(
+        isGerman
+          ? 'Dieser Passwort-Reset-Link ist abgelaufen oder wurde bereits verwendet. Bitte fordere auf der Login-Seite einen neuen Link an.'
+          : 'This password reset link has expired or has already been used. Please request a new link on the login page.'
+      );
+    }
+
+    // 2. Handle token_hash recovery links (?token_hash=...&type=recovery)
+    const tokenHash = searchParams.get('token_hash');
+    const type = searchParams.get('type') || 'recovery';
+    if (tokenHash && type === 'recovery') {
+      supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' }).catch((err) => {
+        console.warn('Recovery OTP verification info:', err);
+      });
+    }
+
+    // 3. Handle PKCE code recovery links (?code=...) if session not yet established
+    const code = searchParams.get('code');
+    if (code) {
+      supabase.auth.getSession().then(({ data }) => {
+        if (!data.session) {
+          supabase.auth.exchangeCodeForSession(code).catch(() => {});
+        }
+      });
+    }
+
     // Listen for auth state recovery session
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
-        console.log("Password recovery event received.");
+        setError('');
       }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [isGerman]);
 
   const handleLanguageToggle = () => {
     setLanguage(isGerman ? 'en' : 'de');

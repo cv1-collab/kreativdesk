@@ -164,7 +164,7 @@ export default function AdminUsersTab() {
         const activeList = profs.map(u => {
           const comp = u.company_id ? companiesMap.get(u.company_id) : (companies || []).find(c => c.owner_id === u.id);
           const isSuper = checkIsSuperAdmin(u.email);
-          const isOwner = isSuper || (comp ? comp.owner_id === u.id : (u.role === 'owner' || !u.role));
+          const isOwner = isSuper || (comp ? (comp.owner_id === u.id || u.role === 'owner') : (u.role === 'owner' || !u.role));
           const companyName = comp?.name || (isSuper ? 'Kreativ Desk OS' : 'Workspace');
           const companyPlan = comp?.plan || u.plan || 'Enterprise';
           const maxSeats = comp?.max_seats || 1;
@@ -883,10 +883,12 @@ export default function AdminUsersTab() {
                       onChange={e => setPlan(e.target.value)}
                       className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500"
                     >
-                      <option value="Enterprise">Enterprise (Full OS - ab CHF 50'000.-)</option>
-                      <option value="Pro">Pro (3D BIM & Mängel)</option>
-                      <option value="Expert">Expert (Finanzen & API)</option>
-                      <option value="Studio">Studio (CHF 15'000+)</option>
+                      <option value="Enterprise">Enterprise OS (Full OS - ab CHF 45'000/Jahr)</option>
+                      <option value="Agency">Agency OS (30 Seats - CHF 16'800/Jahr)</option>
+                      <option value="Studio">Studio OS (10 Seats - CHF 6'800/Jahr)</option>
+                      <option value="Team Starter">Team Starter (3 Seats - Finanzen & API)</option>
+                      <option value="Pro">Pro (1 Seat - 3D BIM & KI)</option>
+                      <option value="Starter">Starter (1 Seat - 2D CAD & Mängel)</option>
                     </select>
                   </div>
 

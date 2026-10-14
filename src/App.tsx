@@ -1,6 +1,6 @@
 import { TeamPresenceProvider } from './contexts/TeamPresenceContext';
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { Analytics } from '@vercel/analytics/react';
 
@@ -97,6 +97,7 @@ const AIConcierge = lazyWithRetry(() => import('./components/AIConcierge'));
 const HelpCenter = lazyWithRetry(() => import('./components/HelpCenter'));
 const PricingPage = lazyWithRetry(() => import('./components/PricingPage'));
 const DemoApp = lazyWithRetry(() => import('./components/DemoApp'));
+const DemoLayout = lazyWithRetry(() => import('./components/DemoLayout'));
 const PrivacyPolicy = lazyWithRetry(() => import('./components/PrivacyPolicy'));
 const Imprint = lazyWithRetry(() => import('./components/Imprint'));
 const TermsOfService = lazyWithRetry(() => import('./components/TermsOfService'));
@@ -128,6 +129,7 @@ import { initBrandColor } from './utils/brandColorManager';
 initBrandColor();
 
 function RecoveryRedirectGuard({ children }: { children: React.ReactNode }) {
+  const navigate = useNavigate();
   React.useEffect(() => {
     scrubLocalStorageFileUrls();
     initBrandColor();
@@ -136,9 +138,9 @@ function RecoveryRedirectGuard({ children }: { children: React.ReactNode }) {
 
     if (isRecovery && !window.location.pathname.startsWith('/reset-password')) {
       safeSessionStorage.setItem('is_password_recovery', 'true');
-      window.location.href = `/reset-password${window.location.search}${window.location.hash}`;
+      navigate(`/reset-password${window.location.search}${window.location.hash}`, { replace: true });
     }
-  }, []);
+  }, [navigate]);
 
   return <>{children}</>;
 }
@@ -189,8 +191,10 @@ export default function App() {
                               <Routes>
                                 {/* Öffentliche Routen */}
                                 <Route path="/" element={<LandingPage />} />
+                                <Route path="/demo" element={<div className="h-screen w-screen overflow-hidden"><DemoLayout isDemoMode={true} /></div>} />
                                 <Route path="/login" element={<Login />} />
                                 <Route path="/signup" element={<Signup />} />
+                                <Route path="/register" element={<Signup />} />
                                 <Route path="/reset-password" element={<ResetPassword />} />
                                 <Route path="/pricing" element={<PricingPage />} />
                                 <Route path="/success" element={<SuccessPage />} />

@@ -453,7 +453,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
           if (evt && (evt.title || evt.id)) {
             const dateStr = evt.date || evt.event_date || evt.start_date || (evt.created_at ? evt.created_at.split('T')[0] : '');
             const desc = evt.description || '';
-            const timeMatch = desc.match(/Uhrzeit:\s*(\d{1,2}:\d{2})/i) || desc.match(/Time:\s*(\d{1,2}:\d{2})/i);
+            const timeMatch = desc.match(/(?:Uhrzeit|Zeit|Time):\s*(\d{1,2}:\d{2})/i);
             const extractedTime = evt.time || (timeMatch ? timeMatch[1] : undefined);
 
             const typeMatch = desc.match(/Typ:\s*([a-zA-Z0-9_-]+)/i);
@@ -502,20 +502,26 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
           .order('created_at', { ascending: false });
 
         const timeMap = new Map();
-        [...localCachedTimes, ...configTimes, ...(dbTimes || [])].forEach((t: any) => {
+        [...(dbTimes || []), ...configTimes, ...localCachedTimes].forEach((t: any) => {
           if (t && (t.id || t.hours)) {
             const entryId = t.id || `time-${t.date}-${t.hours}`;
+            const existing = timeMap.get(entryId) || {};
+            const rate = Number(t.hourly_rate || t.hourlyRate || existing.hourlyRate || 120);
+            const isBillable = t.isBillable !== undefined ? Boolean(t.isBillable) : (t.is_billable !== undefined ? Boolean(t.is_billable) : (existing.isBillable !== undefined ? existing.isBillable : true));
             timeMap.set(entryId, {
+              ...existing,
               ...t,
               id: entryId,
-              hours: Number(t.hours || 0),
-              hourlyRate: Number(t.hourly_rate || t.hourlyRate || 120),
-              hourly_rate: Number(t.hourly_rate || t.hourlyRate || 120),
-              projectId: t.projectId || t.project_id || 'global',
-              project_id: t.projectId || t.project_id || 'global',
-              userId: t.userId || t.user_id || currentUser.uid,
-              user_id: t.userId || t.user_id || currentUser.uid,
-              date: t.date || (t.created_at ? t.created_at.split('T')[0] : new Date().toISOString().split('T')[0])
+              hours: Number(t.hours || existing.hours || 0),
+              hourlyRate: rate,
+              hourly_rate: rate,
+              isBillable,
+              is_billable: isBillable,
+              projectId: t.projectId || t.project_id || existing.projectId || 'global',
+              project_id: t.projectId || t.project_id || existing.project_id || 'global',
+              userId: t.userId || t.user_id || existing.userId || currentUser.uid,
+              user_id: t.userId || t.user_id || existing.user_id || currentUser.uid,
+              date: t.date || existing.date || (t.created_at ? t.created_at.split('T')[0] : new Date().toISOString().split('T')[0])
             });
           }
         });
@@ -858,7 +864,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
             sender_id: currentUser.uid,
             sender_name: 'System',
             message: sysMsgText,
-            company_id: safeCompanyId,
+            project_id: cleanCalendarProjectId || safeCompanyId,
             created_at: new Date().toISOString()
           });
         } catch (chatErr) {
@@ -989,9 +995,17 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
     }
 
     try {
+      const cleanedDesc = (selectedEvent.description || '')
+        .split('\n')
+        .filter((line: string) => !/^(Uhrzeit|Zeit|Time|Typ|Teilnehmer|Meeting Link):/i.test(line.trim()))
+        .join('\n')
+        .trim();
+
       const descParts = [
-        selectedEvent.description || '',
-        selectedEvent.time ? `Zeit: ${selectedEvent.time}` : '',
+        cleanedDesc,
+        selectedEvent.time ? `Uhrzeit: ${selectedEvent.time}` : '',
+        `Typ: ${selectedEvent.type || 'meeting'}`,
+        meetingLink ? `Meeting Link: ${meetingLink}` : '',
         selectedEvent.participants?.length ? `Teilnehmer: ${selectedEvent.participants.join(', ')}` : ''
       ].filter(Boolean).join('\n');
 
@@ -1017,6 +1031,8 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         ...(updatedEvent || { ...selectedEvent, ...dbUpdateData }),
         date: selectedEvent.date,
         event_date: selectedEvent.date,
+        start_date: selectedEvent.date,
+        time: selectedEvent.time,
         projectId: projId,
         project_id: projId,
         meetingLink: meetingLink,
@@ -1028,6 +1044,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         const next = prev.map(ev => ev.id === selectedEvent.id ? finalUpdated : ev);
         if (safeCompanyId) {
           safeStorage.setItem(`agenda_cache_${safeCompanyId}`, next);
+          saveSystemConfigJSON(`agenda_events_${safeCompanyId}`, { events: next, companyId: safeCompanyId }, safeCompanyId, currentUser?.uid).catch(() => {});
         }
         return next;
       });
@@ -1301,7 +1318,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
                     initial={{ opacity: 0, y: 6, scale: 0.96 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 4, scale: 0.96 }}
-                    className="absolute right-0 top-full mt-1.5 w-64 bg-surface border border-border rounded-xl shadow-2xl p-1.5 z-[101] space-y-1"
+                    className="absolute left-0 sm:left-auto sm:right-0 top-full mt-1.5 w-64 max-w-[calc(100vw-2rem)] bg-surface border border-border rounded-xl shadow-2xl p-1.5 z-[101] space-y-1"
                   >
                     <div className="px-2.5 py-1 text-[10px] font-bold text-text-muted uppercase tracking-wider">
                       PDF & Druck

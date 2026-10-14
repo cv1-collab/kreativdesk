@@ -270,15 +270,17 @@ export default function DashboardOverviewTab({
                       <span>{currentLang === 'de' ? 'Master-Vorlagen' : 'Templates'}</span>
                       <ArrowRight size={12} />
                     </button>
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveTab('finance');
-                      }}
-                      className="px-2.5 py-1 rounded-lg bg-surface border border-border/60 hover:bg-white/10 text-text-muted hover:text-text-primary font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
-                    >
-                      <span>{currentLang === 'de' ? 'Firmen-Finanzen' : 'Finances'}</span>
-                    </button>
+                    {(currentUser?.canViewFinance !== false && !['employee', 'guest', 'client'].includes(String(currentUser?.role || '').toLowerCase())) && (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveTab('finance');
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-surface border border-border/60 hover:bg-white/10 text-text-muted hover:text-text-primary font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
+                      >
+                        <span>{currentLang === 'de' ? 'Firmen-Finanzen' : 'Finances'}</span>
+                      </button>
+                    )}
                   </div>
 
                   <button 

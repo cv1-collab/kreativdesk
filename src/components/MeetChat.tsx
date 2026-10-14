@@ -265,7 +265,7 @@ export default function MeetChat() {
   }, [isDemo, isGlobal, currentProjectId, safeCompanyId]);
 
   const [generatedMeetingId, setGeneratedMeetingId] = useState('');
-  const activeCallRoomId = callId || joinCallId || generatedMeetingId || defaultRoomId;
+  const activeCallRoomId = callId || joinCallId || defaultRoomId;
 
   type PreviewCorner = 'bottom-right' | 'top-right' | 'bottom-left' | 'top-left';
   const [previewCorner, setPreviewCorner] = useState<PreviewCorner>(() => {
@@ -305,9 +305,7 @@ export default function MeetChat() {
   // Restore cached chat messages from safeStorage whenever room or project changes
   useEffect(() => {
     const parsed = safeStorage.getJSON<ChatMessage[] | null>(chatCacheKey, null);
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      setMessages(parsed);
-    }
+    setMessages(Array.isArray(parsed) ? parsed : []);
   }, [chatCacheKey]);
 
   // Persist messages to safeStorage whenever messages state updates
@@ -461,11 +459,15 @@ export default function MeetChat() {
       const targetProj = projectId || activeProjectId || 'global';
       
       try {
-        const { data: calls } = await supabase
+        let callsQuery = supabase
           .from('video_calls')
           .select('*')
           .order('created_at', { ascending: false })
           .limit(50);
+        if (safeCompanyId && safeCompanyId !== 'global') {
+          callsQuery = (callsQuery as any).eq('company_id', safeCompanyId);
+        }
+        const { data: calls } = await callsQuery;
         if (calls) {
           historyItems = calls.map((c: any) => ({
             id: c.id,
@@ -482,11 +484,15 @@ export default function MeetChat() {
       }
 
       try {
-        const { data: events } = await supabase
+        let eventsQuery = supabase
           .from('calendar_events')
           .select('*')
           .order('created_at', { ascending: false })
           .limit(50);
+        if (safeCompanyId && safeCompanyId !== 'global') {
+          eventsQuery = eventsQuery.eq('company_id', safeCompanyId);
+        }
+        const { data: events } = await eventsQuery;
         if (events) {
           events.filter((e: any) => !e.type || e.type === 'call').forEach((e: any) => {
             const meetingId = e.meeting_link?.split('join=')[1] || e.id;
@@ -539,6 +545,9 @@ export default function MeetChat() {
   useEffect(() => { isTranscribingRef.current = isTranscribing; }, [isTranscribing]);
 
   const sendChatMessageRef = useRef<any>(null);
+  const chatChannelRef = useRef<any>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const lastDrawPtRef = useRef<{ x: number; y: number } | null>(null);
 
   const sendChatMessage = async (msgData: {
       text: string;
@@ -596,8 +605,9 @@ export default function MeetChat() {
         return;
       }
 
-      // Live Broadcast to connected peers in room
-      supabase.channel(`chat_messages_${currentMeetingCallId}`).send({
+      // Live Broadcast to connected peers in room via subscribed channel
+      const activeChatCh = chatChannelRef.current || supabase.channel(`chat_messages_${currentMeetingCallId}`);
+      activeChatCh.send({
         type: 'broadcast',
         event: 'new_chat_msg',
         payload: msgObj
@@ -790,15 +800,12 @@ export default function MeetChat() {
       return;
     }
 
-    const currentMeetingCallId = callId || joinCallId || activeCallRoomId;
+    const currentMeetingCallId = callId || joinCallId || activeCallRoomId || `room-${projectId || activeProjectId || safeCompanyId || 'global'}`;
 
     const fetchChatMessages = async () => {
       try {
         let msgs: any[] = [];
-        let query = supabase.from('chat_messages').select('*');
-        if (currentMeetingCallId) {
-          query = query.eq('call_id', currentMeetingCallId);
-        }
+        const query = supabase.from('chat_messages').select('*').eq('call_id', currentMeetingCallId);
         const { data, error } = await query.order('created_at', { ascending: true }).limit(100);
 
         if (!error && data) msgs = data;
@@ -846,9 +853,13 @@ export default function MeetChat() {
       try {
         let events: any[] = [];
         try {
-          const { data } = await supabase
+          let evQuery = supabase
             .from('calendar_events')
             .select('*');
+          if (safeCompanyId && safeCompanyId !== 'global') {
+            evQuery = evQuery.eq('company_id', safeCompanyId);
+          }
+          const { data } = await evQuery;
           if (data) events = data.filter((e: any) => !e.type || e.type === 'call');
         } catch (evErr) {
           console.warn("Calendar events query fallback handled:", evErr);
@@ -897,13 +908,14 @@ export default function MeetChat() {
             }
           }
 
+          const msgTime = payload.time || new Date(payload.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
           setMessages(prev => {
-            if (prev.some(m => m.id === payload.id || (m.sender === (payload.sender || payload.sender_name) && m.text === rawText && m.fileUrl === fileUrl))) return prev;
+            if (prev.some(m => m.id === payload.id || (m.sender === (payload.sender || payload.sender_name) && m.text === rawText && m.fileUrl === fileUrl && m.time === msgTime))) return prev;
             return [...prev, {
               id: payload.id,
               sender: payload.sender || payload.sender_name || 'System',
               avatar: payload.avatar || (payload.sender || 'U').substring(0, 2).toUpperCase(),
-              time: payload.time || new Date(payload.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              time: msgTime,
               text: rawText,
               isAI: payload.isAI || payload.is_ai,
               fileUrl: fileUrl,
@@ -914,7 +926,29 @@ export default function MeetChat() {
           setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
         }
       })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, (payload) => {
+      .on('broadcast', { event: 'meet_wb_stroke' }, ({ payload }) => {
+        const canvas = canvasRef.current;
+        if (!canvas || !payload) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.save();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = payload.color || '#3b82f6';
+        ctx.lineWidth = payload.width || 3;
+        ctx.beginPath();
+        ctx.moveTo((payload.x0 || 0) * canvas.width, (payload.y0 || 0) * canvas.height);
+        ctx.lineTo((payload.x1 || 0) * canvas.width, (payload.y1 || 0) * canvas.height);
+        ctx.stroke();
+        ctx.restore();
+      })
+      .on('broadcast', { event: 'meet_wb_clear' }, () => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: currentMeetingCallId ? `call_id=eq.${currentMeetingCallId}` : undefined }, (payload) => {
         const d = payload.new;
         if (d && (d.call_id === currentMeetingCallId || d.project_id === (projectId || activeProjectId))) {
           let rawText = d.message || d.text || '';
@@ -927,13 +961,14 @@ export default function MeetChat() {
             }
           }
 
+          const msgTime = new Date(d.created_at || d.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
           setMessages(prev => {
-            if (prev.some(m => m.id === d.id || (m.sender === (d.sender_name || d.sender) && m.text === rawText && m.fileUrl === fileUrl))) return prev;
+            if (prev.some(m => m.id === d.id || (m.sender === (d.sender_name || d.sender) && m.text === rawText && m.fileUrl === fileUrl && m.time === msgTime))) return prev;
             return [...prev, {
               id: d.id,
               sender: d.sender_name || d.sender || 'System',
               avatar: (d.sender_name || d.sender || 'U').substring(0, 2).toUpperCase(),
-              time: new Date(d.created_at || d.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              time: msgTime,
               text: rawText,
               isAI: d.is_ai,
               fileUrl: fileUrl,
@@ -946,7 +981,10 @@ export default function MeetChat() {
       })
       .subscribe();
 
+    chatChannelRef.current = channel;
+
     return () => {
+      chatChannelRef.current = null;
       if (channel) {
         supabase.removeChannel(channel).catch(() => { });
       }
@@ -1163,7 +1201,7 @@ export default function MeetChat() {
       // Trigger external email dispatch via server API & mailto link if external emails were entered
       if (newCallEvent.externalEmails && newCallEvent.externalEmails.length > 0) {
         const recipients = newCallEvent.externalEmails;
-        const fullMeetingUrl = `${window.location.origin}${meetingLink}`;
+        const fullMeetingUrl = `${window.location.origin}/guest-meet/${meetingId}`;
 
         // 1. Call Vercel / API Serverless Email Endpoint
         try {
@@ -1255,7 +1293,6 @@ export default function MeetChat() {
     return (a.name || '').localeCompare(b.name || '');
   });
 
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [strokeColor, setStrokeColor] = useState('#3b82f6');
@@ -1278,7 +1315,11 @@ export default function MeetChat() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     const rect = canvas.getBoundingClientRect();
-    ctx.beginPath(); ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    lastDrawPtRef.current = { x, y };
     setIsDrawing(true);
   };
 
@@ -1289,16 +1330,46 @@ export default function MeetChat() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     const rect = canvas.getBoundingClientRect();
-    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
-    ctx.strokeStyle = strokeColor; ctx.lineWidth = strokeWidth; ctx.stroke();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    ctx.lineTo(x, y);
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = strokeWidth;
+    ctx.stroke();
+
+    if (lastDrawPtRef.current && chatChannelRef.current && canvas.width > 0 && canvas.height > 0 && !isDemo) {
+      chatChannelRef.current.send({
+        type: 'broadcast',
+        event: 'meet_wb_stroke',
+        payload: {
+          x0: lastDrawPtRef.current.x / canvas.width,
+          y0: lastDrawPtRef.current.y / canvas.height,
+          x1: x / canvas.width,
+          y1: y / canvas.height,
+          color: strokeColor,
+          width: strokeWidth
+        }
+      }).catch(() => {});
+    }
+    lastDrawPtRef.current = { x, y };
   };
 
-  const stopDrawing = () => setIsDrawing(false);
+  const stopDrawing = () => {
+    setIsDrawing(false);
+    lastDrawPtRef.current = null;
+  };
   const clearCanvas = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (chatChannelRef.current && !isDemo) {
+      chatChannelRef.current.send({
+        type: 'broadcast',
+        event: 'meet_wb_clear',
+        payload: {}
+      }).catch(() => {});
+    }
   };
 
   const toggleUserSelection = (id: string) => {
@@ -1605,7 +1676,7 @@ export default function MeetChat() {
                     Object.keys(remoteStreams).length === 1 ? "grid-cols-1 grid-rows-1" :
                     Object.keys(remoteStreams).length === 2 ? "grid-cols-1 sm:grid-cols-2 grid-rows-1 sm:grid-rows-1" :
                     Object.keys(remoteStreams).length <= 4 ? "grid-cols-2 grid-rows-2" :
-                    Object.keys(remoteStreams).length <= 6 ? "grid-cols-2 md:grid-cols-3 grid-rows-2 md:grid-rows-2" :
+                    Object.keys(remoteStreams).length <= 6 ? "grid-cols-2 grid-rows-3 md:grid-cols-3 md:grid-rows-2" :
                     "grid-cols-2 md:grid-cols-3 lg:grid-cols-4 auto-rows-fr overflow-y-auto"
                   )}>
                     {Object.entries(remoteStreams).map(([peerId, stream]) => (
@@ -2118,13 +2189,13 @@ export default function MeetChat() {
                     <input
                       type="text"
                       readOnly
-                      value={`${window.location.origin}/project/${projectId || activeProjectId || 'global'}/meet?join=${generatedMeetingId}`}
+                      value={`${window.location.origin}/guest-meet/${generatedMeetingId}`}
                       className="flex-1 bg-background border border-border/50 rounded-xl py-2 px-3.5 text-xs font-medium text-text-muted outline-none truncate"
                     />
                     <button
                       type="button"
                       onClick={() => {
-                        navigator.clipboard.writeText(`${window.location.origin}/project/${projectId || activeProjectId || 'global'}/meet?join=${generatedMeetingId}`);
+                        navigator.clipboard.writeText(`${window.location.origin}/guest-meet/${generatedMeetingId}`);
                         setCopiedLink(true);
                         setTimeout(() => setCopiedLink(false), 2000);
                       }}
@@ -2151,7 +2222,7 @@ export default function MeetChat() {
                       date: newCallEvent.date,
                       time: newCallEvent.time,
                       description: newCallEvent.description,
-                      meetingLink: `/project/${projectId || activeProjectId || 'global'}/meet?join=${generatedMeetingId}`
+                      meetingLink: `/guest-meet/${generatedMeetingId}`
                     });
                   }}
                   className="px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm shrink-0"

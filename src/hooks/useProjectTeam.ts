@@ -105,15 +105,15 @@ export function useProjectTeam() {
       if (mems) {
         const mapped: ProjectMember[] = mems.map(m => {
           let role = (m as any).project_role || (m as any).role;
-          if (!role && crmUsers) {
-            const u = crmUsers.find((cu: any) => 
-              cu.id === m.user_id || 
-              cu.user_id === m.user_id || 
-              (cu.email && (m as any).user_email && cu.email.toLowerCase() === (m as any).user_email.toLowerCase())
-            );
-            if (u?.notes && u.notes.startsWith('__CRM_META__:')) {
+          const matchedUser = crmUsers?.find((cu: any) => 
+            cu.id === m.user_id || 
+            cu.user_id === m.user_id || 
+            (cu.email && (m as any).user_email && cu.email.toLowerCase() === (m as any).user_email.toLowerCase())
+          );
+          if (!role && matchedUser) {
+            if (matchedUser.notes && matchedUser.notes.startsWith('__CRM_META__:')) {
               try {
-                const meta = JSON.parse(u.notes.replace('__CRM_META__:', ''));
+                const meta = JSON.parse(matchedUser.notes.replace('__CRM_META__:', ''));
                 if (meta.projectRoles && meta.projectRoles[m.project_id]) {
                   role = meta.projectRoles[m.project_id];
                 }
@@ -124,6 +124,7 @@ export function useProjectTeam() {
             id: m.id,
             projectId: m.project_id,
             userId: m.user_id,
+            userEmail: (m as any).user_email || matchedUser?.email || '',
             companyId: m.company_id,
             projectRole: role || 'Viewer'
           };

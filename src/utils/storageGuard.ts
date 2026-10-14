@@ -5,10 +5,15 @@ export const STORAGE_LIMITS = {
   'Pro': 100 * 1024 * 1024 * 1024,
   'Team Starter': 250 * 1024 * 1024 * 1024,
   'Expert': 250 * 1024 * 1024 * 1024,
+  'Expert Trial': 250 * 1024 * 1024 * 1024,
   'Studio': 500 * 1024 * 1024 * 1024,
+  'Studio OS': 500 * 1024 * 1024 * 1024,
   'Agency': 2000 * 1024 * 1024 * 1024,
+  'Agency OS': 2000 * 1024 * 1024 * 1024,
   'Enterprise': 5000 * 1024 * 1024 * 1024,
-  'Free Trial': 15 * 1024 * 1024 * 1024
+  'Enterprise OS': 5000 * 1024 * 1024 * 1024,
+  'Free Trial': 15 * 1024 * 1024 * 1024,
+  'Trial': 15 * 1024 * 1024 * 1024
 };
 
 export const parseSizeToBytes = (sizeStr: string | number): number => {
@@ -30,6 +35,9 @@ export const parseSizeToBytes = (sizeStr: string | number): number => {
 
 export const checkStorageLimit = async (companyId: string, fileSize: number): Promise<boolean> => {
   try {
+    if (!companyId || companyId === 'global' || companyId === 'default-company') {
+      return true;
+    }
     const { data: comp } = await supabase
       .from('companies')
       .select('plan')

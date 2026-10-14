@@ -28,6 +28,7 @@ import { MesseOffertePDFDocument } from './interactv/pdf/MesseOffertePDFDocument
 import { sendNotification } from '../lib/notifications';
 import { safeStorage } from '../utils/safeStorage';
 import { useToast } from '../contexts/ToastContext';
+import { useAuth } from '../contexts/AuthContext';
 import { translateProposalTitle } from '../utils/proposalTranslationHelper';
 
 const localTranslations: Record<'de' | 'en' | 'fr', Record<string, string>> = {
@@ -1192,6 +1193,7 @@ interface SmartProposalLandingPageProps {
 
 export default function SmartProposalLandingPage({ isDemo = false }: SmartProposalLandingPageProps = {}) {
   const { addToast } = useToast();
+  const { currentUser } = useAuth() || {};
   const { shareToken } = useParams<{ shareToken: string }>();
   const navigate = useNavigate();
 
@@ -2029,7 +2031,10 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
       selectedOptionIds,
       finalPrice: finalTotal,
       acceptedAgbs: acceptedLegalDocs,
-      acceptedAt: new Date().toISOString()
+      acceptedAt: new Date().toISOString(),
+      shareToken: proposal.shareToken || shareToken,
+      companyId: proposal.companyId,
+      title: proposal.title
     };
 
     const success = await acceptProposalByClient(proposal.id, acceptancePayload as any);
@@ -2191,8 +2196,8 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
       {/* 1. TOP ANNOUNCEMENT & BRAND HEADER */}
       <header className={cn("sticky top-0 z-50 backdrop-blur-xl border-b px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2 transition-colors", isLight ? "bg-white/90 border-slate-200 text-slate-900 shadow-xs" : "bg-[#09090b]/85 border-white/10 text-zinc-100")}>
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-          {/* ZURÜCK ZUR APP / STUDIO BUTTON (Nur wenn nicht in Demo) */}
-          {!isDemo && (
+          {/* ZURÜCK ZUR APP / STUDIO BUTTON (Nur für eingeloggte interne Nutzer & nicht in Demo) */}
+          {!isDemo && Boolean(currentUser) && (
             <button 
               type="button"
               onClick={() => {
@@ -2305,8 +2310,8 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
             </span>
           </button>
 
-          {/* Company & Swiss QR Settings Modal Trigger (In Demo ausgeblendet für sauberes Layout) */}
-          {!isDemo && (
+          {/* Company & Swiss QR Settings Modal Trigger (Nur für eingeloggte interne Nutzer) */}
+          {!isDemo && Boolean(currentUser) && (
             <button 
               type="button"
               onClick={() => {
@@ -4068,9 +4073,13 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
                       <div className={cn("grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl text-xs border", isLight ? "bg-slate-100/80 border-slate-200" : "bg-zinc-950/60 border-white/10")}>
                         <div>
                           <span className={cn("font-bold text-[10px] uppercase tracking-wider block mb-1", isLight ? "text-slate-500" : "text-zinc-400")}>{lt.clientHeader}</span>
-                          <p className={cn("font-semibold", isLight ? "text-slate-900" : "text-white")}>Kreativ Desk Studio AG</p>
+                          <p className={cn("font-semibold", isLight ? "text-slate-900" : "text-white")}>{companySettings?.companyName || 'Kreativ Desk Studio AG'}</p>
                           <p className={cn("text-[11px]", isLight ? "text-slate-500" : "text-zinc-400")}>{lt.clientSub}</p>
-                          <p className={cn("text-[11px]", isLight ? "text-slate-500" : "text-zinc-400")}>Bahnhofstrasse 100, 8001 Zürich</p>
+                          <p className={cn("text-[11px]", isLight ? "text-slate-500" : "text-zinc-400")}>
+                            {companySettings?.street
+                              ? `${companySettings.street} ${companySettings.buildingNumber || ''}, ${companySettings.postalCode || ''} ${companySettings.city || ''}`.trim()
+                              : 'Zürich, Schweiz'}
+                          </p>
                         </div>
                         <div>
                           <span className={cn("font-bold text-[10px] uppercase tracking-wider block mb-1", isLight ? "text-slate-500" : "text-zinc-400")}>{lt.contractorHeader}</span>
@@ -4231,7 +4240,9 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
                         <div className="space-y-2">
                           <span className={cn("text-[10px] font-bold uppercase tracking-wider block", isLight ? "text-slate-500" : "text-zinc-400")}>{lt.clientSignLabel}</span>
                           <div className={cn("h-14 border border-dashed rounded-lg flex items-center px-3", isLight ? "bg-slate-50 border-slate-300" : "bg-zinc-950/50 border-white/20")}>
-                            <span className="text-xs font-serif italic text-emerald-500 font-bold">✓ Sarah Meier (Kreativ Desk AG)</span>
+                            <span className="text-xs font-serif italic text-emerald-500 font-bold">
+                              ✓ {(proposal as any).team?.[0]?.name ? `${(proposal as any).team[0].name} (${companySettings?.companyName || 'Projektleitung'})` : (companySettings?.companyName || 'Kreativ Desk Studio AG')}
+                            </span>
                           </div>
                           <span className={cn("text-[10px]", isLight ? "text-slate-400" : "text-zinc-500")}>{lt.clientSignSub}</span>
                         </div>

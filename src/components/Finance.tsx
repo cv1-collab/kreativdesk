@@ -729,7 +729,7 @@ export default function Finance() {
 
   // Realtime & Polling listener for Smartphone Live Scan (QR Code)
   useEffect(() => {
-    if (!opCostSessionId) return;
+    if (!opCostSessionId || isDemoMode || currentProjectId === 'demo-1' || currentProjectId?.startsWith('demo-')) return;
     let isMounted = true;
 
     const channel = supabase.channel(`mobile_upload_${opCostSessionId}`)
@@ -774,7 +774,7 @@ export default function Finance() {
       clearInterval(pollInterval);
       supabase.removeChannel(channel);
     };
-  }, [opCostSessionId]);
+  }, [opCostSessionId, isDemoMode, currentProjectId]);
 
   // === MULTI-TENANT FILTERUNG ===
   useEffect(() => {
@@ -811,6 +811,10 @@ export default function Finance() {
     }
 
     // --- REGULÄRER SUPABASE FETCH FÜR ECHTE USER ---
+    if (!canViewFinance) {
+      setIsInitialLoad(false);
+      return;
+    }
     if (!currentUser || !currentProjectId) return;
 
     const safeCompanyId = currentUser?.companyId || currentUser?.uid;
@@ -825,12 +829,16 @@ export default function Finance() {
         .order('created_at', { ascending: false });
 
       if (txs && txs.length > 0) {
-        setTransactions(txs.map(t => ({
-          ...t,
-          projectId: t.project_id,
-          companyId: t.company_id,
-          ownerId: t.owner_id
-        } as Transaction)));
+        setTransactions(txs.map(t => {
+          const budgetMatch = typeof t.description === 'string' ? t.description.match(/\[Budget:\s*([^\]]+)\]/) : null;
+          return {
+            ...t,
+            projectId: t.project_id,
+            companyId: t.company_id,
+            ownerId: t.owner_id,
+            budgetPosId: (t as any).budgetPosId || (t as any).budget_pos_id || (budgetMatch ? budgetMatch[1].trim() : undefined)
+          } as Transaction;
+        }));
       } else {
         setTransactions([]);
       }
@@ -904,7 +912,7 @@ export default function Finance() {
     return () => {
       if (channel) supabase.removeChannel(channel).catch(() => { });
     };
-  }, [currentUser, currentProjectId, isDemoMode, demoData, activeProject]);
+  }, [currentUser, currentProjectId, isDemoMode, demoData, activeProject, canViewFinance]);
 
   // AUTO-SAVE TO LOCAL STORAGE & SUPABASE DOCUMENTS ON BUDGET CHANGES
   useEffect(() => {
@@ -981,7 +989,7 @@ export default function Finance() {
   const [localTimeEntries, setLocalTimeEntries] = useState<any[]>([]);
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || !canViewFinance) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
     const fetchTimes = async () => {
       try {
@@ -993,19 +1001,20 @@ export default function Finance() {
         const configTimes = configTime?.entries || [];
 
         const map = new Map();
-        [...localTimes, ...configTimes, ...(times || [])].forEach((t: any) => {
+        [...(times || []), ...configTimes, ...localTimes].forEach((t: any) => {
           if (t && (t.id || t.hours)) {
             const tId = t.id || `time-${t.date}-${t.hours}`;
+            const existing = map.get(tId);
             map.set(tId, {
               id: tId,
-              userId: t.userId || t.user_id,
-              projectId: t.projectId || t.project_id || 'global',
-              date: t.date || new Date().toISOString().split('T')[0],
-              hours: Number(t.hours || 0),
-              description: t.description || 'Zeiterfassung',
-              hourlyRate: Number(t.hourlyRate || t.hourly_rate || 120),
-              isBillable: t.isBillable !== undefined ? t.isBillable : true,
-              budgetPosId: t.budgetPosId || t.budget_pos_id || ''
+              userId: t.userId || t.user_id || existing?.userId,
+              projectId: t.projectId || t.project_id || existing?.projectId || 'global',
+              date: t.date || existing?.date || new Date().toISOString().split('T')[0],
+              hours: Number(t.hours ?? existing?.hours ?? 0),
+              description: t.description || existing?.description || 'Zeiterfassung',
+              hourlyRate: Number(t.hourlyRate || t.hourly_rate || existing?.hourlyRate || 120),
+              isBillable: t.isBillable !== undefined ? t.isBillable : (existing?.isBillable !== undefined ? existing.isBillable : true),
+              budgetPosId: t.budgetPosId || t.budget_pos_id || existing?.budgetPosId || ''
             });
           }
         });
@@ -1015,7 +1024,7 @@ export default function Finance() {
       }
     };
     fetchTimes();
-  }, [currentUser, currentProjectId]);
+  }, [currentUser, currentProjectId, canViewFinance]);
 
   if (isMounted && !canViewFinance) {
     return (
@@ -1074,10 +1083,12 @@ export default function Finance() {
     (tx.category !== 'Debitorenrechnung' && tx.category !== 'Outgoing Invoice' && tx.category !== 'Offerte' && tx.category !== 'Quote' && tx.type !== 'income' && Number(tx.amount) < 0);
 
   const isRevenueTx = (tx: any) =>
-    tx.type === 'income' ||
-    tx.category === 'Debitorenrechnung' ||
-    tx.category === 'Outgoing Invoice' ||
-    (tx.category !== 'Offerte' && tx.category !== 'Quote' && Number(tx.amount) > 0);
+    !isExpenseTx(tx) && (
+      tx.type === 'income' ||
+      tx.category === 'Debitorenrechnung' ||
+      tx.category === 'Outgoing Invoice' ||
+      (tx.category !== 'Offerte' && tx.category !== 'Quote' && tx.type !== 'quote' && Number(tx.amount) > 0)
+    );
 
   const filteredInvoiced = filteredTransactions.filter(isRevenueTx).reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
   const filteredExtSpent = filteredTransactions.filter(isExpenseTx).reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
@@ -1122,7 +1133,16 @@ export default function Finance() {
   }));
   const combinedLedgerAsc = [...rawTxs, ...rawTimes].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   let runningBalance = 0;
-  const allLedgerTransactions = combinedLedgerAsc.map(tx => { if (tx.category !== 'Offerte') runningBalance += tx.amount; return { ...tx, balance: runningBalance }; });
+  const allLedgerTransactions = combinedLedgerAsc.map(tx => {
+    const isQuote = tx.category === 'Offerte' || tx.category === 'Quote' || (tx as any).type === 'quote';
+    if (!isQuote) {
+      const signedAmt = (tx.isTimeEntry || isExpenseTx(tx))
+        ? -Math.abs(Number(tx.amount) || 0)
+        : Math.abs(Number(tx.amount) || 0);
+      runningBalance += signedAmt;
+    }
+    return { ...tx, balance: runningBalance };
+  });
 
   const displayLedger = [...allLedgerTransactions].reverse().filter(tx => {
     if (timeFilter === 'all') return true;
@@ -1614,7 +1634,8 @@ export default function Finance() {
       const fileName = `Finanzbericht_${Date.now()}.pdf`;
       const downloadUrl = await uploadPdfBlobWithFallback(blob, fileName, safeCompanyId);
       const targetFolderId = await ensureFolderLocal("Finanzen", "projects");
-      await supabase.from('documents').insert({ name: fileName, url: downloadUrl, file_url: downloadUrl, project_id: cleanProjectId, folder_id: targetFolderId, category: cleanProjectId ? 'projects' : 'company', owner_id: currentUser.uid, company_id: safeCompanyId, uploaded_by: currentUser.uid, type: 'application/pdf', size: `${Math.round(blob.size / 1024)} KB`, is_folder: false, created_at: new Date().toISOString(), uploaded_at: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH') });
+      const { error: docErr } = await supabase.from('documents').insert({ name: fileName, url: downloadUrl, file_url: downloadUrl, project_id: cleanProjectId, folder_id: targetFolderId, category: cleanProjectId ? 'projects' : 'company', owner_id: currentUser.uid, company_id: safeCompanyId, uploaded_by: currentUser.uid, type: 'application/pdf', size: `${Math.round(blob.size / 1024)} KB`, is_folder: false, created_at: new Date().toISOString(), uploaded_at: new Date().toISOString() });
+      if (docErr) throw docErr;
       queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
       addToast('Erfolgreich exportiert', 'success');
       setIsPdfStudioOpen(false);
@@ -2216,7 +2237,7 @@ export default function Finance() {
                       return (
                         <tr key={tx.id} className="hover:bg-white/5 transition-colors group">
                           <td className="px-4 py-3 text-text-muted font-medium flex items-center gap-2">
-                            <button onClick={() => handleDeleteTransaction(tx.id)} className="opacity-0 group-hover:opacity-100 text-red-500 hover:bg-red-500/10 p-1 rounded transition-all"><Trash2 size={14} /></button>
+                            <button onClick={() => handleDeleteTransaction(tx.id)} className="opacity-100 md:opacity-0 md:group-hover:opacity-100 text-red-500 hover:bg-red-500/10 p-1 rounded transition-all"><Trash2 size={14} /></button>
                             {tx.date}
                           </td>
                           <td className="px-4 py-3">
@@ -2298,7 +2319,7 @@ export default function Finance() {
               </button>
 
               {showCreateMenu && (
-                <div className="absolute left-0 sm:left-auto sm:right-0 mt-1.5 w-64 bg-surface/95 backdrop-blur-xl border border-border rounded-xl shadow-2xl z-50 py-1.5 animate-in fade-in slide-in-from-top-2">
+                <div className="absolute left-0 sm:left-auto sm:right-0 mt-1.5 w-64 max-w-[calc(100vw-2rem)] bg-surface/95 backdrop-blur-xl border border-border rounded-xl shadow-2xl z-50 py-1.5 animate-in fade-in slide-in-from-top-2">
                   <div className="px-3.5 py-1 text-[10px] font-bold text-text-muted uppercase tracking-wider">
                     Zeiterfassung & Belege
                   </div>
@@ -2369,7 +2390,7 @@ export default function Finance() {
               </button>
 
               {showCsvMenu && (
-                <div className="absolute right-0 mt-1.5 w-64 bg-surface/95 backdrop-blur-xl border border-border rounded-xl shadow-2xl z-50 py-1.5 animate-in fade-in slide-in-from-top-2">
+                <div className="absolute left-0 sm:left-auto sm:right-0 mt-1.5 w-64 max-w-[calc(100vw-2rem)] bg-surface/95 backdrop-blur-xl border border-border rounded-xl shadow-2xl z-50 py-1.5 animate-in fade-in slide-in-from-top-2">
                   <div className="px-3.5 py-1 text-[10px] font-bold text-text-muted uppercase tracking-wider">
                     Export & PDF Studio
                   </div>
@@ -3331,9 +3352,9 @@ export default function Finance() {
                       <tr><td colSpan={6} className="px-4 py-8 text-center text-text-muted italic">{t('no_bookings_period')}</td></tr>
                     )}
                     {displayLedger.map((tx) => {
-                      const isQuote = tx.category === 'Offerte' || tx.category === 'Quote';
+                      const isQuote = tx.category === 'Offerte' || tx.category === 'Quote' || (tx as any).type === 'quote';
                       const isTime = !!tx.isTimeEntry;
-                      const isRevenue = tx.category === 'Debitorenrechnung' || tx.category === 'Outgoing Invoice' || (!isQuote && !isTime && tx.amount > 0);
+                      const isRevenue = !isTime && !isQuote && !isExpenseTx(tx) && isRevenueTx(tx);
                       const displayAmount = tx.amount === 0 ? 0 : Math.abs(tx.amount);
                       const bdDetails = getBudgetDetails(tx.budgetPosId);
                       const isBalanceNegative = 0 > tx.balance;
@@ -3341,7 +3362,7 @@ export default function Finance() {
                       return (
                         <tr key={tx.id} className="hover:bg-white/5 transition-colors group">
                           <td className="px-4 py-3 text-text-muted font-medium flex items-center gap-2">
-                            <button onClick={() => handleDeleteTransaction(tx.id)} className="opacity-0 group-hover:opacity-100 text-red-500 hover:bg-red-500/10 p-1 rounded transition-all"><Trash2 size={14} /></button>
+                            <button onClick={() => handleDeleteTransaction(tx.id)} className="opacity-100 md:opacity-0 md:group-hover:opacity-100 text-red-500 hover:bg-red-500/10 p-1 rounded transition-all"><Trash2 size={14} /></button>
                             {tx.date}
                           </td>
                           <td className="px-4 py-3">
@@ -3707,10 +3728,10 @@ export default function Finance() {
 
       {isMounted && showReceiptStudio && createPortal(
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/40 dark:bg-black/80 backdrop-blur-md p-2 sm:p-4 md:p-6 animate-in fade-in duration-200 overflow-y-auto">
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-5xl shadow-2xl flex flex-col lg:flex-row overflow-hidden max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-3rem)] lg:h-[min(820px,calc(100dvh-3rem))] min-h-0 m-auto">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-5xl shadow-2xl flex flex-col lg:flex-row max-lg:overflow-y-auto lg:overflow-hidden max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-3rem)] lg:h-[min(820px,calc(100dvh-3rem))] min-h-0 m-auto">
 
             {/* LEFT SIDE: UNIFIED BELEG- & SCANNER-HUB */}
-            <div className="w-full lg:w-5/12 p-5 sm:p-6 border-b lg:border-b-0 lg:border-r border-border bg-background/50 flex flex-col overflow-y-auto custom-scrollbar min-h-0 h-full">
+            <div className="w-full lg:w-5/12 p-5 sm:p-6 border-b lg:border-b-0 lg:border-r border-border bg-background/50 flex flex-col lg:overflow-y-auto custom-scrollbar min-h-0 lg:h-full shrink-0">
               <div className="flex items-center justify-between gap-2 mb-4 shrink-0">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 flex items-center justify-center shrink-0 shadow-xs">
@@ -3829,7 +3850,7 @@ export default function Finance() {
                     {t('no_receipts_uploaded')}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-2.5 overflow-y-auto custom-scrollbar pr-1 pb-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-2.5 max-h-48 lg:max-h-none overflow-y-auto custom-scrollbar pr-1 pb-2">
                     {incomingReceipts.map((src, i) => {
                       const isPdf = typeof src === 'string' && (src.startsWith('data:application/pdf') || src.toLowerCase().includes('.pdf'));
                       return (
@@ -3849,7 +3870,7 @@ export default function Finance() {
                               e.stopPropagation();
                               setIncomingReceipts(incomingReceipts.filter((_, idx) => idx !== i));
                             }}
-                            className="absolute top-1.5 right-1.5 p-1.5 bg-black/70 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500 cursor-pointer"
+                            className="absolute top-1.5 right-1.5 p-1.5 bg-black/70 text-white rounded-lg opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:bg-red-500 cursor-pointer"
                             title="Beleg entfernen"
                           >
                             <Trash2 size={13} />
@@ -3863,7 +3884,7 @@ export default function Finance() {
             </div>
 
             {/* RIGHT SIDE: DATA FORM */}
-            <div className="w-full lg:w-7/12 flex flex-col h-full bg-surface min-h-0">
+            <div className="w-full lg:w-7/12 flex flex-col lg:h-full bg-surface min-h-0 shrink-0">
               <div className="p-5 sm:p-6 border-b border-border/50 flex justify-between items-center shrink-0">
                 <h3 className="font-bold text-lg text-text-primary">{t('booking_details')}</h3>
                 <button onClick={() => setShowReceiptStudio(false)} className="p-2 bg-background border border-border rounded-lg hover:text-red-500 transition-colors"><X size={18} /></button>
@@ -3968,6 +3989,7 @@ export default function Finance() {
                         <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('vat_rate_label')}</label>
                         <select value={incomingData.vatRate} onChange={e => setIncomingData({ ...incomingData, vatRate: Number(e.target.value) })} className="w-full bg-background border border-border/50 rounded-lg px-2 py-2.5 text-xs sm:text-sm font-bold text-text-primary outline-none cursor-pointer truncate">
                           <option value={8.1} className="bg-surface">8.1% ({currentLang === 'de' ? 'Normalsatz' : 'Standard Rate'})</option>
+                          <option value={3.8} className="bg-surface">3.8% ({currentLang === 'de' ? 'Beherbergung' : 'Hospitality'})</option>
                           <option value={2.6} className="bg-surface">2.6% ({currentLang === 'de' ? 'Verpflegung' : 'Catering / Food'})</option>
                           <option value={0} className="bg-surface">0% ({currentLang === 'de' ? 'Steuerfrei' : 'Tax-Free'})</option>
                         </select>
@@ -4105,6 +4127,7 @@ export default function Finance() {
                         <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('vat_rate_label')}</label>
                         <select value={incomingData.vatRate} onChange={e => setIncomingData({ ...incomingData, vatRate: Number(e.target.value) })} className="w-full bg-background border border-border/50 rounded-lg px-2 py-2.5 text-xs sm:text-sm font-bold text-text-primary outline-none cursor-pointer truncate">
                           <option value={8.1} className="bg-surface">8.1% ({currentLang === 'de' ? 'Normalsatz' : 'Standard Rate'})</option>
+                          <option value={3.8} className="bg-surface">3.8% ({currentLang === 'de' ? 'Beherbergung' : 'Hospitality'})</option>
                           <option value={2.6} className="bg-surface">2.6% ({currentLang === 'de' ? 'Reduziert' : 'Reduced Rate'})</option>
                           <option value={0} className="bg-surface">0% ({currentLang === 'de' ? 'Steuerfrei' : 'Tax-Free'})</option>
                         </select>

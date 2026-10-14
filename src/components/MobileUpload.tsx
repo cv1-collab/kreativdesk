@@ -162,41 +162,44 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
         console.warn("documents temp_receipt insert note:", docErr);
       }
 
+      const sendBroadcastWhenSubscribed = async (channelName: string, eventName: string, payload: any) => {
+        const ch = supabase.channel(channelName);
+        await new Promise<void>((resolve) => {
+          const timeout = setTimeout(() => resolve(), 3500);
+          ch.subscribe((status) => {
+            if (status === 'SUBSCRIBED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+              clearTimeout(timeout);
+              resolve();
+            }
+          });
+        });
+        await ch.send({
+          type: 'broadcast',
+          event: eventName,
+          payload
+        });
+        setTimeout(() => {
+          try { supabase.removeChannel(ch); } catch (e) {}
+        }, 3000);
+      };
+
       // Broadcast to connected desktop sessions in real-time
       if (isVcard && extractedData) {
         try {
-          const channel = supabase.channel(`vcard_upload_${sessionId}`);
-          await channel.subscribe();
-          await channel.send({
-            type: 'broadcast',
-            event: 'vcard_scanned',
-            payload: extractedData
-          });
-          setTimeout(() => {
-            try { supabase.removeChannel(channel); } catch (e) {}
-          }, 3000);
+          await sendBroadcastWhenSubscribed(`vcard_upload_${sessionId}`, 'vcard_scanned', extractedData);
         } catch (channelErr) {
           console.warn("Realtime broadcast note:", channelErr);
         }
       }
 
-      // Broadcast receipt to connected desktop sessions (Spesen & Externe Kosten)
+      // Broadcast receipt to connected desktop sessions (Spesen, Externe Kosten & Mängel)
       try {
-        const receiptChannel = supabase.channel(`mobile_upload_${sessionId}`);
-        await receiptChannel.subscribe();
-        await receiptChannel.send({
-          type: 'broadcast',
-          event: 'receipt_uploaded',
-          payload: {
-            url: downloadUrl,
-            name: file.name,
-            type: file.type || 'image/jpeg',
-            sessionId
-          }
+        await sendBroadcastWhenSubscribed(`mobile_upload_${sessionId}`, 'receipt_uploaded', {
+          url: downloadUrl,
+          name: file.name,
+          type: file.type || 'image/jpeg',
+          sessionId
         });
-        setTimeout(() => {
-          try { supabase.removeChannel(receiptChannel); } catch (e) {}
-        }, 3000);
       } catch (channelErr) {
         console.warn("Realtime receipt broadcast note:", channelErr);
       }

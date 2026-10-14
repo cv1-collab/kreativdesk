@@ -120,17 +120,25 @@ export function GlobalVideoPlayer() {
 
   const handleMaximize = () => {
     setIsMinimized(false);
-    const projectId = activeProjectId || window.location.pathname.split('/')[2];
-    navigate(`/project/${projectId}/meet`);
+    const pathParts = window.location.pathname.split('/');
+    const urlProjectId = pathParts[1] === 'project' ? pathParts[2] : null;
+    const targetProject = urlProjectId || activeProjectId;
+    if (targetProject && targetProject !== 'global' && targetProject !== 'undefined') {
+      navigate(`/project/${targetProject}/meet`);
+    } else {
+      window.dispatchEvent(new CustomEvent('navigate-to-tab', { detail: 'meet' }));
+      navigate('/meet');
+    }
   };
 
   return (
-    <div className="fixed bottom-6 right-6 w-72 md:w-80 h-48 bg-zinc-900 rounded-2xl shadow-2xl border border-white/10 z-[100] overflow-hidden flex flex-col group animate-in slide-in-from-bottom-5 fade-in duration-300">
+    <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 w-64 sm:w-72 md:w-80 h-44 sm:h-48 bg-zinc-900 rounded-2xl shadow-2xl border border-white/10 z-[100] overflow-hidden flex flex-col group animate-in slide-in-from-bottom-5 fade-in duration-300">
       
       <div className={cn("absolute inset-0 grid gap-0.5", 
         Object.keys(remoteStreams).length <= 1 ? "grid-cols-1" :
         Object.keys(remoteStreams).length === 2 ? "grid-cols-2" :
-        "grid-cols-2 grid-rows-2"
+        Object.keys(remoteStreams).length <= 4 ? "grid-cols-2 grid-rows-2" :
+        "grid-cols-3 grid-rows-2"
       )}>
         {Object.entries(remoteStreams).map(([peerId, stream]) => (
           <div key={peerId} className="w-full h-full relative overflow-hidden bg-black">
@@ -144,21 +152,21 @@ export function GlobalVideoPlayer() {
         )}
       </div>
       
-      <div className="absolute bottom-4 right-4 w-20 h-28 bg-black rounded-xl overflow-hidden shadow-lg border border-white/10">
+      <div className="absolute bottom-12 right-2 w-14 h-20 bg-black rounded-xl overflow-hidden shadow-lg border border-white/10 z-10 pointer-events-none">
         <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover transform -scale-x-100" />
       </div>
 
-      <div className="absolute top-0 left-0 w-full p-2 bg-gradient-to-b from-black/80 to-transparent flex justify-between opacity-0 group-hover:opacity-100 transition-opacity">
-        <button onClick={handleMaximize} className="p-2 bg-black/50 hover:bg-accent-ai rounded-lg text-white backdrop-blur-sm transition-all shadow-md">
+      <div className="absolute top-0 left-0 w-full p-2 bg-gradient-to-b from-black/80 to-transparent flex justify-between opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+        <button onClick={handleMaximize} className="p-2 bg-black/50 hover:bg-accent-ai rounded-lg text-white backdrop-blur-sm transition-all shadow-md cursor-pointer">
           <Maximize2 size={16} />
         </button>
       </div>
 
-      <div className="absolute bottom-0 left-0 w-full p-3 bg-gradient-to-t from-black/80 to-transparent flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity items-center">
-        <button onClick={toggleMic} className={cn("p-2 rounded-lg backdrop-blur-sm transition-colors", isMicOn ? "bg-black/50 text-white hover:bg-black/80" : "bg-red-500 text-white")}>
+      <div className="absolute bottom-0 left-0 w-full p-3 bg-gradient-to-t from-black/80 to-transparent flex gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity items-center">
+        <button onClick={toggleMic} className={cn("p-2 rounded-lg backdrop-blur-sm transition-colors cursor-pointer", isMicOn ? "bg-black/50 text-white hover:bg-black/80" : "bg-red-500 text-white")}>
           {isMicOn ? <Mic size={16} /> : <MicOff size={16} />}
         </button>
-        <button onClick={toggleCam} className={cn("p-2 rounded-lg backdrop-blur-sm transition-colors", isCamOn ? "bg-black/50 text-white hover:bg-black/80" : "bg-red-500 text-white")}>
+        <button onClick={toggleCam} className={cn("p-2 rounded-lg backdrop-blur-sm transition-colors cursor-pointer", isCamOn ? "bg-black/50 text-white hover:bg-black/80" : "bg-red-500 text-white")}>
           {isCamOn ? <VideoIcon size={16} /> : <VideoOff size={16} />}
         </button>
         <button onClick={() => hangUp()} className="p-2 bg-red-600 hover:bg-red-500 rounded-lg text-white ml-auto shadow-lg transition-colors cursor-pointer">

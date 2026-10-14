@@ -193,8 +193,8 @@ export default function Dashboard() {
     userRoleStr.includes('handwerker') || 
     userRoleStr.includes('subcontractor');
 
-  // ZERO LEAKAGE: Finance/BKP figures on dashboard strictly hidden from external guests and contractors
-  const canSeeFinance = !isGuestOrContractor && (hasPermission('canViewProjectBudget') || hasPermission('canViewFinance'));
+  // ZERO LEAKAGE: Finance/BKP figures on dashboard strictly hidden from external guests and contractors (always visible in public Demo Mode)
+  const canSeeFinance = isDemoMode || (!isGuestOrContractor && (hasPermission('canViewProjectBudget') || hasPermission('canViewFinance')));
 
   const [aiInsights, setAiInsights] = useState<{titleKey: string, descKey: string, type: 'warning' | 'info' | 'success'}[] | null>(null);
   const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
@@ -243,6 +243,12 @@ export default function Dashboard() {
         const times = (timesData || []).map(d => ({ id: d.id, type: 'time', title: `${d.hours}h: ${d.description}`, date: d.created_at || new Date().toISOString() }));
 
         setRecentActivities([...docs, ...times].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 8));
+
+        if (!canSeeFinance) {
+          setTransactions([]);
+          setVersions([]);
+          return;
+        }
 
         const { data: txsData } = await supabase
           .from('transactions')
@@ -311,16 +317,20 @@ export default function Dashboard() {
     };
 
     fetchData();
-  }, [currentUser, activeProject?.id, activeProject?.name, isDemoMode, demoData]);
+  }, [currentUser, activeProject?.id, activeProject?.name, isDemoMode, demoData, canSeeFinance]);
 
   const generateAIInsights = async () => {
     setIsGeneratingInsights(true);
     await new Promise(resolve => setTimeout(resolve, 1500));
-    setAiInsights([
-      { titleKey: 'insight_budget', descKey: 'insight_budget_desc', type: 'success' },
+    const insights: {titleKey: string, descKey: string, type: 'warning' | 'info' | 'success'}[] = [];
+    if (canSeeFinance) {
+      insights.push({ titleKey: 'insight_budget', descKey: 'insight_budget_desc', type: 'success' });
+    }
+    insights.push(
       { titleKey: 'insight_schedule', descKey: 'insight_schedule_desc', type: 'info' },
       { titleKey: 'insight_defects', descKey: 'insight_defects_desc', type: 'warning' }
-    ]);
+    );
+    setAiInsights(insights);
     setIsGeneratingInsights(false);
   };
 
@@ -392,8 +402,7 @@ export default function Dashboard() {
         created_at: new Date().toISOString(), 
         uploaded_at: new Date().toISOString(), 
         is_folder: false, 
-        category: 'company', 
-        date: new Date().toLocaleDateString('de-CH')
+        category: 'company'
       });
       queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
       addToast(t('saved_cloud'), 'success');
@@ -444,7 +453,7 @@ export default function Dashboard() {
           ) : (
             <div className="flex items-center gap-2 mt-1 group/dtitle">
               <p className="text-sm text-text-muted font-medium">{activeProject?.name}</p>
-              {activeProject && (
+              {activeProject && !isGuestOrContractor && (
                 <button 
                   onClick={startEditingName} 
                   className="opacity-0 group-hover/dtitle:opacity-100 p-1 text-text-muted hover:text-accent-ai hover:bg-surface rounded transition-all cursor-pointer"
@@ -493,7 +502,13 @@ export default function Dashboard() {
         </div>
         {canSeeFinance ? (
           <div 
-            onClick={() => activeProject?.id && navigate(`/project/${activeProject.id}/finance`)}
+            onClick={() => {
+              if (isDemoMode) {
+                window.dispatchEvent(new CustomEvent('demo-switch-tab', { detail: 'finance' }));
+              } else if (activeProject?.id) {
+                navigate(`/project/${activeProject.id}/finance`);
+              }
+            }}
             className="bg-surface border border-border rounded-xl p-3.5 sm:p-4 md:p-5 shadow-sm cursor-pointer hover:border-accent-ai/50 transition-colors group min-w-0"
           >
             <div className="flex items-center justify-between mb-2">
@@ -514,7 +529,13 @@ export default function Dashboard() {
           </div>
         ) : (
           <div 
-            onClick={() => activeProject?.id && navigate(`/project/${activeProject.id}/defects`)}
+            onClick={() => {
+              if (isDemoMode) {
+                window.dispatchEvent(new CustomEvent('demo-switch-tab', { detail: 'defects' }));
+              } else if (activeProject?.id) {
+                navigate(`/project/${activeProject.id}/defects`);
+              }
+            }}
             className="bg-surface border border-border rounded-xl p-3.5 sm:p-4 md:p-5 shadow-sm cursor-pointer hover:border-accent-ai/50 transition-colors group min-w-0"
           >
             <div className="flex items-center justify-between mb-2">
@@ -609,7 +630,13 @@ export default function Dashboard() {
                   <p>{t('no_budget_present')}</p>
                   {activeProject?.id && (
                     <button
-                      onClick={() => navigate(`/project/${activeProject.id}/finance`)}
+                      onClick={() => {
+                        if (isDemoMode) {
+                          window.dispatchEvent(new CustomEvent('demo-switch-tab', { detail: 'finance' }));
+                        } else {
+                          navigate(`/project/${activeProject.id}/finance`);
+                        }
+                      }}
                       className="px-3 py-1.5 bg-accent-ai/10 text-accent-ai border border-accent-ai/20 rounded-lg text-xs font-bold hover:bg-accent-ai/20 transition-colors"
                     >
                       {t('manage_budget')}
@@ -647,7 +674,13 @@ export default function Dashboard() {
                   : 'You have access to all tickets and tasks assigned to your trade.'}
               </p>
               <button
-                onClick={() => activeProject?.id && navigate(`/project/${activeProject.id}/defects`)}
+                onClick={() => {
+                  if (isDemoMode) {
+                    window.dispatchEvent(new CustomEvent('demo-switch-tab', { detail: 'defects' }));
+                  } else if (activeProject?.id) {
+                    navigate(`/project/${activeProject.id}/defects`);
+                  }
+                }}
                 className="h-9 px-4 bg-accent-ai text-white rounded-xl text-xs font-bold hover:bg-accent-ai/90 transition-colors shadow-sm cursor-pointer"
               >
                 {currentLang === 'de' ? 'Zur Mängel-Übersicht' : 'View Punch List'}

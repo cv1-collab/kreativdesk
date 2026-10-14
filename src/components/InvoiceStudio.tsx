@@ -113,29 +113,56 @@ const InvoicePDFDocument = ({ settings, type, formData, positions, subtotal, vat
         {/* PAYMENT / SWISS QR-BILL SECTION */}
         {type === 'invoice' && (
           <View style={{ marginTop: 25, borderTopWidth: 1, borderTopColor: '#000000', paddingTop: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }} wrap={false}>
-            <View style={{ width: isSwissQRSupported ? '60%' : '100%' }}>
-              <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#000000', marginBottom: 4 }}>
-                {isSwissQRSupported ? (isEn ? 'Payment Part (Swiss QR-Bill)' : 'Zahlteil / Section paiement (Swiss QR-Bill)') : (isEn ? 'Payment Information (Bank Transfer)' : 'Zahlungsinformationen (Banküberweisung)')}
-              </Text>
-              <Text style={{ fontSize: 8, color: '#4b5563', lineHeight: 1.4 }}>
-                {isEn ? 'Account / IBAN: ' : 'Konto / IBAN: '}CH93 0076 2011 6238 5295 7{'\n'}
-                {isEn ? 'Currency: ' : 'Währung / Currency: '}{currency} • {isEn ? 'Amount: ' : 'Betrag / Amount: '}{currency} {formatVal(total)}{'\n'}
-                {isEn ? 'Payable by: ' : 'Zahlbar durch / Payable by: '}{formData.recipient.split('\n')[0] || (isEn ? 'Client' : 'Kunde')}
-              </Text>
-            </View>
-            {isSwissQRSupported && (
-              <PDFImage 
-                src={getSwissQRCodeUrl(generateSwissQRPayload({
-                  iban: 'CH9300762011623852957',
-                  creditor: { name: 'Kreativ-Desk Studio', postalCode: '8001', city: 'Zürich', country: 'CH' },
-                  amount: total,
-                  currency: currency as ('CHF' | 'EUR'),
-                  debtor: { name: formData.recipient.split('\n')[0] || (isEn ? 'Client' : 'Kunde'), postalCode: '8000', city: 'Zürich', country: 'CH' },
-                  unstructuredMessage: `${isEn ? 'Invoice' : 'Rechnung'} ${formData.invoiceNumber}`
-                }))} 
-                style={{ width: 85, height: 85, borderRadius: 4 }} 
-              />
-            )}
+            {(() => {
+              const ibanMatch = (formData.paymentInfo || '').match(/([A-Z]{2}\d{2}(?:\s?[A-Z0-9]{4}){4,5}(?:\s?[A-Z0-9]{1,2})?)/i);
+              const extractedIban = ibanMatch ? ibanMatch[1].trim() : '';
+              const cleanIban = extractedIban.replace(/\s+/g, '');
+              const hasValidCustomIban = cleanIban.length >= 15 && !cleanIban.startsWith('CH00');
+              const displayIban = hasValidCustomIban ? extractedIban : 'CH93 0076 2011 6238 5295 7';
+              const qrIban = hasValidCustomIban ? cleanIban : 'CH9300762011623852957';
+
+              const senderLines = (formData.sender || '').split('\n').map((s: string) => s.trim()).filter(Boolean);
+              const creditorName = senderLines[0] || 'Kreativ-Desk Studio';
+              const lastSenderLine = senderLines[senderLines.length - 1] || '8001 Zürich';
+              const zipCityMatch = lastSenderLine.match(/^(\d{4,5})\s+(.+)$/);
+              const creditorZip = zipCityMatch ? zipCityMatch[1] : '8001';
+              const creditorCity = zipCityMatch ? zipCityMatch[2] : 'Zürich';
+
+              const recipientLines = (formData.recipient || '').split('\n').map((s: string) => s.trim()).filter(Boolean);
+              const debtorName = recipientLines[0] || (isEn ? 'Client' : 'Kunde');
+              const lastRecipLine = recipientLines[recipientLines.length - 1] || '8000 Zürich';
+              const debtorZipCityMatch = lastRecipLine.match(/^(\d{4,5})\s+(.+)$/);
+              const debtorZip = debtorZipCityMatch ? debtorZipCityMatch[1] : '8000';
+              const debtorCity = debtorZipCityMatch ? debtorZipCityMatch[2] : 'Zürich';
+
+              return (
+                <>
+                  <View style={{ width: isSwissQRSupported ? '60%' : '100%' }}>
+                    <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#000000', marginBottom: 4 }}>
+                      {isSwissQRSupported ? (isEn ? 'Payment Part (Swiss QR-Bill)' : 'Zahlteil / Section paiement (Swiss QR-Bill)') : (isEn ? 'Payment Information (Bank Transfer)' : 'Zahlungsinformationen (Banküberweisung)')}
+                    </Text>
+                    <Text style={{ fontSize: 8, color: '#4b5563', lineHeight: 1.4 }}>
+                      {isEn ? 'Account / IBAN: ' : 'Konto / IBAN: '}{displayIban} ({creditorName}){'\n'}
+                      {isEn ? 'Currency: ' : 'Währung / Currency: '}{currency} • {isEn ? 'Amount: ' : 'Betrag / Amount: '}{currency} {formatVal(total)}{'\n'}
+                      {isEn ? 'Payable by: ' : 'Zahlbar durch / Payable by: '}{debtorName}
+                    </Text>
+                  </View>
+                  {isSwissQRSupported && (
+                    <PDFImage 
+                      src={getSwissQRCodeUrl(generateSwissQRPayload({
+                        iban: qrIban,
+                        creditor: { name: creditorName, postalCode: creditorZip, city: creditorCity, country: 'CH' },
+                        amount: total,
+                        currency: currency as ('CHF' | 'EUR'),
+                        debtor: { name: debtorName, postalCode: debtorZip, city: debtorCity, country: 'CH' },
+                        unstructuredMessage: `${isEn ? 'Invoice' : 'Rechnung'} ${formData.invoiceNumber}`
+                      }))} 
+                      style={{ width: 85, height: 85, borderRadius: 4 }} 
+                    />
+                  )}
+                </>
+              );
+            })()}
           </View>
         )}
 
@@ -227,7 +254,7 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
   const handleSaveToCloud = async (blob: Blob) => {
     const fileName = `${type === 'invoice' ? 'RE' : 'OFF'}_${formData.invoiceNumber}_${Date.now()}.pdf`;
     if (onSave) {
-      onSave({ file: blob, fileName, total, clientName: formData.recipient.split('\n')[0] || 'Kunde', invoiceNumber: formData.invoiceNumber, budgetPosId: '', type });
+      onSave({ file: blob, fileName, total, date: formData.date, projectId: activeProjectId, clientName: formData.recipient.split('\n')[0] || 'Kunde', invoiceNumber: formData.invoiceNumber, budgetPosId: '', type });
     } else {
       if (!currentUser) return;
       const safeCompanyId = currentUser.companyId || currentUser.uid;

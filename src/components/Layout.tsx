@@ -40,7 +40,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     bau_akte: 'Document Hub', pitch_deck: 'Pitch Deck', projekt_zugriffe: 'Team Access', booked: 'Booked',
     status: 'Status', active: 'Active', logout: 'Logout',
     install_app: 'Install App', start_tour: 'Start Tour', back_to_workspace: 'Back to Workspace',
-    offline_banner: 'Offline mode active – Data is saved locally on site and synced when connected.', admin: 'Admin'
+    offline_banner: 'Offline mode active – Data is saved locally on site and synced when connected.', admin: 'Admin', settings: 'Settings'
   },
   de: {
     steuerung: 'Steuerung', project_overview: 'Projektübersicht', finance_budget: 'Finanzen & Budget',
@@ -50,7 +50,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     bau_akte: 'Bauakte', pitch_deck: 'Pitch Deck', projekt_zugriffe: 'Projekt-Zugriffe', booked: 'Gebucht',
     status: 'Status', active: 'Aktiv', logout: 'Abmelden',
     install_app: 'App installieren', start_tour: 'Tour starten', back_to_workspace: 'Zurück zum Workspace',
-    offline_banner: 'Offline-Modus aktiv – Daten werden lokal auf der Baustelle gespeichert & bei Verbindung synchronisiert.', admin: 'Admin'
+    offline_banner: 'Offline-Modus aktiv – Daten werden lokal auf der Baustelle gespeichert & bei Verbindung synchronisiert.', admin: 'Admin', settings: 'Einstellungen'
   }
 };
 
@@ -274,7 +274,7 @@ export default function Layout() {
     {
       title: t('datenraum'), items: [
         { id: 'documents', icon: FileText, label: t('bau_akte'), className: 'tour-proj-docs' },
-        { id: 'pitch', icon: Presentation, label: t('pitch_deck'), className: 'tour-proj-pitch', featureId: 'ai_audit' },
+        ...(!isGuestOrContractor ? [{ id: 'pitch', icon: Presentation, label: t('pitch_deck'), className: 'tour-proj-pitch', featureId: 'ai_audit' }] : []),
         { id: 'team', icon: UserCheck, label: t('projekt_zugriffe'), className: 'tour-proj-team' }
       ]
     }
@@ -378,7 +378,7 @@ export default function Layout() {
               <h2 className="font-semibold text-sm truncate text-text-primary" title={project?.name}>{project?.name || 'Projekt Workspace'}</h2>
               <p className="text-[10px] text-accent-ai uppercase tracking-widest font-extrabold mt-0.5">Workspace</p>
             </div>
-            {project && (
+            {project && !isGuestOrContractor && (
               <button 
                 onClick={handleOpenRename} 
                 className="opacity-0 group-hover/projheader:opacity-100 p-1 text-text-muted hover:text-accent-ai hover:bg-white/5 rounded transition-all cursor-pointer shrink-0" 
@@ -418,6 +418,24 @@ export default function Layout() {
                     );
                   }
 
+                  if (item.id === 'pitch') {
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => setShowPitchModal(true)}
+                        className={cn(
+                          "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-text-muted hover:bg-white/5 hover:text-text-primary border border-transparent cursor-pointer",
+                          item.className
+                        )}
+                      >
+                        <div className="flex items-center gap-3 truncate">
+                          <item.icon size={18} className="shrink-0" />
+                          <span className="truncate">{item.label}</span>
+                        </div>
+                      </button>
+                    );
+                  }
+
                   return (
                     <NavLink
                       key={item.id}
@@ -451,23 +469,25 @@ export default function Layout() {
             </div>
           ))}
 
-          <div className="pt-1">
-            <div className="px-3 mb-1.5 text-[11px] font-bold text-text-muted uppercase tracking-wider">AI Tools</div>
-            {(!hasFeature(currentUser, 'ai_audit')) ? (
-              <button onClick={() => window.dispatchEvent(new CustomEvent('open-upgrade-modal'))} className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-bold text-text-muted/50 hover:bg-white/5 transition-all border border-transparent group tour-proj-pitch">
-                <div className="flex items-center gap-3">
-                  <MonitorPlay size={18} />
+          {!isGuestOrContractor && (
+            <div className="pt-1">
+              <div className="px-3 mb-1.5 text-[11px] font-bold text-text-muted uppercase tracking-wider">AI Tools</div>
+              {(!hasFeature(currentUser, 'ai_audit')) ? (
+                <button onClick={() => window.dispatchEvent(new CustomEvent('open-upgrade-modal'))} className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-bold text-text-muted/50 hover:bg-white/5 transition-all border border-transparent group tour-proj-pitch">
+                  <div className="flex items-center gap-3">
+                    <MonitorPlay size={18} />
+                    <span>{t('pitch_deck')}</span>
+                  </div>
+                  <Lock size={14} className="text-accent-ai/70" />
+                </button>
+              ) : (
+                <button onClick={() => setShowPitchModal(true)} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-bold text-purple-400 hover:bg-purple-500/10 transition-all border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.15)] group tour-proj-pitch">
+                  <MonitorPlay size={18} className="group-hover:scale-110 transition-transform" />
                   <span>{t('pitch_deck')}</span>
-                </div>
-                <Lock size={14} className="text-accent-ai/70" />
-              </button>
-            ) : (
-              <button onClick={() => setShowPitchModal(true)} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-bold text-purple-400 hover:bg-purple-500/10 transition-all border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.15)] group tour-proj-pitch">
-                <MonitorPlay size={18} className="group-hover:scale-110 transition-transform" />
-                <span>{t('pitch_deck')}</span>
-              </button>
-            )}
-          </div>
+                </button>
+              )}
+            </div>
+          )}
         </nav>
 
         {/* KOMPAKTER BOTTOM FOOTER: GEBUCHT/STATUS + USER + LOGOUT */}
@@ -563,7 +583,7 @@ export default function Layout() {
               <ArrowLeft size={18} />
             </button>
             <span className="font-semibold text-sm md:text-base truncate max-w-[120px] sm:max-w-[250px]">{project?.name || 'Projekt'}</span>
-            {project && (
+            {project && !isGuestOrContractor && (
               <button 
                 onClick={handleOpenRename} 
                 className="p-1.5 text-text-muted hover:text-accent-ai hover:bg-white/5 rounded-md transition-colors cursor-pointer" 
@@ -578,11 +598,11 @@ export default function Layout() {
             {/* LIVE TEAM PRESENCE AVATAR STACK */}
             {onlineUsers && onlineUsers.length > 0 && (
               <div 
-                className="hidden sm:flex items-center -space-x-1.5 overflow-hidden pl-1 pr-1.5 py-1 bg-background/80 border border-border/60 rounded-xl shadow-xs shrink-0 cursor-default" 
+                className="flex items-center -space-x-1.5 overflow-hidden pl-1 pr-1.5 py-1 bg-background/80 border border-border/60 rounded-xl shadow-xs shrink-0 cursor-default" 
                 title={onlineUsers.map(u => u.name).join(', ') + ' ist/sind online'}
               >
-                {onlineUsers.slice(0, 3).map((ou) => (
-                  <div key={ou.userId} className="relative group/ou shrink-0">
+                {onlineUsers.slice(0, 3).map((ou, idx) => (
+                  <div key={ou.userId} className={cn("relative group/ou shrink-0", idx > 0 && "hidden sm:block")}>
                     <div className="w-6 h-6 rounded-full bg-accent-ai/20 border border-surface flex items-center justify-center text-[10px] font-bold text-accent-ai overflow-hidden shadow-xs">
                       {ou.photoURL ? (
                         <img src={ou.photoURL} alt={ou.name} className="w-full h-full object-cover" />
@@ -593,8 +613,11 @@ export default function Layout() {
                     <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 border border-surface" />
                   </div>
                 ))}
+                {onlineUsers.length > 1 && (
+                  <span className="pl-2 text-[10px] font-bold text-emerald-400 sm:hidden">+{onlineUsers.length - 1}</span>
+                )}
                 {onlineUsers.length > 3 && (
-                  <span className="pl-2 text-[10px] font-bold text-emerald-400">+{onlineUsers.length - 3}</span>
+                  <span className="pl-2 text-[10px] font-bold text-emerald-400 hidden sm:inline">+{onlineUsers.length - 3}</span>
                 )}
                 <span className="pl-1.5 pr-0.5 text-[10px] font-bold text-emerald-400 hidden xl:inline flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -694,7 +717,7 @@ export default function Layout() {
                       <div className="pt-2.5 space-y-1.5">
                         <button
                           type="button"
-                          onClick={() => { setShowMobileUserMenu(false); navigate("/project/" + (projectId || "") + "/settings"); }}
+                          onClick={() => { setShowMobileUserMenu(false); navigate('/settings'); }}
                           className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-text-primary hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
                         >
                           <Settings size={15} className="text-text-muted" />
@@ -722,10 +745,41 @@ export default function Layout() {
           style={{ top: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}
         >
           {mobileNavItems.map(item => {
+            const isLocked = item.featureId && !hasFeature(currentUser, item.featureId);
+            if (isLocked) {
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => window.dispatchEvent(new CustomEvent('open-upgrade-modal'))}
+                  className={cn("flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-200 border shrink-0 bg-background text-text-muted/60 border-border/50", item.className)}
+                >
+                  <item.icon size={14} />{item.label}<Lock size={12} className="text-accent-ai/70" />
+                </button>
+              );
+            }
+            if (item.id === 'pitch') {
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setShowPitchModal(true)}
+                  className={cn("flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-200 border shrink-0 bg-background text-text-muted border-border/50 hover:bg-white/5", item.className)}
+                >
+                  <item.icon size={14} />{item.label}
+                </button>
+              );
+            }
             const path = `/project/${projectId}${item.id ? `/${item.id}` : ''}`;
-            const isActive = window.location.pathname === path || window.location.pathname.startsWith(path + '/');
             return (
-              <NavLink key={item.id} to={path} end={item.id === ''} className={() => cn("flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-200 border shrink-0", isActive ? "bg-accent-ai text-white border-accent-ai shadow-md" : "bg-background text-text-muted border-border/50 hover:bg-white/5", item.className)}>
+              <NavLink
+                key={item.id}
+                to={path}
+                end={item.id === ''}
+                className={({ isActive }) => cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-200 border shrink-0",
+                  isActive ? "bg-accent-ai text-white border-accent-ai shadow-md" : "bg-background text-text-muted border-border/50 hover:bg-white/5",
+                  item.className
+                )}
+              >
                 <item.icon size={14} />{item.label}
               </NavLink>
             );

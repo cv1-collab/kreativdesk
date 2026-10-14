@@ -147,13 +147,13 @@ export function calculateFinancialLedger(
     const amt = Math.abs(Number(t.amount) || 0);
     const type = (t.type || '').toLowerCase();
 
-    if (type === 'invoice') {
+    if (type === 'invoice' || type === 'income' || type === 'revenue') {
       outgoingInvoicesTotal += amt;
     } else if (type === 'quote') {
       openQuotesTotal += amt;
     } else if (type === 'expense') {
       teamExpensesTotal += amt;
-    } else if (type === 'external_cost' || type === 'ext_cost') {
+    } else if (type === 'external_cost' || type === 'ext_cost' || type === 'operating_cost') {
       externalCostsTotal += amt;
     } else if (type === 'time_entry') {
       internalTimeCostTotal += amt;

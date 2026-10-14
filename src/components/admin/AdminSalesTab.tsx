@@ -59,8 +59,12 @@ export default function AdminSalesTab() {
           .map((t: any) => {
             const prof = profileMap.get(t.user_id || t.owner_id);
             const userEmail = t.userEmail || t.user_email || prof?.email || prof?.name || null;
+            const descPlanMatch = typeof t.description === 'string' && t.description.startsWith('Stripe Abo')
+              ? t.description.replace(/^Stripe Abo(-Verlängerung)?:\s*/i, '').trim()
+              : null;
             return {
               ...t,
+              plan: t.plan || descPlanMatch || prof?.plan || 'Subscription',
               userEmail: userEmail,
               companyName: prof?.company_name || t.company_name || 'Kreativ Desk Organisation'
             };

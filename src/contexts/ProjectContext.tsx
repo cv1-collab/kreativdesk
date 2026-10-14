@@ -102,9 +102,13 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   const fetchProjects = useCallback(async () => {
     if (!currentUser || !currentUser.uid) return;
     const safeCompanyId = getSafeCompanyId();
+    const roleLower = String(currentUser.role || '').toLowerCase().trim();
+    const isExternalUser = ['guest', 'client', 'external', 'partner', 'subcontractor', 'handwerker', 'bauherr', 'field guest', 'external planner'].includes(roleLower);
 
     try {
-      await ensureDefaultCompanyFolders(safeCompanyId, currentUser.uid);
+      if (!isExternalUser) {
+        await ensureDefaultCompanyFolders(safeCompanyId, currentUser.uid);
+      }
 
       const { data } = await supabase
         .from('projects')
@@ -113,7 +117,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         .order('created_at', { ascending: false });
 
       if (data) {
-        const mappedProjects: Project[] = data.map((p: any) => ({
+        let mappedProjects: Project[] = data.map((p: any) => ({
           id: p.id,
           name: p.name,
           description: p.description || '',
@@ -135,6 +139,46 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
           accessUrl: p.access_url || p.accessUrl || '',
           access_url: p.access_url || p.accessUrl || ''
         }));
+
+        if (isExternalUser && safeCompanyId) {
+          try {
+            const assignedProjectIds = new Set<string>();
+            const userEmailLower = (currentUser.email || '').toLowerCase().trim();
+            const [{ data: mems }, { data: crmRows }] = await Promise.all([
+              supabase.from('project_members').select('project_id, user_id, user_email').eq('company_id', safeCompanyId),
+              userEmailLower
+                ? supabase.from('company_users').select('id, user_id, email, notes').eq('company_id', safeCompanyId).ilike('email', userEmailLower)
+                : Promise.resolve({ data: [] as any[] })
+            ]);
+
+            const myIds = new Set<string>([currentUser.uid]);
+            (crmRows || []).forEach((cu: any) => {
+              if (cu.id) myIds.add(String(cu.id));
+              if (cu.user_id) myIds.add(String(cu.user_id));
+              if (cu.notes && typeof cu.notes === 'string' && cu.notes.startsWith('__CRM_META__:')) {
+                try {
+                  const meta = JSON.parse(cu.notes.replace('__CRM_META__:', ''));
+                  if (meta?.projectRoles && typeof meta.projectRoles === 'object') {
+                    Object.keys(meta.projectRoles).forEach(pid => assignedProjectIds.add(pid));
+                  }
+                } catch (_) {}
+              }
+            });
+
+            (mems || []).forEach((m: any) => {
+              const matchesId = m.user_id && myIds.has(String(m.user_id));
+              const matchesEmail = userEmailLower && m.user_email && String(m.user_email).toLowerCase().trim() === userEmailLower;
+              if ((matchesId || matchesEmail) && m.project_id) {
+                assignedProjectIds.add(String(m.project_id));
+              }
+            });
+
+            if (assignedProjectIds.size > 0) {
+              mappedProjects = mappedProjects.filter(p => assignedProjectIds.has(p.id) || p.ownerId === currentUser.uid);
+            }
+          } catch (_) {}
+        }
+
         setProjects(mappedProjects);
         setActiveProjectId(prev => {
           if (prev && mappedProjects.some(p => p.id === prev)) {
@@ -171,7 +215,11 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   }, [currentUser, getSafeCompanyId, fetchProjectMembers, fetchDefects, fetchTimeEntries]);
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      setProjects([]);
+      setActiveProjectId(null);
+      return;
+    }
 
     fetchProjects();
     fetchCompanyUsers();
@@ -315,7 +363,9 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     const safeCompanyId = getSafeCompanyId();
     setProjects(prev => prev.map(p => p.id === id ? { ...p, status: status as any } : p));
     try {
-      await supabase.from('projects').update({ status }).eq('id', id);
+      let query = supabase.from('projects').update({ status }).eq('id', id);
+      if (safeCompanyId) query = query.eq('company_id', safeCompanyId);
+      await query;
     } catch (err) {
       console.error("Fehler beim Aktualisieren des Projektstatus:", err);
     }
@@ -355,13 +405,21 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     if ((updates as any).drone_url !== undefined) dbUpdates.drone_url = (updates as any).drone_url;
 
     try {
-      const { error } = await (supabase.from('projects') as any).update(dbUpdates).eq('id', id);
+      let updateQuery = (supabase.from('projects') as any).update(dbUpdates).eq('id', id);
+      if (safeCompanyId) updateQuery = updateQuery.eq('company_id', safeCompanyId);
+      const { error } = await updateQuery;
       if (error) {
-        // Fallback: If updated_at column doesn't exist, retry without it
-        if (error.code === 'PGRST204' || error.message?.includes('updated_at')) {
+        // Fallback: If extended columns don't exist in schema cache, retry with core columns only
+        if (error.code === 'PGRST204' || error.message?.includes('updated_at') || error.message?.includes('column')) {
           delete dbUpdates.updated_at;
-          const retry = await (supabase.from('projects') as any).update(dbUpdates).eq('id', id);
-          if (retry.error) throw retry.error;
+          delete dbUpdates.site_location;
+          delete dbUpdates.drone_url;
+          if (Object.keys(dbUpdates).length > 0) {
+            let retryQuery = (supabase.from('projects') as any).update(dbUpdates).eq('id', id);
+            if (safeCompanyId) retryQuery = retryQuery.eq('company_id', safeCompanyId);
+            const retry = await retryQuery;
+            if (retry.error) throw retry.error;
+          }
         } else {
           throw error;
         }

@@ -333,7 +333,6 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
       const dbCol = columnMap[linkModal.type] || linkModal.type;
 
       const { error } = await supabase.from('projects').update({
-        [linkModal.type]: linkModal.url,
         [dbCol]: linkModal.url
       } as any).eq('id', activeProject.id);
 

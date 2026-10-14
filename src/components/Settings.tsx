@@ -150,7 +150,13 @@ export default function Settings() {
     setIsUpdatingProfile(true);
     try {
       safeStorage.setItem(`user_contact_${currentUser.uid}`, { phone, street, zipCity });
-      await supabase.from('profiles').update({ updated_at: new Date().toISOString() }).eq('id', currentUser.uid);
+      await supabase.from('profiles').update({
+        name: displayName.trim() || currentUser.displayName || 'User',
+        updated_at: new Date().toISOString()
+      }).eq('id', currentUser.uid);
+      if (updateCurrentUser && displayName.trim()) {
+        updateCurrentUser({ name: displayName.trim(), displayName: displayName.trim() } as any);
+      }
       setProfileSuccess(true);
       addToast(t('upload_success'), 'success');
       setTimeout(() => setProfileSuccess(false), 3000);
@@ -259,19 +265,25 @@ export default function Settings() {
     }
   };
 
+  const stripeCustomerId = dbData?.stripe_customer_id || dbData?.stripeCustomerId || currentUser?.stripeCustomerId;
+
   const handleManageSubscription = async () => {
-    const customerId = dbData?.stripe_customer_id || dbData?.stripeCustomerId;
-    if (!customerId) return;
+    if (!stripeCustomerId) return;
     
     setIsPortalLoading(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token || '';
+
       const response = await fetch('/api/create-portal-session', {
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ type: "reset", 
-          customerId: customerId,
+        body: JSON.stringify({
+          type: "reset", 
+          customerId: stripeCustomerId,
           returnUrl: window.location.origin + '/app' 
         })
       });
@@ -279,7 +291,10 @@ export default function Settings() {
       const data = await response.json();
       
       if (data.url) {
-        window.location.href = data.url; 
+        const safe = sanitizeUrl(data.url);
+        if (safe && (safe.startsWith('https://') || safe.startsWith('/'))) {
+          window.location.assign(safe);
+        }
       } else {
         throw new Error(data.error || 'Fehler beim Öffnen des Portals');
       }
@@ -314,7 +329,7 @@ export default function Settings() {
 
       // 3. Fetch physical files and add to ZIP
       const dateienFolder = zip.folder("Dateien");
-      const filesToDownload = exportData.documents.filter((d: any) => !d.isFolder && d.fileUrl);
+      const filesToDownload = exportData.documents.filter((d: any) => !d.is_folder && !d.isFolder && (d.file_url || d.url || d.fileUrl));
 
       if (filesToDownload.length > 0) {
         addToast(`Lade ${filesToDownload.length} Dateien für den Export herunter...`, 'info');
@@ -323,7 +338,8 @@ export default function Settings() {
       let downloadedCount = 0;
       for (const doc of filesToDownload) {
         try {
-          const response = await fetch(doc.fileUrl);
+          const targetUrl = doc.file_url || doc.url || doc.fileUrl;
+          const response = await fetch(targetUrl);
           if (response.ok) {
             const blob = await response.blob();
             const fileName = doc.name || `file_${downloadedCount}`;
@@ -512,17 +528,27 @@ export default function Settings() {
           </div>
           <div className="bg-gradient-to-br from-accent-ai/10 to-purple-500/10 rounded-2xl border border-accent-ai/20 p-4 md:p-8 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
             <div>
-              <h3 className="font-semibold text-text-primary mb-2 flex items-center justify-center md:justify-start gap-2">{t('current_plan')}: <span className="bg-accent-ai text-white px-2 py-0.5 rounded text-xs font-bold tracking-wider uppercase ml-1">{dbData?.plan || 'PRO'}</span></h3>
+              <h3 className="font-semibold text-text-primary mb-2 flex items-center justify-center md:justify-start gap-2">
+                {t('current_plan')}: <span className="bg-accent-ai text-white px-2 py-0.5 rounded text-xs font-bold tracking-wider uppercase ml-1">{currentUser?.companyPlan || dbData?.plan || 'Free Trial'}</span>
+              </h3>
               <p className="text-text-muted text-sm">{t('manage_sub_desc')}</p>
             </div>
-            {/* +++ FIX 1.3: Der Button ist nun gesperrt, wenn keine Stripe ID vorhanden ist +++ */}
-            <button 
-              onClick={handleManageSubscription} 
-              disabled={isPortalLoading || !dbData?.stripeCustomerId} 
-              className="w-full md:w-auto h-9 px-5 bg-background border border-border/50 hover:bg-surface rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 text-text-primary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-xs"
-            >
-              {isPortalLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4 text-accent-ai" />} {t('open_portal')}
-            </button>
+            {stripeCustomerId ? (
+              <button 
+                onClick={handleManageSubscription} 
+                disabled={isPortalLoading} 
+                className="w-full md:w-auto h-9 px-5 bg-background border border-border/50 hover:bg-surface rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 text-text-primary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-xs"
+              >
+                {isPortalLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4 text-accent-ai" />} {t('open_portal')}
+              </button>
+            ) : (
+              <button 
+                onClick={() => navigate('/pricing')} 
+                className="w-full md:w-auto h-9 px-5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+              >
+                <ExternalLink className="w-4 h-4" /> {currentLang === 'de' ? 'Tarif wählen / Upgrade' : 'Choose Plan / Upgrade'}
+              </button>
+            )}
           </div>
         </section>
 

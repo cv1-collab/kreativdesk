@@ -305,7 +305,7 @@ export default function PublicLeadForm() {
             title: selectedPlan ? `Neue Setup-Anfrage (${selectedPlan})` : 'Neue Lead-Anfrage',
             message: `Neuer Lead: ${fullName} (${formData.company || formData.email})`,
             type: 'info',
-            link: '/crm'
+            link: '/leads'
           });
         } catch (nErr) {
           console.warn("Lead notification warning:", nErr);

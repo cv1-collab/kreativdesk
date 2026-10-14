@@ -219,14 +219,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // 4d. Re-sync used_seats on all companies
+    // 4d. Re-sync used_seats on all companies (excluding external roles)
+    const EXTERNAL_ROLES = ['guest', 'client', 'external', 'partner', 'subcontractor', 'field guest', 'external planner', 'bauherr', 'handwerker'];
     const { data: companies } = await supabaseAdmin.from('companies').select('id');
     for (const comp of (companies || [])) {
-      const { count } = await supabaseAdmin
+      const { data: profs } = await supabaseAdmin
         .from('profiles')
-        .select('*', { count: 'exact', head: true })
+        .select('id, email, role')
         .eq('company_id', comp.id);
-      await supabaseAdmin.from('companies').update({ used_seats: count || 1 }).eq('id', comp.id);
+      const internalCount = (profs || []).filter(
+        (p: any) => !EXTERNAL_ROLES.includes(String(p.role || '').trim().toLowerCase())
+      ).length;
+      await supabaseAdmin.from('companies').update({ used_seats: Math.max(1, internalCount) }).eq('id', comp.id);
     }
 
     return res.status(200).json({

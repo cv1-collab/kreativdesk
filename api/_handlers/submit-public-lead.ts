@@ -85,7 +85,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         id: crypto.randomUUID(),
         company_id: targetCompanyId,
         title: plan ? `Neue Setup-Anfrage (${plan})` : 'Neue Lead-Anfrage',
-        message: `${fullName} (${company || email}) hat eine Setup-Anfrage eingereicht.${plan ? ` Gewähltes System: ${plan}` : ''}\n__LINK__:/crm`,
+        message: `${fullName} (${company || email}) hat eine Setup-Anfrage eingereicht.${plan ? ` Gewähltes System: ${plan}` : ''}\n__LINK__:/leads`,
         type: 'info',
         read: false,
         created_at: new Date().toISOString()

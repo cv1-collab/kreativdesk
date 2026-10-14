@@ -13,7 +13,7 @@
       "destination": "/api/[...route]?route=$1"
     },
     {
-      "source": "/((?!assets/|media/|demo-assets/|wasm/|.*\\.wasm|sw\\.js|workbox-.*|manifest\\.webmanifest|favicon\\.ico|pwa-.*|masked-icon\\.svg|apple-touch-icon\\.png).*)",
+      "source": "/((?!api/|assets/|media/|demo-assets/|wasm/|.*\\.wasm|sw\\.js|workbox-.*|manifest\\.webmanifest|favicon\\.ico|pwa-.*|masked-icon\\.svg|apple-touch-icon\\.png).*)",
       "destination": "/index.html"
     }
   ],

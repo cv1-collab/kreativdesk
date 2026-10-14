@@ -1,8 +1,9 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 import { useProject } from './ProjectContext';
+import { safeStorage } from '../utils/safeStorage';
 
 export interface PresenceUser {
   userId: string;
@@ -10,6 +11,8 @@ export interface PresenceUser {
   email: string;
   photoURL?: string | null;
   onlineAt: string;
+  projectId?: string | null;
+  activeModule?: string | null;
 }
 
 interface TeamPresenceContextType {
@@ -26,30 +29,49 @@ const TeamPresenceContext = createContext<TeamPresenceContextType>({
 
 export const useTeamPresence = () => useContext(TeamPresenceContext);
 
+const GENERIC_FALLBACK_NAMES = new Set(['benutzer', 'team', 'user', 'gast', 'guest']);
+
 export const TeamPresenceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentUser } = useAuth();
   const { activeProjectId } = (useProject?.() || {}) as any;
   const [onlineUsers, setOnlineUsers] = useState<PresenceUser[]>([]);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const isSubscribedRef = useRef(false);
 
-  // Safe companyId fallback
-  const safeCompanyId = currentUser?.companyId || 'kreativ_desk_global';
+  // Strict multi-tenant isolation: respect Super-Admin preview mode and fall back to user's own ID, never a shared global channel
+  const previewCompanyId = safeStorage.session.getString('admin_preview_company_id');
+  const safeCompanyId = previewCompanyId || currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid || currentUser?.id || '';
 
+  const currentUserName = useMemo(() => {
+    if (!currentUser) return 'Team';
+    return (
+      currentUser.displayName ||
+      currentUser.name ||
+      (currentUser.email === 'cv1@gmx.ch' ? 'Carlo Vescio' : currentUser.email ? currentUser.email.split('@')[0] : 'Team')
+    );
+  }, [currentUser]);
+
+  const currentUserPhoto = currentUser?.photoURL || (currentUser as any)?.avatar || null;
+
+  // Main channel lifecycle: only reconnect when user or tenant changes (NOT when switching projects)
   useEffect(() => {
-    if (!currentUser || !currentUser.id) {
+    const userId = currentUser?.id || currentUser?.uid;
+    if (!userId || !safeCompanyId) {
       setOnlineUsers([]);
       return;
     }
 
-    const currentUserName = currentUser.displayName || currentUser.name || (currentUser.email === 'cv1@gmx.ch' ? 'Carlo Vescio' : currentUser.email ? currentUser.email.split('@')[0] : 'Team');
     const channelName = `presence:company:${safeCompanyId}`;
+    isSubscribedRef.current = false;
 
     const channel = supabase.channel(channelName, {
       config: {
         presence: {
-          key: currentUser.id,
+          key: userId,
         },
       },
     });
+    channelRef.current = channel;
 
     const updatePresenceState = () => {
       try {
@@ -66,6 +88,8 @@ export const TeamPresenceProvider: React.FC<{ children: React.ReactNode }> = ({ 
                   email: p.email || '',
                   photoURL: p.photoURL || null,
                   onlineAt: p.onlineAt || new Date().toISOString(),
+                  projectId: p.projectId || null,
+                  activeModule: p.activeModule || null,
                 });
               }
             });
@@ -73,13 +97,15 @@ export const TeamPresenceProvider: React.FC<{ children: React.ReactNode }> = ({ 
         });
 
         // Ensure current user is always included in their own local list
-        if (!usersMap.has(currentUser.id.toLowerCase())) {
-          usersMap.set(currentUser.id.toLowerCase(), {
-            userId: currentUser.id,
+        if (!usersMap.has(userId.toLowerCase())) {
+          usersMap.set(userId.toLowerCase(), {
+            userId,
             name: currentUserName,
-            email: currentUser.email || '',
-            photoURL: currentUser.photoURL || (currentUser as any).avatar || null,
+            email: currentUser?.email || '',
+            photoURL: currentUserPhoto,
             onlineAt: new Date().toISOString(),
+            projectId: activeProjectId || null,
+            activeModule: typeof window !== 'undefined' ? window.location.pathname : null,
           });
         }
 
@@ -101,14 +127,16 @@ export const TeamPresenceProvider: React.FC<{ children: React.ReactNode }> = ({ 
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
+          isSubscribedRef.current = true;
           try {
             await channel.track({
-              userId: currentUser.id,
+              userId,
               name: currentUserName,
-              email: currentUser.email || '',
-              photoURL: currentUser.photoURL || (currentUser as any).avatar || null,
+              email: currentUser?.email || '',
+              photoURL: currentUserPhoto,
               onlineAt: new Date().toISOString(),
               projectId: activeProjectId || null,
+              activeModule: typeof window !== 'undefined' ? window.location.pathname : null,
             });
           } catch (e) {
             console.warn('[Presence] track error:', e);
@@ -117,19 +145,43 @@ export const TeamPresenceProvider: React.FC<{ children: React.ReactNode }> = ({ 
       });
 
     return () => {
+      isSubscribedRef.current = false;
+      channelRef.current = null;
       try {
         channel.untrack();
         supabase.removeChannel(channel);
       } catch (_) {}
     };
-  }, [currentUser, safeCompanyId, activeProjectId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id, currentUser?.uid, safeCompanyId]);
+
+  // Update presence payload in-place when activeProjectId or user profile details change without tearing down the channel
+  useEffect(() => {
+    const userId = currentUser?.id || currentUser?.uid;
+    if (!userId || !channelRef.current || !isSubscribedRef.current) return;
+
+    channelRef.current
+      .track({
+        userId,
+        name: currentUserName,
+        email: currentUser?.email || '',
+        photoURL: currentUserPhoto,
+        onlineAt: new Date().toISOString(),
+        projectId: activeProjectId || null,
+        activeModule: typeof window !== 'undefined' ? window.location.pathname : null,
+      })
+      .catch(() => {});
+  }, [activeProjectId, currentUserName, currentUserPhoto, currentUser?.id, currentUser?.uid, currentUser?.email]);
 
   const onlineKeys = useMemo(() => {
     const set = new Set<string>();
     onlineUsers.forEach(u => {
       if (u.userId) set.add(u.userId.toLowerCase());
       if (u.email) set.add(u.email.toLowerCase());
-      if (u.name) set.add(u.name.toLowerCase());
+      const normName = u.name?.toLowerCase().trim();
+      if (normName && !GENERIC_FALLBACK_NAMES.has(normName)) {
+        set.add(normName);
+      }
     });
     return set;
   }, [onlineUsers]);
@@ -137,9 +189,9 @@ export const TeamPresenceProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const isUserOnline = (userIdOrEmail?: string | null): boolean => {
     if (!userIdOrEmail) return false;
     const key = userIdOrEmail.toLowerCase().trim();
-    if (!key) return false;
+    if (!key || GENERIC_FALLBACK_NAMES.has(key)) return false;
     
-    // Direct match by ID, email, or name
+    // Direct match by ID, email, or non-generic name
     if (onlineKeys.has(key)) return true;
 
     // Substring or prefix match for emails (e.g. philipp vs philipp@...)
@@ -147,8 +199,8 @@ export const TeamPresenceProvider: React.FC<{ children: React.ReactNode }> = ({ 
       if (online.userId?.toLowerCase() === key) return true;
       if (online.email?.toLowerCase() === key) return true;
       if (online.email?.toLowerCase().startsWith(key + '@')) return true;
-      if (key.includes('@') && online.email?.toLowerCase() === key) return true;
-      if (online.name?.toLowerCase() === key) return true;
+      const onlineName = online.name?.toLowerCase().trim();
+      if (onlineName && !GENERIC_FALLBACK_NAMES.has(onlineName) && onlineName === key) return true;
     }
 
     return false;

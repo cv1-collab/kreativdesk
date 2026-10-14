@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabaseAdmin } from '../_auth.js';
+import { verifyAuth, supabaseAdmin } from '../_auth.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -21,15 +21,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let effectiveToken = apiToken || process.env.BEXIO_API_TOKEN || '';
     if (!effectiveToken && proposal?.companyId) {
       try {
-        const { data: cfgDoc } = await supabaseAdmin
-          .from('documents')
-          .select('url, file_url')
-          .eq('category', 'system_config')
-          .eq('name', `bexio_config_${proposal.companyId}`)
-          .maybeSingle();
-        if (cfgDoc?.file_url || cfgDoc?.url) {
-          const parsed = JSON.parse(cfgDoc.file_url || cfgDoc.url);
-          if (parsed?.apiToken) effectiveToken = parsed.apiToken;
+        // Multi-tenant security check: ensure caller is either authenticated for this company
+        // or submitting an acceptance for an actual proposal belonging to this company
+        const authUser = await verifyAuth(req).catch(() => null);
+        let isAuthorizedForCompany = Boolean(
+          authUser && (authUser.isSuperAdmin || authUser.role === 'super_admin' || String(authUser.companyId) === String(proposal.companyId))
+        );
+
+        if (!isAuthorizedForCompany && (proposal.id || proposal.shareToken)) {
+          let propQuery = supabaseAdmin
+            .from('smart_proposals')
+            .select('id, company_id')
+            .eq('company_id', proposal.companyId);
+          if (proposal.id) {
+            propQuery = propQuery.eq('id', proposal.id);
+          } else if (proposal.shareToken) {
+            propQuery = propQuery.eq('share_token', proposal.shareToken);
+          }
+          const { data: verifiedProp } = await propQuery.maybeSingle();
+          if (verifiedProp) {
+            isAuthorizedForCompany = true;
+          }
+        }
+
+        if (isAuthorizedForCompany) {
+          const { data: cfgDoc } = await supabaseAdmin
+            .from('documents')
+            .select('url, file_url')
+            .eq('category', 'system_config')
+            .eq('company_id', proposal.companyId)
+            .eq('name', `bexio_config_${proposal.companyId}`)
+            .maybeSingle();
+          if (cfgDoc?.file_url || cfgDoc?.url) {
+            const parsed = JSON.parse(cfgDoc.file_url || cfgDoc.url);
+            if (parsed?.apiToken) effectiveToken = parsed.apiToken;
+          }
         }
       } catch (_) {}
     }

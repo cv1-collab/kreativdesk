@@ -83,8 +83,9 @@ export default function Signup() {
         let inv: any = null;
         try {
           const { data: rpcInv, error: rpcErr } = await supabase.rpc('get_invite_details', { p_token: token });
-          if (!rpcErr && rpcInv) {
-            inv = rpcInv;
+          const resolvedRpc = Array.isArray(rpcInv) ? rpcInv[0] : rpcInv;
+          if (!rpcErr && resolvedRpc) {
+            inv = resolvedRpc;
           }
         } catch {
           // Fallback to direct query below
@@ -107,6 +108,9 @@ export default function Signup() {
         }
 
         if (inv) {
+          if (inv.status === 'used') {
+            setInviteAlreadyUsed(true);
+          }
           const isPlaceholder = inv.email?.startsWith('invite_') || inv.email?.endsWith('@workspace.local');
           setInviteInfo({
             email: isPlaceholder ? (rawEmail || undefined) : inv.email,
@@ -193,15 +197,31 @@ export default function Signup() {
         safeStorage.setItem('pending_invite_token', effectiveInviteToken);
       }
 
+      const selectedPlanParam = searchParams.get('plan');
+      const selectedBillingParam = searchParams.get('billing');
+      if (selectedPlanParam) {
+        safeStorage.session.setItem('pending_checkout_plan', selectedPlanParam);
+        if (selectedBillingParam) {
+          safeStorage.session.setItem('pending_checkout_billing', selectedBillingParam);
+        }
+      }
+
       const cleanEmail = email.trim();
+      const emailRedirectUrl = selectedPlanParam && !effectiveInviteToken
+        ? `${window.location.origin}/pricing?plan=${encodeURIComponent(selectedPlanParam)}&billing=${encodeURIComponent(selectedBillingParam || 'yearly')}`
+        : `${window.location.origin}/app`;
+
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/app`,
+          emailRedirectTo: emailRedirectUrl,
           data: {
             inviteToken: effectiveInviteToken,
             companyId: searchParams.get('companyId') || (inviteInfo as any)?.companyId || null,
+            role: (inviteInfo as any)?.role || undefined,
+            selectedPlan: selectedPlanParam || undefined,
+            billingCycle: selectedBillingParam || undefined,
             full_name: searchParams.get('name') || cleanEmail.split('@')[0]
           }
         }
@@ -220,7 +240,11 @@ export default function Signup() {
 
       if (data?.session) {
         addToast(currentLang === 'de' ? 'Account erfolgreich erstellt! Du wirst weitergeleitet...' : 'Account successfully created! Redirecting...', 'success');
-        navigate('/app');
+        if (selectedPlanParam && !effectiveInviteToken) {
+          navigate(`/pricing?plan=${encodeURIComponent(selectedPlanParam)}&billing=${encodeURIComponent(selectedBillingParam || 'yearly')}`);
+        } else {
+          navigate('/app');
+        }
       } else {
         setConfirmationSentEmail(cleanEmail);
         addToast(currentLang === 'de' ? 'Bestätigungs-E-Mail gesendet! Bitte prüfe dein Postfach.' : 'Confirmation email sent! Please check your inbox.', 'info');
@@ -242,6 +266,12 @@ export default function Signup() {
   }
 
   if (currentUser && !loading) {
+    const pendingPlan = searchParams.get('plan') || safeStorage.session.getItem('pending_checkout_plan');
+    const pendingBilling = searchParams.get('billing') || safeStorage.session.getItem('pending_checkout_billing') || 'yearly';
+    const hasInvite = inviteToken || safeStorage.getString('pending_invite_token');
+    if (pendingPlan && !hasInvite) {
+      return <Navigate to={`/pricing?plan=${encodeURIComponent(pendingPlan)}&billing=${encodeURIComponent(pendingBilling)}`} />;
+    }
     return <Navigate to="/app" />;
   }
 

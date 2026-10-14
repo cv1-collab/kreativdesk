@@ -201,10 +201,10 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     faq_1_q: 'How secure is my data?', faq_1_a: 'We use enterprise-grade encryption and strict tenant isolation. Our cloud infrastructure and databases are operated dedicatedly in Zurich (Switzerland) within ISO-27001 certified data centers (PostgreSQL via Supabase Cloud, Region eu-central-2 Zurich).',
     faq_2_q: 'Does the AI train on my project data?', faq_2_a: 'No. Our AI models process your receipts, plans, and documents in a strictly isolated environment. Your data is never used to train global models.',
     faq_3_q: 'How does the 3D BIM Viewer work?', faq_3_a: 'Upload your IFC or CAD model and navigate fluidly through the 3D architecture directly in your browser. Perform visual checks with your team without needing external software.',
-    faq_4_q: 'Can I manage quotes and invoices directly in the system?', faq_4_a: 'Yes. The Expert plan includes the full Finance Studio. You can generate professional quotes and PDF invoices, track your income, and monitor your project budget in real-time.',
+    faq_4_q: 'Can I manage quotes and invoices directly in the system?', faq_4_a: 'Yes. The Team Starter plan and all B2B systems include the full Finance Studio. You can generate professional quotes and PDF QR-invoices, track your income, and monitor your project budget in real-time.',
     faq_5_q: 'Can I use the app on the construction site?', faq_5_a: 'Yes. The platform is fully responsive and optimized for mobile devices. You can capture defects and photos directly on-site using your mobile browser (internet connection required).',
     faq_6_q: 'How does the Pitch-Deck Studio work?', faq_6_a: 'The Pitch Deck Studio helps you export project data, milestones, and financial overviews into professional PDFs. Create clean client presentations in no time.',
-    faq_7_q: 'Can Kreativ-Desk connect to my existing CRM or tools like Zapier?', faq_7_a: 'Yes. Kreativ Desk has a built-in CRM for your team and leads. Additionally, Expert users can configure Webhook URLs in the settings to route events to external tools via Zapier or Make.',
+    faq_7_q: 'Can Kreativ-Desk connect to my existing CRM or tools like Zapier?', faq_7_a: 'Yes. Kreativ Desk has a built-in CRM for your team and leads. Additionally, Team Starter and B2B users can configure Webhook URLs in the settings to route events to external tools via Zapier or Make.',
     faq_8_q: 'How can I upgrade, downgrade, or cancel my subscription?', faq_8_a: 'You can manage your subscription at any time in the settings under "Admin & Billing". Clicking "Open Stripe Portal" takes you securely to Stripe, where you can easily upgrade, downgrade, or cancel your plan at the end of the billing cycle.',
     faq_9_q: 'What is the exact difference between Studio, Agency, and Enterprise?', faq_9_a: 'The Studio package is designed for single large-scale project control. Agency steers multiple parallel productions with full resource controlling. Enterprise provides custom API pipelines, SSO, and dedicated SLAs. All B2B models feature tenant-isolated servers and dedicated onboarding.',
     faq_10_q: 'What are the costs for B2B Systems (Studio / Agency / Enterprise) from year 2 onwards?', faq_10_a: 'The first-year price includes software licenses and the one-time implementation package. From the second year onwards, the implementation fee is completely eliminated. You only pay the annual software license: CHF 6,800/yr for Studio (5 seats), CHF 16,800/yr for Agency (15 seats), and from CHF 45,000/yr for Enterprise (25+ seats). Additional internal licenses can be booked anytime for CHF 780/year per user. External contractors and guests are always free and unlimited.',
@@ -464,10 +464,10 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     faq_1_q: 'Wie sicher sind meine Daten?', faq_1_a: 'Wir nutzen Enterprise-Grade Verschlüsselung und strikte Mandantenisolation. Unsere Cloud-Infrastruktur und Datenbanken werden dediziert in Zürich (Schweiz) in ISO-27001-zertifizierten Rechenzentren betrieben (PostgreSQL via Supabase Cloud, Region eu-central-2 Zurich).',
     faq_2_q: 'Trainiert die KI mit meinen Projektdaten?', faq_2_a: 'Nein. Unsere KI-Modelle verarbeiten deine Belege, Pläne und Dokumente strikt isoliert. Deine Daten werden niemals genutzt, um globale Modelle zu trainieren.',
     faq_3_q: 'Wie funktioniert der 3D BIM Viewer?', faq_3_a: 'Lade dein IFC- oder CAD-Modell hoch und navigiere flüssig im Browser durch die 3D-Architektur. Du kannst visuelle Prüfungen direkt im Team durchführen, ohne externe Software installieren zu müssen.',
-    faq_4_q: 'Kann ich Offerten und Rechnungen direkt im System verwalten?', faq_4_a: 'Ja. Ab dem Expert-Plan erhältst du das volle Finanz-Studio. Erstelle mit wenigen Klicks professionelle Offerten und Rechnungen als PDF, behalte deine Einnahmen im Blick und verfolge dein Projektbudget in Echtzeit.',
+    faq_4_q: 'Kann ich Offerten und Rechnungen direkt im System verwalten?', faq_4_a: 'Ja. Ab dem Team Starter Plan sowie in allen B2B-Systemen erhältst du das volle Finanz-Studio. Erstelle mit wenigen Klicks professionelle Offerten und Schweizer QR-Rechnungen als PDF, behalte deine Einnahmen im Blick und verfolge dein Projektbudget in Echtzeit.',
     faq_5_q: 'Kann ich die App auf der Baustelle nutzen?', faq_5_a: 'Ja. Die Plattform ist voll responsiv und für mobile Geräte optimiert. Du kannst Mängel inklusive Fotos direkt auf der Baustelle in deinem mobilen Browser erfassen (Internetverbindung vorausgesetzt).',
     faq_6_q: 'Wie funktioniert das Pitch-Deck Studio?', faq_6_a: 'Das Pitch Deck Studio hilft dir, Projektdaten, Meilensteine und Finanz-Übersichten in professionelle PDFs zu exportieren. Erstelle im Handumdrehen saubere Kundenpräsentationen.',
-    faq_7_q: 'Lässt sich Kreativ-Desk mit anderen Tools (Zapier) verbinden?', faq_7_a: 'Ja. Kreativ Desk verfügt über ein integriertes Smart CRM. Zudem kannst du als Expert-Nutzer Webhook-URLs (z.B. Zapier/Make) in den Einstellungen hinterlegen, um Daten an externe Tools weiterzuleiten.',
+    faq_7_q: 'Lässt sich Kreativ-Desk mit anderen Tools (Zapier) verbinden?', faq_7_a: 'Ja. Kreativ Desk verfügt über ein integriertes Smart CRM. Zudem kannst du ab dem Team Starter Plan Webhook-URLs (z.B. Zapier/Make) in den Einstellungen hinterlegen, um Daten an externe Tools weiterzuleiten.',
     faq_8_q: 'Wie kann ich mein Abo anpassen oder kündigen?', faq_8_a: 'Du kannst dein Abonnement jederzeit in den Einstellungen unter "Admin & Abrechnung" verwalten. Klicke auf "Stripe Portal öffnen", um dein Abo sicher über Stripe upzugraden, downzugraden oder zum Ende der Laufzeit zu kündigen.',
     faq_9_q: 'Was ist der genaue Unterschied zwischen Studio, Agency und Enterprise?', faq_9_a: 'Das Studio-Paket ist perfekt für Einzelprojekte, Agency steuert parallele Produktionen, Enterprise bietet tiefe Systemintegrationen. Alle B2B-Modelle beinhalten mandantenisolierte Server, garantierte SLAs und dedizierten Support, um sich klar von den Standard-SaaS-Plänen abzuheben.',
     faq_10_q: 'Wie sehen die Folgekosten für die B2B-Systeme (Studio / Agency / Enterprise) ab dem 2. Jahr aus?', faq_10_a: 'Der Preis im ersten Jahr beinhaltet die Software-Jahreslizenz und das einmalige Implementation Package. Ab dem zweiten Jahr entfällt das Implementation Package komplett. Du zahlst nur noch die reine Software-Jahreslizenz: CHF 6’800 / Jahr für Studio (5 Seats), CHF 16’800 / Jahr für Agency (15 Seats) bzw. ab CHF 45’000 / Jahr für Enterprise (25+ Seats). Bei Bedarf können flexible Zusatzlizenzen für CHF 780 / Jahr pro internem Nutzer hinzugebucht werden. Externe Handwerker und Gäste sind in allen Tarifen unbegrenzt kostenlos.',
@@ -923,8 +923,19 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
     }
   ];
 
+  const [isDesktopViewport, setIsDesktopViewport] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.innerWidth >= 1024 : true
+  );
+
+  useEffect(() => {
+    const onResize = () => setIsDesktopViewport(window.innerWidth >= 1024);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
   const saasPlans = [
     {
+      planKey: 'Starter',
       name: t('plan_starter'),
       price: isYearly ? 49 : 59,
       annualTotal: 'CHF 588 / J.',
@@ -938,6 +949,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
       popular: false
     },
     {
+      planKey: 'Pro',
       name: t('plan_pro'),
       price: isYearly ? 89 : 109,
       annualTotal: "CHF 1'068 / J.",
@@ -951,6 +963,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
       popular: true
     },
     {
+      planKey: 'Team Starter',
       name: t('plan_team_starter'),
       price: isYearly ? 240 : 290,
       annualTotal: "CHF 2'880 / J.",
@@ -1502,13 +1515,15 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
 
                   {/* Inner Screen Display (Liquid Retina XDR) */}
                   <div className="h-[730px] w-full rounded-t-[18px] overflow-hidden bg-background relative border border-border/30 shadow-inner group">
-                    <Suspense fallback={
-                      <div className="h-full w-full flex items-center justify-center bg-background">
-                        <Loader2 className="animate-spin text-blue-500" size={32} />
-                      </div>
-                    }>
-                      <DemoLayout isDemoMode={true} />
-                    </Suspense>
+                    {isDesktopViewport && (
+                      <Suspense fallback={
+                        <div className="h-full w-full flex items-center justify-center bg-background">
+                          <Loader2 className="animate-spin text-blue-500" size={32} />
+                        </div>
+                      }>
+                        <DemoLayout isDemoMode={true} />
+                      </Suspense>
+                    )}
 
                     {/* Subtle Anti-Reflective Glass Sheen (Subtle Diagonal Gloss) */}
                     <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-transparent via-transparent to-white/[0.03] z-20" />
@@ -1605,13 +1620,15 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
 
                     {/* The ACTUAL Full DemoLayout OS rendered live inside the iPhone! */}
                     <div className="flex-1 overflow-hidden relative">
-                      <Suspense fallback={
-                        <div className="h-full w-full flex items-center justify-center bg-background">
-                          <Loader2 className="animate-spin text-blue-500" size={24} />
-                        </div>
-                      }>
-                        <DemoLayout isDemoMode={true} isMobileMockup={true} />
-                      </Suspense>
+                      {!isDesktopViewport && (
+                        <Suspense fallback={
+                          <div className="h-full w-full flex items-center justify-center bg-background">
+                            <Loader2 className="animate-spin text-blue-500" size={24} />
+                          </div>
+                        }>
+                          <DemoLayout isDemoMode={true} isMobileMockup={true} />
+                        </Suspense>
+                      )}
                     </div>
 
                     {/* iPhone Home Indicator Bar */}
@@ -1967,8 +1984,8 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                         ))}
                       </div>
                       
-                      <button onClick={() => navigate('/signup')} className={cn(
-                        "w-full py-4 rounded-xl font-bold transition-all active:scale-95 text-center",
+                      <button onClick={() => navigate(`/signup?plan=${encodeURIComponent(plan.planKey)}&billing=${isYearly ? 'yearly' : 'monthly'}`)} className={cn(
+                        "w-full py-4 rounded-xl font-bold transition-all active:scale-95 text-center cursor-pointer",
                         plan.popular ? "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20" : "bg-surface border border-border hover:bg-white/5 text-text-primary"
                       )}>
                         {t('saas_cta_start')}

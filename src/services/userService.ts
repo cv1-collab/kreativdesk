@@ -5,18 +5,23 @@ import { supabase } from '../lib/supabase';
  */
 export const syncCompanySeats = async (companyId: string): Promise<number> => {
   if (!companyId) return 1;
+  const EXTERNAL_ROLES = new Set(['guest', 'client', 'external', 'partner', 'subcontractor', 'field guest', 'external planner', 'bauherr', 'handwerker']);
   try {
     const [{ data: pList }, { data: cuList }] = await Promise.all([
-      supabase.from('profiles').select('id, email').eq('company_id', companyId),
-      supabase.from('company_users').select('id, email, status, is_external').eq('company_id', companyId)
+      supabase.from('profiles').select('id, email, role').eq('company_id', companyId),
+      supabase.from('company_users').select('id, email, role, status, is_external').eq('company_id', companyId)
     ]);
     const unique = new Set<string>();
-    (pList || []).forEach((p: any) => { 
-      const k = (p.email || p.id || '').trim().toLowerCase(); 
-      if (k) unique.add(k); 
+    (pList || []).forEach((p: any) => {
+      const roleLower = String(p.role || '').trim().toLowerCase();
+      if (EXTERNAL_ROLES.has(roleLower)) return;
+      const k = (p.email || p.id || '').trim().toLowerCase();
+      if (k) unique.add(k);
     });
     (cuList || []).forEach((u: any) => {
-      if (u.status === 'team' || u.is_external === false) {
+      const roleLower = String(u.role || '').trim().toLowerCase();
+      if (EXTERNAL_ROLES.has(roleLower) || u.status === 'external' || u.is_external === true) return;
+      if (u.status === 'team' || u.status === 'aktiv' || u.is_external === false) {
         const k = (u.email || u.id || '').trim().toLowerCase();
         if (k) unique.add(k);
       }

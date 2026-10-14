@@ -41,7 +41,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { event = 'PROPOSAL_ACCEPTED', proposalId, companyId, acceptanceData, acceptedAt, webhookUrl, ...rest } = req.body || {};
+    const { event = 'PROPOSAL_ACCEPTED', proposalId, companyId, acceptanceData, acceptedAt, webhookUrl, rawPayload, customHeaders, ...rest } = req.body || {};
     const user = await verifyAuth(req);
 
     // Only allow client-supplied webhookUrl override when caller is an authenticated user
@@ -64,6 +64,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .eq('id', resolvedCompanyId)
           .maybeSingle();
         targetUrl = (comp as any)?.webhook_url;
+
+        // Ensure in-app notification is persisted via supabaseAdmin when client is unauthenticated
+        if (!user && event === 'PROPOSAL_ACCEPTED' && acceptanceData?.acceptedByName) {
+          try {
+            const propTitle = rest.proposalTitle || 'Projekt';
+            const totalText = acceptanceData.finalTotalCHF
+              ? `CHF ${Number(acceptanceData.finalTotalCHF).toLocaleString('de-CH')}`
+              : 'Angenommen';
+            await supabaseAdmin.from('notifications').insert([{
+              id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+              company_id: resolvedCompanyId,
+              title: '🎉 Offerte rechtsgültig unterzeichnet!',
+              message: `${acceptanceData.acceptedByName} hat das Angebot "${propTitle}" digital signiert (${totalText}).\n__LINK__:/proposals`,
+              type: 'success',
+              read: false,
+              created_at: acceptedAt || new Date().toISOString()
+            }]);
+          } catch (_) {}
+        }
       }
     }
 
@@ -72,30 +91,54 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     let forwarded = false;
+    let upstreamStatus = 200;
+    let upstreamStatusText = 'OK';
+    let upstreamBody = '';
+
     if (targetUrl && isSafeExternalUrl(targetUrl)) {
       try {
+        const forwardHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (user && customHeaders && typeof customHeaders === 'object') {
+          for (const [k, v] of Object.entries(customHeaders)) {
+            if (typeof v === 'string' && k.toLowerCase().startsWith('x-kreativdesk-')) {
+              forwardHeaders[k] = v;
+            }
+          }
+        }
+        const bodyToSend = (user && typeof rawPayload === 'string')
+          ? rawPayload
+          : JSON.stringify({
+              event,
+              proposalId,
+              companyId,
+              acceptanceData,
+              ...rest,
+              acceptedAt: acceptedAt || new Date().toISOString(),
+              source: 'KreativDesk'
+            });
+
         const whRes = await fetch(targetUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            event,
-            proposalId,
-            companyId,
-            acceptanceData,
-            ...rest,
-            acceptedAt: acceptedAt || new Date().toISOString(),
-            source: 'KreativDesk'
-          })
+          headers: forwardHeaders,
+          body: bodyToSend
         });
         forwarded = whRes.ok;
-      } catch (fwdErr) {
+        upstreamStatus = whRes.status;
+        upstreamStatusText = whRes.statusText;
+        upstreamBody = (await whRes.text().catch(() => '')).slice(0, 500);
+      } catch (fwdErr: any) {
         console.warn('Lead webhook forwarding failed:', fwdErr);
+        upstreamStatus = 502;
+        upstreamStatusText = fwdErr?.message || 'Bad Gateway';
       }
     }
 
     return res.status(200).json({
       success: true,
       forwarded,
+      status: upstreamStatus,
+      statusText: upstreamStatusText,
+      responseBody: upstreamBody,
       event,
       proposalId,
       timestamp: new Date().toISOString()

@@ -1,6 +1,6 @@
 import { checkIsSuperAdmin } from '../config/admins';
 import React, { useState, useEffect } from 'react';
-import { Lock, CheckCircle2, Zap, Shield, Building2, Loader2 } from 'lucide-react';
+import { Lock, CheckCircle2, Zap, Shield, Building2, Loader2, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { initiateSubscriptionCheckout, BillingInterval } from '../services/stripeClient';
 import { cn } from '../utils';
@@ -10,31 +10,54 @@ interface TrialGuardProps {
 }
 
 export default function TrialGuard({ children }: TrialGuardProps) {
-  const { currentUser } = useAuth();
+  const { currentUser, logout } = useAuth();
   const [interval, setInterval] = useState<BillingInterval>('year');
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [forceLock, setForceLock] = useState(false);
   let isLocked = false;
-  const isMemberOrExternal = ['employee', 'management', 'external', 'client', 'partner'].includes(currentUser?.role?.toLowerCase() || '');
-  const effectivePlan = currentUser?.companyPlan || currentUser?.plan;
-  const hasPaidPlan = Boolean(effectivePlan && !effectivePlan.includes('Trial'));
-  const isOwner = currentUser?.role === 'owner' || !currentUser?.role;
+  const roleLower = (currentUser?.role || '').toLowerCase();
+  const isMemberOrExternal = [
+    'employee',
+    'management',
+    'external',
+    'client',
+    'partner',
+    'guest',
+    'subcontractor',
+    'handwerker',
+    'bauherr',
+    'project_lead',
+    'field guest',
+    'external planner'
+  ].includes(roleLower);
+  const effectivePlan = String(currentUser?.companyPlan || currentUser?.plan || 'Free Trial');
+  const planLower = effectivePlan.toLowerCase();
+  const isManualB2BPlan = ['studio', 'agency', 'enterprise'].some(p => planLower.includes(p));
+  const hasPaidPlan = Boolean(effectivePlan && !planLower.includes('trial'));
+  const isSuper = checkIsSuperAdmin(currentUser?.email);
+  const isOwner = roleLower === 'owner' || !currentUser?.role;
+  const canManageBilling = isOwner || roleLower === 'admin' || roleLower === 'super_admin' || isSuper;
 
-  if (currentUser && !checkIsSuperAdmin(currentUser.email) && isOwner && !isMemberOrExternal && !hasPaidPlan) {
-    if (currentUser.trialEndsAt) {
-      const today = new Date();
-      const trialEnd = new Date(currentUser.trialEndsAt);
-      if (today > trialEnd && (currentUser.plan?.includes('Trial') || effectivePlan?.includes('Trial'))) {
-        isLocked = true;
-      }
+  if (currentUser && !isSuper && isOwner && !isMemberOrExternal) {
+    const isTrialExpired = Boolean(
+      currentUser.trialEndsAt && new Date() > new Date(currentUser.trialEndsAt)
+    );
+    if (!hasPaidPlan && isTrialExpired) {
+      isLocked = true;
+    } else if (currentUser.hasActiveSubscription === false && !isManualB2BPlan && (!currentUser.trialEndsAt || isTrialExpired)) {
+      isLocked = true;
     }
   }
 
   useEffect(() => {
-    const handleUpgradeModal = () => setForceLock(true);
+    const handleUpgradeModal = () => {
+      if (canManageBilling && !isMemberOrExternal) {
+        setForceLock(true);
+      }
+    };
     window.addEventListener('open-upgrade-modal', handleUpgradeModal);
     return () => window.removeEventListener('open-upgrade-modal', handleUpgradeModal);
-  }, []);
+  }, [canManageBilling, isMemberOrExternal]);
 
   const handleCheckout = async (planName: 'Starter' | 'Pro' | 'Team Starter' | 'Expert') => {
     if (!currentUser?.uid || !currentUser?.email) return;
@@ -55,7 +78,15 @@ export default function TrialGuard({ children }: TrialGuardProps) {
   // --- DER LOCK-SCREEN (PAYWALL) ---
   return (
     <div className="fixed inset-0 z-[99999] bg-[#09090b]/95 backdrop-blur-2xl overflow-y-auto flex items-center justify-center p-4">
-      <div className="max-w-5xl w-full animate-in zoom-in-95 duration-500 py-12">
+      <div className="max-w-5xl w-full animate-in zoom-in-95 duration-500 py-12 relative">
+        <div className="flex justify-end mb-4">
+          <button
+            onClick={() => logout()}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 text-xs font-semibold transition-all cursor-pointer"
+          >
+            <LogOut size={14} /> Abmelden
+          </button>
+        </div>
 
         <div className="text-center mb-12">
           <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-red-500/20 border border-red-500/20">

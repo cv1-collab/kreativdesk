@@ -379,7 +379,7 @@ const CalendarPDFDocument = ({
 
   // 2. TAGESÜBERSICHT & STANDUP VIEW EXPORT
   if (exportMode === 'day') {
-    const selectedDateStr = selectedCalendarDate.toISOString().split('T')[0];
+    const selectedDateStr = `${selectedCalendarDate.getFullYear()}-${String(selectedCalendarDate.getMonth() + 1).padStart(2, '0')}-${String(selectedCalendarDate.getDate()).padStart(2, '0')}`;
     const formattedDate = selectedCalendarDate.toLocaleDateString(isEn ? 'en-US' : 'de-CH', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
 
     const dayTasks = (ganttTasks || []).filter((t: any) => {
@@ -1149,8 +1149,7 @@ export default function Calendar() {
         size: `${Math.round(blob.size / 1024)} KB`, 
         is_folder: false,
         created_at: new Date().toISOString(),
-        uploaded_at: new Date().toISOString(),
-        date: new Date().toLocaleDateString('de-CH')
+        uploaded_at: new Date().toISOString()
       });
       queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
       addToast(t('pdf_saved'), 'success');
@@ -1248,6 +1247,9 @@ export default function Calendar() {
     try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch(err){ console.error('Failed to release pointer capture', err); }
   };
 
+  const formatLocalYMD = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
   const renderMonthGrid = () => {
     const year = currentMonthDate.getFullYear();
     const month = currentMonthDate.getMonth();
@@ -1273,7 +1275,7 @@ export default function Calendar() {
       cells.push({ date: new Date(year, month + 1, day), isCurrentMonth: false });
     }
 
-    const selectedDateStr = selectedCalendarDate.toISOString().split('T')[0];
+    const selectedDateStr = formatLocalYMD(selectedCalendarDate);
     const selectedDayTasks = ganttTasks.filter(t => {
       return selectedDateStr >= t.start && selectedDateStr <= t.end;
     });
@@ -1337,7 +1339,7 @@ export default function Calendar() {
           {/* Days Cells Grid */}
           <div className="grid grid-cols-7 gap-1 sm:gap-2">
             {cells.map(({ date, isCurrentMonth }, idx) => {
-              const dateStr = date.toISOString().split('T')[0];
+              const dateStr = formatLocalYMD(date);
               const isToday = date.toDateString() === new Date().toDateString();
               const isSelected = date.toDateString() === selectedCalendarDate.toDateString();
               const dayTasks = ganttTasks.filter(t => dateStr >= t.start && dateStr <= t.end);

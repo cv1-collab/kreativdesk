@@ -314,12 +314,21 @@ export default function SettingsTab() {
   const [isUpgradeLoading, setIsUpgradeLoading] = useState(false);
   const [isPortalLoading, setIsPortalLoading] = useState(false);
   const [isResetLoading, setIsResetLoading] = useState(false);
-  const [is2FAEnabled, setIs2FAEnabled] = useState(false);
+  const [is2FAEnabled, setIs2FAEnabled] = useState(() => {
+    const uid = currentUser?.uid || 'user';
+    return safeStorage.getString(`user_2fa_enabled_${uid}`) === 'true';
+  });
   const [show2FASetup, setShow2FASetup] = useState(false);
   const [totpInputCode, setTotpInputCode] = useState('');
   const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
   const [mfaSecretOverride, setMfaSecretOverride] = useState<string | null>(null);
   const [mfaUriOverride, setMfaUriOverride] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (currentUser?.uid) {
+      setIs2FAEnabled(safeStorage.getString(`user_2fa_enabled_${currentUser.uid}`) === 'true');
+    }
+  }, [currentUser?.uid]);
 
   const user2FASecret = React.useMemo(() => {
     if (mfaSecretOverride) return mfaSecretOverride;
@@ -479,6 +488,7 @@ export default function SettingsTab() {
         setPrimaryColor(savedBrand);
         if (savedBrand) applyBrandColor(savedBrand, false);
         setPrivacyPdfUrl(loadedConfig.privacyPdfUrl || '');
+        setTermsPdfUrl(loadedConfig.termsPdfUrl || '');
         setCurrency(loadedConfig.currency || 'CHF');
         setVatRate(loadedConfig.vatRate !== undefined ? loadedConfig.vatRate : 8.1);
         setPaymentTermsDays(loadedConfig.paymentTermsDays || 30);
@@ -488,36 +498,9 @@ export default function SettingsTab() {
 
       const safeCompanyId = compId || currentUser.uid;
 
-      // 3. Echte belegte Lizenzen (Seats) ohne doppelte Zählung ermitteln (nur interne Teammitglieder, keine externen CRM-Kontakte)
-      const { data: cuList } = await supabase
-        .from('company_users')
-        .select('id, email, status, is_external')
-        .eq('company_id', safeCompanyId);
-
-      const { data: pList } = await supabase
-        .from('profiles')
-        .select('id, email')
-        .eq('company_id', safeCompanyId);
-
-      const uniqueSeatHolders = new Set<string>();
-      (cuList || []).forEach((u: any) => {
-        const isInternal = u.status === 'team' || u.is_external === false;
-        if (isInternal) {
-          const key = (u.email || u.id || '').trim().toLowerCase();
-          if (key) uniqueSeatHolders.add(key);
-        }
-      });
-      (pList || []).forEach((p: any) => {
-        const key = (p.email || p.id || '').trim().toLowerCase();
-        if (key) uniqueSeatHolders.add(key);
-      });
-
-      const actualSeats = Math.max(1, uniqueSeatHolders.size);
+      // 3. Echte belegte Lizenzen (Seats) ohne doppelte Zählung ermitteln (nur interne Teammitglieder, keine externen Handwerker/CRM-Kontakte)
+      const actualSeats = await syncCompanySeats(safeCompanyId);
       setUsedSeats(actualSeats);
-
-      if (foundComp && foundComp.used_seats !== actualSeats) {
-        supabase.from('companies').update({ used_seats: actualSeats }).eq('id', foundComp.id).then();
-      }
 
       // 4. Tatsächlich belegten Speicherplatz berechnen (Dokumente + Storage-Buckets)
       try {
@@ -1321,13 +1304,28 @@ export default function SettingsTab() {
               </button>
               <button 
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   if (is2FAEnabled) {
                     setIs2FAEnabled(false);
+                    safeStorage.setItem(`user_2fa_enabled_${currentUser?.uid || 'user'}`, 'false');
                     setShow2FASetup(false);
                     addToast('2FA deaktiviert.', 'info');
                   } else {
-                    setShow2FASetup(true);
+                    const nextOpen = !show2FASetup;
+                    setShow2FASetup(nextOpen);
+                    if (nextOpen && !mfaFactorId && supabase?.auth?.mfa) {
+                      try {
+                        const { data: enrollData } = await supabase.auth.mfa.enroll({
+                          factorType: 'totp',
+                          friendlyName: `KreativDesk-${Date.now()}`
+                        });
+                        if (enrollData?.id && enrollData?.totp?.secret) {
+                          setMfaFactorId(enrollData.id);
+                          setMfaSecretOverride(enrollData.totp.secret);
+                          if (enrollData.totp.uri) setMfaUriOverride(enrollData.totp.uri);
+                        }
+                      } catch (_) {}
+                    }
                   }
                 }}
                 className={cn("flex-1 py-3 border rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-sm", is2FAEnabled ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-background border-border text-text-primary hover:bg-white/5")}
@@ -1353,15 +1351,47 @@ export default function SettingsTab() {
                     <div className="text-[11px] font-mono text-text-muted bg-surface px-2.5 py-1 rounded border border-border/50">
                       Key: <span className="text-text-primary font-bold">{user2FASecret}</span>
                     </div>
-                    <input type="text" placeholder="6-stelliger Code" className="px-3 py-2 bg-surface border border-border rounded-lg text-sm font-mono text-text-primary outline-none focus:border-emerald-500 w-full" maxLength={6} />
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={totpInputCode}
+                      onChange={(e) => setTotpInputCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      placeholder="6-stelliger Code"
+                      className="px-3 py-2 bg-surface border border-border rounded-lg text-sm font-mono text-text-primary outline-none focus:border-emerald-500 w-full"
+                      maxLength={6}
+                    />
                     <button 
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
+                        const cleanCode = totpInputCode.trim();
+                        if (!/^\d{6}$/.test(cleanCode)) {
+                          addToast('Bitte gib den 6-stelligen Code aus deiner Authenticator-App ein.', 'error');
+                          return;
+                        }
+                        let verified = false;
+                        if (mfaFactorId && supabase?.auth?.mfa) {
+                          try {
+                            const { error: mfaErr } = await supabase.auth.mfa.challengeAndVerify({
+                              factorId: mfaFactorId,
+                              code: cleanCode
+                            });
+                            if (!mfaErr) verified = true;
+                          } catch (_) {}
+                        }
+                        if (!verified) {
+                          verified = await verifyTotpTokenRfc6238(user2FASecret, cleanCode);
+                        }
+                        if (!verified) {
+                          addToast('Ungültiger 2FA-Code. Bitte prüfe deine Authenticator-App.', 'error');
+                          return;
+                        }
                         setIs2FAEnabled(true);
+                        safeStorage.setItem(`user_2fa_enabled_${currentUser?.uid || 'user'}`, 'true');
+                        setTotpInputCode('');
                         setShow2FASetup(false);
-                        addToast('Zwei-Faktor-Authentifizierung (2FA) erfolgreich aktiviert!', 'success');
+                        addToast('Zwei-Faktor-Authentifizierung (2FA) erfolgreich verifiziert und aktiviert!', 'success');
                       }}
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-all shadow-md"
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-all shadow-md cursor-pointer"
                     >
                       Bestätigen & Aktivieren
                     </button>
@@ -2648,24 +2678,47 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
     const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     try {
       if (safeCompanyId) {
-        const actualSeats = await syncCompanySeats(safeCompanyId);
-        const { data: comp } = await supabase
-          .from('companies')
-          .select('used_seats, max_seats')
-          .eq('id', safeCompanyId)
-          .maybeSingle();
+        const EXTERNAL_ROLES = ['guest', 'client', 'external', 'partner', 'subcontractor', 'field guest', 'external planner', 'bauherr', 'handwerker'];
+        const roleLower = String(member.role || '').trim().toLowerCase();
+        const isExternalMember =
+          member.isExternal === true ||
+          member.is_external === true ||
+          (member.status && member.status !== 'team') ||
+          EXTERNAL_ROLES.includes(roleLower);
 
         const isSuperAdmin = currentUser?.role === 'super_admin' || currentUser?.email === 'cv1@gmx.ch' || currentUser?.email === 'carlo@vesciodesign.ch';
-        if (!isSuperAdmin && comp && comp.max_seats && actualSeats >= comp.max_seats) {
-          addToast('Lizenzlimit erreicht. Bitte erweitere deine Plätze in den Firmen-Einstellungen.', 'error');
-          return;
+        if (!isExternalMember && !isSuperAdmin) {
+          const actualSeats = await syncCompanySeats(safeCompanyId);
+          const { data: comp } = await supabase
+            .from('companies')
+            .select('used_seats, max_seats')
+            .eq('id', safeCompanyId)
+            .maybeSingle();
+
+          const cleanEmail = member.email.trim().toLowerCase();
+          const { data: existingCu } = await supabase
+            .from('company_users')
+            .select('id, status, is_external')
+            .eq('company_id', safeCompanyId)
+            .ilike('email', cleanEmail)
+            .maybeSingle();
+
+          const isAlreadyCounted = Boolean(
+            existingCu && (existingCu.status === 'team' || existingCu.is_external === false)
+          );
+          const requiredSeats = isAlreadyCounted ? actualSeats : actualSeats + 1;
+
+          if (comp && comp.max_seats && requiredSeats > comp.max_seats) {
+            addToast('Lizenzlimit erreicht. Bitte erweitere deine Plätze in den Firmen-Einstellungen.', 'error');
+            return;
+          }
         }
 
         const { error: insertErr } = await supabase.from('invites').insert({
           token,
           company_id: safeCompanyId,
           email: member.email,
-          role: member.role || 'employee',
+          role: isExternalMember ? (member.role && EXTERNAL_ROLES.includes(roleLower) ? member.role : 'guest') : (member.role || 'employee'),
           status: 'pending',
           created_at: new Date().toISOString()
         });

@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import { Check, X, Building2, Zap, Shield, Lock, ArrowLeft, ArrowRight, Briefcase, Layers } from 'lucide-react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Check, X, Building2, Zap, Shield, Lock, ArrowLeft, ArrowRight, Briefcase, Layers, Loader2 } from 'lucide-react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
+import { initiateSubscriptionCheckout, PlanType } from '../services/stripeClient';
 import { cn } from '../utils';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
@@ -196,8 +198,55 @@ export default function PricingPage() {
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('yearly');
+  const { currentUser } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialBilling = (searchParams.get('billing') || sessionStorage.getItem('pending_checkout_billing')) === 'monthly' ? 'monthly' : 'yearly';
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>(initialBilling);
+  const [checkoutPlanLoading, setCheckoutPlanLoading] = useState<string | null>(null);
   const navigate = useNavigate();
+  const autoCheckoutTriggeredRef = useRef(false);
+
+  const handleSelectPlan = useCallback(async (planKey: PlanType, customBilling?: 'monthly' | 'yearly') => {
+    const activeBilling = customBilling || billingCycle;
+    if (currentUser) {
+      setCheckoutPlanLoading(planKey);
+      try {
+        sessionStorage.removeItem('pending_checkout_plan');
+        sessionStorage.removeItem('pending_checkout_billing');
+        await initiateSubscriptionCheckout(
+          planKey,
+          activeBilling === 'yearly' ? 'year' : 'month',
+          currentUser.uid,
+          currentUser.email || ''
+        );
+      } catch (err) {
+        console.error('Checkout error:', err);
+      } finally {
+        setCheckoutPlanLoading(null);
+      }
+    } else {
+      navigate(`/signup?plan=${encodeURIComponent(planKey)}&billing=${activeBilling}`);
+    }
+  }, [billingCycle, currentUser, navigate]);
+
+  useEffect(() => {
+    if (!currentUser || autoCheckoutTriggeredRef.current) return;
+    const rawPlan = searchParams.get('plan') || sessionStorage.getItem('pending_checkout_plan');
+    const rawBilling = (searchParams.get('billing') || sessionStorage.getItem('pending_checkout_billing')) === 'monthly' ? 'monthly' : 'yearly';
+    const validPlans: PlanType[] = ['Starter', 'Pro', 'Team Starter', 'Expert'];
+    if (rawPlan && validPlans.includes(rawPlan as PlanType)) {
+      autoCheckoutTriggeredRef.current = true;
+      sessionStorage.removeItem('pending_checkout_plan');
+      sessionStorage.removeItem('pending_checkout_billing');
+      if (searchParams.get('plan')) {
+        const nextParams = new URLSearchParams(searchParams);
+        nextParams.delete('plan');
+        setSearchParams(nextParams, { replace: true });
+      }
+      setBillingCycle(rawBilling);
+      handleSelectPlan(rawPlan as PlanType, rawBilling);
+    }
+  }, [currentUser, searchParams, setSearchParams, handleSelectPlan]);
 
   const b2bSystems = [
     {
@@ -271,8 +320,19 @@ export default function PricingPage() {
     }
   ];
 
-  const plans = [
+  const plans: Array<{
+    planKey: PlanType;
+    name: string;
+    price: number;
+    annualTotal: string;
+    icon: React.ReactNode;
+    description: string;
+    features: string[];
+    notIncluded: string[];
+    popular: boolean;
+  }> = [
     {
+      planKey: 'Starter',
       name: t('plan_starter'),
       price: billingCycle === 'yearly' ? 49 : 59,
       annualTotal: 'CHF 588 / J.',
@@ -286,6 +346,7 @@ export default function PricingPage() {
       popular: false
     },
     {
+      planKey: 'Pro',
       name: t('plan_pro'),
       price: billingCycle === 'yearly' ? 89 : 109,
       annualTotal: "CHF 1'068 / J.",
@@ -299,6 +360,7 @@ export default function PricingPage() {
       popular: true
     },
     {
+      planKey: 'Team Starter',
       name: t('plan_team_starter'),
       price: billingCycle === 'yearly' ? 240 : 290,
       annualTotal: "CHF 2'880 / J.",
@@ -381,10 +443,15 @@ export default function PricingPage() {
                   <div className="flex items-start gap-3 text-xs opacity-40" key={`not-${j}`}><X className="w-4 h-4 shrink-0 mt-0.5" /> <span className="line-through">{f}</span></div>
                 ))}
               </div>
-              <button onClick={() => navigate('/signup')} className={cn(
-                "w-full py-4 rounded-2xl font-bold transition-all active:scale-95 cursor-pointer",
-                plan.popular ? "bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-600/20 text-white" : "bg-white text-black hover:bg-zinc-200"
-              )}>
+              <button
+                onClick={() => handleSelectPlan(plan.planKey)}
+                disabled={checkoutPlanLoading === plan.planKey}
+                className={cn(
+                  "w-full py-4 rounded-2xl font-bold transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50",
+                  plan.popular ? "bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-600/20 text-white" : "bg-white text-black hover:bg-zinc-200"
+                )}
+              >
+                {checkoutPlanLoading === plan.planKey && <Loader2 className="w-4 h-4 animate-spin" />}
                 {t('get_started')}
               </button>
             </div>

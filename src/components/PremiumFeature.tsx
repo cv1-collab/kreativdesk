@@ -2,19 +2,20 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useProject } from '../contexts/ProjectContext';
-import { supabase } from '../lib/supabase';
+import { checkIsSuperAdmin } from '../config/admins';
+import { hasFeature } from '../utils/planFeatures';
 import { Lock, Sparkles, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
     premium_feature: 'Premium Feature',
-    premium_desc: 'This tool is exclusively available in our premium plans (Pro, Expert, Studio). Unlock it to take your project planning to the next level.',
+    premium_desc: 'This tool is exclusively available in our premium plans (Pro, Team Starter, Studio). Unlock it to take your project planning to the next level.',
     unlock_now: 'Unlock Now'
   },
   de: {
     premium_feature: 'Premium Feature',
-    premium_desc: 'Dieses Werkzeug ist exklusiv in unseren Premium-Tarifen (Pro, Expert, Studio) verfügbar. Schalte es frei, um deine Projektplanung auf das nächste Level zu heben.',
+    premium_desc: 'Dieses Werkzeug ist exklusiv in unseren Premium-Tarifen (Pro, Team Starter, Studio) verfügbar. Schalte es frei, um deine Projektplanung auf das nächste Level zu heben.',
     unlock_now: 'Jetzt freischalten'
   }
 };
@@ -23,9 +24,10 @@ interface PremiumFeatureProps {
   children: React.ReactNode;
   title?: string;
   description?: string;
+  featureId?: string;
 }
 
-export default function PremiumFeature({ children, title, description }: PremiumFeatureProps) {
+export default function PremiumFeature({ children, title, description, featureId }: PremiumFeatureProps) {
   const { currentUser } = useAuth();
   const { isDemoMode } = useProject() as any;
   const { language, t: globalT } = useLanguage();
@@ -36,54 +38,45 @@ export default function PremiumFeature({ children, title, description }: Premium
   const navigate = useNavigate();
 
   useEffect(() => {
-    let isMounted = true;
+    if (isDemoMode || window.location.pathname.includes('/demo') || window.location.pathname.includes('/deck')) {
+      setIsPremiumValid(true);
+      return;
+    }
 
-    const checkAccess = async () => {
-      if (isDemoMode || window.location.pathname.includes('/demo') || window.location.pathname.includes('/deck')) {
-        if (isMounted) setIsPremiumValid(true);
-        return;
-      }
+    if (currentUser?.email === 'demo@kreativdesk.com' || currentUser?.uid === 'demo-user') {
+      setIsPremiumValid(true);
+      return;
+    }
 
-      if (currentUser?.email === 'demo@kreativdesk.com' || currentUser?.uid === 'demo-user') {
-        if (isMounted) setIsPremiumValid(true);
-        return;
-      }
+    if (!currentUser?.uid) {
+      setIsPremiumValid(false);
+      return;
+    }
 
-      if (!currentUser?.uid) {
-        if (isMounted) setIsPremiumValid(false);
-        return;
-      }
+    if (checkIsSuperAdmin(currentUser.email)) {
+      setIsPremiumValid(true);
+      return;
+    }
 
-      try {
-        const { data } = await supabase
-          .from('profiles')
-          .select('has_active_subscription, trial_ends_at')
-          .eq('id', currentUser.uid)
-          .maybeSingle();
+    const roleLower = (currentUser.role || '').toLowerCase();
+    const isMemberOrExternal = ['employee', 'management', 'guest', 'client', 'external', 'partner', 'subcontractor', 'project_lead', 'handwerker', 'bauherr'].includes(roleLower);
+    if (isMemberOrExternal) {
+      setIsPremiumValid(true);
+      return;
+    }
 
-        if (data && isMounted) {
-          const hasSub = data.has_active_subscription === true;
-          let trialValid = false;
-          if (data.trial_ends_at) {
-            const trialEnds = new Date(data.trial_ends_at);
-            trialValid = trialEnds.getTime() > new Date().getTime();
-          }
-          setIsPremiumValid(hasSub || trialValid || true);
-        } else if (isMounted) {
-          setIsPremiumValid(true);
-        }
-      } catch (error) {
-        console.error("Fehler beim Prüfen des Pro-Status", error);
-        if (isMounted) setIsPremiumValid(true);
-      }
-    };
+    if (featureId) {
+      setIsPremiumValid(hasFeature(currentUser, featureId));
+      return;
+    }
 
-    checkAccess();
+    const effectivePlan = String(currentUser.companyPlan || currentUser.plan || 'Free Trial');
+    const isPaidPlan = !effectivePlan.toLowerCase().includes('trial');
+    const hasActiveSub = currentUser.hasActiveSubscription !== false;
+    const trialValid = !currentUser.trialEndsAt || new Date(currentUser.trialEndsAt).getTime() > Date.now();
 
-    return () => {
-      isMounted = false;
-    };
-  }, [currentUser, isDemoMode]);
+    setIsPremiumValid((isPaidPlan && hasActiveSub) || trialValid);
+  }, [currentUser, isDemoMode, featureId]);
 
   if (isPremiumValid === null) {
     return <div className="p-8 text-center text-text-muted">Prüfe Zugriff...</div>;

@@ -1,7 +1,19 @@
 import { useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
-export type PlanName = 'Starter' | 'Pro' | 'Team Starter' | 'Expert' | 'Expert Trial' | 'Studio' | 'Agency' | 'Enterprise' | 'Free Trial';
+export type PlanName =
+  | 'Starter'
+  | 'Pro'
+  | 'Team Starter'
+  | 'Expert'
+  | 'Expert Trial'
+  | 'Studio'
+  | 'Studio OS'
+  | 'Agency'
+  | 'Agency OS'
+  | 'Enterprise'
+  | 'Enterprise OS'
+  | 'Free Trial';
 
 export interface SubscriptionLimits {
   maxProjects: number;      // -1 means unlimited
@@ -64,7 +76,15 @@ export const PLAN_LIMITS: Record<PlanName, SubscriptionLimits> = {
   'Studio': {
     maxProjects: -1,
     maxStorageGB: 500,
-    maxSeats: 5,
+    maxSeats: 10,
+    hasInvoicing: true,
+    hasApiAccess: true,
+    hasCustomBranding: true,
+  },
+  'Studio OS': {
+    maxProjects: -1,
+    maxStorageGB: 500,
+    maxSeats: 10,
     hasInvoicing: true,
     hasApiAccess: true,
     hasCustomBranding: true,
@@ -72,7 +92,15 @@ export const PLAN_LIMITS: Record<PlanName, SubscriptionLimits> = {
   'Agency': {
     maxProjects: -1,
     maxStorageGB: 2000,
-    maxSeats: 15,
+    maxSeats: 30,
+    hasInvoicing: true,
+    hasApiAccess: true,
+    hasCustomBranding: true,
+  },
+  'Agency OS': {
+    maxProjects: -1,
+    maxStorageGB: 2000,
+    maxSeats: 30,
     hasInvoicing: true,
     hasApiAccess: true,
     hasCustomBranding: true,
@@ -80,7 +108,15 @@ export const PLAN_LIMITS: Record<PlanName, SubscriptionLimits> = {
   'Enterprise': {
     maxProjects: -1,
     maxStorageGB: -1, // Unlimited
-    maxSeats: 25,
+    maxSeats: 999,
+    hasInvoicing: true,
+    hasApiAccess: true,
+    hasCustomBranding: true,
+  },
+  'Enterprise OS': {
+    maxProjects: -1,
+    maxStorageGB: -1, // Unlimited
+    maxSeats: 999,
     hasInvoicing: true,
     hasApiAccess: true,
     hasCustomBranding: true,
@@ -93,18 +129,27 @@ export function useSubscriptionLimits() {
 
   return useMemo(() => {
     let plan = rawPlan as PlanName;
-    if (rawPlan === 'Expert Trial' || rawPlan.toLowerCase().includes('expert')) {
+    const lower = rawPlan.toLowerCase();
+    if (rawPlan === 'Expert Trial' || (lower.includes('expert') && lower.includes('trial'))) {
       plan = 'Expert Trial';
-    } else if (rawPlan.includes('Trial')) {
+    } else if (lower.includes('trial')) {
       plan = 'Free Trial';
-    } else if (rawPlan.toLowerCase().includes('enterprise')) {
+    } else if (lower.includes('enterprise')) {
       plan = 'Enterprise';
-    } else if (rawPlan.includes('Workspace')) {
+    } else if (lower.includes('agency')) {
+      plan = 'Agency';
+    } else if (lower.includes('studio')) {
+      plan = 'Studio';
+    } else if (lower.includes('team starter')) {
+      plan = 'Team Starter';
+    } else if (lower.includes('expert')) {
+      plan = 'Expert';
+    } else if (lower.includes('workspace')) {
       plan = 'Pro';
     } else if (!PLAN_LIMITS[plan]) {
       plan = 'Free Trial';
     }
-    
+
     const limits = PLAN_LIMITS[plan] || PLAN_LIMITS['Free Trial'];
 
     return { limits, currentPlan: plan };

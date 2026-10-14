@@ -34,11 +34,32 @@ export default async function handler(req: any, res: any) {
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
+  const PRICING_MATRIX: Record<string, { name: string; seats: number }> = {
+    // Neue Tarife
+    'price_1UJ7wAQTfAtOGrggmwM9ctT7': { name: 'Starter', seats: 1 },
+    'price_1UJ7wBQTfAtOGrgg0W8idkBn': { name: 'Starter', seats: 1 },
+    'price_1UJ7wBQTfAtOGrggIHnw7NFO': { name: 'Pro', seats: 1 },
+    'price_1UJ7wBQTfAtOGrggKhnjecz8': { name: 'Pro', seats: 1 },
+    'price_1UJ7wCQTfAtOGrggtc8sK2NT': { name: 'Team Starter', seats: 3 },
+    'price_1UJ7wCQTfAtOGrgg5jYFVujy': { name: 'Team Starter', seats: 3 },
+    // Vorherige Tarife (Abwärtskompatibilität)
+    'price_1TdyXhQTfAtOGrggdoSEPjWr': { name: 'Starter', seats: 1 },
+    'price_1TdyYYQTfAtOGrggNecH3ItP': { name: 'Starter', seats: 1 },
+    'price_1TcizpQTfAtOGrggKGYLMG4c': { name: 'Pro', seats: 1 },
+    'price_1TdyU4QTfAtOGrggIvnyXe2j': { name: 'Pro', seats: 1 },
+    'price_1TdyaEQTfAtOGrggpbWcVles': { name: 'Expert', seats: 3 },
+    'price_1TdyaxQTfAtOGrggbeJBPDFY': { name: 'Expert', seats: 3 },
+  };
+
   // --- 1. LOGIK BEI KAUF / NEUEM ABO ---
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session;
-    const uid = session.client_reference_id || session.metadata?.supabaseUID || session.metadata?.firebaseUID;
-    const planName = session.metadata?.plan || 'Pro';
+    const uid = session.client_reference_id || session.metadata?.supabaseUID || session.metadata?.userId || session.metadata?.firebaseUID;
+    const metaPriceId = session.metadata?.priceId;
+    const resolvedFromPrice = metaPriceId ? PRICING_MATRIX[metaPriceId] : undefined;
+    const allowedPlans = ['Starter', 'Pro', 'Team Starter', 'Expert', 'Studio', 'Studio OS', 'Agency', 'Agency OS', 'Enterprise', 'Enterprise OS'];
+    const rawMetaPlan = session.metadata?.plan || session.metadata?.planName || 'Pro';
+    const planName = resolvedFromPrice?.name || (allowedPlans.includes(rawMetaPlan) ? rawMetaPlan : 'Pro');
 
     if (uid) {
       try {
@@ -56,17 +77,46 @@ export default async function handler(req: any, res: any) {
           .maybeSingle();
 
         if (profile?.company_id) {
-          let newMaxSeats = 1;
+          let newMaxSeats = resolvedFromPrice?.seats || Number(session.metadata?.maxSeats || session.metadata?.seats || 1);
           const planLower = planName.toLowerCase();
-          if (planLower.includes('team')) newMaxSeats = 3;
-          else if (planLower.includes('studio')) newMaxSeats = 5;
-          else if (planLower.includes('agency')) newMaxSeats = 15;
-          else if (planLower.includes('enterprise')) newMaxSeats = 25;
+          if (planLower.includes('team') || planLower.includes('expert')) newMaxSeats = 3;
+          else if (planLower.includes('studio')) newMaxSeats = 10;
+          else if (planLower.includes('agency')) newMaxSeats = 30;
+          else if (planLower.includes('enterprise')) newMaxSeats = 999;
+
+          const { data: existingComp } = await supabaseAdmin
+            .from('companies')
+            .select('max_seats')
+            .eq('id', profile.company_id)
+            .maybeSingle();
+
+          const finalMaxSeats = Math.max(newMaxSeats, Number(existingComp?.max_seats || 1));
 
           await supabaseAdmin.from('companies').update({
             plan: planName,
-            max_seats: newMaxSeats
+            max_seats: finalMaxSeats
           }).eq('id', profile.company_id);
+        }
+
+        // Log subscription payment in transactions for Super-Admin Sales Analytics
+        const paidAmount = typeof session.amount_total === 'number' ? session.amount_total / 100 : 0;
+        if (paidAmount > 0) {
+          try {
+            const txCurrency = (session.currency || 'chf').toUpperCase();
+            await supabaseAdmin.from('transactions').insert({
+              company_id: profile?.company_id || null,
+              owner_id: uid,
+              type: 'subscription',
+              category: 'Subscription',
+              status: 'Paid',
+              amount: paidAmount,
+              description: `Stripe Abo: ${planName} (${txCurrency})`,
+              date: new Date().toISOString().split('T')[0],
+              created_at: new Date().toISOString()
+            });
+          } catch (txErr) {
+            console.warn('Could not log subscription transaction:', txErr);
+          }
         }
       } catch (error) {
         console.error(`Supabase Write Error:`, error);
@@ -113,25 +163,9 @@ export default async function handler(req: any, res: any) {
 
     try {
       const priceId = subscription.items.data[0]?.price?.id;
-      let planName = subscription.metadata?.plan || '';
+      const itemQty = subscription.items.data[0]?.quantity || 1;
+      let planName = subscription.metadata?.plan || subscription.metadata?.planName || '';
       let maxSeats = 1;
-      
-      const PRICING_MATRIX: Record<string, {name: string, seats: number}> = {
-        // Neue Tarife
-        'price_1UJ7wAQTfAtOGrggmwM9ctT7': {name: 'Starter', seats: 1},
-        'price_1UJ7wBQTfAtOGrgg0W8idkBn': {name: 'Starter', seats: 1},
-        'price_1UJ7wBQTfAtOGrggIHnw7NFO': {name: 'Pro', seats: 1},
-        'price_1UJ7wBQTfAtOGrggKhnjecz8': {name: 'Pro', seats: 1},
-        'price_1UJ7wCQTfAtOGrggtc8sK2NT': {name: 'Team Starter', seats: 3},
-        'price_1UJ7wCQTfAtOGrgg5jYFVujy': {name: 'Team Starter', seats: 3},
-        // Vorherige Tarife (Abwärtskompatibilität)
-        'price_1TdyXhQTfAtOGrggdoSEPjWr': {name: 'Starter', seats: 1},
-        'price_1TdyYYQTfAtOGrggNecH3ItP': {name: 'Starter', seats: 1},
-        'price_1TcizpQTfAtOGrggKGYLMG4c': {name: 'Pro', seats: 1},
-        'price_1TdyU4QTfAtOGrggIvnyXe2j': {name: 'Pro', seats: 1},
-        'price_1TdyaEQTfAtOGrggpbWcVles': {name: 'Expert', seats: 1},
-        'price_1TdyaxQTfAtOGrggbeJBPDFY': {name: 'Expert', seats: 1},
-      };
 
       if (priceId && PRICING_MATRIX[priceId]) {
         planName = PRICING_MATRIX[priceId].name;
@@ -140,10 +174,15 @@ export default async function handler(req: any, res: any) {
         planName = 'Pro';
       }
 
-      if (planName.toLowerCase().includes('team')) maxSeats = 3;
-      else if (planName.toLowerCase().includes('studio')) maxSeats = 5;
-      else if (planName.toLowerCase().includes('agency')) maxSeats = 15;
-      else if (planName.toLowerCase().includes('enterprise')) maxSeats = 25;
+      const planLower = planName.toLowerCase();
+      if (planLower.includes('team') || planLower.includes('expert')) maxSeats = 3;
+      else if (planLower.includes('studio')) maxSeats = 10;
+      else if (planLower.includes('agency')) maxSeats = 30;
+      else if (planLower.includes('enterprise')) maxSeats = 999;
+
+      if (itemQty > maxSeats) {
+        maxSeats = itemQty;
+      }
 
       const isSubActive = subscription.status === 'active' || subscription.status === 'trialing';
 
@@ -162,14 +201,68 @@ export default async function handler(req: any, res: any) {
         }).eq('id', profile.id);
 
         if (profile.company_id) {
+          const { data: existingComp } = await supabaseAdmin
+            .from('companies')
+            .select('max_seats')
+            .eq('id', profile.company_id)
+            .maybeSingle();
+
+          const finalSeats = itemQty > 1
+            ? maxSeats
+            : Math.max(maxSeats, Number(existingComp?.max_seats || 1));
+
           await supabaseAdmin.from('companies').update({
             plan: planName,
-            max_seats: maxSeats
+            max_seats: finalSeats
           }).eq('id', profile.company_id);
         }
       }
     } catch (error) {
       console.error(`Supabase Write Error bei Subscription Update:`, error);
+    }
+  }
+
+  // --- 4. LOGIK BEI WIEDERKEHRENDEN ABO-ZAHLUNGEN ---
+  else if (event.type === 'invoice.payment_succeeded') {
+    const invoice = event.data.object as any;
+    const customerId = invoice.customer as string;
+    const billingReason = invoice.billing_reason;
+
+    if (customerId && billingReason === 'subscription_cycle') {
+      try {
+        const { data: profiles } = await supabaseAdmin
+          .from('profiles')
+          .select('*')
+          .eq('stripe_customer_id', customerId);
+
+        if (profiles && profiles.length > 0) {
+          const profile = profiles[0];
+          const planName = profile.plan || 'Pro';
+
+          await supabaseAdmin.from('profiles').update({
+            has_active_subscription: true,
+            updated_at: new Date().toISOString()
+          }).eq('id', profile.id);
+
+          const paidAmount = typeof invoice.amount_paid === 'number' ? invoice.amount_paid / 100 : 0;
+          if (paidAmount > 0) {
+            const txCurrency = (invoice.currency || 'chf').toUpperCase();
+            await supabaseAdmin.from('transactions').insert({
+              company_id: profile.company_id || null,
+              owner_id: profile.id,
+              type: 'subscription',
+              category: 'Subscription',
+              status: 'Paid',
+              amount: paidAmount,
+              description: `Stripe Abo-Verlängerung: ${planName} (${txCurrency})`,
+              date: new Date().toISOString().split('T')[0],
+              created_at: new Date().toISOString()
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Could not process invoice.payment_succeeded:', err);
+      }
     }
   }
 

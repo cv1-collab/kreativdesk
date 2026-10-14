@@ -230,6 +230,14 @@ export default function AdminDashboard() {
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-red-500/20 border border-red-500/30 flex items-center justify-center text-red-500 text-xs font-bold shadow-xs shrink-0 ml-0.5">
               {currentUser?.email?.charAt(0).toUpperCase()}
             </div>
+            <button
+              onClick={async () => { await logout(); navigate('/'); }}
+              className="md:hidden w-8 h-8 flex items-center justify-center text-red-500 bg-red-500/10 border border-red-500/20 rounded-xl hover:bg-red-500/20 transition-colors shadow-xs cursor-pointer shrink-0"
+              title={t('logout')}
+              aria-label={t('logout')}
+            >
+              <LogOut size={15} />
+            </button>
           </div>
         </header>
 

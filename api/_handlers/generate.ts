@@ -70,10 +70,10 @@ export default async function handler(req: any, res: any) {
 
     let safeContents = contents;
     if (typeof contents === 'string') {
-      safeContents = [{ parts: [{ text: contents }] }];
+      safeContents = [{ role: 'user', parts: [{ text: contents }] }];
     } else if (Array.isArray(contents)) {
-      const isAlreadyContentFormat = contents.every((c: any) => c && Array.isArray(c.parts));
-      if (!isAlreadyContentFormat) {
+      const isMultiTurnWithRoles = contents.every((c: any) => c && Array.isArray(c.parts) && typeof c.role === 'string');
+      if (!isMultiTurnWithRoles) {
         const parts = contents.map((item: any) => {
           if (typeof item === 'string') return { text: item };
           if (item?.parts && Array.isArray(item.parts)) return item.parts;

@@ -573,17 +573,43 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
     const safeCompanyId = currentUser?.companyId || currentUser?.uid;
     try {
       let token = '';
-      if (safeCompanyId) {
-        const actualSeats = await syncCompanySeats(safeCompanyId);
-        const { data: comp } = await supabase
-          .from('companies')
-          .select('used_seats, max_seats')
-          .eq('id', safeCompanyId)
-          .maybeSingle();
+      const EXTERNAL_ROLES = ['guest', 'client', 'external', 'partner', 'subcontractor', 'field guest', 'external planner', 'bauherr', 'handwerker'];
+      const roleLower = String(contact.role || '').trim().toLowerCase();
+      const isExternalContact =
+        contact.isExternal === true ||
+        (contact.status && contact.status !== 'team') ||
+        EXTERNAL_ROLES.includes(roleLower);
 
-        if (!isSuperAdmin && comp && comp.max_seats && actualSeats >= comp.max_seats) {
-          addToast('Lizenzlimit erreicht. Bitte upgrade deinen Plan für weitere Mitarbeiter.', 'error');
-          return null;
+      if (safeCompanyId) {
+        // Externe Handwerker, Bauherren und Fachplaner sind 100% kostenlos & unbegrenzt!
+        // Nur für interne Teammitglieder wird das Seat-Limit geprüft.
+        if (!isExternalContact && !isSuperAdmin) {
+          const actualSeats = await syncCompanySeats(safeCompanyId);
+          const { data: comp } = await supabase
+            .from('companies')
+            .select('used_seats, max_seats')
+            .eq('id', safeCompanyId)
+            .maybeSingle();
+
+          // Prüfen, ob dieser Mitarbeiter bereits in den gezählten internen Seats enthalten ist
+          const cleanContactEmail = contact.email.trim().toLowerCase();
+          const { data: existingInternalCu } = await supabase
+            .from('company_users')
+            .select('id, status, is_external')
+            .eq('company_id', safeCompanyId)
+            .ilike('email', cleanContactEmail)
+            .maybeSingle();
+
+          const isAlreadyCountedSeat = Boolean(
+            existingInternalCu &&
+            (existingInternalCu.status === 'team' || existingInternalCu.is_external === false)
+          );
+          const requiredSeats = isAlreadyCountedSeat ? actualSeats : actualSeats + 1;
+
+          if (comp && comp.max_seats && requiredSeats > comp.max_seats) {
+            addToast('Lizenzlimit erreicht. Bitte upgrade deinen Plan für weitere interne Mitarbeiter.', 'error');
+            return null;
+          }
         }
 
         const { data: existingInvites } = await supabase
@@ -599,11 +625,15 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
           token = existingInvites[0].token;
         } else {
           token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+          const inviteRole = isExternalContact
+            ? (contact.role && EXTERNAL_ROLES.includes(roleLower) ? contact.role : 'guest')
+            : (contact.role || 'employee');
+
           const { error: insertErr } = await supabase.from('invites').insert({
             token,
             company_id: safeCompanyId,
             email: contact.email,
-            role: contact.role || 'employee',
+            role: inviteRole,
             status: 'pending',
             created_at: new Date().toISOString()
           });
@@ -1430,7 +1460,7 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                     initial={{ opacity: 0, y: 6, scale: 0.96 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 4, scale: 0.96 }}
-                    className="absolute right-0 top-full mt-1.5 w-60 bg-surface border border-border rounded-xl shadow-2xl p-1.5 z-[101] space-y-1"
+                    className="absolute left-0 sm:left-auto sm:right-0 top-full mt-1.5 w-60 max-w-[calc(100vw-2rem)] bg-surface border border-border rounded-xl shadow-2xl p-1.5 z-[101] space-y-1"
                   >
                     <div className="px-2.5 py-1 text-[10px] font-bold text-text-muted uppercase tracking-wider">
                       Export

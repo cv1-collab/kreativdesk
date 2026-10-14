@@ -24,6 +24,7 @@ import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
 import ModuleGuideButton from './ModuleGuideButton';
 import { sendNotification } from '../lib/notifications';
 import { safeStorage } from '../utils/safeStorage';
+import { uploadFileWithFallback, uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 
 // NATIVE PDF IMPORTS
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
@@ -319,11 +320,11 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
   const [uploadSessionId] = useState(() => Math.random().toString(36).substring(2, 15));
   const mobileUploadUrl = `${window.location.origin}/mobile-upload/defect/${uploadSessionId}`;
 
-  const [projectHeader] = useState({ 
+  const projectHeader = { 
     project: activeProject?.name || t('new_project') || 'Neues Projekt', 
-    client: '', 
+    client: (activeProject as any)?.client || '', 
     date: new Date().toISOString().split('T')[0]
-  });
+  };
 
   const [activeDragDefect, setActiveDragDefect] = useState<Defect | null>(null);
   const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
@@ -389,8 +390,50 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
   }, [addToast]);
 
   useEffect(() => {
-    if (!uploadSessionId || !showQrScanner) return;
-  }, [uploadSessionId, showQrScanner, addToast]);
+    if (!uploadSessionId || !showQrScanner || isDemo) return;
+    let isMounted = true;
+
+    const handleIncomingPhoto = (photoUrl: string) => {
+      if (!isMounted || !photoUrl) return;
+      setCurrentDefect(prev => ({ ...prev, imageUrl: photoUrl }));
+      setShowQrScanner(false);
+      addToast('Foto vom Smartphone empfangen!', 'success');
+    };
+
+    const channel = supabase.channel(`mobile_upload_${uploadSessionId}`)
+      .on('broadcast', { event: 'receipt_uploaded' }, (payload: any) => {
+        const data = payload?.payload;
+        if (data?.url) {
+          handleIncomingPhoto(data.url);
+        }
+      })
+      .subscribe();
+
+    const pollInterval = setInterval(async () => {
+      if (!isMounted) return;
+      try {
+        const { data: docs } = await supabase
+          .from('documents')
+          .select('url, file_url')
+          .eq('company_id', uploadSessionId)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (docs && docs.length > 0) {
+          const docUrl = docs[0].url || docs[0].file_url;
+          if (docUrl) {
+            handleIncomingPhoto(docUrl);
+          }
+        }
+      } catch (_) {}
+    }, 3000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(pollInterval);
+      supabase.removeChannel(channel);
+    };
+  }, [uploadSessionId, showQrScanner, isDemo, addToast]);
 
   const handleDropLogic = async (id: string, status: string) => {
     if (!id) return;
@@ -476,11 +519,14 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
         description: currentDefect.description || '',
         status: currentDefect.status || 'To Do',
         severity: currentDefect.priority || 'High',
+        trade: currentDefect.trade || undefined,
+        location: currentDefect.location || undefined,
+        due_date: currentDefect.dueDate || undefined,
         position: { x: 0, y: 1.5, z: 0 },
         image_url: currentDefect.imageUrl || '',
         created_at: new Date().toISOString()
       });
-      setDefects(prev => [...prev, { ...currentDefect, id: offlineId, projectId: currentProjectId } as Defect]);
+      setDefects(prev => [...prev, { ...currentDefect, id: offlineId, projectId: currentProjectId, ownerId: currentUser.uid } as Defect]);
       addToast('Mangel offline gespeichert! Wird automatisch synchronisiert sobald wieder online.', 'info');
       setIsModalOpen(false);
       setIsSubmitting(false);
@@ -526,16 +572,18 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
           status: currentDefect.status || 'To Do',
           priority: currentDefect.priority || 'Medium',
           trade: currentDefect.trade || '',
+          assignee: currentDefect.assignee || '',
           location: currentDefect.location || '',
           dueDate: currentDefect.dueDate || new Date().toISOString().split('T')[0],
           imageUrl: currentDefect.imageUrl || '',
-          projectId: cleanProjectId || 'global'
+          projectId: cleanProjectId || 'global',
+          ownerId: currentUser.uid
         };
         setDefects(prev => [...prev, newDefectItem as Defect]);
         invalidateDefects();
         try {
           await sendNotification({
-            companyId: currentUser.companyId,
+            companyId: safeCompanyId,
             title: 'Neuer Mangel erfasst ⚠️',
             message: `Mangel "${newDefectItem.title}" wurde im System erfasst.`,
             type: 'info'
@@ -565,11 +613,14 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
           description: currentDefect.description || '',
           status: currentDefect.status || 'To Do',
           severity: currentDefect.priority || 'High',
+          trade: currentDefect.trade || undefined,
+          location: currentDefect.location || undefined,
+          due_date: currentDefect.dueDate || undefined,
           position: { x: 0, y: 1.5, z: 0 },
           image_url: currentDefect.imageUrl || '',
           created_at: new Date().toISOString()
         });
-        setDefects(prev => [...prev, { ...currentDefect, id: offlineId, projectId: currentProjectId } as Defect]);
+        setDefects(prev => [...prev, { ...currentDefect, id: offlineId, projectId: currentProjectId, ownerId: currentUser?.uid } as Defect]);
         addToast('Netzwerk-Unterbruch: Mangel offline gesichert! Synchronisiert automatisch bei Verbindung.', 'info');
         setIsModalOpen(false);
         setCurrentDefect(DEFAULT_DEFECT);
@@ -687,14 +738,8 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
     
     setIsAnalyzingImage(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const filePath = `${currentUser.companyId || currentUser.uid}/defects/temp_${Date.now()}.${fileExt}`;
-      const { error: uploadErr } = await supabase.storage.from('defects').upload(filePath, file, { upsert: true });
-      let url = '';
-      if (!uploadErr) {
-        const { data: urlData } = supabase.storage.from('defects').getPublicUrl(filePath);
-        url = urlData.publicUrl;
-      }
+      const safeCompId = currentUser.companyId || (currentUser as any)?.company_id || currentUser.uid;
+      const url = await uploadFileWithFallback(file, file.name, safeCompId, 'defects');
       if (url) {
         setCurrentDefect(prev => ({ ...prev, imageUrl: url }));
       }
@@ -704,6 +749,9 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
         if (reader.result) {
           const base64String = reader.result as string;
           const base64Data = base64String.split(',')[1];
+          if (!url) {
+            setCurrentDefect(prev => ({ ...prev, imageUrl: base64String }));
+          }
           await processDefectImageWithAI(base64Data, file.type);
         }
       };
@@ -725,11 +773,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
     if (!currentUser || !safeCompanyId) return;
     try {
       const fileName = `Maengelliste_${activeProject?.name || 'Projekt'}_${Date.now()}.pdf`;
-      const filePath = `${safeCompanyId}/pdf_exports/${fileName}`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
-      if (upErr) throw upErr;
-      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      const downloadUrl = pubData.publicUrl;
+      const downloadUrl = await uploadPdfBlobWithFallback(blob, fileName, safeCompanyId);
       
       let targetFolderId = 'root';
       const cleanProjectId = (currentProjectId && currentProjectId !== 'global') ? currentProjectId : null;
@@ -834,7 +878,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
                       initial={{ opacity: 0, y: 6, scale: 0.96 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 4, scale: 0.96 }}
-                      className="absolute right-0 top-full mt-2 w-72 bg-surface/98 backdrop-blur-2xl border border-border rounded-2xl shadow-2xl p-2 z-[9999] space-y-1.5"
+                      className="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 w-72 max-w-[calc(100vw-2rem)] bg-surface/98 backdrop-blur-2xl border border-border rounded-2xl shadow-2xl p-2 z-[9999] space-y-1.5"
                     >
                       <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted px-2.5 pt-1 pb-0.5">
                         {currentLang === 'de' ? 'Dokumente & Export' : 'Documents & Export'}
@@ -964,7 +1008,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
                                </div>
                             )}
                             {!!sanitizeUrl(defect.imageUrl) && (
-                              <div className="w-full h-28 rounded-lg overflow-hidden mb-3 border border-border cursor-zoom-in group/image relative pointer-events-none" onClick={(e) => { e.stopPropagation(); setPreviewImage(sanitizeUrl(defect.imageUrl as string)); }}>
+                              <div className="w-full h-28 rounded-lg overflow-hidden mb-3 border border-border cursor-zoom-in group/image relative" onClick={(e) => { e.stopPropagation(); setPreviewImage(sanitizeUrl(defect.imageUrl as string)); }}>
                                 <img src={sanitizeUrl(defect.imageUrl)} alt="Defect" className="w-full h-full object-cover group-hover/image:scale-105 transition-transform duration-300" onError={(e) => { e.currentTarget.src = 'https://placehold.co/600x400/27272a/ffffff?text=Bild+nicht+verf%C3%BCgbar'; }}/>
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/image:opacity-100 flex items-center justify-center transition-opacity"><Eye className="text-white" size={24} /></div>
                               </div>

@@ -134,14 +134,18 @@ export const webhookNotifier = {
     const effectiveSecret = secretKey || this.getSecretKey();
     const signature = await this.calculateSignature(bodyStr, effectiveSecret);
 
+    const customHeaders = {
+      'X-KreativDesk-Event': testPayload.event,
+      'X-KreativDesk-Timestamp': testPayload.timestamp,
+      'X-KreativDesk-Signature': signature
+    };
+
     try {
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-KreativDesk-Event': testPayload.event,
-          'X-KreativDesk-Timestamp': testPayload.timestamp,
-          'X-KreativDesk-Signature': signature
+          ...customHeaders
         },
         body: bodyStr
       });
@@ -162,6 +166,40 @@ export const webhookNotifier = {
         responseBody: responseBody.slice(0, 500)
       };
     } catch (err: any) {
+      // Fallback to server-side proxy (/api/webhook/lead) when browser CORS blocks direct cross-origin requests (e.g. Slack/Zapier/Make)
+      try {
+        const { supabase } = await import('../lib/supabase');
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          const proxyRes = await fetch('/api/webhook/lead', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({
+              event: testPayload.event,
+              webhookUrl: url,
+              rawPayload: bodyStr,
+              customHeaders
+            })
+          });
+          if (proxyRes.ok) {
+            const proxyData = await proxyRes.json();
+            const durationMs = Math.round(performance.now() - startTime);
+            return {
+              success: Boolean(proxyData.forwarded),
+              status: proxyData.status || (proxyData.forwarded ? 200 : 502),
+              statusText: proxyData.statusText || (proxyData.forwarded ? 'OK (via Proxy)' : 'Fehler'),
+              durationMs,
+              responseBody: proxyData.responseBody || 'Sent via Kreativ-Desk Server Proxy'
+            };
+          }
+        }
+      } catch {
+        // Ignore proxy fallback error and return original error below
+      }
+
       const durationMs = Math.round(performance.now() - startTime);
       return {
         success: false,
@@ -181,26 +219,50 @@ export const webhookNotifier = {
     const secretKey = this.getSecretKey(companyId);
 
     for (const ep of activeEndpoints) {
+      const isSlack = ep.url.includes('hooks.slack.com');
+      const bodyStr = isSlack
+        ? JSON.stringify({ text: `🔔 *Kreativ-Desk Event: ${payload.event.toUpperCase()}*\n*${payload.title}*\n${payload.description || ''}` })
+        : JSON.stringify(payload);
+
+      const signature = await this.calculateSignature(bodyStr, secretKey);
+      const customHeaders = {
+        'X-KreativDesk-Event': payload.event,
+        'X-KreativDesk-Timestamp': payload.timestamp,
+        'X-KreativDesk-Signature': signature
+      };
+
       try {
-        const isSlack = ep.url.includes('hooks.slack.com');
-        const bodyStr = isSlack
-          ? JSON.stringify({ text: `🔔 *Kreativ-Desk Event: ${payload.event.toUpperCase()}*\n*${payload.title}*\n${payload.description || ''}` })
-          : JSON.stringify(payload);
-
-        const signature = await this.calculateSignature(bodyStr, secretKey);
-
         await fetch(ep.url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-KreativDesk-Event': payload.event,
-            'X-KreativDesk-Timestamp': payload.timestamp,
-            'X-KreativDesk-Signature': signature
+            ...customHeaders
           },
           body: bodyStr
         });
       } catch (err) {
-        console.error(`Webhook dispatch error for ${ep.name} (${ep.url}):`, err);
+        // Fallback to server-side proxy when browser CORS preflight blocks direct webhook call
+        try {
+          const { supabase } = await import('../lib/supabase');
+          const { data: { session } } = await supabase.auth.getSession();
+          const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+          if (session?.access_token) {
+            headers['Authorization'] = `Bearer ${session.access_token}`;
+          }
+          await fetch('/api/webhook/lead', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              event: payload.event,
+              companyId: companyId || payload.company_id,
+              webhookUrl: ep.url,
+              rawPayload: bodyStr,
+              customHeaders
+            })
+          });
+        } catch (proxyErr) {
+          console.error(`Webhook dispatch error for ${ep.name} (${ep.url}):`, err, proxyErr);
+        }
       }
     }
   }

@@ -176,7 +176,7 @@ export default function GuestMeet() {
 
   const [newMessage, setNewMessage] = useState('');
   const [error, setError] = useState('');
-  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [localScreenSharing, setLocalScreenSharing] = useState(false);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -184,6 +184,7 @@ export default function GuestMeet() {
   const soloLocalVideoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bgFileInputRef = useRef<HTMLInputElement>(null);
+  const guestChatChannelRef = useRef<any>(null);
 
   const [showBgModal, setShowBgModal] = useState(false);
   const [bgMode, setBgMode] = useState<'none' | 'blur' | 'preset' | 'custom'>(() => (safeStorage.getString('guest_bg_mode', 'none') as any) || 'none');
@@ -214,20 +215,35 @@ export default function GuestMeet() {
   const {
     localStream, remoteStreams, peerInfo, isMicOn, isCamOn, callStatus,
     joinCall, hangUp, toggleMic, toggleCam, setJoinCallId, isInCall,
+    isScreenSharing: contextIsScreenSharing,
     toggleScreenShare: contextToggleScreenShare, iceWarning
   } = useVideoCall();
+
+  const isScreenSharing = contextIsScreenSharing ?? localScreenSharing;
+
+  const isJoinedRef = useRef(isJoined);
+  isJoinedRef.current = isJoined;
+  const hangUpRef = useRef(hangUp);
+  hangUpRef.current = hangUp;
+
+  useEffect(() => {
+    return () => {
+      if (isJoinedRef.current) {
+        hangUpRef.current?.();
+      }
+    };
+  }, []);
 
   const handleToggleScreenShare = async () => {
     try {
       if (contextToggleScreenShare) {
         await contextToggleScreenShare();
-        setIsScreenSharing(prev => !prev);
-      } else if (!isScreenSharing) {
+      } else if (!localScreenSharing) {
         const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-        setIsScreenSharing(true);
-        stream.getVideoTracks()[0].onended = () => setIsScreenSharing(false);
+        setLocalScreenSharing(true);
+        stream.getVideoTracks()[0].onended = () => setLocalScreenSharing(false);
       } else {
-        setIsScreenSharing(false);
+        setLocalScreenSharing(false);
       }
     } catch (err) {
       console.error("Screen share error:", err);
@@ -337,14 +353,19 @@ export default function GuestMeet() {
         if (directData) data = directData;
       }
       if (data) {
-        setMessages(data.map((d: any) => ({
-          id: d.id,
-          sender: d.sender_name || d.sender || 'Gast',
-          avatar: (d.sender_name || d.sender || 'G').substring(0, 2).toUpperCase(),
-          time: new Date(d.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          text: d.message || d.text || '',
-          fileUrl: d.file_url || d.fileUrl || (d.message?.match(/\[FILE:(.*?)\]/)?.[1])
-        })));
+        setMessages(data.map((d: any) => {
+          const rawMsg = d.message || d.text || '';
+          const extractedFile = d.file_url || d.fileUrl || (rawMsg.match(/\[FILE:(.*?)\]/)?.[1]);
+          const cleanText = rawMsg.replace(/\[FILE:.*?\]/g, '').trim();
+          return {
+            id: d.id,
+            sender: d.sender_name || d.sender || 'Gast',
+            avatar: (d.sender_name || d.sender || 'G').substring(0, 2).toUpperCase(),
+            time: new Date(d.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            text: cleanText,
+            fileUrl: extractedFile
+          };
+        }));
         setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
       }
     };
@@ -365,12 +386,13 @@ export default function GuestMeet() {
                 rawText = rawText.replace(/\[FILE:.*?\]/g, '').trim();
               }
             }
-            if (prev.some(m => m.id === payload.id || (m.sender === (payload.sender || payload.sender_name) && m.text === rawText && m.fileUrl === fileUrl))) return prev;
+            const msgTime = payload.time || new Date(payload.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            if (prev.some(m => m.id === payload.id || (m.sender === (payload.sender || payload.sender_name) && m.text === rawText && m.fileUrl === fileUrl && m.time === msgTime))) return prev;
             return [...prev, {
               id: payload.id,
               sender: payload.sender || payload.sender_name || 'Gast',
               avatar: payload.avatar || (payload.sender || 'G').substring(0, 2).toUpperCase(),
-              time: payload.time || new Date(payload.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              time: msgTime,
               text: rawText,
               fileUrl: fileUrl
             }];
@@ -390,13 +412,14 @@ export default function GuestMeet() {
               rawText = rawText.replace(/\[FILE:.*?\]/g, '').trim();
             }
           }
+          const msgTime = new Date(d.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
           setMessages(prev => {
-            if (prev.some(m => m.id === d.id || (m.sender === (d.sender_name || d.sender) && m.text === rawText && m.fileUrl === fileUrl))) return prev;
+            if (prev.some(m => m.id === d.id || (m.sender === (d.sender_name || d.sender) && m.text === rawText && m.fileUrl === fileUrl && m.time === msgTime))) return prev;
             return [...prev, {
               id: d.id,
               sender: d.sender_name || d.sender || 'Gast',
               avatar: (d.sender_name || d.sender || 'G').substring(0, 2).toUpperCase(),
-              time: new Date(d.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              time: msgTime,
               text: rawText,
               fileUrl: fileUrl
             }];
@@ -406,8 +429,11 @@ export default function GuestMeet() {
       })
       .subscribe();
 
+    guestChatChannelRef.current = channel;
+
     return () => {
-      channel.unsubscribe();
+      guestChatChannelRef.current = null;
+      supabase.removeChannel(channel).catch(() => {});
     };
   }, [isJoined, joinId]);
 
@@ -476,7 +502,8 @@ export default function GuestMeet() {
       setMessages(prev => [...prev, msgObj]);
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
 
-      supabase.channel(`chat_messages_${joinId}`).send({
+      const activeCh = guestChatChannelRef.current || supabase.channel(`chat_messages_${joinId}`);
+      activeCh.send({
         type: 'broadcast',
         event: 'new_chat_msg',
         payload: msgObj
@@ -535,7 +562,8 @@ export default function GuestMeet() {
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
 
     // Broadcast in real-time to all connected peers
-    supabase.channel(`chat_messages_${joinId}`).send({
+    const activeCh = guestChatChannelRef.current || supabase.channel(`chat_messages_${joinId}`);
+    activeCh.send({
       type: 'broadcast',
       event: 'new_chat_msg',
       payload: msgObj
@@ -651,7 +679,7 @@ export default function GuestMeet() {
               Object.keys(remoteStreams).length === 1 ? "grid-cols-1 grid-rows-1" :
               Object.keys(remoteStreams).length === 2 ? "grid-cols-1 sm:grid-cols-2 grid-rows-1 sm:grid-rows-1" :
               Object.keys(remoteStreams).length <= 4 ? "grid-cols-2 grid-rows-2" :
-              Object.keys(remoteStreams).length <= 6 ? "grid-cols-2 md:grid-cols-3 grid-rows-2 md:grid-rows-2" :
+              Object.keys(remoteStreams).length <= 6 ? "grid-cols-2 grid-rows-3 md:grid-cols-3 md:grid-rows-2" :
               "grid-cols-2 md:grid-cols-3 lg:grid-cols-4 auto-rows-fr overflow-y-auto"
             )}>
               {Object.entries(remoteStreams).map(([peerId, stream]) => (

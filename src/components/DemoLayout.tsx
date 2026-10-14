@@ -90,6 +90,17 @@ export default function DemoLayout({
     );
   };
 
+  React.useEffect(() => {
+    const handleSwitchTab = (ev: Event) => {
+      const customEv = ev as CustomEvent<string>;
+      if (customEv.detail) {
+        setActiveTab(customEv.detail);
+      }
+    };
+    window.addEventListener('demo-switch-tab', handleSwitchTab);
+    return () => window.removeEventListener('demo-switch-tab', handleSwitchTab);
+  }, []);
+
   // === DAS MAGISCHE SCHUTZSCHILD FÜR DIE DEMO ===
   const handleGlobalClickCapture = (e: React.MouseEvent) => {
     if (!isDemoMode) return;
@@ -129,22 +140,24 @@ export default function DemoLayout({
 
     if (actionable) {
       const text = (actionable.textContent || actionable.getAttribute('title') || actionable.getAttribute('aria-label') || '').toLowerCase().trim();
-      const isSubmit = (actionable as HTMLButtonElement).type === 'submit';
+      const isSubmit = (actionable as HTMLButtonElement).type === 'submit' && !!actionable.closest('form');
       const isFileInput = (actionable as HTMLInputElement).type === 'file' || !!actionable.querySelector('input[type="file"]');
       const isExternalTarget = actionable.getAttribute('target') === '_blank' || actionable.hasAttribute('download');
 
-      // Whitelist der erlaubten reinen Betrachtungs- & Ansichts-Umschalter in der Live-Demo
-      const isLanguageToggle = text === 'de' || text === 'en' || text === 'fr';
-      const isThemeToggle = text.includes('hell') || text.includes('dunkel') || text.includes('light') || text.includes('dark') || !!actionable.querySelector('svg.lucide-sun, svg.lucide-moon');
-      const isViewToggle = text === 'story' || text === 'deck' || text.includes('story mode');
-      const isSlidePagination = !!actionable.querySelector('svg.lucide-chevron-left, svg.lucide-chevron-right') && !text.includes('zurück') && !text.includes('app');
+      // Blockiere explizit destruktive, persistierende oder externe Aktionen in der Live-Demo
+      const blockedKeywords = [
+        'löschen', 'delete', 'entfernen', 'remove',
+        'speichern', 'save', 'export', 'download', 'herunterladen',
+        'einladen', 'invite', 'erstellen', 'create', 'hinzufügen', 'add ', 'neues ', 'neuer ', 'neue ',
+        'rechnungs-studio', 'qr-rechnung', 'pdf ', 'hochladen', 'upload',
+        'bexio', 'stripe', 'portal', 'teilen', 'share', 'senden', 'send',
+        'video-call', 'anruf', 'meeting starten', 'freigeben', 'approve', 'ablehnen', 'reject',
+        'ki-analyse', 'ki-scan', 'beleg scannen', 'ai scan', 'generieren'
+      ];
+      const matchesBlockedKeyword = blockedKeywords.some(kw => text.includes(kw));
+      const hasBlockedIcon = !!actionable.querySelector('svg.lucide-trash, svg.lucide-trash-2, svg.lucide-download, svg.lucide-upload, svg.lucide-share-2, svg.lucide-user-plus, svg.lucide-plus');
 
-      // Tab-Navigation nicht blockieren
-      const isNavTab = !!(actionable.closest('nav') || actionable.closest('.hide-scrollbar') || actionable.closest('.md\\:hidden'));
-
-      const isAllowedSafeInteraction = !isSubmit && !isFileInput && !isExternalTarget && (isNavTab || isLanguageToggle || isThemeToggle || isViewToggle || isSlidePagination);
-
-      if (!isAllowedSafeInteraction) {
+      if (isSubmit || isFileInput || isExternalTarget || matchesBlockedKeyword || (hasBlockedIcon && !text.includes('3d') && !text.includes('zoom'))) {
         e.stopPropagation();
         e.preventDefault();
         showDemoBlockedToast();

@@ -65,41 +65,81 @@ export default async function handler(req: any, res: any) {
         inviteData = byId;
       }
 
+      const EXTERNAL_ROLES = ['guest', 'client', 'external', 'partner', 'subcontractor', 'field guest', 'external planner', 'bauherr', 'handwerker'];
       const isPlaceholder = inviteData?.email?.startsWith('invite_') || inviteData?.email?.endsWith('@workspace.local');
       if (inviteData && inviteData.status === 'pending' && (isPlaceholder || inviteData.email.toLowerCase() === verifiedEmail)) {
         assignedCompanyId = inviteData.company_id || inviteData.companyId;
         assignedRole = inviteData.role === 'super_admin' && !isCallerSuperAdmin ? 'admin' : (inviteData.role || 'employee');
-        isInvite = true;
-
-        await supabaseAdmin.from('invites').update({
-          status: 'used',
-          used_by: uid,
-          email: verifiedEmail,
-          used_at: now
-        }).eq('id', inviteData.id);
+        const isExternalRole = EXTERNAL_ROLES.includes(String(assignedRole).toLowerCase());
 
         if (assignedCompanyId) {
           const { data: comp } = await supabaseAdmin
             .from('companies')
-            .select('used_seats, plan')
+            .select('used_seats, max_seats, plan')
             .eq('id', assignedCompanyId)
             .maybeSingle();
+
+          const { data: existingCu } = await supabaseAdmin
+            .from('company_users')
+            .select('id, status, is_external')
+            .eq('company_id', assignedCompanyId)
+            .ilike('email', verifiedEmail)
+            .maybeSingle();
+
           if (comp) {
             invitedCompanyPlan = comp.plan || 'Pro';
+            if (!isExternalRole) {
+              const isAlreadyCounted = Boolean(
+                existingCu && (existingCu.status === 'team' || existingCu.is_external === false)
+              );
+              const currentSeats = comp.used_seats || 1;
+              const projectedSeats = isAlreadyCounted ? currentSeats : currentSeats + 1;
+              if (comp.max_seats && projectedSeats > comp.max_seats) {
+                return res.status(403).json({ error: 'Maximale Anzahl an internen Team-Seats erreicht. Bitte führe ein Upgrade durch.' });
+              }
+              if (!isAlreadyCounted) {
+                await supabaseAdmin
+                  .from('companies')
+                  .update({ used_seats: projectedSeats })
+                  .eq('id', assignedCompanyId);
+              }
+            }
+          }
+
+          isInvite = true;
+          if (String(assignedRole).toLowerCase() === 'owner') {
             await supabaseAdmin
               .from('companies')
-              .update({ used_seats: (comp.used_seats || 1) + 1 })
-              .eq('id', assignedCompanyId);
+              .update({ owner_id: uid })
+              .eq('id', assignedCompanyId)
+              .is('owner_id', null);
           }
-          await supabaseAdmin.from('company_users').insert({
-            company_id: assignedCompanyId,
-            user_id: uid,
-            name: verifiedEmail.split('@')[0] || 'Teammitglied',
+          await supabaseAdmin.from('invites').update({
+            status: 'used',
+            used_by: uid,
             email: verifiedEmail,
-            role: assignedRole,
-            status: 'aktiv',
-            created_at: now
-          });
+            used_at: now
+          }).eq('id', inviteData.id);
+
+          if (existingCu) {
+            await supabaseAdmin.from('company_users').update({
+              user_id: uid,
+              role: assignedRole,
+              is_external: isExternalRole,
+              status: isExternalRole ? 'external' : 'team'
+            }).eq('id', existingCu.id);
+          } else {
+            await supabaseAdmin.from('company_users').insert({
+              company_id: assignedCompanyId,
+              user_id: uid,
+              name: verifiedEmail.split('@')[0] || 'Teammitglied',
+              email: verifiedEmail,
+              role: assignedRole,
+              is_external: isExternalRole,
+              status: isExternalRole ? 'external' : 'team',
+              created_at: now
+            });
+          }
         }
       } else {
         return res.status(400).json({ error: 'Ungültiger oder bereits eingelöster Einladungslink.' });
