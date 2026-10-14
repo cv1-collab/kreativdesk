@@ -805,10 +805,20 @@ export default function MeetChat() {
     const fetchChatMessages = async () => {
       try {
         let msgs: any[] = [];
-        const query = supabase.from('chat_messages').select('*').eq('call_id', currentMeetingCallId);
-        const { data, error } = await query.order('created_at', { ascending: true }).limit(100);
+        try {
+          const { data: rpcMsgs, error: rpcErr } = await supabase.rpc('get_call_chat_messages', {
+            p_call_id: currentMeetingCallId
+          });
+          if (!rpcErr && Array.isArray(rpcMsgs)) {
+            msgs = rpcMsgs;
+          }
+        } catch (_) {}
 
-        if (!error && data) msgs = data;
+        if (msgs.length === 0) {
+          const query = supabase.from('chat_messages').select('*').eq('call_id', currentMeetingCallId);
+          const { data, error } = await query.order('created_at', { ascending: true }).limit(100);
+          if (!error && data) msgs = data;
+        }
 
         if (msgs && msgs.length > 0) {
           const formatted = msgs.map(d => {
