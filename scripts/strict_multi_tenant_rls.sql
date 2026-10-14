@@ -29,6 +29,7 @@ BEGIN;
 -- 1. SCHEMA-ERWEITERUNGEN (Idempotent)
 -- ----------------------------------------------------------------------------
 ALTER TABLE IF EXISTS public.company_users 
+  ADD COLUMN IF NOT EXISTS user_id text,
   ADD COLUMN IF NOT EXISTS company text,
   ADD COLUMN IF NOT EXISTS street text,
   ADD COLUMN IF NOT EXISTS zip_city text,
@@ -51,6 +52,8 @@ ALTER TABLE IF EXISTS public.companies
 ALTER TABLE IF EXISTS public.profiles
   ADD COLUMN IF NOT EXISTS company_id uuid,
   ADD COLUMN IF NOT EXISTS role text DEFAULT 'owner',
+  ADD COLUMN IF NOT EXISTS plan text DEFAULT 'Free Trial',
+  ADD COLUMN IF NOT EXISTS stripe_customer_id text,
   ADD COLUMN IF NOT EXISTS photo_url text,
   ADD COLUMN IF NOT EXISTS avatar text,
   ADD COLUMN IF NOT EXISTS has_active_subscription boolean DEFAULT true,
@@ -58,6 +61,7 @@ ALTER TABLE IF EXISTS public.profiles
   ADD COLUMN IF NOT EXISTS can_view_finance boolean DEFAULT true,
   ADD COLUMN IF NOT EXISTS can_approve_budget boolean DEFAULT true,
   ADD COLUMN IF NOT EXISTS has_seen_tour boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS has_completed_onboarding boolean DEFAULT false,
   ADD COLUMN IF NOT EXISTS active_mobile_session_id text,
   ADD COLUMN IF NOT EXISTS active_desktop_session_id text;
 
@@ -71,6 +75,29 @@ ALTER TABLE IF EXISTS public.invites
   ADD COLUMN IF NOT EXISTS used_by uuid,
   ADD COLUMN IF NOT EXISTS used_at timestamptz,
   ADD COLUMN IF NOT EXISTS expires_at timestamptz;
+
+ALTER TABLE IF EXISTS public.project_members
+  ADD COLUMN IF NOT EXISTS user_email text,
+  ADD COLUMN IF NOT EXISTS email text,
+  ADD COLUMN IF NOT EXISTS role text DEFAULT 'member',
+  ADD COLUMN IF NOT EXISTS project_role text DEFAULT 'member';
+
+ALTER TABLE IF EXISTS public.defects
+  ADD COLUMN IF NOT EXISTS assigned_to text,
+  ADD COLUMN IF NOT EXISTS assignee text,
+  ADD COLUMN IF NOT EXISTS pin_pos jsonb,
+  ADD COLUMN IF NOT EXISTS trade text,
+  ADD COLUMN IF NOT EXISTS location text,
+  ADD COLUMN IF NOT EXISTS due_date text,
+  ADD COLUMN IF NOT EXISTS image_url text;
+
+ALTER TABLE IF EXISTS public.project_schedules
+  ADD COLUMN IF NOT EXISTS project_id text;
+
+ALTER TABLE IF EXISTS public.slides
+  ADD COLUMN IF NOT EXISTS category text,
+  ADD COLUMN IF NOT EXISTS description text;
+
 
 -- ----------------------------------------------------------------------------
 -- 2. SICHERHEITS- & ROLLEN-HILFSFUNKTIONEN (SECURITY DEFINER)
@@ -189,7 +216,14 @@ AS $$
           pm.user_id::text = auth.uid()::text
           OR (
             coalesce(auth.jwt()->>'email', '') <> ''
-            AND lower(coalesce(pm.user_email, '')) = lower(auth.jwt()->>'email')
+            AND (
+              lower(coalesce(pm.user_email, '')) = lower(auth.jwt()->>'email')
+              OR EXISTS (
+                SELECT 1 FROM public.company_users cu
+                WHERE cu.id::text = pm.user_id::text
+                  AND lower(coalesce(cu.email, '')) = lower(auth.jwt()->>'email')
+              )
+            )
           )
         )
     )
@@ -510,8 +544,8 @@ GRANT ALL ON public.project_schedules TO authenticated, service_role;
 DROP POLICY IF EXISTS "Strict company isolation project_schedules" ON public.project_schedules;
 CREATE POLICY "Strict company isolation project_schedules" ON public.project_schedules
   FOR ALL TO authenticated
-  USING (is_super_admin() OR (company_id::text = get_my_company_id() AND can_access_project(project_id::text)))
-  WITH CHECK (is_super_admin() OR (company_id::text = get_my_company_id() AND can_access_project(project_id::text)));
+  USING (is_super_admin() OR (company_id::text = get_my_company_id() AND can_access_project(coalesce(project_id::text, id::text))))
+  WITH CHECK (is_super_admin() OR (company_id::text = get_my_company_id() AND can_access_project(coalesce(project_id::text, id::text))));
 
 ALTER TABLE IF EXISTS public.site_data ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.site_data FROM anon;
@@ -1238,3 +1272,6 @@ CREATE INDEX IF NOT EXISTS idx_invites_email ON public.invites (lower(email));
 CREATE INDEX IF NOT EXISTS idx_invites_company_id ON public.invites (company_id);
 
 COMMIT;
+
+SELECT 'STATUS: MASTER PRODUCTION SECURITY RLS ERFOLGREICH AKTIVIERT' AS result;
+
