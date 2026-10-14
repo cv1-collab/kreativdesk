@@ -100,9 +100,13 @@ ALTER TABLE IF EXISTS public.slides
 
 
 -- ----------------------------------------------------------------------------
--- 2. SICHERHEITS- & ROLLEN-HILFSFUNKTIONEN (SECURITY DEFINER)
+-- 2. SICHERHEITS- & ROLLEN-HILFSFUNKTIONEN IM GESCHÜTZTEN SCHEMA app_security
+--    (Nicht über /rest/v1/rpc/* exponiert -> behebt Supabase Linter 0028/0029)
 -- ----------------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION public.get_my_company_id()
+CREATE SCHEMA IF NOT EXISTS app_security;
+GRANT USAGE ON SCHEMA app_security TO anon, authenticated, service_role;
+
+CREATE OR REPLACE FUNCTION app_security.get_my_company_id()
 RETURNS TEXT
 LANGUAGE sql
 STABLE
@@ -115,7 +119,7 @@ AS $$
   LIMIT 1;
 $$;
 
-CREATE OR REPLACE FUNCTION public.get_my_role()
+CREATE OR REPLACE FUNCTION app_security.get_my_role()
 RETURNS TEXT
 LANGUAGE sql
 STABLE
@@ -128,7 +132,7 @@ AS $$
   LIMIT 1;
 $$;
 
-CREATE OR REPLACE FUNCTION public.is_super_admin()
+CREATE OR REPLACE FUNCTION app_security.is_super_admin()
 RETURNS BOOLEAN
 LANGUAGE sql
 STABLE
@@ -144,7 +148,7 @@ AS $$
   );
 $$;
 
-CREATE OR REPLACE FUNCTION public.is_company_admin()
+CREATE OR REPLACE FUNCTION app_security.is_company_admin()
 RETURNS BOOLEAN
 LANGUAGE sql
 STABLE
@@ -152,12 +156,12 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
   SELECT (
-    public.is_super_admin()
-    OR public.get_my_role() IN ('owner', 'admin', 'management', 'geschaeftsleitung', 'super_admin')
+    app_security.is_super_admin()
+    OR app_security.get_my_role() IN ('owner', 'admin', 'management', 'geschaeftsleitung', 'super_admin')
   );
 $$;
 
-CREATE OR REPLACE FUNCTION public.is_internal_company_member()
+CREATE OR REPLACE FUNCTION app_security.is_internal_company_member()
 RETURNS BOOLEAN
 LANGUAGE sql
 STABLE
@@ -165,21 +169,21 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
   SELECT (
-    public.is_super_admin()
+    app_security.is_super_admin()
     OR (
-      public.get_my_role() NOT IN (
+      app_security.get_my_role() NOT IN (
         'guest', 'client', 'external', 'partner', 'subcontractor',
         'field guest', 'external planner', 'bauherr', 'handwerker'
       )
-      AND public.get_my_role() NOT LIKE '%guest%'
-      AND public.get_my_role() NOT LIKE '%extern%'
-      AND public.get_my_role() NOT LIKE '%handwerker%'
-      AND public.get_my_role() NOT LIKE '%subcontractor%'
+      AND app_security.get_my_role() NOT LIKE '%guest%'
+      AND app_security.get_my_role() NOT LIKE '%extern%'
+      AND app_security.get_my_role() NOT LIKE '%handwerker%'
+      AND app_security.get_my_role() NOT LIKE '%subcontractor%'
     )
   );
 $$;
 
-CREATE OR REPLACE FUNCTION public.can_user_view_finance()
+CREATE OR REPLACE FUNCTION app_security.can_user_view_finance()
 RETURNS BOOLEAN
 LANGUAGE sql
 STABLE
@@ -187,16 +191,16 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
   SELECT (
-    public.is_super_admin()
-    OR public.is_company_admin()
+    app_security.is_super_admin()
+    OR app_security.is_company_admin()
     OR (
-      public.is_internal_company_member()
+      app_security.is_internal_company_member()
       AND coalesce((SELECT can_view_finance FROM public.profiles WHERE id = auth.uid() LIMIT 1), true) = true
     )
   );
 $$;
 
-CREATE OR REPLACE FUNCTION public.can_access_project(p_project_id text)
+CREATE OR REPLACE FUNCTION app_security.can_access_project(p_project_id text)
 RETURNS BOOLEAN
 LANGUAGE sql
 STABLE
@@ -207,8 +211,8 @@ AS $$
     p_project_id IS NULL
     OR p_project_id = ''
     OR p_project_id = 'global'
-    OR public.is_super_admin()
-    OR public.is_internal_company_member()
+    OR app_security.is_super_admin()
+    OR app_security.is_internal_company_member()
     OR EXISTS (
       SELECT 1 FROM public.project_members pm
       WHERE pm.project_id::text = p_project_id
@@ -241,21 +245,21 @@ AS $$
   );
 $$;
 
-REVOKE EXECUTE ON FUNCTION public.get_my_company_id() FROM PUBLIC, anon;
-REVOKE EXECUTE ON FUNCTION public.get_my_role() FROM PUBLIC, anon;
-REVOKE EXECUTE ON FUNCTION public.is_super_admin() FROM PUBLIC, anon;
-REVOKE EXECUTE ON FUNCTION public.is_company_admin() FROM PUBLIC, anon;
-REVOKE EXECUTE ON FUNCTION public.is_internal_company_member() FROM PUBLIC, anon;
-REVOKE EXECUTE ON FUNCTION public.can_user_view_finance() FROM PUBLIC, anon;
-REVOKE EXECUTE ON FUNCTION public.can_access_project(text) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION app_security.get_my_company_id() FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION app_security.get_my_role() FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION app_security.is_super_admin() FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION app_security.is_company_admin() FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION app_security.is_internal_company_member() FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION app_security.can_user_view_finance() FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION app_security.can_access_project(text) FROM PUBLIC, anon;
 
-GRANT EXECUTE ON FUNCTION public.get_my_company_id() TO authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.get_my_role() TO authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.is_super_admin() TO authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.is_company_admin() TO authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.is_internal_company_member() TO authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.can_user_view_finance() TO authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.can_access_project(text) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION app_security.get_my_company_id() TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION app_security.get_my_role() TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION app_security.is_super_admin() TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION app_security.is_company_admin() TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION app_security.is_internal_company_member() TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION app_security.can_user_view_finance() TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION app_security.can_access_project(text) TO authenticated, service_role;
 
 -- ----------------------------------------------------------------------------
 -- 3. TABELLEN-RLS MIT ROLLEN- & PROJEKT-ISOLATION (ZERO LEAKAGE)
@@ -269,8 +273,8 @@ DROP POLICY IF EXISTS "Authenticated users access api_keys" ON public.api_keys;
 DROP POLICY IF EXISTS "Strict company isolation api_keys" ON public.api_keys;
 CREATE POLICY "Strict company isolation api_keys" ON public.api_keys
   FOR ALL TO authenticated
-  USING (is_super_admin() OR (company_id::text = get_my_company_id() AND is_company_admin()))
-  WITH CHECK (is_super_admin() OR (company_id::text = get_my_company_id() AND is_company_admin()));
+  USING (app_security.is_super_admin() OR (company_id::text = app_security.get_my_company_id() AND app_security.is_company_admin()))
+  WITH CHECK (app_security.is_super_admin() OR (company_id::text = app_security.get_my_company_id() AND app_security.is_company_admin()));
 
 -- B) TRANSACTIONS / FINANZEN (Nur interne berechtigte Nutzer, KEINE Handwerker/Gäste!)
 ALTER TABLE IF EXISTS public.transactions ENABLE ROW LEVEL SECURITY;
@@ -281,12 +285,12 @@ DROP POLICY IF EXISTS "Strict company isolation transactions" ON public.transact
 CREATE POLICY "Strict company isolation transactions" ON public.transactions
   FOR ALL TO authenticated
   USING (
-    is_super_admin()
-    OR ((company_id::text = get_my_company_id() OR owner_id::text = auth.uid()::text) AND can_user_view_finance())
+    app_security.is_super_admin()
+    OR ((company_id::text = app_security.get_my_company_id() OR owner_id::text = auth.uid()::text) AND app_security.can_user_view_finance())
   )
   WITH CHECK (
-    is_super_admin()
-    OR ((company_id::text = get_my_company_id() OR owner_id::text = auth.uid()::text) AND can_user_view_finance())
+    app_security.is_super_admin()
+    OR ((company_id::text = app_security.get_my_company_id() OR owner_id::text = auth.uid()::text) AND app_security.can_user_view_finance())
   );
 
 -- C) LEADS CRM (Intern nur für Firmenmitglieder, anon nur INSERT für öffentliches Lead-Formular)
@@ -300,8 +304,8 @@ DROP POLICY IF EXISTS "Allow anon insert leads" ON public.leads;
 
 CREATE POLICY "Strict company isolation leads" ON public.leads
   FOR ALL TO authenticated
-  USING (is_super_admin() OR (company_id::text = get_my_company_id() AND is_internal_company_member()))
-  WITH CHECK (is_super_admin() OR (company_id::text = get_my_company_id() AND is_internal_company_member()));
+  USING (app_security.is_super_admin() OR (company_id::text = app_security.get_my_company_id() AND app_security.is_internal_company_member()))
+  WITH CHECK (app_security.is_super_admin() OR (company_id::text = app_security.get_my_company_id() AND app_security.is_internal_company_member()));
 
 CREATE POLICY "Allow anon insert leads" ON public.leads
   FOR INSERT TO anon
@@ -324,16 +328,16 @@ DROP POLICY IF EXISTS "Allow anon select temp_receipt documents" ON public.docum
 CREATE POLICY "Strict documents select" ON public.documents
   FOR SELECT TO authenticated
   USING (
-    is_super_admin()
+    app_security.is_super_admin()
     OR (company_id IS NULL AND category = 'system_config')
     OR (
-      (company_id::text = get_my_company_id() OR owner_id::text = auth.uid()::text)
+      (company_id::text = app_security.get_my_company_id() OR owner_id::text = auth.uid()::text)
       AND (
         CASE
-          WHEN coalesce(name, '') LIKE 'bexio_config_%' THEN is_company_admin()
-          WHEN coalesce(name, '') LIKE 'finance_%' THEN can_user_view_finance()
-          WHEN coalesce(category, '') = 'system_config' AND coalesce(name, '') NOT LIKE 'company_profile_%' THEN is_internal_company_member()
-          ELSE can_access_project(project_id::text)
+          WHEN coalesce(name, '') LIKE 'bexio_config_%' THEN app_security.is_company_admin()
+          WHEN coalesce(name, '') LIKE 'finance_%' THEN app_security.can_user_view_finance()
+          WHEN coalesce(category, '') = 'system_config' AND coalesce(name, '') NOT LIKE 'company_profile_%' THEN app_security.is_internal_company_member()
+          ELSE app_security.can_access_project(project_id::text)
         END
       )
     )
@@ -342,15 +346,15 @@ CREATE POLICY "Strict documents select" ON public.documents
 CREATE POLICY "Strict documents insert" ON public.documents
   FOR INSERT TO authenticated
   WITH CHECK (
-    is_super_admin()
-    OR (company_id IS NULL AND category = 'system_config' AND is_company_admin())
+    app_security.is_super_admin()
+    OR (company_id IS NULL AND category = 'system_config' AND app_security.is_company_admin())
     OR (
-      (company_id::text = get_my_company_id() OR owner_id::text = auth.uid()::text)
+      (company_id::text = app_security.get_my_company_id() OR owner_id::text = auth.uid()::text)
       AND (
         CASE
-          WHEN coalesce(name, '') LIKE 'bexio_config_%' THEN is_company_admin()
-          WHEN coalesce(name, '') LIKE 'finance_%' THEN can_user_view_finance()
-          ELSE can_access_project(project_id::text)
+          WHEN coalesce(name, '') LIKE 'bexio_config_%' THEN app_security.is_company_admin()
+          WHEN coalesce(name, '') LIKE 'finance_%' THEN app_security.can_user_view_finance()
+          ELSE app_security.can_access_project(project_id::text)
         END
       )
     )
@@ -359,29 +363,29 @@ CREATE POLICY "Strict documents insert" ON public.documents
 CREATE POLICY "Strict documents update" ON public.documents
   FOR UPDATE TO authenticated
   USING (
-    is_super_admin()
-    OR (company_id IS NULL AND category = 'system_config' AND is_company_admin())
+    app_security.is_super_admin()
+    OR (company_id IS NULL AND category = 'system_config' AND app_security.is_company_admin())
     OR (
-      (company_id::text = get_my_company_id() OR owner_id::text = auth.uid()::text)
+      (company_id::text = app_security.get_my_company_id() OR owner_id::text = auth.uid()::text)
       AND (
         CASE
-          WHEN coalesce(name, '') LIKE 'bexio_config_%' THEN is_company_admin()
-          WHEN coalesce(name, '') LIKE 'finance_%' THEN can_user_view_finance()
-          ELSE can_access_project(project_id::text)
+          WHEN coalesce(name, '') LIKE 'bexio_config_%' THEN app_security.is_company_admin()
+          WHEN coalesce(name, '') LIKE 'finance_%' THEN app_security.can_user_view_finance()
+          ELSE app_security.can_access_project(project_id::text)
         END
       )
     )
   )
   WITH CHECK (
-    is_super_admin()
-    OR (company_id IS NULL AND category = 'system_config' AND is_company_admin())
+    app_security.is_super_admin()
+    OR (company_id IS NULL AND category = 'system_config' AND app_security.is_company_admin())
     OR (
-      (company_id::text = get_my_company_id() OR owner_id::text = auth.uid()::text)
+      (company_id::text = app_security.get_my_company_id() OR owner_id::text = auth.uid()::text)
       AND (
         CASE
-          WHEN coalesce(name, '') LIKE 'bexio_config_%' THEN is_company_admin()
-          WHEN coalesce(name, '') LIKE 'finance_%' THEN can_user_view_finance()
-          ELSE can_access_project(project_id::text)
+          WHEN coalesce(name, '') LIKE 'bexio_config_%' THEN app_security.is_company_admin()
+          WHEN coalesce(name, '') LIKE 'finance_%' THEN app_security.can_user_view_finance()
+          ELSE app_security.can_access_project(project_id::text)
         END
       )
     )
@@ -390,10 +394,10 @@ CREATE POLICY "Strict documents update" ON public.documents
 CREATE POLICY "Strict documents delete" ON public.documents
   FOR DELETE TO authenticated
   USING (
-    is_super_admin()
+    app_security.is_super_admin()
     OR (
-      (company_id::text = get_my_company_id() OR owner_id::text = auth.uid()::text)
-      AND (is_internal_company_member() OR owner_id::text = auth.uid()::text)
+      (company_id::text = app_security.get_my_company_id() OR owner_id::text = auth.uid()::text)
+      AND (app_security.is_internal_company_member() OR owner_id::text = auth.uid()::text)
     )
   );
 
@@ -413,19 +417,19 @@ DROP POLICY IF EXISTS "Strict projects write" ON public.projects;
 CREATE POLICY "Strict projects select" ON public.projects
   FOR SELECT TO authenticated
   USING (
-    is_super_admin()
-    OR ((company_id::text = get_my_company_id() OR owner_id::text = auth.uid()::text) AND can_access_project(id::text))
+    app_security.is_super_admin()
+    OR ((company_id::text = app_security.get_my_company_id() OR owner_id::text = auth.uid()::text) AND app_security.can_access_project(id::text))
   );
 
 CREATE POLICY "Strict projects write" ON public.projects
   FOR ALL TO authenticated
   USING (
-    is_super_admin()
-    OR ((company_id::text = get_my_company_id() OR owner_id::text = auth.uid()::text) AND is_internal_company_member())
+    app_security.is_super_admin()
+    OR ((company_id::text = app_security.get_my_company_id() OR owner_id::text = auth.uid()::text) AND app_security.is_internal_company_member())
   )
   WITH CHECK (
-    is_super_admin()
-    OR ((company_id::text = get_my_company_id() OR owner_id::text = auth.uid()::text) AND is_internal_company_member())
+    app_security.is_super_admin()
+    OR ((company_id::text = app_security.get_my_company_id() OR owner_id::text = auth.uid()::text) AND app_security.is_internal_company_member())
   );
 
 -- F) CAD PLANS & DEFECTS (Projektbezogener Zugriff für Handwerker/Gäste)
@@ -436,8 +440,8 @@ DROP POLICY IF EXISTS "Authenticated users access cad_plans" ON public.cad_plans
 DROP POLICY IF EXISTS "Strict company isolation cad_plans" ON public.cad_plans;
 CREATE POLICY "Strict company isolation cad_plans" ON public.cad_plans
   FOR ALL TO authenticated
-  USING (is_super_admin() OR (company_id::text = get_my_company_id() AND can_access_project(project_id::text)))
-  WITH CHECK (is_super_admin() OR (company_id::text = get_my_company_id() AND can_access_project(project_id::text)));
+  USING (app_security.is_super_admin() OR (company_id::text = app_security.get_my_company_id() AND app_security.can_access_project(project_id::text)))
+  WITH CHECK (app_security.is_super_admin() OR (company_id::text = app_security.get_my_company_id() AND app_security.can_access_project(project_id::text)));
 
 ALTER TABLE IF EXISTS public.defects ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.defects FROM anon;
@@ -447,12 +451,12 @@ DROP POLICY IF EXISTS "Strict company isolation defects" ON public.defects;
 CREATE POLICY "Strict company isolation defects" ON public.defects
   FOR ALL TO authenticated
   USING (
-    is_super_admin()
-    OR ((company_id::text = get_my_company_id() OR owner_id::text = auth.uid()::text) AND can_access_project(project_id::text))
+    app_security.is_super_admin()
+    OR ((company_id::text = app_security.get_my_company_id() OR owner_id::text = auth.uid()::text) AND app_security.can_access_project(project_id::text))
   )
   WITH CHECK (
-    is_super_admin()
-    OR ((company_id::text = get_my_company_id() OR owner_id::text = auth.uid()::text) AND can_access_project(project_id::text))
+    app_security.is_super_admin()
+    OR ((company_id::text = app_security.get_my_company_id() OR owner_id::text = auth.uid()::text) AND app_security.can_access_project(project_id::text))
   );
 
 -- G) TIME ENTRIES, CALENDAR EVENTS, TASKS, SLIDES, PROJECT MEMBERS, SCHEDULES, SITE DATA
@@ -464,14 +468,14 @@ DROP POLICY IF EXISTS "Strict company isolation time_entries" ON public.time_ent
 CREATE POLICY "Strict company isolation time_entries" ON public.time_entries
   FOR ALL TO authenticated
   USING (
-    is_super_admin()
+    app_security.is_super_admin()
     OR user_id::text = auth.uid()::text
-    OR (company_id::text = get_my_company_id() AND is_internal_company_member())
+    OR (company_id::text = app_security.get_my_company_id() AND app_security.is_internal_company_member())
   )
   WITH CHECK (
-    is_super_admin()
+    app_security.is_super_admin()
     OR user_id::text = auth.uid()::text
-    OR (company_id::text = get_my_company_id() AND is_internal_company_member())
+    OR (company_id::text = app_security.get_my_company_id() AND app_security.is_internal_company_member())
   );
 
 ALTER TABLE IF EXISTS public.calendar_events ENABLE ROW LEVEL SECURITY;
@@ -481,167 +485,224 @@ DROP POLICY IF EXISTS "Authenticated users access calendar_events" ON public.cal
 DROP POLICY IF EXISTS "Strict company isolation calendar_events" ON public.calendar_events;
 CREATE POLICY "Strict company isolation calendar_events" ON public.calendar_events
   FOR ALL TO authenticated
-  USING (is_super_admin() OR (company_id::text = get_my_company_id() AND can_access_project(project_id::text)))
-  WITH CHECK (is_super_admin() OR (company_id::text = get_my_company_id() AND can_access_project(project_id::text)));
+  USING (app_security.is_super_admin() OR (company_id::text = app_security.get_my_company_id() AND app_security.can_access_project(project_id::text)))
+  WITH CHECK (app_security.is_super_admin() OR (company_id::text = app_security.get_my_company_id() AND app_security.can_access_project(project_id::text)));
 
 ALTER TABLE IF EXISTS public.project_tasks ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.project_tasks FROM anon;
 GRANT ALL ON public.project_tasks TO authenticated, service_role;
+DROP POLICY IF EXISTS "Authenticated users access project_tasks" ON public.project_tasks;
 DROP POLICY IF EXISTS "Strict company isolation project_tasks" ON public.project_tasks;
 CREATE POLICY "Strict company isolation project_tasks" ON public.project_tasks
   FOR ALL TO authenticated
   USING (
-    is_super_admin()
+    app_security.is_super_admin()
     OR owner_id::text = auth.uid()::text
     OR assigned_to::text = auth.uid()::text
-    OR (company_id::text = get_my_company_id() AND can_access_project(project_id::text))
+    OR (company_id::text = app_security.get_my_company_id() AND app_security.can_access_project(project_id::text))
   )
   WITH CHECK (
-    is_super_admin()
+    app_security.is_super_admin()
     OR owner_id::text = auth.uid()::text
     OR assigned_to::text = auth.uid()::text
-    OR (company_id::text = get_my_company_id() AND can_access_project(project_id::text))
+    OR (company_id::text = app_security.get_my_company_id() AND app_security.can_access_project(project_id::text))
   );
 
 ALTER TABLE IF EXISTS public.tasks ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.tasks FROM anon;
 GRANT ALL ON public.tasks TO authenticated, service_role;
+DROP POLICY IF EXISTS "Authenticated users access tasks" ON public.tasks;
 DROP POLICY IF EXISTS "Strict company isolation tasks" ON public.tasks;
 CREATE POLICY "Strict company isolation tasks" ON public.tasks
   FOR ALL TO authenticated
-  USING (is_super_admin() OR assigned_to::text = auth.uid()::text OR (company_id::text = get_my_company_id() AND is_internal_company_member()))
-  WITH CHECK (is_super_admin() OR assigned_to::text = auth.uid()::text OR (company_id::text = get_my_company_id() AND is_internal_company_member()));
+  USING (app_security.is_super_admin() OR assigned_to::text = auth.uid()::text OR (company_id::text = app_security.get_my_company_id() AND app_security.is_internal_company_member()))
+  WITH CHECK (app_security.is_super_admin() OR assigned_to::text = auth.uid()::text OR (company_id::text = app_security.get_my_company_id() AND app_security.is_internal_company_member()));
 
 ALTER TABLE IF EXISTS public.slides ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.slides FROM anon;
 GRANT ALL ON public.slides TO authenticated, service_role;
+DROP POLICY IF EXISTS "Authenticated users access slides" ON public.slides;
 DROP POLICY IF EXISTS "Strict company isolation slides" ON public.slides;
 CREATE POLICY "Strict company isolation slides" ON public.slides
   FOR ALL TO authenticated
-  USING (is_super_admin() OR (company_id::text = get_my_company_id() AND is_internal_company_member()))
-  WITH CHECK (is_super_admin() OR (company_id::text = get_my_company_id() AND is_internal_company_member()));
+  USING (app_security.is_super_admin() OR (company_id::text = app_security.get_my_company_id() AND app_security.is_internal_company_member()))
+  WITH CHECK (app_security.is_super_admin() OR (company_id::text = app_security.get_my_company_id() AND app_security.is_internal_company_member()));
 
 ALTER TABLE IF EXISTS public.project_members ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.project_members FROM anon;
 GRANT ALL ON public.project_members TO authenticated, service_role;
+DROP POLICY IF EXISTS "Authenticated users access project_members" ON public.project_members;
 DROP POLICY IF EXISTS "Strict company isolation project_members" ON public.project_members;
 CREATE POLICY "Strict company isolation project_members" ON public.project_members
   FOR ALL TO authenticated
   USING (
-    is_super_admin()
+    app_security.is_super_admin()
     OR user_id::text = auth.uid()::text
     OR lower(coalesce(user_email, '')) = lower(coalesce(auth.jwt()->>'email', ''))
-    OR company_id::text = get_my_company_id()
+    OR company_id::text = app_security.get_my_company_id()
   )
   WITH CHECK (
-    is_super_admin()
-    OR (company_id::text = get_my_company_id() AND is_internal_company_member())
+    app_security.is_super_admin()
+    OR (company_id::text = app_security.get_my_company_id() AND app_security.is_internal_company_member())
   );
 
 ALTER TABLE IF EXISTS public.project_schedules ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.project_schedules FROM anon;
 GRANT ALL ON public.project_schedules TO authenticated, service_role;
+DROP POLICY IF EXISTS "Authenticated users access project_schedules" ON public.project_schedules;
 DROP POLICY IF EXISTS "Strict company isolation project_schedules" ON public.project_schedules;
 CREATE POLICY "Strict company isolation project_schedules" ON public.project_schedules
   FOR ALL TO authenticated
-  USING (is_super_admin() OR (company_id::text = get_my_company_id() AND can_access_project(coalesce(project_id::text, id::text))))
-  WITH CHECK (is_super_admin() OR (company_id::text = get_my_company_id() AND can_access_project(coalesce(project_id::text, id::text))));
+  USING (app_security.is_super_admin() OR (company_id::text = app_security.get_my_company_id() AND app_security.can_access_project(coalesce(project_id::text, id::text))))
+  WITH CHECK (app_security.is_super_admin() OR (company_id::text = app_security.get_my_company_id() AND app_security.can_access_project(coalesce(project_id::text, id::text))));
 
 ALTER TABLE IF EXISTS public.site_data ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.site_data FROM anon;
 GRANT ALL ON public.site_data TO authenticated, service_role;
+DROP POLICY IF EXISTS "Authenticated users access site_data" ON public.site_data;
 DROP POLICY IF EXISTS "Strict company isolation site_data" ON public.site_data;
 CREATE POLICY "Strict company isolation site_data" ON public.site_data
   FOR ALL TO authenticated
-  USING (is_super_admin() OR (company_id::text = get_my_company_id() AND can_access_project(project_id::text)))
-  WITH CHECK (is_super_admin() OR (company_id::text = get_my_company_id() AND can_access_project(project_id::text)));
+  USING (app_security.is_super_admin() OR (company_id::text = app_security.get_my_company_id() AND app_security.can_access_project(project_id::text)))
+  WITH CHECK (app_security.is_super_admin() OR (company_id::text = app_security.get_my_company_id() AND app_security.can_access_project(project_id::text)));
 
--- H) COMPANY SETTINGS, COMPANY USERS, NOTIFICATIONS, AUDIT LOGS, SUPPORT TICKETS, AUDIO, WHITEBOARD
+-- H) COMPANY SETTINGS, COMPANY USERS, NOTIFICATIONS, AUDIT LOGS, SUPPORT TICKETS, AUDIO, WHITEBOARD, EMBEDDINGS, GOALS, KNOWLEDGE_DOCS, SYSTEM_CONFIG
 ALTER TABLE IF EXISTS public.company_settings ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.company_settings FROM anon;
 GRANT ALL ON public.company_settings TO authenticated, service_role;
+DROP POLICY IF EXISTS "Authenticated users access company_settings" ON public.company_settings;
 DROP POLICY IF EXISTS "Strict company isolation company_settings" ON public.company_settings;
 CREATE POLICY "Strict company isolation company_settings" ON public.company_settings
   FOR SELECT TO authenticated
-  USING (is_super_admin() OR company_id::text = get_my_company_id());
+  USING (app_security.is_super_admin() OR company_id::text = app_security.get_my_company_id());
 DROP POLICY IF EXISTS "Strict company admin write company_settings" ON public.company_settings;
 CREATE POLICY "Strict company admin write company_settings" ON public.company_settings
   FOR ALL TO authenticated
-  USING (is_super_admin() OR (company_id::text = get_my_company_id() AND is_company_admin()))
-  WITH CHECK (is_super_admin() OR (company_id::text = get_my_company_id() AND is_company_admin()));
+  USING (app_security.is_super_admin() OR (company_id::text = app_security.get_my_company_id() AND app_security.is_company_admin()))
+  WITH CHECK (app_security.is_super_admin() OR (company_id::text = app_security.get_my_company_id() AND app_security.is_company_admin()));
 
 ALTER TABLE IF EXISTS public.company_users ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.company_users FROM anon;
 GRANT ALL ON public.company_users TO authenticated, service_role;
+DROP POLICY IF EXISTS "Authenticated users access company_users" ON public.company_users;
 DROP POLICY IF EXISTS "Strict company isolation company_users" ON public.company_users;
 CREATE POLICY "Strict company isolation company_users" ON public.company_users
   FOR SELECT TO authenticated
-  USING (is_super_admin() OR company_id::text = get_my_company_id());
+  USING (app_security.is_super_admin() OR company_id::text = app_security.get_my_company_id());
 DROP POLICY IF EXISTS "Strict internal write company_users" ON public.company_users;
 CREATE POLICY "Strict internal write company_users" ON public.company_users
   FOR ALL TO authenticated
   USING (
-    is_super_admin()
+    app_security.is_super_admin()
     OR (
-      company_id::text = get_my_company_id()
-      AND (is_internal_company_member() OR user_id::text = auth.uid()::text OR lower(coalesce(email, '')) = lower(coalesce(auth.jwt()->>'email', '')))
+      company_id::text = app_security.get_my_company_id()
+      AND (app_security.is_internal_company_member() OR user_id::text = auth.uid()::text OR lower(coalesce(email, '')) = lower(coalesce(auth.jwt()->>'email', '')))
     )
   )
   WITH CHECK (
-    is_super_admin()
+    app_security.is_super_admin()
     OR (
-      company_id::text = get_my_company_id()
-      AND (is_internal_company_member() OR user_id::text = auth.uid()::text OR lower(coalesce(email, '')) = lower(coalesce(auth.jwt()->>'email', '')))
+      company_id::text = app_security.get_my_company_id()
+      AND (app_security.is_internal_company_member() OR user_id::text = auth.uid()::text OR lower(coalesce(email, '')) = lower(coalesce(auth.jwt()->>'email', '')))
     )
   );
 
 ALTER TABLE IF EXISTS public.notifications ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.notifications FROM anon;
 GRANT ALL ON public.notifications TO authenticated, service_role;
+DROP POLICY IF EXISTS "Authenticated users access notifications" ON public.notifications;
 DROP POLICY IF EXISTS "Strict company isolation notifications" ON public.notifications;
 CREATE POLICY "Strict company isolation notifications" ON public.notifications
   FOR ALL TO authenticated
-  USING (is_super_admin() OR company_id::text = get_my_company_id())
-  WITH CHECK (is_super_admin() OR company_id::text = get_my_company_id());
+  USING (app_security.is_super_admin() OR company_id::text = app_security.get_my_company_id())
+  WITH CHECK (app_security.is_super_admin() OR company_id::text = app_security.get_my_company_id());
 
 ALTER TABLE IF EXISTS public.audit_logs ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.audit_logs FROM anon;
 GRANT ALL ON public.audit_logs TO authenticated, service_role;
+DROP POLICY IF EXISTS "Authenticated users access audit_logs" ON public.audit_logs;
 DROP POLICY IF EXISTS "Strict company isolation audit_logs" ON public.audit_logs;
 CREATE POLICY "Strict company isolation audit_logs" ON public.audit_logs
   FOR SELECT TO authenticated
-  USING (is_super_admin() OR (company_id::text = get_my_company_id() AND is_company_admin()));
+  USING (app_security.is_super_admin() OR (company_id::text = app_security.get_my_company_id() AND app_security.is_company_admin()));
 DROP POLICY IF EXISTS "Strict company insert audit_logs" ON public.audit_logs;
 CREATE POLICY "Strict company insert audit_logs" ON public.audit_logs
   FOR INSERT TO authenticated
-  WITH CHECK (is_super_admin() OR company_id::text = get_my_company_id());
+  WITH CHECK (app_security.is_super_admin() OR company_id::text = app_security.get_my_company_id());
 
 ALTER TABLE IF EXISTS public.support_tickets ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.support_tickets FROM anon;
 GRANT ALL ON public.support_tickets TO authenticated, service_role;
+DROP POLICY IF EXISTS "Authenticated users access support_tickets" ON public.support_tickets;
 DROP POLICY IF EXISTS "Strict company isolation support_tickets" ON public.support_tickets;
 CREATE POLICY "Strict company isolation support_tickets" ON public.support_tickets
   FOR ALL TO authenticated
-  USING (is_super_admin() OR company_id::text = get_my_company_id())
-  WITH CHECK (is_super_admin() OR company_id::text = get_my_company_id());
+  USING (app_security.is_super_admin() OR company_id::text = app_security.get_my_company_id())
+  WITH CHECK (app_security.is_super_admin() OR company_id::text = app_security.get_my_company_id());
 
 ALTER TABLE IF EXISTS public.audio_notes ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.audio_notes FROM anon;
 GRANT ALL ON public.audio_notes TO authenticated, service_role;
+DROP POLICY IF EXISTS "Authenticated users access audio_notes" ON public.audio_notes;
 DROP POLICY IF EXISTS "Strict company isolation audio_notes" ON public.audio_notes;
 CREATE POLICY "Strict company isolation audio_notes" ON public.audio_notes
   FOR ALL TO authenticated
-  USING (is_super_admin() OR (company_id::text = get_my_company_id() AND can_access_project(project_id::text)))
-  WITH CHECK (is_super_admin() OR (company_id::text = get_my_company_id() AND can_access_project(project_id::text)));
+  USING (app_security.is_super_admin() OR (company_id::text = app_security.get_my_company_id() AND app_security.can_access_project(project_id::text)))
+  WITH CHECK (app_security.is_super_admin() OR (company_id::text = app_security.get_my_company_id() AND app_security.can_access_project(project_id::text)));
 
 ALTER TABLE IF EXISTS public.whiteboard_exports ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.whiteboard_exports FROM anon;
 GRANT ALL ON public.whiteboard_exports TO authenticated, service_role;
+DROP POLICY IF EXISTS "Authenticated users access whiteboard_exports" ON public.whiteboard_exports;
 DROP POLICY IF EXISTS "Strict company isolation whiteboard_exports" ON public.whiteboard_exports;
 CREATE POLICY "Strict company isolation whiteboard_exports" ON public.whiteboard_exports
   FOR ALL TO authenticated
-  USING (is_super_admin() OR (company_id::text = get_my_company_id() AND can_access_project(project_id::text)))
-  WITH CHECK (is_super_admin() OR (company_id::text = get_my_company_id() AND can_access_project(project_id::text)));
+  USING (app_security.is_super_admin() OR (company_id::text = app_security.get_my_company_id() AND app_security.can_access_project(project_id::text)))
+  WITH CHECK (app_security.is_super_admin() OR (company_id::text = app_security.get_my_company_id() AND app_security.can_access_project(project_id::text)));
+
+ALTER TABLE IF EXISTS public.embeddings ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.embeddings FROM anon;
+GRANT ALL ON public.embeddings TO authenticated, service_role;
+DROP POLICY IF EXISTS "Authenticated users access embeddings" ON public.embeddings;
+DROP POLICY IF EXISTS "Strict company isolation embeddings" ON public.embeddings;
+CREATE POLICY "Strict company isolation embeddings" ON public.embeddings
+  FOR ALL TO authenticated
+  USING (app_security.is_super_admin() OR company_id::text = app_security.get_my_company_id())
+  WITH CHECK (app_security.is_super_admin() OR company_id::text = app_security.get_my_company_id());
+
+ALTER TABLE IF EXISTS public.goals ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.goals FROM anon;
+GRANT ALL ON public.goals TO authenticated, service_role;
+DROP POLICY IF EXISTS "Authenticated users access goals" ON public.goals;
+DROP POLICY IF EXISTS "Strict company isolation goals" ON public.goals;
+CREATE POLICY "Strict company isolation goals" ON public.goals
+  FOR ALL TO authenticated
+  USING (app_security.is_super_admin() OR company_id::text = app_security.get_my_company_id())
+  WITH CHECK (app_security.is_super_admin() OR company_id::text = app_security.get_my_company_id());
+
+ALTER TABLE IF EXISTS public.knowledge_docs ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.knowledge_docs FROM anon;
+GRANT ALL ON public.knowledge_docs TO authenticated, service_role;
+DROP POLICY IF EXISTS "Authenticated users access knowledge_docs" ON public.knowledge_docs;
+DROP POLICY IF EXISTS "Strict company isolation knowledge_docs" ON public.knowledge_docs;
+CREATE POLICY "Strict company isolation knowledge_docs" ON public.knowledge_docs
+  FOR ALL TO authenticated
+  USING (app_security.is_super_admin() OR company_id::text = app_security.get_my_company_id())
+  WITH CHECK (app_security.is_super_admin() OR company_id::text = app_security.get_my_company_id());
+
+ALTER TABLE IF EXISTS public.system_config ENABLE ROW LEVEL SECURITY;
+GRANT SELECT ON public.system_config TO anon, authenticated, service_role;
+GRANT INSERT, UPDATE, DELETE ON public.system_config TO authenticated, service_role;
+DROP POLICY IF EXISTS "Authenticated users access system_config" ON public.system_config;
+DROP POLICY IF EXISTS "Strict system_config select" ON public.system_config;
+DROP POLICY IF EXISTS "Strict system_config write" ON public.system_config;
+CREATE POLICY "Strict system_config select" ON public.system_config
+  FOR SELECT TO anon, authenticated
+  USING (true);
+CREATE POLICY "Strict system_config write" ON public.system_config
+  FOR ALL TO authenticated
+  USING (app_security.is_super_admin())
+  WITH CHECK (app_security.is_super_admin());
 
 -- ----------------------------------------------------------------------------
 -- 4. INVITES & SMART PROPOSALS (Nur über sichere Token-RPCs für anon!)
@@ -659,14 +720,14 @@ GRANT ALL ON public.invites TO authenticated, service_role;
 CREATE POLICY "Strict company isolation invites" ON public.invites
   FOR ALL TO authenticated
   USING (
-    is_super_admin()
-    OR (company_id::text = get_my_company_id() AND is_internal_company_member())
+    app_security.is_super_admin()
+    OR (company_id::text = app_security.get_my_company_id() AND app_security.is_internal_company_member())
     OR lower(email) = lower(coalesce(auth.jwt()->>'email', ''))
     OR used_by = auth.uid()
   )
   WITH CHECK (
-    is_super_admin()
-    OR (company_id::text = get_my_company_id() AND is_internal_company_member())
+    app_security.is_super_admin()
+    OR (company_id::text = app_security.get_my_company_id() AND app_security.is_internal_company_member())
     OR lower(email) = lower(coalesce(auth.jwt()->>'email', ''))
     OR used_by = auth.uid()
   );
@@ -728,7 +789,7 @@ BEGIN
     RETURN false;
   END IF;
 
-  IF auth.uid() IS NOT NULL AND auth.uid() != p_user_id AND NOT is_super_admin() THEN
+  IF auth.uid() IS NOT NULL AND auth.uid() != p_user_id AND NOT app_security.is_super_admin() THEN
     RETURN false;
   END IF;
 
@@ -776,12 +837,12 @@ GRANT ALL ON public.smart_proposals TO authenticated, service_role;
 CREATE POLICY "Company users can manage own company proposals" ON public.smart_proposals
   FOR ALL TO authenticated
   USING (
-    is_super_admin()
-    OR ((company_id::text = get_my_company_id() OR owner_id::text = auth.uid()::text) AND is_internal_company_member())
+    app_security.is_super_admin()
+    OR ((company_id::text = app_security.get_my_company_id() OR owner_id::text = auth.uid()::text) AND app_security.is_internal_company_member())
   )
   WITH CHECK (
-    is_super_admin()
-    OR ((company_id::text = get_my_company_id() OR owner_id::text = auth.uid()::text) AND is_internal_company_member())
+    app_security.is_super_admin()
+    OR ((company_id::text = app_security.get_my_company_id() OR owner_id::text = auth.uid()::text) AND app_security.is_internal_company_member())
   );
 
 DROP FUNCTION IF EXISTS public.get_proposal_by_share_token(text);
@@ -907,9 +968,9 @@ GRANT ALL ON public.chat_messages TO authenticated, service_role;
 CREATE POLICY "Allow authenticated full access video_calls" ON public.video_calls
   FOR ALL TO authenticated
   USING (
-    is_super_admin()
+    app_security.is_super_admin()
     OR host_id::text = auth.uid()::text
-    OR id LIKE '%' || get_my_company_id() || '%'
+    OR id LIKE '%' || app_security.get_my_company_id() || '%'
     OR room_name IS NOT NULL
   )
   WITH CHECK (auth.uid() IS NOT NULL);
@@ -919,9 +980,9 @@ CREATE POLICY "Allow authenticated full access video_calls" ON public.video_call
 CREATE POLICY "Allow authenticated chat access" ON public.chat_messages
   FOR SELECT TO authenticated
   USING (
-    is_super_admin()
+    app_security.is_super_admin()
     OR sender_id::text = auth.uid()::text
-    OR (get_my_company_id() IS NOT NULL AND call_id LIKE '%' || get_my_company_id() || '%')
+    OR (app_security.get_my_company_id() IS NOT NULL AND call_id LIKE '%' || app_security.get_my_company_id() || '%')
   );
 
 DROP POLICY IF EXISTS "Allow authenticated chat insert" ON public.chat_messages;
@@ -1019,7 +1080,7 @@ $$;
 GRANT EXECUTE ON FUNCTION public.send_guest_chat_message(text, text, text) TO anon, authenticated;
 
 -- ----------------------------------------------------------------------------
--- 6. PROFILES, COMPANIES & ANTI-PRIVILEGE-ESCALATION TRIGGER
+-- 6. PROFILES, COMPANIES & ANTI-PRIVILEGE-ESCALATION TRIGGER (in app_security)
 -- ----------------------------------------------------------------------------
 ALTER TABLE IF EXISTS public.profiles ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.profiles FROM anon;
@@ -1032,29 +1093,29 @@ DROP POLICY IF EXISTS "Strict profile insert" ON public.profiles;
 
 CREATE POLICY "Strict profile read" ON public.profiles
   FOR SELECT TO authenticated
-  USING (is_super_admin() OR id = auth.uid() OR company_id::text = get_my_company_id());
+  USING (app_security.is_super_admin() OR id = auth.uid() OR company_id::text = app_security.get_my_company_id());
 
 CREATE POLICY "Strict profile update" ON public.profiles
   FOR UPDATE TO authenticated
   USING (
-    is_super_admin()
+    app_security.is_super_admin()
     OR id = auth.uid()
-    OR (company_id::text = get_my_company_id() AND is_company_admin())
+    OR (company_id::text = app_security.get_my_company_id() AND app_security.is_company_admin())
   )
   WITH CHECK (
-    is_super_admin()
+    app_security.is_super_admin()
     OR (
-      (id = auth.uid() OR (company_id::text = get_my_company_id() AND is_company_admin()))
-      AND (company_id IS NULL OR company_id::text = get_my_company_id())
+      (id = auth.uid() OR (company_id::text = app_security.get_my_company_id() AND app_security.is_company_admin()))
+      AND (company_id IS NULL OR company_id::text = app_security.get_my_company_id())
       AND (role IS NULL OR role != 'super_admin')
     )
   );
 
 CREATE POLICY "Strict profile insert" ON public.profiles
   FOR INSERT TO authenticated, service_role
-  WITH CHECK (is_super_admin() OR (id = auth.uid() AND coalesce(role, 'owner') != 'super_admin'));
+  WITH CHECK (app_security.is_super_admin() OR (id = auth.uid() AND coalesce(role, 'owner') != 'super_admin'));
 
-CREATE OR REPLACE FUNCTION public.enforce_profile_security()
+CREATE OR REPLACE FUNCTION app_security.enforce_profile_security()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -1065,7 +1126,7 @@ DECLARE
   v_caller_company uuid;
   v_is_company_admin boolean := false;
 BEGIN
-  IF current_setting('role', true) = 'service_role' OR auth.uid() IS NULL OR is_super_admin() THEN
+  IF current_setting('role', true) = 'service_role' OR auth.uid() IS NULL OR app_security.is_super_admin() THEN
     RETURN NEW;
   END IF;
 
@@ -1119,11 +1180,14 @@ BEGIN
 END;
 $$;
 
+REVOKE EXECUTE ON FUNCTION app_security.enforce_profile_security() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION app_security.enforce_profile_security() TO authenticated, service_role;
+
 DROP TRIGGER IF EXISTS trg_enforce_profile_security ON public.profiles;
 CREATE TRIGGER trg_enforce_profile_security
   BEFORE INSERT OR UPDATE ON public.profiles
   FOR EACH ROW
-  EXECUTE FUNCTION public.enforce_profile_security();
+  EXECUTE FUNCTION app_security.enforce_profile_security();
 
 ALTER TABLE IF EXISTS public.companies ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.companies FROM anon;
@@ -1138,29 +1202,29 @@ DROP POLICY IF EXISTS "Strict company delete" ON public.companies;
 
 CREATE POLICY "Strict company select" ON public.companies
   FOR SELECT TO authenticated
-  USING (is_super_admin() OR id::text = get_my_company_id() OR owner_id::text = auth.uid()::text);
+  USING (app_security.is_super_admin() OR id::text = app_security.get_my_company_id() OR owner_id::text = auth.uid()::text);
 
 CREATE POLICY "Strict company insert" ON public.companies
   FOR INSERT TO authenticated
-  WITH CHECK (is_super_admin() OR owner_id::text = auth.uid()::text);
+  WITH CHECK (app_security.is_super_admin() OR owner_id::text = auth.uid()::text);
 
 CREATE POLICY "Strict company update" ON public.companies
   FOR UPDATE TO authenticated
-  USING (is_super_admin() OR owner_id::text = auth.uid()::text OR (id::text = get_my_company_id() AND is_company_admin()))
-  WITH CHECK (is_super_admin() OR owner_id::text = auth.uid()::text OR (id::text = get_my_company_id() AND is_company_admin()));
+  USING (app_security.is_super_admin() OR owner_id::text = auth.uid()::text OR (id::text = app_security.get_my_company_id() AND app_security.is_company_admin()))
+  WITH CHECK (app_security.is_super_admin() OR owner_id::text = auth.uid()::text OR (id::text = app_security.get_my_company_id() AND app_security.is_company_admin()));
 
 CREATE POLICY "Strict company delete" ON public.companies
   FOR DELETE TO authenticated
-  USING (is_super_admin() OR owner_id::text = auth.uid()::text);
+  USING (app_security.is_super_admin() OR owner_id::text = auth.uid()::text);
 
-CREATE OR REPLACE FUNCTION public.enforce_company_security()
+CREATE OR REPLACE FUNCTION app_security.enforce_company_security()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 BEGIN
-  IF current_setting('role', true) = 'service_role' OR auth.uid() IS NULL OR is_super_admin() THEN
+  IF current_setting('role', true) = 'service_role' OR auth.uid() IS NULL OR app_security.is_super_admin() THEN
     RETURN NEW;
   END IF;
 
@@ -1175,14 +1239,19 @@ BEGIN
 END;
 $$;
 
+REVOKE EXECUTE ON FUNCTION app_security.enforce_company_security() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION app_security.enforce_company_security() TO authenticated, service_role;
+
 DROP TRIGGER IF EXISTS trg_enforce_company_security ON public.companies;
 CREATE TRIGGER trg_enforce_company_security
   BEFORE UPDATE ON public.companies
   FOR EACH ROW
-  EXECUTE FUNCTION public.enforce_company_security();
+  EXECUTE FUNCTION app_security.enforce_company_security();
 
 -- ----------------------------------------------------------------------------
--- 7. STORAGE BUCKET POLICIES (Eigentümer- & Mandanten-Schutz)
+-- 7. STORAGE BUCKET POLICIES (Behebt 0025_public_bucket_allows_listing!)
+--    Öffentliche Objekt-URLs (/storage/v1/object/public/...) funktionieren auf
+--    public Buckets direkt ohne breites SELECT USING (true) auf storage.objects!
 -- ----------------------------------------------------------------------------
 DROP POLICY IF EXISTS "Public & Authenticated Storage Access" ON storage.objects;
 DROP POLICY IF EXISTS "Public Access Avatars" ON storage.objects;
@@ -1196,7 +1265,17 @@ DROP POLICY IF EXISTS "Authenticated Storage Delete" ON storage.objects;
 
 CREATE POLICY "Authenticated Storage Select" ON storage.objects
   FOR SELECT TO authenticated
-  USING (true);
+  USING (
+    app_security.is_super_admin()
+    OR owner = auth.uid()
+    OR (
+      app_security.get_my_company_id() IS NOT NULL
+      AND (
+        split_part(name, '/', 1) = app_security.get_my_company_id()
+        OR split_part(name, '/', 2) = app_security.get_my_company_id()
+      )
+    )
+  );
 
 CREATE POLICY "Authenticated Storage Insert" ON storage.objects
   FOR INSERT TO authenticated
@@ -1214,26 +1293,70 @@ CREATE POLICY "Allow anon upload to temp_mobile_uploads" ON storage.objects
 CREATE POLICY "Authenticated Storage Update" ON storage.objects
   FOR UPDATE TO authenticated
   USING (
-    is_super_admin()
+    app_security.is_super_admin()
     OR owner = auth.uid()
     OR (
-      is_company_admin()
-      AND get_my_company_id() IS NOT NULL
-      AND (split_part(name, '/', 1) = get_my_company_id() OR split_part(name, '/', 2) = get_my_company_id())
+      app_security.is_company_admin()
+      AND app_security.get_my_company_id() IS NOT NULL
+      AND (split_part(name, '/', 1) = app_security.get_my_company_id() OR split_part(name, '/', 2) = app_security.get_my_company_id())
     )
   );
 
 CREATE POLICY "Authenticated Storage Delete" ON storage.objects
   FOR DELETE TO authenticated
   USING (
-    is_super_admin()
+    app_security.is_super_admin()
     OR owner = auth.uid()
     OR (
-      is_company_admin()
-      AND get_my_company_id() IS NOT NULL
-      AND (split_part(name, '/', 1) = get_my_company_id() OR split_part(name, '/', 2) = get_my_company_id())
+      app_security.is_company_admin()
+      AND app_security.get_my_company_id() IS NOT NULL
+      AND (split_part(name, '/', 1) = app_security.get_my_company_id() OR split_part(name, '/', 2) = app_security.get_my_company_id())
     )
   );
+
+-- Entferne die internen Hilfs- und Trigger-Funktionen aus dem exponierten public-Schema
+-- (da jetzt alle Policies und Trigger auf app_security.* zeigen)
+DO $$
+DECLARE
+  v_fn text;
+BEGIN
+  FOR v_fn IN SELECT unnest(ARRAY[
+    'public.enforce_profile_security()',
+    'public.enforce_company_security()',
+    'public.handle_new_user()',
+    'public.can_access_project(text)',
+    'public.can_user_view_finance()',
+    'public.is_internal_company_member()',
+    'public.is_company_admin()',
+    'public.get_my_role()',
+    'public.get_my_company_id()',
+    'public.is_super_admin()'
+  ]) LOOP
+    BEGIN
+      EXECUTE 'REVOKE ALL ON FUNCTION ' || v_fn || ' FROM PUBLIC, anon, authenticated';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+    IF v_fn <> 'public.handle_new_user()' THEN
+      BEGIN
+        EXECUTE 'DROP FUNCTION IF EXISTS ' || v_fn;
+      EXCEPTION WHEN OTHERS THEN NULL;
+      END;
+    END IF;
+  END LOOP;
+END $$;
+
+REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_invite_details(text) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.accept_invite_by_token(text, uuid) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.get_proposal_by_share_token(text, text) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.increment_proposal_views(text) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.sign_accept_proposal(text, jsonb) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.get_guest_video_call(text) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.join_or_create_guest_room(text) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.get_call_chat_messages(text) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.send_guest_chat_message(text, text, text) TO anon, authenticated, service_role;
+
+
 
 -- ----------------------------------------------------------------------------
 -- 8. PERFORMANCE B-TREE INDIZES
