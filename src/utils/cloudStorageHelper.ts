@@ -49,7 +49,15 @@ export const uploadPdfBlobWithFallback = async (blob: Blob, fileName: string, co
 /**
  * Generic file uploader with bucket fallback (documents -> avatars -> base64 Data URL)
  */
-export const uploadFileWithFallback = async (file: File | Blob, fileName: string, companyId: string, folder: string = 'uploads'): Promise<string> => {
+export const uploadFileWithFallback = async (fileInput: File | Blob | string, fileName: string, companyId: string, folder: string = 'uploads'): Promise<string> => {
+  let file: File | Blob;
+  if (typeof fileInput === 'string') {
+    if (!fileInput.startsWith('data:')) return fileInput;
+    const res = await fetch(fileInput);
+    file = await res.blob();
+  } else {
+    file = fileInput;
+  }
   const safeCompanyId = companyId || 'global';
   const safeFileName = `${Date.now()}_${fileName.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
   const storagePath = `${folder}/${safeCompanyId}/${safeFileName}`;

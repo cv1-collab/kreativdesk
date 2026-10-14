@@ -12,9 +12,12 @@ function isSafeExternalUrl(urlStr: string): boolean {
       hostname === '0.0.0.0' ||
       hostname === '::1' ||
       hostname === '[::1]' ||
+      hostname.includes(':') ||
       hostname === '169.254.169.254' ||
       hostname.endsWith('.local') ||
       hostname.endsWith('.internal') ||
+      hostname.endsWith('.nip.io') ||
+      hostname.endsWith('.sslip.io') ||
       hostname.startsWith('10.') ||
       hostname.startsWith('192.168.') ||
       /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname)
@@ -47,6 +50,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const user = await verifyAuth(req);
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    if (!(user as any).isSuperAdmin && String((user as any).companyId) !== String(companyId)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
 
     const { data: company } = await supabaseAdmin
       .from('companies')

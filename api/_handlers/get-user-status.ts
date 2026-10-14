@@ -217,6 +217,30 @@ export default async function handler(req: any, res: any) {
         );
 
         const PRICING_MATRIX: Record<string, { name: string; seats: number }> = {
+          // Current Monthly Price IDs
+          'price_1UJ7w2RwN4c1cHbcI2cdB5qI': { name: 'Starter', seats: 1 },
+          'price_1UJ7w3RwN4c1cHbcK8m3L9pQ': { name: 'Pro', seats: 1 },
+          'price_1UJ7w3RwN4c1cHbcW1d9V3sT': { name: 'Team Starter', seats: 3 },
+          'price_1UJ7w4RwN4c1cHbcZ6v2N8yR': { name: 'Expert', seats: 3 },
+          // Current Yearly Price IDs
+          'price_1TdyDPRwN4c1cHbc92bM5G2v': { name: 'Starter', seats: 1 },
+          'price_1TdyEDRwN4c1cHbcK8jL3P1x': { name: 'Pro', seats: 1 },
+          'price_1TdyEWRwN4c1cHbcQ4wE6R8t': { name: 'Team Starter', seats: 3 },
+          'price_1UJ7w4RwN4c1cHbcM4p7X1kB': { name: 'Expert', seats: 3 },
+          // Active Checkout Price IDs
+          'price_1UJ7wAQTfAtOGrggmwM9ctT7': { name: 'Starter', seats: 1 },
+          'price_1UJ7wBQTfAtOGrgg0W8idkBn': { name: 'Starter', seats: 1 },
+          'price_1UJ7wBQTfAtOGrggIHnw7NFO': { name: 'Pro', seats: 1 },
+          'price_1UJ7wBQTfAtOGrggKhnjecz8': { name: 'Pro', seats: 1 },
+          'price_1UJ7wCQTfAtOGrggtc8sK2NT': { name: 'Team Starter', seats: 3 },
+          'price_1UJ7wCQTfAtOGrgg5jYFVujy': { name: 'Team Starter', seats: 3 },
+          'price_1TdyXhQTfAtOGrggdoSEPjWr': { name: 'Starter', seats: 1 },
+          'price_1TdyYYQTfAtOGrggNecH3ItP': { name: 'Starter', seats: 1 },
+          'price_1TcizpQTfAtOGrggKGYLMG4c': { name: 'Pro', seats: 1 },
+          'price_1TdyU4QTfAtOGrggIvnyXe2j': { name: 'Pro', seats: 1 },
+          'price_1TdyaEQTfAtOGrggpbWcVles': { name: 'Expert', seats: 3 },
+          'price_1TdyaxQTfAtOGrggbeJBPDFY': { name: 'Expert', seats: 3 },
+          // Legacy Price IDs
           'price_1TC00JRwN4c1cHbcL61aR7N6': { name: 'Starter', seats: 1 },
           'price_1TC00cRwN4c1cHbcE2f3W1aP': { name: 'Starter', seats: 1 },
           'price_1TC00uRwN4c1cHbcW0s7T2xM': { name: 'Pro', seats: 1 },

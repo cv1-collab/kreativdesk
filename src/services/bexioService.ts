@@ -6,6 +6,7 @@
 
 import { safeStorage } from '../utils/safeStorage';
 import { supabase } from '../lib/supabase';
+import { fetchSystemConfigJSON } from '../utils/configHelper';
 
 export interface BexioContactPayload {
   contact_type_id: 1 | 2; // 1 = Company, 2 = Person
@@ -68,9 +69,49 @@ export function getBexioConfig(): { apiToken: string; autoSync: boolean; qrIban:
 }
 
 /**
+ * Lädt die Bexio-Konfiguration aus Supabase documents (system_config), falls lokal kein Token vorhanden ist
+ */
+export async function loadBexioConfigFromCloud(companyId?: string): Promise<{ apiToken: string; autoSync: boolean; qrIban: string; enabled: boolean }> {
+  const local = getBexioConfig();
+  if (local.apiToken) return local;
+
+  try {
+    let compId = companyId;
+    if (!compId && supabase) {
+      const { data } = await supabase.auth.getUser();
+      const uid = data?.user?.id;
+      if (uid) {
+        const { data: prof } = await supabase.from('profiles').select('company_id').eq('id', uid).maybeSingle();
+        compId = (prof as any)?.company_id || uid;
+      }
+    }
+    if (compId) {
+      const cloudCfg = await fetchSystemConfigJSON<any>(`bexio_config_${compId}`, compId);
+      if (cloudCfg && typeof cloudCfg === 'object') {
+        if (cloudCfg.apiToken) {
+          safeStorage.setItem('bexio_api_token', cloudCfg.apiToken);
+          safeStorage.setItem('interactv_bexio_api_token', cloudCfg.apiToken);
+        }
+        if (cloudCfg.autoSync !== undefined) safeStorage.setItem('bexio_auto_sync', String(cloudCfg.autoSync));
+        if (cloudCfg.qrIban) safeStorage.setItem('bexio_qr_iban', cloudCfg.qrIban);
+        if (cloudCfg.enabled !== undefined) safeStorage.setItem('bexio_integration_active', String(cloudCfg.enabled));
+        return {
+          apiToken: cloudCfg.apiToken || local.apiToken,
+          autoSync: cloudCfg.autoSync !== undefined ? Boolean(cloudCfg.autoSync) : local.autoSync,
+          qrIban: cloudCfg.qrIban || local.qrIban,
+          enabled: cloudCfg.enabled !== undefined ? Boolean(cloudCfg.enabled) : Boolean(cloudCfg.apiToken)
+        };
+      }
+    }
+  } catch (_) {}
+
+  return local;
+}
+
+/**
  * Speichert Bexio Konfiguration im LocalStorage
  */
-export function saveBexioConfig(config: { apiToken?: string; autoSync?: boolean; qrIban?: string; enabled?: boolean; companyId?: string }) {
+export function saveBexioConfig(config: { apiToken?: string; autoSync?: boolean; qrIban?: string; enabled?: boolean; companyId?: string }, companyIdParam?: string) {
   if (typeof window === 'undefined') return;
 
   if (config.apiToken !== undefined) {
@@ -85,7 +126,7 @@ export function saveBexioConfig(config: { apiToken?: string; autoSync?: boolean;
   supabase.auth.getUser().then(async ({ data }) => {
     const uid = data?.user?.id;
     if (!uid) return;
-    let compId = config.companyId;
+    let compId = companyIdParam || config.companyId;
     if (!compId) {
       const { data: prof } = await supabase.from('profiles').select('company_id').eq('id', uid).maybeSingle();
       compId = (prof as any)?.company_id || uid;
@@ -125,7 +166,7 @@ export function saveBexioConfig(config: { apiToken?: string; autoSync?: boolean;
  */
 export async function testBexioConnection(apiToken?: string): Promise<{ success: boolean; companyName?: string; email?: string; message?: string }> {
   try {
-    const token = apiToken || getBexioConfig().apiToken;
+    const token = apiToken || (await loadBexioConfigFromCloud()).apiToken;
     if (!token) {
       return { success: false, message: 'Kein API-Token hinterlegt' };
     }
@@ -162,7 +203,7 @@ export async function syncProposalToBexio(
   proposal: any,
   acceptanceData: { name: string; email: string; company?: string; phone?: string; finalPrice: number; selectedOptionIds: string[] }
 ): Promise<BexioSyncResult> {
-  const config = getBexioConfig();
+  const config = await loadBexioConfigFromCloud(proposal?.companyId || proposal?.company_id);
 
   try {
     const { data: { session } } = await supabase.auth.getSession();

@@ -4362,17 +4362,19 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
                     </div>
 
                     {/* Badge 2: Bexio ERP Sync */}
-                    <div className={cn("p-3 rounded-xl flex items-start gap-2.5 border shadow-sm", isLight ? "bg-white border-blue-300" : "bg-zinc-900/90 border-blue-500/40 shadow-md")}>
-                      <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5", isLight ? "bg-blue-100 text-blue-700" : "bg-blue-500/20 text-blue-400")}>
-                        <Building2 size={16} />
-                      </div>
-                      <div>
-                        <div className={cn("text-[11px] font-bold", isLight ? "text-blue-800" : "text-blue-300")}>{t('bexioBadgeTitle')}</div>
-                        <div className={cn("text-[10px]", isLight ? "text-slate-600" : "text-zinc-400")}>
-                          {bexioSyncResult?.success ? t('bexioSuccess', { num: bexioSyncResult.offerNumber || 'BX-OFF' }) : t('bexioPending')}
+                    {bexioSyncResult?.success && (
+                      <div className={cn("p-3 rounded-xl flex items-start gap-2.5 border shadow-sm", isLight ? "bg-white border-blue-300" : "bg-zinc-900/90 border-blue-500/40 shadow-md")}>
+                        <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5", isLight ? "bg-blue-100 text-blue-700" : "bg-blue-500/20 text-blue-400")}>
+                          <Building2 size={16} />
+                        </div>
+                        <div>
+                          <div className={cn("text-[11px] font-bold", isLight ? "text-blue-800" : "text-blue-300")}>{t('bexioBadgeTitle')}</div>
+                          <div className={cn("text-[10px]", isLight ? "text-slate-600" : "text-zinc-400")}>
+                            {t('bexioSuccess', { num: bexioSyncResult.offerNumber || 'BX-OFF' })}
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* Badge 3: E-Mail Confirmation */}
                     <div className={cn("p-3 rounded-xl flex items-start gap-2.5 border shadow-sm", isLight ? "bg-white border-purple-300" : "bg-zinc-900/90 border-purple-500/40 shadow-md")}>

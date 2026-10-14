@@ -444,7 +444,44 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
 
   const [studioDocTitle, setStudioDocTitle] = useState('');
   const [studioDocContent, setStudioDocContent] = useState('');
+  const [studioEditingDocId, setStudioEditingDocId] = useState<string | null>(null);
+  const studioEditingDocIdRef = useRef<string | null>(null);
   const [isStudioOpen, setIsStudioOpen] = useState(false);
+
+  useEffect(() => {
+    const handleStudioDocSaved = async (e: Event) => {
+      const customEv = e as CustomEvent<{ title?: string; id?: string }>;
+      const newDocId = customEv.detail?.id;
+      const editingId = studioEditingDocIdRef.current || studioEditingDocId;
+      if (!editingId || !newDocId || newDocId === editingId) return;
+      try {
+        const { data: createdDoc } = await supabase
+          .from('documents')
+          .select('*')
+          .eq('id', newDocId)
+          .maybeSingle();
+        if (createdDoc) {
+          await supabase
+            .from('documents')
+            .update({
+              name: createdDoc.name,
+              url: createdDoc.url,
+              file_url: createdDoc.file_url,
+              size: createdDoc.size,
+              type: createdDoc.type,
+              uploaded_at: new Date().toISOString()
+            })
+            .eq('id', editingId);
+          await supabase.from('documents').delete().eq('id', newDocId);
+          queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
+        }
+      } catch (err) {
+        console.warn('Update studio document fallback error:', err);
+      }
+    };
+    window.addEventListener('document_created', handleStudioDocSaved);
+    return () => window.removeEventListener('document_created', handleStudioDocSaved);
+  }, [studioEditingDocId, queryClient]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -550,7 +587,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
     // CAD Pläne:
     if (category === 'cad') {
       if (rawProjId && rawProjId !== 'global') {
-        navigate(`/project/${rawProjId}/plans`);
+        navigate(`/project/${rawProjId}/plans?plan=${item.id}`);
         addToast(`CAD-Plan "${item.name}" im Plan-Viewer geöffnet!`, 'success');
         return;
       }
@@ -621,6 +658,8 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
         textContent = '';
       }
     }
+    setStudioEditingDocId(item.id || null);
+    studioEditingDocIdRef.current = item.id || null;
     setStudioDocTitle(item.name || 'Dokument');
     setStudioDocContent(textContent || `DOKUMENT: ${item.name}\n\nInhalt des Dokuments hier im Studio bearbeiten...`);
     setIsStudioOpen(true);
@@ -2146,6 +2185,10 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
         isOpen={isStudioOpen}
         onClose={() => {
           setIsStudioOpen(false);
+          setTimeout(() => {
+            setStudioEditingDocId(null);
+            studioEditingDocIdRef.current = null;
+          }, 500);
           fetchDocuments();
         }}
         initialTitle={studioDocTitle}

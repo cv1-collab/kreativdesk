@@ -52,7 +52,27 @@ function isTestUser(email: string | undefined | null): boolean {
 }
 
 async function deleteSingleUserCascade(uid: string, email?: string | null) {
-  const mail = (email || '').toLowerCase().trim();
+  let mail = (email || '').toLowerCase().trim();
+  if (!mail && uid) {
+    try {
+      const { data: prof } = await supabaseAdmin.from('profiles').select('email, role').eq('id', uid).maybeSingle();
+      if (prof?.email) {
+        mail = prof.email.toLowerCase().trim();
+      }
+      if (prof?.role === 'super_admin') {
+        console.warn(`[admin-cleanup] Skipping protected super_admin profile: ${uid}`);
+        return false;
+      }
+    } catch (_) {}
+  }
+  if (!mail && uid) {
+    try {
+      const { data: authData } = await supabaseAdmin.auth.admin.getUserById(uid);
+      if (authData?.user?.email) {
+        mail = authData.user.email.toLowerCase().trim();
+      }
+    } catch (_) {}
+  }
   if (SUPER_ADMIN_EMAILS.includes(mail)) {
     console.warn(`[admin-cleanup] Skipping protected super admin: ${mail}`);
     return false;

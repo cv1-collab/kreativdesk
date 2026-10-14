@@ -34,30 +34,30 @@ DECLARE
   company_owner_id UUID := NULL;
   
   inv_token TEXT;
-  meta_company_id TEXT;
 BEGIN
   user_full_name := COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1));
   company_name := split_part(NEW.email, '@', 1) || '''s Organization';
   inv_token := NEW.raw_user_meta_data->>'inviteToken';
-  meta_company_id := NEW.raw_user_meta_data->>'companyId';
 
   BEGIN
-    -- 1. STUFE 1: Einladung per Token suchen
+    -- 1. STUFE 1: Einladung per Token suchen (nur status = 'pending')
     IF inv_token IS NOT NULL AND inv_token != '' THEN
       SELECT id, company_id, role 
       INTO v_inv_id, v_inv_company_id, v_inv_role 
       FROM public.invites 
       WHERE token = inv_token 
+        AND status = 'pending'
       ORDER BY created_at DESC 
       LIMIT 1;
     END IF;
 
-    -- 2. STUFE 2: Einladung per E-Mail suchen (falls per Token nicht gefunden)
+    -- 2. STUFE 2: Einladung per E-Mail suchen (falls per Token nicht gefunden, nur status = 'pending')
     IF v_inv_id IS NULL AND NEW.email IS NOT NULL THEN
       SELECT id, company_id, role 
       INTO v_inv_id, v_inv_company_id, v_inv_role 
       FROM public.invites 
       WHERE lower(email) = lower(NEW.email) 
+        AND status = 'pending'
       ORDER BY created_at DESC 
       LIMIT 1;
     END IF;
@@ -74,19 +74,10 @@ BEGIN
       LIMIT 1;
     END IF;
 
-    -- 4. STUFE 4: Fallback auf metadata companyId
-    IF v_inv_id IS NULL AND v_cu_id IS NULL AND meta_company_id IS NOT NULL AND meta_company_id != '' THEN
-      BEGIN
-        target_company_id := meta_company_id::uuid;
-      EXCEPTION WHEN OTHERS THEN
-        target_company_id := NULL;
-      END;
-    END IF;
-
     -- ========================================================================
     -- A: NUTZER WURDE IN EIN BESTEHENDES UNTERNEHMEN EINGELADEN
     -- ========================================================================
-    IF v_inv_id IS NOT NULL OR v_cu_id IS NOT NULL OR target_company_id IS NOT NULL THEN
+    IF v_inv_id IS NOT NULL OR v_cu_id IS NOT NULL THEN
       IF v_inv_id IS NOT NULL THEN
         target_company_id := v_inv_company_id;
         target_role := COALESCE(v_inv_role, 'employee');
@@ -102,9 +93,9 @@ BEGIN
       FROM public.companies 
       WHERE id = target_company_id LIMIT 1;
 
-      -- Normalisiere Rolle (Externe Handwerker/Bauherren bleiben kostenlos als guest/client!)
+      -- Normalisiere Rolle (kein 'super_admin' über Einladung; Externe Handwerker/Bauherren bleiben kostenlos als guest/client!)
       target_role := CASE 
-        WHEN lower(target_role) IN ('owner', 'super_admin', 'management', 'project_lead', 'employee', 'client', 'guest') 
+        WHEN lower(target_role) IN ('owner', 'admin', 'management', 'project_lead', 'employee', 'client', 'guest') 
           THEN lower(target_role)
         WHEN lower(target_role) IN ('bauherr')
           THEN 'client'
@@ -136,12 +127,11 @@ BEGIN
         WHERE id = v_inv_id;
       END IF;
 
-      -- WICHTIG: Wenn der Nutzer als Owner registriert wird (z. B. VIP Preprovisioning)
-      -- oder die Firma noch keinen owner_id hat:
-      IF target_role = 'owner' OR company_owner_id IS NULL THEN
+      -- WICHTIG: Nur wenn der Nutzer explizit als Owner registriert wird UND die Firma noch keinen owner_id hat:
+      IF target_role = 'owner' AND company_owner_id IS NULL THEN
         UPDATE public.companies 
         SET owner_id = NEW.id 
-        WHERE id = target_company_id AND (owner_id IS NULL OR target_role = 'owner');
+        WHERE id = target_company_id AND owner_id IS NULL;
       END IF;
 
       -- Firmen-Lizenz-Zähler dynamisch und fehlerfrei synchronisieren (nur interne Seats, keine externen Gäste/Handwerker!):

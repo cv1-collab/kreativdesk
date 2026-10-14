@@ -124,7 +124,15 @@ export default function Settings() {
     if (!currentUser) return;
     const fetchUser = async () => {
       try {
+        const cachedProfile = safeStorage.getItem<any>(`user_profile_${currentUser.uid}`, null);
         const cachedContact = safeStorage.getItem<{ phone?: string; street?: string; zipCity?: string } | null>(`user_contact_${currentUser.uid}`, null);
+        if (cachedProfile) {
+          if (cachedProfile.phone) setPhone(cachedProfile.phone);
+          if (cachedProfile.street) setStreet(cachedProfile.street);
+          if (cachedProfile.zipCode || cachedProfile.city) {
+            setZipCity(`${cachedProfile.zipCode || ''} ${cachedProfile.city || ''}`.trim());
+          }
+        }
         if (cachedContact) {
           if (cachedContact.phone) setPhone(cachedContact.phone);
           if (cachedContact.street) setStreet(cachedContact.street);
@@ -138,6 +146,18 @@ export default function Settings() {
           if (raw.street) setStreet(raw.street);
           if (raw.zip_city || raw.zipCity) setZipCity(raw.zip_city || raw.zipCity);
         }
+        if (currentUser.email || currentUser.uid) {
+          const { data: cuData } = await supabase
+            .from('company_users')
+            .select('phone, street, zip_city')
+            .or(`user_id.eq.${currentUser.uid},email.eq.${currentUser.email}`)
+            .maybeSingle();
+          if (cuData) {
+            if (cuData.phone) setPhone(cuData.phone);
+            if (cuData.street) setStreet(cuData.street);
+            if (cuData.zip_city) setZipCity(cuData.zip_city);
+          }
+        }
       } catch (e) {}
       setIsLoadingDB(false);
     };
@@ -149,13 +169,46 @@ export default function Settings() {
     if (!currentUser) return;
     setIsUpdatingProfile(true);
     try {
+      const cleanName = displayName.trim() || currentUser.displayName || 'User';
+      const zipParts = zipCity.trim().split(' ');
+      const parsedZip = zipParts[0] || '';
+      const parsedCity = zipParts.slice(1).join(' ') || '';
+
       safeStorage.setItem(`user_contact_${currentUser.uid}`, { phone, street, zipCity });
+      const existingUserProfile = safeStorage.getItem<any>(`user_profile_${currentUser.uid}`, {}) || {};
+      safeStorage.setItem(`user_profile_${currentUser.uid}`, {
+        ...existingUserProfile,
+        name: cleanName,
+        phone: phone.trim(),
+        street: street.trim(),
+        zipCode: parsedZip,
+        city: parsedCity
+      });
+
       await supabase.from('profiles').update({
-        name: displayName.trim() || currentUser.displayName || 'User',
+        name: cleanName,
         updated_at: new Date().toISOString()
       }).eq('id', currentUser.uid);
+
+      try {
+        const cuPayload = {
+          name: cleanName,
+          phone: phone.trim() || null,
+          street: street.trim() || null,
+          zip_city: zipCity.trim() || null
+        };
+        if (currentUser.uid) {
+          await supabase.from('company_users').update(cuPayload as any).eq('user_id', currentUser.uid);
+        }
+        if (currentUser.email) {
+          await supabase.from('company_users').update(cuPayload as any).eq('email', currentUser.email);
+        }
+      } catch (cuErr) {
+        console.warn('company_users profile sync handled:', cuErr);
+      }
+
       if (updateCurrentUser && displayName.trim()) {
-        updateCurrentUser({ name: displayName.trim(), displayName: displayName.trim() } as any);
+        updateCurrentUser({ name: cleanName, displayName: cleanName } as any);
       }
       setProfileSuccess(true);
       addToast(t('upload_success'), 'success');

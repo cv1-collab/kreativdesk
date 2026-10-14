@@ -1,6 +1,22 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { supabaseAdmin } from '../_auth.js';
 
+const leadRateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+function checkLeadRateLimit(ip: string, maxPerMinute = 10): boolean {
+  const now = Date.now();
+  const entry = leadRateLimitMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    leadRateLimitMap.set(ip, { count: 1, resetAt: now + 60_000 });
+    return true;
+  }
+  if (entry.count >= maxPerMinute) {
+    return false;
+  }
+  entry.count += 1;
+  return true;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -15,6 +31,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    const clientIp = (
+      (req.headers['x-vercel-forwarded-for'] as string) ||
+      (req.headers['x-real-ip'] as string) ||
+      (req.headers['x-forwarded-for'] as string)?.split(',')[0] ||
+      req.socket?.remoteAddress ||
+      'unknown'
+    ).trim();
+    if (!checkLeadRateLimit(clientIp, 10)) {
+      return res.status(429).json({ error: 'Too many requests. Please wait a minute.' });
+    }
+
     const { 
       firstName, 
       lastName, 
@@ -37,34 +64,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Missing email or phone number' });
     }
 
+    const safeFirstName = String(firstName || '').slice(0, 100);
+    const safeLastName = String(lastName || '').slice(0, 100);
+    const safeCompany = String(company || '').slice(0, 200);
+    const safeEmail = String(email || '').slice(0, 200);
+    const safePhone = String(phone || '').slice(0, 100);
+    const safeMessage = String(message || '').slice(0, 4500);
+    const safePlan = plan ? String(plan).slice(0, 100) : null;
+    const safeSource = String(source || 'Landingpage B2B Request').slice(0, 150);
+
     const KREATIV_DESK_PLATFORM_COMPANY = 'dce2daae-e8d5-4596-a264-a3fcdb326a6c';
     let targetCompanyId = companyId;
     if (!targetCompanyId || targetCompanyId === 'kreativ-desk-website' || targetCompanyId === 'undefined') {
       targetCompanyId = KREATIV_DESK_PLATFORM_COMPANY;
     }
 
-    const fullName = [firstName, lastName].filter(Boolean).join(' ') || company || 'Neuer Lead';
+    const fullName = ([safeFirstName, safeLastName].filter(Boolean).join(' ') || safeCompany || 'Neuer Lead').slice(0, 200);
     
-    // Construct rich notes object or string for clean CRM display
+    // Construct rich notes object or string for clean CRM display (capped to <= 5000 chars)
     const notesPayload = JSON.stringify({
-      message: message || '',
-      plan: plan || null,
-      firstName: firstName || '',
-      lastName: lastName || '',
-      company: company || '',
+      message: safeMessage,
+      plan: safePlan,
+      firstName: safeFirstName,
+      lastName: safeLastName,
+      company: safeCompany,
       submittedAt: new Date().toISOString()
-    });
+    }).slice(0, 5000);
 
-    const leadSource = plan ? `${source} • ${plan}` : source;
+    const leadSource = (safePlan ? `${safeSource} • ${safePlan}` : safeSource).slice(0, 200);
 
     // 1. Insert into leads table via supabaseAdmin (bypasses RLS safely and reliably)
     const { data: leadRow, error: leadErr } = await supabaseAdmin
       .from('leads')
       .insert({
         name: fullName,
-        company: company || '',
-        email: email || '',
-        phone: phone || '',
+        company: safeCompany,
+        email: safeEmail,
+        phone: safePhone,
         notes: notesPayload,
         company_id: targetCompanyId,
         source: leadSource,

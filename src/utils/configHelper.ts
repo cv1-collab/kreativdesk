@@ -17,13 +17,15 @@ export async function fetchSystemConfigJSON<T = any>(configKey: string, companyI
 
     if (validCompanyId) {
       query = query.eq('company_id', validCompanyId);
+    } else if (companyId === 'global') {
+      query = query.is('company_id', null);
     }
 
     const { data: rows } = await query;
     let doc = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
 
     // Legacy fallback if document was previously saved without company_id filter
-    if (!doc && validCompanyId && configKey.includes(validCompanyId)) {
+    if (!doc && ((validCompanyId && configKey.includes(validCompanyId)) || companyId === 'global')) {
       const { data: legacyRows } = await supabase
         .from('documents')
         .select('url, file_url, company_id')
@@ -57,20 +59,25 @@ export async function saveSystemConfigJSON(configKey: string, payload: any, comp
 
     const validCompanyId = isUuid(companyId) ? companyId : null;
     const validOwnerId = isUuid(ownerId) ? ownerId : null;
-    if (!validCompanyId) {
+    if (!validCompanyId && companyId !== 'global') {
       return;
     }
 
-    const findQuery = supabase
+    let findQuery = supabase
       .from('documents')
       .select('id')
       .eq('category', 'system_config')
-      .eq('name', configKey)
-      .eq('company_id', validCompanyId)
+      .eq('name', configKey);
+
+    if (validCompanyId) {
+      findQuery = findQuery.eq('company_id', validCompanyId);
+    } else if (companyId === 'global') {
+      findQuery = findQuery.is('company_id', null);
+    }
+
+    const { data: existingRows } = await findQuery
       .order('uploaded_at', { ascending: false })
       .limit(1);
-
-    const { data: existingRows } = await findQuery;
     const existingDoc = Array.isArray(existingRows) && existingRows.length > 0 ? existingRows[0] : null;
 
     if (existingDoc?.id) {

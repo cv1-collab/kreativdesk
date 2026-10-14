@@ -31,6 +31,8 @@ export default async function handler(req: any, res: any) {
 
     const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(user.email?.toLowerCase() || '');
 
+    let profileUpdate: Record<string, any> = { company_id: companyId };
+
     if (!isSuperAdmin) {
       if (user.id !== uid) {
         return res.status(403).json({ error: 'Forbidden: You can only set your own tenant claims' });
@@ -44,23 +46,40 @@ export default async function handler(req: any, res: any) {
         .maybeSingle();
 
       if (!targetCompany || targetCompany.owner_id !== user.id) {
-        // Also check if user was invited to this company
+        // Also check if user was invited to this company with a pending invite
         const { data: invite } = await supabaseAdmin
           .from('invites')
-          .select('id')
+          .select('id, role, status, expires_at')
           .eq('company_id', companyId)
           .eq('email', user.email?.toLowerCase())
+          .eq('status', 'pending')
           .maybeSingle();
 
         if (!invite) {
           return res.status(403).json({ error: 'Forbidden: You do not have access to this company' });
         }
+
+        if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
+          return res.status(403).json({ error: 'Forbidden: Invitation has expired' });
+        }
+
+        const safeRole = invite.role === 'super_admin' || invite.role === 'owner' ? 'admin' : (invite.role || 'employee');
+        profileUpdate = { company_id: companyId, role: safeRole };
+
+        await supabaseAdmin
+          .from('invites')
+          .update({
+            status: 'used',
+            used_by: user.id,
+            used_at: new Date().toISOString()
+          })
+          .eq('id', invite.id);
       }
     }
 
     await supabaseAdmin
       .from('profiles')
-      .update({ company_id: companyId })
+      .update(profileUpdate)
       .eq('id', uid);
 
     return res.status(200).json({ success: true, companyId });

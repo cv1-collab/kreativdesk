@@ -1,7 +1,8 @@
 import { checkIsSuperAdmin } from '../config/admins';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Lock, CheckCircle2, Zap, Shield, Building2, Loader2, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { initiateSubscriptionCheckout, BillingInterval } from '../services/stripeClient';
 import { cn } from '../utils';
 
@@ -11,9 +12,15 @@ interface TrialGuardProps {
 
 export default function TrialGuard({ children }: TrialGuardProps) {
   const { currentUser, logout } = useAuth();
+  const { addToast } = useToast();
   const [interval, setInterval] = useState<BillingInterval>('year');
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [forceLock, setForceLock] = useState(false);
+
+  const appAlert = useCallback((title: string, msg: string) => {
+    addToast(`${title}: ${msg}`, title === 'Fehler' ? 'error' : 'info');
+  }, [addToast]);
+
   let isLocked = false;
   const roleLower = (currentUser?.role || '').toLowerCase();
   const isMemberOrExternal = [
@@ -53,11 +60,13 @@ export default function TrialGuard({ children }: TrialGuardProps) {
     const handleUpgradeModal = () => {
       if (canManageBilling && !isMemberOrExternal) {
         setForceLock(true);
+      } else {
+        appAlert('Hinweis', 'Bitte wende dich an den Kontoinhaber oder Administrator deiner Firma, um das Abo zu upgraden.');
       }
     };
     window.addEventListener('open-upgrade-modal', handleUpgradeModal);
     return () => window.removeEventListener('open-upgrade-modal', handleUpgradeModal);
-  }, [canManageBilling, isMemberOrExternal]);
+  }, [canManageBilling, isMemberOrExternal, appAlert]);
 
   const handleCheckout = async (planName: 'Starter' | 'Pro' | 'Team Starter' | 'Expert') => {
     if (!currentUser?.uid || !currentUser?.email) return;
@@ -66,6 +75,7 @@ export default function TrialGuard({ children }: TrialGuardProps) {
       await initiateSubscriptionCheckout(planName, interval, currentUser.uid, currentUser.email);
     } catch (error) {
       console.error("Checkout fehlgeschlagen", error);
+      appAlert('Fehler', 'Checkout konnte nicht gestartet werden. Bitte versuche es erneut.');
       setIsLoading(null);
     }
   };

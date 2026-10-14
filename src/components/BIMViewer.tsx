@@ -976,11 +976,19 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
       addToast('Blender-Datei (.blend) empfangen. Hinweis: Für WebGL-Streaming im Browser via "Datei > Exportieren > glTF (.glb) oder FBX" bereitstellen.', 'info');
     }
 
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
+    const appAlert = (title: string, msg: string) => addToast(`${title}: ${msg}`, 'error');
+    const canProceedStorage = await checkStorageLimit(safeCompanyId, file.size);
+    if (!canProceedStorage) {
+      appAlert('Speicherlimit erreicht', 'Speicherlimit Ihres Abonnements erreicht. Bitte upgraden Sie Ihren Plan.');
+      event.target.value = '';
+      return;
+    }
+
     setIsUploading(true);
     addToast('Modell lädt in die Cloud...', 'info');
 
     try {
-      const safeCompanyId = currentUser.companyId || currentUser.uid;
       const safeProjectId = projectId || 'global';
       const filePath = `${safeCompanyId}/documents/${safeProjectId}/3d_models_${Date.now()}_${file.name}`;
       
@@ -1155,7 +1163,38 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
               <ShieldAlert className="text-red-500 mb-2" size={24} />
               <p className="text-sm text-text-primary font-medium">{t('defect_pin_mode')}</p>
               <p className="text-xs text-text-muted mt-1">{t('click_anywhere_defect')}</p>
-              {defectPins.length > 0 && (<button onClick={() => setDefectPins([])} className="mt-3 px-3 py-1.5 bg-background hover:bg-surface rounded-md text-xs border border-border text-text-primary transition-colors">{t('clear_all_pins')}</button>)}
+              {defectPins.length > 0 && (
+                <button
+                  onClick={async () => {
+                    const pinIds = defectPins.map((p: any) => p.id).filter(Boolean);
+                    setDefectPins([]);
+                    if (!isDemoMode && currentUser) {
+                      const safeCompanyId = currentUser.companyId || (currentUser as any)?.company_id || currentUser.uid;
+                      try {
+                        await supabase
+                          .from('defects')
+                          .delete()
+                          .eq('project_id', projectId)
+                          .eq('company_id', safeCompanyId)
+                          .not('pin_pos', 'is', null);
+                      } catch (_) {}
+                      if (pinIds.length > 0) {
+                        try {
+                          await supabase
+                            .from('defects')
+                            .delete()
+                            .in('id', pinIds)
+                            .eq('company_id', safeCompanyId);
+                        } catch (_) {}
+                      }
+                      queryClient.invalidateQueries({ queryKey: [DEFECTS_QUERY_KEY] });
+                    }
+                  }}
+                  className="mt-3 px-3 py-1.5 bg-background hover:bg-surface rounded-md text-xs border border-border text-text-primary transition-colors"
+                >
+                  {t('clear_all_pins')}
+                </button>
+              )}
             </div>
           ) : measureMode ? (
             <div className="flex flex-col items-center justify-center border-2 border-dashed border-accent-ai/50 bg-accent-ai/5 rounded-lg p-5 text-center mt-2 flex-1">
@@ -1381,6 +1420,10 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
                     handleDefectClick={handleDefectClick}
                     handleSelect={handleSelect}
                     t={t}
+                    isClippingActive={isClippingActive}
+                    clippingX={clippingX}
+                    clippingY={clippingY}
+                    clippingZ={clippingZ}
                   />
 
                   {isMobile && forceMobile3D && (

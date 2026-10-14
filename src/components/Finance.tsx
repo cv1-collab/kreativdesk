@@ -888,15 +888,6 @@ export default function Finance() {
         setActiveVersionId(initVersion.id);
         setProjectHeader(initialFinanceData.projectHeader);
         safeStorage.setItem(localCacheKey, initialFinanceData);
-
-        try {
-          await saveSystemConfigJSON(`finance_${currentProjectId}`, {
-            ...initialFinanceData,
-            ownerId: currentUser.uid,
-            companyId: safeCompanyId,
-            projectId: currentProjectId
-          }, safeCompanyId, currentUser.uid);
-        } catch (e) { }
       }
 
       setIsInitialLoad(false);
@@ -907,6 +898,24 @@ export default function Finance() {
     const channel = supabase
       .channel('finance-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `company_id=eq.${safeCompanyId}` }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'documents', filter: `company_id=eq.${safeCompanyId}` }, (payload) => {
+        const docRow = payload.new as any;
+        if (docRow && docRow.name === `finance_${currentProjectId}`) {
+          try {
+            const rawJson = docRow.file_url || docRow.url;
+            if (rawJson) {
+              const parsed = JSON.parse(rawJson);
+              if (parsed.versions && Array.isArray(parsed.versions) && parsed.versions.length > 0) {
+                setVersions(parsed.versions);
+                if (parsed.activeVersionId) setActiveVersionId(parsed.activeVersionId);
+                if (parsed.projectHeader) setProjectHeader(parsed.projectHeader);
+                if (parsed.includeOptions !== undefined) setIncludeOptions(Boolean(parsed.includeOptions));
+                safeStorage.setItem(`finance_cache_${currentProjectId}`, parsed);
+              }
+            }
+          } catch (_) {}
+        }
+      })
       .subscribe();
 
     return () => {
@@ -996,12 +1005,16 @@ export default function Finance() {
         const localCacheKey = `time_entries_cache_${safeCompanyId}`;
         const localTimes: any[] = safeStorage.getItem<any[]>(localCacheKey, []);
 
-        const { data: times } = await supabase.from('time_entries').select('*').eq('company_id', safeCompanyId);
+        const { data: times, error: timesErr } = await supabase.from('time_entries').select('*').eq('company_id', safeCompanyId);
         const configTime = await fetchSystemConfigJSON<{ entries?: any[] }>(`time_entries_${safeCompanyId}`, safeCompanyId);
         const configTimes = configTime?.entries || [];
 
+        const sourceList = (!timesErr && times)
+          ? (times.length > 0 ? times : configTimes)
+          : [...(times || []), ...configTimes, ...localTimes];
+
         const map = new Map();
-        [...(times || []), ...configTimes, ...localTimes].forEach((t: any) => {
+        sourceList.forEach((t: any) => {
           if (t && (t.id || t.hours)) {
             const tId = t.id || `time-${t.date}-${t.hours}`;
             const existing = map.get(tId);
@@ -1018,7 +1031,11 @@ export default function Finance() {
             });
           }
         });
-        setLocalTimeEntries(Array.from(map.values()));
+        const mergedEntries = Array.from(map.values());
+        if (!timesErr && times) {
+          safeStorage.setItem(localCacheKey, mergedEntries);
+        }
+        setLocalTimeEntries(mergedEntries);
       } catch (err) {
         console.warn("Finance fetchTimes error:", err);
       }

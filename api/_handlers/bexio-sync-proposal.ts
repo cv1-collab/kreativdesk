@@ -17,45 +17,64 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { proposal, acceptanceData, apiToken, qrIban } = req.body || {};
 
-    // Resolve Bexio API token: client payload -> server env -> company system_config in DB
-    let effectiveToken = apiToken || process.env.BEXIO_API_TOKEN || '';
-    if (!effectiveToken && proposal?.companyId) {
-      try {
-        // Multi-tenant security check: ensure caller is either authenticated for this company
-        // or submitting an acceptance for an actual proposal belonging to this company
-        const authUser = await verifyAuth(req).catch(() => null);
-        let isAuthorizedForCompany = Boolean(
-          authUser && (authUser.isSuperAdmin || authUser.role === 'super_admin' || String(authUser.companyId) === String(proposal.companyId))
-        );
+    // Multi-tenant security check: always verify caller is either authenticated for this company
+    // or submitting an acceptance with a valid shareToken matching smart_proposals
+    const authUser = await verifyAuth(req).catch(() => null);
+    let isAuthorizedForCompany = Boolean(
+      authUser && (
+        authUser.isSuperAdmin ||
+        authUser.role === 'super_admin' ||
+        (proposal?.companyId && String(authUser.companyId) === String(proposal.companyId)) ||
+        (!proposal?.companyId && authUser.companyId)
+      )
+    );
 
-        if (!isAuthorizedForCompany && (proposal.id || proposal.shareToken)) {
-          let propQuery = supabaseAdmin
-            .from('smart_proposals')
-            .select('id, company_id')
-            .eq('company_id', proposal.companyId);
-          if (proposal.id) {
-            propQuery = propQuery.eq('id', proposal.id);
-          } else if (proposal.shareToken) {
-            propQuery = propQuery.eq('share_token', proposal.shareToken);
-          }
-          const { data: verifiedProp } = await propQuery.maybeSingle();
-          if (verifiedProp) {
-            isAuthorizedForCompany = true;
-          }
+    let verifiedProp: any = null;
+    if (proposal?.shareToken || proposal?.id) {
+      let propQuery = supabaseAdmin
+        .from('smart_proposals')
+        .select('id, company_id, title, base_price, accepted_by, share_token');
+      if (proposal.companyId) {
+        propQuery = propQuery.eq('company_id', proposal.companyId);
+      }
+      if (proposal.shareToken) {
+        propQuery = propQuery.eq('share_token', proposal.shareToken);
+      } else if (proposal.id) {
+        propQuery = propQuery.eq('id', proposal.id);
+      }
+      const { data: propRow } = await propQuery.maybeSingle();
+      if (propRow) {
+        verifiedProp = propRow;
+        if (proposal.shareToken && propRow.share_token === proposal.shareToken) {
+          isAuthorizedForCompany = true;
         }
+      }
+    }
 
-        if (isAuthorizedForCompany) {
-          const { data: cfgDoc } = await supabaseAdmin
-            .from('documents')
-            .select('url, file_url')
-            .eq('category', 'system_config')
-            .eq('company_id', proposal.companyId)
-            .eq('name', `bexio_config_${proposal.companyId}`)
-            .maybeSingle();
-          if (cfgDoc?.file_url || cfgDoc?.url) {
-            const parsed = JSON.parse(cfgDoc.file_url || cfgDoc.url);
-            if (parsed?.apiToken) effectiveToken = parsed.apiToken;
-          }
+    if (!isAuthorizedForCompany) {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden: Nicht autorisierter Zugriff auf Bexio-Sync',
+        errors: ['Forbidden: Nicht autorisierter Zugriff auf Bexio-Sync']
+      });
+    }
+
+    const effectiveCompanyId = verifiedProp?.company_id || proposal?.companyId || authUser?.companyId;
+
+    // Resolve Bexio API token: client payload (only if authenticated) -> server env -> company system_config in DB
+    let effectiveToken = (authUser ? apiToken : undefined) || process.env.BEXIO_API_TOKEN || '';
+    if (!effectiveToken && effectiveCompanyId) {
+      try {
+        const { data: cfgDoc } = await supabaseAdmin
+          .from('documents')
+          .select('url, file_url')
+          .eq('category', 'system_config')
+          .eq('company_id', effectiveCompanyId)
+          .eq('name', `bexio_config_${effectiveCompanyId}`)
+          .maybeSingle();
+        if (cfgDoc?.file_url || cfgDoc?.url) {
+          const parsed = JSON.parse(cfgDoc.file_url || cfgDoc.url);
+          if (parsed?.apiToken) effectiveToken = parsed.apiToken;
         }
       } catch (_) {}
     }
@@ -152,8 +171,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 3. Angebot (kb_offer) in Bexio anlegen
-    const finalPrice = Number(acceptanceData.finalPrice || proposal?.basePrice || 0);
-    const offerTitle = proposal?.title || 'Digital signiertes Projektangebot';
+    const finalPrice = verifiedProp
+      ? Number(verifiedProp.accepted_by?.finalPrice || verifiedProp.base_price || acceptanceData?.finalPrice || 0)
+      : Number(acceptanceData.finalPrice || proposal?.basePrice || 0);
+    const offerTitle = verifiedProp?.title || proposal?.title || 'Digital signiertes Projektangebot';
     try {
       const offerRes = await fetch('https://api.bexio.com/2.0/kb_offer', {
         method: 'POST',
@@ -219,7 +240,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     return res.status(200).json({
-      success: true,
+      success: errors.length === 0 && Boolean(contactId && (offerId || invoiceId)),
+      partialSuccess: errors.length > 0,
       mode: 'live',
       contactId,
       offerId,

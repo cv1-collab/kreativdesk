@@ -692,7 +692,7 @@ BEGIN
 
   IF inv_record.id IS NOT NULL THEN
     target_company_id := inv_record.company_id::uuid;
-    target_role := COALESCE(inv_record.role, 'employee');
+    target_role := CASE WHEN inv_record.role = 'super_admin' THEN 'admin' ELSE COALESCE(inv_record.role, 'employee') END;
 
     -- Einladung als verwendet markieren
     UPDATE public.invites 

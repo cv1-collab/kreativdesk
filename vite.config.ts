@@ -128,6 +128,29 @@ export default defineConfig(({ mode }) => {
               ) {
                 return 'vendor-core';
               }
+              if (
+                id.includes('/three/') ||
+                id.includes('@react-three') ||
+                id.includes('web-ifc') ||
+                id.includes('three-stdlib')
+              ) {
+                return 'vendor-3d';
+              }
+              if (
+                id.includes('@react-pdf') ||
+                id.includes('jspdf') ||
+                id.includes('pdf-lib') ||
+                id.includes('html2canvas') ||
+                id.includes('html-to-image')
+              ) {
+                return 'vendor-pdf';
+              }
+              if (id.includes('konva') || id.includes('react-konva')) {
+                return 'vendor-canvas';
+              }
+              if (id.includes('/xlsx') || id.includes('pptxgenjs')) {
+                return 'vendor-office';
+              }
               if (id.includes('@supabase')) {
                 return 'vendor-supabase';
               }

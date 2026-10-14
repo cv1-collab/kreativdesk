@@ -651,6 +651,31 @@ export interface DefectPinData {
   description: string;
 }
 
+function ClippingPlanesHelper({
+  isClippingActive,
+  clippingX = 30,
+  clippingY = 20,
+  clippingZ = 30,
+}: {
+  isClippingActive?: boolean;
+  clippingX?: number;
+  clippingY?: number;
+  clippingZ?: number;
+}) {
+  const { gl } = useThree();
+  useEffect(() => {
+    gl.localClippingEnabled = Boolean(isClippingActive);
+    gl.clippingPlanes = isClippingActive
+      ? [
+          new THREE.Plane(new THREE.Vector3(-1, 0, 0), clippingX / 5),
+          new THREE.Plane(new THREE.Vector3(0, -1, 0), clippingY / 5),
+          new THREE.Plane(new THREE.Vector3(0, 0, -1), clippingZ / 5),
+        ]
+      : [];
+  }, [gl, isClippingActive, clippingX, clippingY, clippingZ]);
+  return null;
+}
+
 export interface BIMCanvasViewportProps {
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   theme: 'dark' | 'light';
@@ -672,6 +697,10 @@ export interface BIMCanvasViewportProps {
   handleDefectClick: (pt: THREE.Vector3, normal: THREE.Vector3) => void;
   handleSelect: (id: string, details?: any) => void;
   t: (key: string) => string;
+  isClippingActive?: boolean;
+  clippingX?: number;
+  clippingY?: number;
+  clippingZ?: number;
 }
 
 function BIMCanvasViewportComponent({
@@ -695,6 +724,10 @@ function BIMCanvasViewportComponent({
   handleDefectClick,
   handleSelect,
   t,
+  isClippingActive,
+  clippingX,
+  clippingY,
+  clippingZ,
 }: BIMCanvasViewportProps) {
   return (
     <Canvas
@@ -712,6 +745,12 @@ function BIMCanvasViewportComponent({
       }}
     >
       <SnapshotHelper />
+      <ClippingPlanesHelper
+        isClippingActive={isClippingActive}
+        clippingX={clippingX}
+        clippingY={clippingY}
+        clippingZ={clippingZ}
+      />
       <CameraRig isTouring={isTouring} />
       <color attach="background" args={[theme === 'dark' ? '#09090b' : '#f4f4f5']} />
       <ambientLight intensity={isMobile ? 1.0 : 0.5} />

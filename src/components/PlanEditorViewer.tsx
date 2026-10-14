@@ -586,14 +586,18 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   const [history, setHistory] = useState<PlanElement[][]>([]);
   const [future, setFuture] = useState<PlanElement[][]>([]);
   const elementsBeforeDragRef = useRef<PlanElement[] | null>(null);
+  const hasUnsavedChangesRef = useRef(false);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const commitElements = useCallback((nextElements: PlanElement[]) => {
+    hasUnsavedChangesRef.current = true;
     setHistory(prev => [...prev.slice(-29), elements]);
     setFuture([]);
     setElements(nextElements);
   }, [elements]);
 
   const handleUndo = useCallback(() => {
+    hasUnsavedChangesRef.current = true;
     setHistory(prevHistory => {
       if (prevHistory.length === 0) return prevHistory;
       const prev = prevHistory[prevHistory.length - 1];
@@ -605,6 +609,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   }, [elements]);
 
   const handleRedo = useCallback(() => {
+    hasUnsavedChangesRef.current = true;
     setFuture(prevFuture => {
       if (prevFuture.length === 0) return prevFuture;
       const next = prevFuture[0];
@@ -802,13 +807,72 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     try {
       const safeCompanyId = currentUser.companyId || currentUser.uid;
       const targetProjectId = currentProjectId || 'global';
+      let snapshotImageUrl = planImage || dummySvgPlan;
+
+      try {
+        const svgEl = document.getElementById('cad-svg-layer') as unknown as SVGSVGElement | null;
+        if (svgEl) {
+          const canvas = canvasRef.current || document.createElement('canvas');
+          canvas.width = Math.round(internalW);
+          canvas.height = Math.round(internalH);
+          canvasRef.current = canvas;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            if (planImage && baseLayer?.visible !== false) {
+              await new Promise<void>((resolve) => {
+                const bgImg = new Image();
+                bgImg.crossOrigin = 'anonymous';
+                bgImg.onload = () => {
+                  ctx.globalAlpha = baseLayer?.opacity ?? 1;
+                  ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+                  ctx.globalAlpha = 1;
+                  resolve();
+                };
+                bgImg.onerror = () => resolve();
+                bgImg.src = sessionImageCache[planImage] || sanitizeUrl(planImage);
+              });
+            }
+            const svgData = new XMLSerializer().serializeToString(svgEl);
+            const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+            const svgUrl = URL.createObjectURL(svgBlob);
+            await new Promise<void>((resolve) => {
+              const svgImg = new Image();
+              svgImg.onload = () => {
+                ctx.drawImage(svgImg, 0, 0, canvas.width, canvas.height);
+                URL.revokeObjectURL(svgUrl);
+                resolve();
+              };
+              svgImg.onerror = () => {
+                URL.revokeObjectURL(svgUrl);
+                resolve();
+              };
+              svgImg.src = svgUrl;
+            });
+          }
+        }
+        const capturedDataUrl = canvasRef.current?.toDataURL('image/png');
+        if (capturedDataUrl && capturedDataUrl.startsWith('data:image/')) {
+          const res = await fetch(capturedDataUrl);
+          const blob = await res.blob();
+          const fileName = `cad_snapshot_${Date.now()}.png`;
+          const snapshotFile = new File([blob], fileName, { type: 'image/png' });
+          const uploadedUrl = await uploadFileWithFallback(snapshotFile, fileName, safeCompanyId, 'slides');
+          if (uploadedUrl) {
+            snapshotImageUrl = uploadedUrl;
+          }
+        }
+      } catch (captureErr) {
+        console.warn('Canvas snapshot fallback:', captureErr);
+      }
 
       const newSlide = {
         id: `slide-cad-${Date.now()}`,
         title: `CAD Plan: ${planName}`,
         content: `TrueScale™ 1:${planScale} (${paperFormat} ${paperOrientation})`,
         layout: 'image-focus',
-        image_url: planImage || dummySvgPlan,
+        image_url: snapshotImageUrl,
         order_index: 99,
         company_id: safeCompanyId,
         project_id: targetProjectId,
@@ -886,6 +950,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
   const loadPlanDataToEditor = useCallback((planData: any) => {
     if (!planData) return;
+    hasUnsavedChangesRef.current = false;
     setActivePlanId(planData.id);
     const metaEl = Array.isArray(planData.elements) ? planData.elements.find((e: any) => e?.id === '__plan_meta__') : null;
     const resolvedImage = planData.planImage || planData.plan_image || metaEl?.plan_image || null;
@@ -976,6 +1041,62 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     }
 
     const safeCompanyId = safeStorage.session.getString('admin_preview_company_id') || currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+
+    const fetchDefectsOnly = async () => {
+      try {
+        let defectsQuery = supabase
+          .from('defects')
+          .select('*')
+          .eq('project_id', currentProjectId);
+        if (safeCompanyId) {
+          defectsQuery = defectsQuery.eq('company_id', safeCompanyId);
+        }
+        const { data: dData } = await defectsQuery;
+        const dbDefects = dData || [];
+        const dbDefectIdSet = new Set(dbDefects.map((d: any) => d.id));
+
+        setElements(prev => {
+          const nextElements: PlanElement[] = prev.filter((e: any) => {
+            if (e?.type === 'defect') {
+              return dbDefectIdSet.has(e.id);
+            }
+            return true;
+          });
+
+          dbDefects.forEach((dbDef: any) => {
+            const pos = dbDef.position || {};
+            const posX = typeof dbDef.position_x === 'number' ? dbDef.position_x : (typeof pos.x === 'number' ? pos.x : null);
+            const posY = typeof dbDef.position_y === 'number' ? dbDef.position_y : (typeof pos.y === 'number' ? pos.y : null);
+            if (posX !== null && posY !== null) {
+              const existingIdx = nextElements.findIndex(e => e.id === dbDef.id);
+              const marker: DefectMarker = {
+                id: dbDef.id,
+                type: 'defect',
+                x: posX,
+                y: posY,
+                title: dbDef.prompt || dbDef.title || 'Mangel',
+                description: dbDef.description || '',
+                status: dbDef.status || 'To Do',
+                priority: dbDef.severity || dbDef.priority || 'High',
+                trade: dbDef.trade || 'Baumeister',
+                imageUrl: dbDef.image_url || null,
+                layerId: 'default',
+                isSynced: true
+              };
+              if (existingIdx >= 0) {
+                nextElements[existingIdx] = { ...nextElements[existingIdx], ...marker };
+              } else {
+                nextElements.push(marker);
+              }
+            }
+          });
+          return nextElements;
+        });
+      } catch (err) {
+        console.warn("Fehler beim Aktualisieren der Mängel-Pins:", err);
+      }
+    };
+
     const fetchPlans = async () => {
       try {
         let plansQuery = supabase
@@ -1061,15 +1182,19 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           });
           setProjectPlans(mappedPlans as any);
           
-          // Select and load the active plan, or fallback to the first plan in list
-          const targetPlan = (activePlanIdRef.current ? mappedPlans.find((p: any) => p.id === activePlanIdRef.current) : null) || mappedPlans[0];
-          loadPlanDataToEditor(targetPlan);
+          // Select and load the active plan, or fallback to the first plan in list (do NOT overwrite unsaved local edits!)
+          if (!hasUnsavedChangesRef.current) {
+            const targetPlan = (activePlanIdRef.current ? mappedPlans.find((p: any) => p.id === activePlanIdRef.current) : null) || mappedPlans[0];
+            loadPlanDataToEditor(targetPlan);
+          }
         } else {
           // Falls keine Pläne in der DB gefunden wurden, prüfen, ob ein lokaler Entwurf im Cache vorliegt
           const cached = getCachedPlan();
           if (cached && (cached.planImage || (cached.elements && cached.elements.length > 0))) {
             setProjectPlans([cached]);
-            loadPlanDataToEditor(cached);
+            if (!hasUnsavedChangesRef.current) {
+              loadPlanDataToEditor(cached);
+            }
           } else if (isDemoProject) {
             // Im Demo-Projekt sofort den hochwertigen Schweizer Architekturgrundriss laden!
             const defaultDemoPlan = {
@@ -1086,7 +1211,9 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
               active_layer_id: 'default'
             };
             setProjectPlans([defaultDemoPlan]);
-            loadPlanDataToEditor(defaultDemoPlan);
+            if (!hasUnsavedChangesRef.current) {
+              loadPlanDataToEditor(defaultDemoPlan);
+            }
           } else {
             setProjectPlans([]);
             setActivePlanId(null);
@@ -1109,7 +1236,9 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         table: 'cad_plans',
         filter: `project_id=eq.${currentProjectId}`
       }, () => {
-        fetchPlans();
+        if (!hasUnsavedChangesRef.current) {
+          fetchPlans();
+        }
       })
       .on('postgres_changes', {
         event: '*',
@@ -1117,7 +1246,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         table: 'defects',
         filter: `project_id=eq.${currentProjectId}`
       }, () => {
-        fetchPlans();
+        fetchDefectsOnly();
       })
       .subscribe();
 
@@ -1127,6 +1256,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   }, [currentProjectId, currentUser, isDemoMode, demoData, activeProject?.name, getCachedPlan, loadPlanDataToEditor, setActivePlanId]);
 
   const handleAddLayer = () => {
+    hasUnsavedChangesRef.current = true;
     const newL = { id: `layer_${Date.now()}`, name: `${t('layer_prefix')} ${layers.length+1}`, visible: true, locked: false, opacity: 1 };
     setLayers([...layers, newL]); setActiveLayerId(newL.id);
   };
@@ -1136,6 +1266,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     if (index === -1) return;
     const targetIndex = direction === 'up' ? index + 1 : index - 1;
     if (targetIndex < 0 || targetIndex >= layers.length) return;
+    hasUnsavedChangesRef.current = true;
     const next = [...layers];
     const [moved] = next.splice(index, 1);
     next.splice(targetIndex, 0, moved);
@@ -1143,11 +1274,13 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   };
 
   const toggleLayerVisibility = (id: string) => {
+    hasUnsavedChangesRef.current = true;
     setLayers(layers.map(l => l.id === id ? { ...l, visible: !l.visible } : l));
     setSelectedElement(null);
   };
 
   const toggleLayerLock = (id: string) => {
+    hasUnsavedChangesRef.current = true;
     setLayers(layers.map(l => l.id === id ? { ...l, locked: !l.locked } : l));
     setSelectedElement(null);
   };
@@ -1155,6 +1288,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   const deleteLayer = (id: string) => {
     if (layers.length <= 1) return addToast("Letzte Ebene kann nicht gelöscht werden.", "error");
     if (window.confirm("Ebene und alle darin enthaltenen Elemente löschen?")) {
+        hasUnsavedChangesRef.current = true;
         setLayers(layers.filter(l => l.id !== id));
         setElements(elements.filter(el => (el.layerId || 'default') !== id));
         if (activeLayerId === id) setActiveLayerId(layers.find(l => l.id !== id)?.id || 'default');
@@ -1393,6 +1527,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       reader.readAsDataURL(finalFileToUpload);
 
       const newOverlay: ImageMarkup = { id: `img_${Date.now()}`, type: 'image', url: url, x: 0.1, y: 0.1, scale: 0.8, opacity: 0.5, layerId: activeLayerId };
+      hasUnsavedChangesRef.current = true;
       setElements([...elements, newOverlay]);
       setSelectedElement(newOverlay);
       setActiveTool('pan');
@@ -1403,6 +1538,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
   const handleManualSave = async () => {
     if (isDemoMode) {
+      hasUnsavedChangesRef.current = false;
       addToast(t('save') + " ok", "success");
       setIsSaving(false);
       return;
@@ -1436,6 +1572,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         console.error("Fehler beim Speichern in Supabase:", updateErr);
         addToast("Fehler beim Speichern: " + updateErr.message, "error");
       } else {
+        hasUnsavedChangesRef.current = false;
         addToast(t('save') + " ok", "success");
       }
     } catch (e: any) {
@@ -1615,6 +1752,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     pendingDragRef.current = null;
     if (draggingElementId || draggingVertex) {
       if (elementsBeforeDragRef.current && elementsBeforeDragRef.current !== elements) {
+        hasUnsavedChangesRef.current = true;
         setHistory(prev => [...prev.slice(-30), elementsBeforeDragRef.current!]);
         setFuture([]);
         if (draggingElementId && !isDemoMode && currentUser) {

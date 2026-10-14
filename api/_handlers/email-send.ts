@@ -1,6 +1,22 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { verifyAuth } from '../_auth.js';
 
+const emailSendRateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+function checkEmailSendRateLimit(key: string, maxPerMinute = 20): boolean {
+  const now = Date.now();
+  const entry = emailSendRateLimitMap.get(key);
+  if (!entry || now > entry.resetAt) {
+    emailSendRateLimitMap.set(key, { count: 1, resetAt: now + 60_000 });
+    return true;
+  }
+  if (entry.count >= maxPerMinute) {
+    return false;
+  }
+  entry.count += 1;
+  return true;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -24,6 +40,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const authUser = await verifyAuth(req);
     if (!authUser) {
       return res.status(401).json({ error: 'Unauthorized: Authentication required to send emails' });
+    }
+
+    const clientIp = (
+      (req.headers['x-vercel-forwarded-for'] as string) ||
+      (req.headers['x-real-ip'] as string) ||
+      (req.headers['x-forwarded-for'] as string)?.split(',')[0] ||
+      req.socket?.remoteAddress ||
+      'unknown'
+    ).trim();
+    const rateKey = authUser.id || clientIp;
+    if (!checkEmailSendRateLimit(rateKey, 20) || !checkEmailSendRateLimit(`ip:${clientIp}`, 20)) {
+      return res.status(429).json({ error: 'Too many email requests. Maximum 20 emails per minute.' });
     }
 
     const effectiveApiKey = apiKey || process.env.RESEND_API_KEY;

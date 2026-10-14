@@ -1,6 +1,15 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { verifyAuth } from '../_auth.js';
 
+function escapeHtml(str: any): string {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -27,12 +36,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Missing title or recipients' });
     }
 
+    if (meetingLink && typeof meetingLink === 'string' && !meetingLink.startsWith('https://') && !meetingLink.startsWith('http://')) {
+      return res.status(400).json({ error: 'Invalid meetingLink: must start with https:// or http://' });
+    }
+
     const host = senderName || 'Carlo Vescio';
-    const recipientList = Array.isArray(recipients) ? recipients : [recipients];
+    const rawRecipientList = Array.isArray(recipients) ? recipients : [recipients];
+    const recipientList = rawRecipientList.slice(0, 25);
     const recipientEmailStr = recipientList.join(',');
     const primaryTo = recipientList[0] || recipientEmailStr;
     const isDe = !language || language === 'de';
     const isCall = type !== 'meeting';
+
+    const safeMeetingLink =
+      typeof meetingLink === 'string' && (meetingLink.startsWith('https://') || meetingLink.startsWith('http://'))
+        ? escapeHtml(meetingLink)
+        : '';
 
     const emailSubject = isDe
       ? (isCall ? `📹 Einladung zum Live-Videocall | Kreativ Desk OS` : `📅 Einladung zum Termin | Kreativ Desk OS`)
@@ -68,17 +87,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (resendKey) {
       try {
+        const escapedHost = escapeHtml(host);
+        const escapedTitle = escapeHtml(title);
+        const escapedDate = escapeHtml(date);
+        const escapedTime = escapeHtml(time);
+        const escapedDescription = description ? escapeHtml(description) : '';
+
         const formattedHtml = `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
             <h2 style="color: #0f172a; margin-top: 0;">${emailSubject}</h2>
             <p style="color: #334155; font-size: 15px; line-height: 1.6;">
-              ${host} lädt dich zu einem ${isCall ? 'Live-Videocall' : 'Termin'} auf Kreativ Desk OS ein.
+              ${escapedHost} lädt dich zu einem ${isCall ? 'Live-Videocall' : 'Termin'} auf Kreativ Desk OS ein.
             </p>
             <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin: 20px 0; border: 1px solid #e2e8f0;">
-              <p style="margin: 4px 0; color: #0f172a; font-size: 16px; font-weight: bold;">${title}</p>
-              <p style="margin: 4px 0; color: #475569; font-size: 14px;">📅 ${date} um ${time} Uhr</p>
-              ${description ? `<p style="margin: 4px 0; color: #475569; font-size: 14px;">📝 ${description}</p>` : ''}
-              ${meetingLink ? `<p style="margin: 12px 0 0 0;"><a href="${meetingLink}" style="display: inline-block; padding: 10px 20px; background: #0ea5e9; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold;">Zum Meeting beitreten</a></p>` : ''}
+              <p style="margin: 4px 0; color: #0f172a; font-size: 16px; font-weight: bold;">${escapedTitle}</p>
+              <p style="margin: 4px 0; color: #475569; font-size: 14px;">📅 ${escapedDate} um ${escapedTime} Uhr</p>
+              ${escapedDescription ? `<p style="margin: 4px 0; color: #475569; font-size: 14px;">📝 ${escapedDescription}</p>` : ''}
+              ${safeMeetingLink ? `<p style="margin: 12px 0 0 0;"><a href="${safeMeetingLink}" style="display: inline-block; padding: 10px 20px; background: #0ea5e9; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold;">Zum Meeting beitreten</a></p>` : ''}
             </div>
             <p style="color: #64748b; font-size: 13px;">Kein Login oder Download nötig. Einfach Link anklicken und beitreten.</p>
             <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />

@@ -624,6 +624,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [currentUser?.id]);
 
+  // SESSION INACTIVITY TIMEOUT ENFORCEMENT
+  useEffect(() => {
+    const compId = currentUser?.companyId || currentUser?.company_id || currentUser?.id;
+    const isDemo = currentUser?.id === 'demo-user-id' || compId === 'demo-company';
+    if (!currentUser || !compId || isDemo) return;
+
+    const getTimeoutMinutes = (): number => {
+      const raw = safeStorage.getItem<any>(`company_profile_${compId}`, null);
+      let parsed = raw;
+      if (typeof raw === 'string') {
+        try { parsed = JSON.parse(raw); } catch (_) {}
+      }
+      const val = Number(parsed?.sessionTimeout);
+      return Number.isFinite(val) && val > 0 ? val : 0;
+    };
+
+    const timeoutMinutes = getTimeoutMinutes();
+    if (timeoutMinutes <= 0) return;
+
+    const timeoutMs = timeoutMinutes * 60 * 1000;
+    let lastActivity = Date.now();
+    let lastThrottle = 0;
+
+    const handleActivity = () => {
+      const now = Date.now();
+      if (now - lastThrottle > 5000) {
+        lastActivity = now;
+        lastThrottle = now;
+      }
+    };
+
+    const events = ['mousemove', 'keydown', 'click', 'touchstart'] as const;
+    events.forEach(ev => window.addEventListener(ev, handleActivity, { passive: true }));
+
+    const interval = setInterval(() => {
+      const currentTimeoutMin = getTimeoutMinutes();
+      const effectiveMs = currentTimeoutMin > 0 ? currentTimeoutMin * 60 * 1000 : timeoutMs;
+      if (currentTimeoutMin > 0 && Date.now() - lastActivity >= effectiveMs) {
+        logoutRef.current?.();
+      }
+    }, 30000);
+
+    return () => {
+      events.forEach(ev => window.removeEventListener(ev, handleActivity));
+      clearInterval(interval);
+    };
+  }, [currentUser?.id, currentUser?.companyId, currentUser?.company_id]);
+
   const updateCurrentUser = (updates: Partial<AppUser>) => {
     setCurrentUser(prev => prev ? { ...prev, ...updates, company_id: updates.companyId || updates.company_id || prev.company_id || prev.companyId } : null);
   };
@@ -637,12 +685,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     if (currentUser?.id) {
+      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const deviceTypeKey = isMobileDevice ? 'active_mobile_session_id' : 'active_desktop_session_id';
+      const localSessionId =
+        safeStorage.getString(`kreativ_session_id_${deviceTypeKey}_${currentUser.id}`) ||
+        localStorage.getItem('kreativ_device_session_id');
       safeStorage.removeItem(`kreativ_session_id_active_desktop_session_id_${currentUser.id}`);
       safeStorage.removeItem(`kreativ_session_id_active_mobile_session_id_${currentUser.id}`);
+      safeStorage.removeItem('kreativ_device_session_id');
       try {
-        const isMobileDevice = /Android|webOS|iPhone|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        const deviceTypeKey = isMobileDevice ? 'active_mobile_session_id' : 'active_desktop_session_id';
-        await (supabase.from('profiles') as any).update({ [deviceTypeKey]: null }).eq('id', currentUser.id);
+        if (localSessionId) {
+          await (supabase.from('profiles') as any)
+            .update({ [deviceTypeKey]: null })
+            .eq('id', currentUser.id)
+            .eq(deviceTypeKey, localSessionId);
+        }
       } catch (_) {}
     }
     const tenantCacheKeys = [

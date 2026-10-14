@@ -49,8 +49,31 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ error: 'Kein aktives Stripe-Kundenkonto gefunden. Bitte wähle zuerst ein Abo aus.' });
     }
 
-    const domainURL = req.headers.origin || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://www.kreativdesk.ch'));
-    const validReturnUrl = typeof returnUrl === 'string' && (returnUrl.startsWith('https://') || returnUrl.startsWith('http://'))
+    const rawOrigin = typeof req.headers.origin === 'string' ? req.headers.origin : '';
+    const isTrustedRedirectUrl = (urlStr?: string): boolean => {
+      if (!urlStr || typeof urlStr !== 'string') return false;
+      try {
+        const parsed = new URL(urlStr);
+        if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
+        const host = parsed.hostname.toLowerCase();
+        return (
+          host === 'kreativdesk.ch' ||
+          host === 'www.kreativdesk.ch' ||
+          host.endsWith('.kreativdesk.ch') ||
+          host.endsWith('.vercel.app') ||
+          host === 'localhost' ||
+          host === '127.0.0.1'
+        );
+      } catch {
+        return false;
+      }
+    };
+
+    const fallbackOrigin = process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://www.kreativdesk.ch');
+    const domainURL = isTrustedRedirectUrl(rawOrigin) ? rawOrigin.replace(/\/+$/, '') : fallbackOrigin;
+    const validReturnUrl = isTrustedRedirectUrl(returnUrl)
       ? returnUrl
       : `${domainURL}/app`;
 

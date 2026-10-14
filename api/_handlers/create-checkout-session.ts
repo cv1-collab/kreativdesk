@@ -43,6 +43,26 @@ export default async function handler(req: any, res: any) {
       'price_1TdyU4QTfAtOGrggIvnyXe2j': { name: 'Pro', seats: 1, unitAmount: 106800, interval: 'year' },
       'price_1TdyaEQTfAtOGrggpbWcVles': { name: 'Expert', seats: 3, unitAmount: 29000, interval: 'month' },
       'price_1TdyaxQTfAtOGrggbeJBPDFY': { name: 'Expert', seats: 3, unitAmount: 288000, interval: 'year' },
+      // Current Monthly Price IDs
+      'price_1UJ7w2RwN4c1cHbcI2cdB5qI': { name: 'Starter', seats: 1, unitAmount: 5900, interval: 'month' },
+      'price_1UJ7w3RwN4c1cHbcK8m3L9pQ': { name: 'Pro', seats: 1, unitAmount: 10900, interval: 'month' },
+      'price_1UJ7w3RwN4c1cHbcW1d9V3sT': { name: 'Team Starter', seats: 3, unitAmount: 29000, interval: 'month' },
+      'price_1UJ7w4RwN4c1cHbcZ6v2N8yR': { name: 'Expert', seats: 3, unitAmount: 29000, interval: 'month' },
+      // Current Yearly Price IDs
+      'price_1TdyDPRwN4c1cHbc92bM5G2v': { name: 'Starter', seats: 1, unitAmount: 58800, interval: 'year' },
+      'price_1TdyEDRwN4c1cHbcK8jL3P1x': { name: 'Pro', seats: 1, unitAmount: 106800, interval: 'year' },
+      'price_1TdyEWRwN4c1cHbcQ4wE6R8t': { name: 'Team Starter', seats: 3, unitAmount: 288000, interval: 'year' },
+      'price_1UJ7w4RwN4c1cHbcM4p7X1kB': { name: 'Expert', seats: 3, unitAmount: 288000, interval: 'year' },
+      // Legacy Price IDs
+      'price_1TC00JRwN4c1cHbcL61aR7N6': { name: 'Starter', seats: 1, unitAmount: 5900, interval: 'month' },
+      'price_1TC00cRwN4c1cHbcE2f3W1aP': { name: 'Starter', seats: 1, unitAmount: 58800, interval: 'year' },
+      'price_1TC00uRwN4c1cHbcW0s7T2xM': { name: 'Pro', seats: 1, unitAmount: 10900, interval: 'month' },
+      'price_1TC01BRwN4c1cHbcX8v4K9yQ': { name: 'Pro', seats: 1, unitAmount: 106800, interval: 'year' },
+      'price_1TC01SRwN4c1cHbcZ1m5N3pL': { name: 'Enterprise', seats: 1, unitAmount: 29000, interval: 'month' },
+      'price_1TC01jRwN4c1cHbcB7c2D4fG': { name: 'Enterprise', seats: 1, unitAmount: 288000, interval: 'year' },
+      'price_1TAMt9RwN4c1cHbc92bM5G2v': { name: 'Team Starter', seats: 3, unitAmount: 29000, interval: 'month' },
+      'price_1TAMtdRwN4c1cHbcK8jL3P1x': { name: 'Studio OS', seats: 10, unitAmount: 59000, interval: 'month' },
+      'price_1TAMtxRwN4c1cHbcQ4wE6R8t': { name: 'Agency OS', seats: 30, unitAmount: 129000, interval: 'month' },
     };
 
     const resolvedTier = PRICING_MATRIX[priceId];
@@ -53,7 +73,30 @@ export default async function handler(req: any, res: any) {
     const resolvedPlan = resolvedTier.name;
     const resolvedSeats = resolvedTier.seats;
 
-    const domainURL = req.headers.origin || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://www.kreativdesk.ch'));
+    const rawOrigin = typeof req.headers.origin === 'string' ? req.headers.origin : '';
+    const isTrustedOrigin = (urlStr?: string): boolean => {
+      if (!urlStr || typeof urlStr !== 'string') return false;
+      try {
+        const parsed = new URL(urlStr);
+        if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
+        const host = parsed.hostname.toLowerCase();
+        return (
+          host === 'kreativdesk.ch' ||
+          host === 'www.kreativdesk.ch' ||
+          host.endsWith('.kreativdesk.ch') ||
+          host.endsWith('.vercel.app') ||
+          host === 'localhost' ||
+          host === '127.0.0.1'
+        );
+      } catch {
+        return false;
+      }
+    };
+
+    const fallbackOrigin = process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://www.kreativdesk.ch');
+    const domainURL = isTrustedOrigin(rawOrigin) ? rawOrigin.replace(/\/+$/, '') : fallbackOrigin;
 
     const sessionMetadata = {
       supabaseUID: uid,

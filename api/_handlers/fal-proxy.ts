@@ -10,7 +10,14 @@ export default async function handler(req: any, res: any) {
   try {
     const parsedUrl = new URL(targetUrl);
     const host = parsedUrl.hostname.toLowerCase();
-    if (!host.endsWith('fal.run') && !host.endsWith('fal.ai') && !host.endsWith('fal.media')) {
+    const ALLOWED_EXACT_HOSTS = ['fal.run', 'queue.fal.run', 'fal.ai', 'fal.media', 'rest.alpha.fal.ai'];
+    const isAllowedHost =
+      parsedUrl.protocol === 'https:' &&
+      (ALLOWED_EXACT_HOSTS.includes(host) ||
+       host.endsWith('.fal.run') ||
+       host.endsWith('.fal.ai') ||
+       host.endsWith('.fal.media'));
+    if (!isAllowedHost) {
       return res.status(403).json({ error: 'Forbidden target URL' });
     }
   } catch (urlErr) {

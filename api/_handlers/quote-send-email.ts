@@ -31,12 +31,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+    const clientIp = (
+      (req.headers['x-vercel-forwarded-for'] as string) ||
+      (req.headers['x-real-ip'] as string) ||
+      (req.headers['x-forwarded-for'] as string)?.split(',')[0] ||
+      req.socket?.remoteAddress ||
+      'unknown'
+    ).trim();
     if (!checkEmailRateLimit(clientIp, 5)) {
       return res.status(429).json({ error: 'Too many email requests. Please wait a minute.' });
     }
 
-    const { recipientEmail, quoteData, proposalId } = req.body || {};
+    const { recipientEmail, quoteData, proposalId, shareToken } = req.body || {};
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!recipientEmail || typeof recipientEmail !== 'string' || !emailRegex.test(recipientEmail.trim()) || !quoteData) {
@@ -45,26 +51,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Verify caller is either authenticated or referencing an existing proposal
     const user = await verifyAuth(req);
+    let verifiedProp: any = null;
     if (!user) {
-      const isDemo = typeof proposalId === 'string' && (proposalId.startsWith('demo') || proposalId.startsWith('prop_'));
-      if (proposalId && !isDemo) {
+      const isDemo = typeof proposalId === 'string' && proposalId.startsWith('demo');
+      if (!isDemo) {
+        if (!proposalId || typeof proposalId !== 'string') {
+          return res.status(401).json({ error: 'Unauthorized: Missing proposal reference' });
+        }
         const { data: prop } = await supabaseAdmin
           .from('smart_proposals')
-          .select('id')
+          .select('id, title, base_price, accepted_by, status, share_token')
           .eq('id', proposalId)
           .maybeSingle();
         if (!prop) {
           return res.status(403).json({ error: 'Forbidden: Invalid proposal reference' });
         }
-      } else if (!proposalId && !quoteData?.quoteNumber) {
-        return res.status(401).json({ error: 'Unauthorized: Missing proposal reference' });
+        if (shareToken && prop.share_token && prop.share_token !== shareToken) {
+          return res.status(403).json({ error: 'Forbidden: Invalid share token' });
+        }
+        verifiedProp = prop;
       }
     }
 
     const cleanRecipientEmail = recipientEmail.trim();
-    const cleanQuoteNumber = String(quoteData.quoteNumber || 'Angebot').replace(/[^\w-]/g, '');
-    const cleanCustomerName = String(quoteData.customer?.name || '').replace(/[<>&"]/g, '');
-    const cleanTotal = Number(quoteData.totalCHF) || 0;
+    const authoritativeQuoteName = verifiedProp?.title || quoteData.quoteNumber || 'Angebot';
+    const cleanQuoteNumber = String(quoteData.quoteNumber || authoritativeQuoteName).replace(/[^\w-]/g, '');
+    const cleanCustomerName = String(verifiedProp?.accepted_by?.name || quoteData.customer?.name || '').replace(/[<>&"]/g, '');
+    const cleanTotal = verifiedProp
+      ? Number(verifiedProp.accepted_by?.finalPrice || verifiedProp.base_price || quoteData.totalCHF || 0)
+      : (Number(quoteData.totalCHF) || 0);
 
     const resendKey = process.env.RESEND_API_KEY;
     const fromEmail = process.env.RESEND_FROM_EMAIL || 'Kreativ Desk <onboarding@resend.dev>';

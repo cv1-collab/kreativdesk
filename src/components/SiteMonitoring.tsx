@@ -632,8 +632,16 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
                          <iframe src={activeProject.cam1Url} className="absolute inset-0 w-full h-full border-none opacity-50 pointer-events-none" title="AI Feed" />
                        )}
                        
-                       <div className="absolute top-1/4 left-1/3 w-16 h-16 md:w-20 md:h-20 border-2 border-red-500 rounded-full z-20 animate-pulse"></div>
-                       <div className="absolute top-1/4 left-1/3 -translate-y-8 bg-red-500 text-white text-[9px] md:text-[10px] font-bold px-2 py-0.5 rounded z-20">No helmet detected</div>
+                       {currentProjectId === 'demo-1' ? (
+                         <>
+                           <div className="absolute top-1/4 left-1/3 w-16 h-16 md:w-20 md:h-20 border-2 border-red-500 rounded-full z-20 animate-pulse"></div>
+                           <div className="absolute top-1/4 left-1/3 -translate-y-8 bg-red-500 text-white text-[9px] md:text-[10px] font-bold px-2 py-0.5 rounded z-20">No helmet detected</div>
+                         </>
+                       ) : (
+                         <div className="absolute top-3 left-3 bg-emerald-500/90 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg z-20 flex items-center gap-1.5 shadow-md">
+                           <CheckCircle2 size={12} /> KI-Sicherheitsanalyse bereit
+                         </div>
+                       )}
                        
                        <div className="absolute bottom-2 left-2 md:bottom-4 md:left-4 z-20 flex items-center gap-2">
                          <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-emerald-500 animate-pulse"></div>
@@ -642,13 +650,25 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
                      </div>
                      
                      <div className="flex flex-col justify-center space-y-4">
-                       <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
-                         <h4 className="font-bold text-red-500 text-sm mb-1">{t('critical_safety_violation')}</h4>
-                         <p className="text-xs text-text-primary">{t('ai_safety_desc')}</p>
-                       </div>
-                       <button onClick={handleEscalateToDefects} className="w-full py-3 bg-background border border-border text-text-primary rounded-lg font-bold text-sm hover:bg-white/5 transition-colors flex items-center justify-center gap-2 shadow-sm">
-                         {t('escalate_as_ticket')} <ArrowRightLeft size={16} />
-                       </button>
+                       {currentProjectId === 'demo-1' ? (
+                         <>
+                           <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+                             <h4 className="font-bold text-red-500 text-sm mb-1">{t('critical_safety_violation')}</h4>
+                             <p className="text-xs text-text-primary">{t('ai_safety_desc')}</p>
+                           </div>
+                           <button onClick={handleEscalateToDefects} className="w-full py-3 bg-background border border-border text-text-primary rounded-lg font-bold text-sm hover:bg-white/5 transition-colors flex items-center justify-center gap-2 shadow-sm">
+                             {t('escalate_as_ticket')} <ArrowRightLeft size={16} />
+                           </button>
+                         </>
+                       ) : (
+                         <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-start gap-3">
+                           <CheckCircle2 size={18} className="text-emerald-400 shrink-0 mt-0.5" />
+                           <div>
+                             <h4 className="font-bold text-emerald-400 text-sm mb-1">KI-Sicherheitsanalyse bereit</h4>
+                             <p className="text-xs text-text-primary">Live-Kamerafeed aktiv. Aktuell sind keine Sicherheitsverstösse gemeldet.</p>
+                           </div>
+                         </div>
+                       )}
 
                        <div className="p-3 bg-background/50 border border-border/50 rounded-xl space-y-1">
                          <div className="text-[11px] font-bold text-text-muted flex items-center gap-1.5">
@@ -794,26 +814,38 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
                     </h3>
                     <p className="text-sm text-text-muted mb-6">{t('access_desc')}</p>
                     
-                    <div className="space-y-3 md:space-y-4">
+                    {currentProjectId === 'demo-1' ? (
+                      <div className="space-y-3 md:space-y-4">
+                        <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-start gap-3">
+                          <CheckCircle2 size={20} className="text-emerald-400 shrink-0 mt-0.5" />
+                          <div>
+                            <h4 className="text-sm font-bold text-emerald-400">{t('invoice_verified')}</h4>
+                            <p className="text-xs text-text-primary mt-1 leading-relaxed">
+                              {t('rfid_match_desc')}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-3">
+                          <FileWarning size={20} className="text-red-500 shrink-0 mt-0.5" />
+                          <div>
+                            <h4 className="text-sm font-bold text-red-500">{t('discrepancy_detected')}</h4>
+                            <p className="text-xs text-text-primary mt-1 leading-relaxed">
+                              {t('rfid_mismatch_desc')}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
                       <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-start gap-3">
                         <CheckCircle2 size={20} className="text-emerald-400 shrink-0 mt-0.5" />
                         <div>
-                          <h4 className="text-sm font-bold text-emerald-400">{t('invoice_verified')}</h4>
+                          <h4 className="text-sm font-bold text-emerald-400">Keine RFID-Abweichungen gemeldet</h4>
                           <p className="text-xs text-text-primary mt-1 leading-relaxed">
-                            {t('rfid_match_desc')}
+                            Zutritts- und Zeiterfassungsprotokoll ist synchronisiert.
                           </p>
                         </div>
                       </div>
-                      <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-3">
-                        <FileWarning size={20} className="text-red-500 shrink-0 mt-0.5" />
-                        <div>
-                          <h4 className="text-sm font-bold text-red-500">{t('discrepancy_detected')}</h4>
-                          <p className="text-xs text-text-primary mt-1 leading-relaxed">
-                            {t('rfid_mismatch_desc')}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+                    )}
 
                     <div className="mt-6 pt-6 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
                       <p className="text-sm text-text-muted">

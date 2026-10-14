@@ -49,7 +49,13 @@ export default async function handler(req: any, res: any) {
 
     // Strict guard for unauthenticated public requests (Landing Page FAQ / Business Card OCR only)
     if (!user) {
-      const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+      const clientIp = (
+        (req.headers['x-vercel-forwarded-for'] as string) ||
+        (req.headers['x-real-ip'] as string) ||
+        (req.headers['x-forwarded-for'] as string)?.split(',')[0] ||
+        req.socket?.remoteAddress ||
+        'unknown'
+      ).trim();
       if (!checkPublicRateLimit(clientIp, 10)) {
         return res.status(429).json({ error: 'Too many requests. Please try again in a minute.' });
       }

@@ -928,21 +928,34 @@ export default function MeetChat() {
       })
       .on('broadcast', { event: 'meet_wb_stroke' }, ({ payload }) => {
         const canvas = canvasRef.current;
-        if (!canvas || !payload) return;
+        if (!payload) return;
+        const w = canvas?.width || 800;
+        const h = canvas?.height || 600;
+        const pt0 = { x: (payload.x0 || 0) * w, y: (payload.y0 || 0) * h };
+        const pt1 = { x: (payload.x1 || 0) * w, y: (payload.y1 || 0) * h };
+        wbStrokesRef.current.push({
+          points: [pt0, pt1],
+          color: payload.color || '#3b82f6',
+          size: payload.width || 3,
+          isEraser: Boolean(payload.isEraser)
+        });
+        if (!canvas) return;
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
         ctx.save();
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
-        ctx.strokeStyle = payload.color || '#3b82f6';
+        ctx.globalCompositeOperation = payload.isEraser ? 'destination-out' : 'source-over';
+        ctx.strokeStyle = payload.isEraser ? '#18181b' : (payload.color || '#3b82f6');
         ctx.lineWidth = payload.width || 3;
         ctx.beginPath();
-        ctx.moveTo((payload.x0 || 0) * canvas.width, (payload.y0 || 0) * canvas.height);
-        ctx.lineTo((payload.x1 || 0) * canvas.width, (payload.y1 || 0) * canvas.height);
+        ctx.moveTo(pt0.x, pt0.y);
+        ctx.lineTo(pt1.x, pt1.y);
         ctx.stroke();
         ctx.restore();
       })
       .on('broadcast', { event: 'meet_wb_clear' }, () => {
+        wbStrokesRef.current = [];
         const canvas = canvasRef.current;
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
@@ -1297,6 +1310,8 @@ export default function MeetChat() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [strokeColor, setStrokeColor] = useState('#3b82f6');
   const [strokeWidth, setStrokeWidth] = useState(3);
+  const [isEraser, setIsEraser] = useState(false);
+  const wbStrokesRef = useRef<Array<{ points: { x: number; y: number }[]; color: string; size: number; isEraser?: boolean }>>([]);
 
   useEffect(() => {
     if (activeView === 'whiteboard' && canvasRef.current && canvasContainerRef.current) {
@@ -1305,7 +1320,26 @@ export default function MeetChat() {
       canvas.width = container.clientWidth;
       canvas.height = container.clientHeight;
       const ctx = canvas.getContext('2d');
-      if (ctx) { ctx.lineCap = 'round'; ctx.lineJoin = 'round'; }
+      if (ctx) {
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        for (const stroke of wbStrokesRef.current) {
+          if (!stroke.points || stroke.points.length < 2) continue;
+          ctx.save();
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.globalCompositeOperation = stroke.isEraser ? 'destination-out' : 'source-over';
+          ctx.strokeStyle = stroke.isEraser ? '#18181b' : stroke.color;
+          ctx.lineWidth = stroke.size;
+          ctx.beginPath();
+          ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+          for (let i = 1; i < stroke.points.length; i++) {
+            ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+          }
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
     }
   }, [activeView]);
 
@@ -1320,6 +1354,12 @@ export default function MeetChat() {
     ctx.beginPath();
     ctx.moveTo(x, y);
     lastDrawPtRef.current = { x, y };
+    wbStrokesRef.current.push({
+      points: [{ x, y }],
+      color: strokeColor,
+      size: strokeWidth,
+      isEraser
+    });
     setIsDrawing(true);
   };
 
@@ -1332,10 +1372,24 @@ export default function MeetChat() {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    ctx.lineTo(x, y);
-    ctx.strokeStyle = strokeColor;
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.globalCompositeOperation = isEraser ? 'destination-out' : 'source-over';
+    ctx.strokeStyle = isEraser ? '#18181b' : strokeColor;
     ctx.lineWidth = strokeWidth;
+    ctx.beginPath();
+    if (lastDrawPtRef.current) {
+      ctx.moveTo(lastDrawPtRef.current.x, lastDrawPtRef.current.y);
+    }
+    ctx.lineTo(x, y);
     ctx.stroke();
+    ctx.restore();
+
+    const currentStroke = wbStrokesRef.current[wbStrokesRef.current.length - 1];
+    if (currentStroke) {
+      currentStroke.points.push({ x, y });
+    }
 
     if (lastDrawPtRef.current && chatChannelRef.current && canvas.width > 0 && canvas.height > 0 && !isDemo) {
       chatChannelRef.current.send({
@@ -1346,8 +1400,9 @@ export default function MeetChat() {
           y0: lastDrawPtRef.current.y / canvas.height,
           x1: x / canvas.width,
           y1: y / canvas.height,
-          color: strokeColor,
-          width: strokeWidth
+          color: isEraser ? '#18181b' : strokeColor,
+          width: strokeWidth,
+          isEraser
         }
       }).catch(() => {});
     }
@@ -1359,6 +1414,7 @@ export default function MeetChat() {
     lastDrawPtRef.current = null;
   };
   const clearCanvas = () => {
+    wbStrokesRef.current = [];
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -1695,6 +1751,9 @@ export default function MeetChat() {
                             }}
                           />
                         )}
+                        {bgMode === 'blur' && (
+                          <div className="absolute inset-0 backdrop-blur-xl bg-zinc-900/40 pointer-events-none" />
+                        )}
                         <video
                           ref={soloLocalVideoRef}
                           autoPlay
@@ -1706,7 +1765,7 @@ export default function MeetChat() {
                             (bgMode === 'preset' || bgMode === 'custom' || bgMode === 'screensaver') && "opacity-90",
                             !isCamOn && "opacity-0 pointer-events-none"
                           )}
-                          style={bgMode === 'blur' ? { filter: `blur(${bgBlurAmount})` } : undefined}
+                          style={bgMode === 'blur' ? { maskImage: 'radial-gradient(ellipse 65% 75% at 50% 50%, black 60%, transparent 100%)', WebkitMaskImage: 'radial-gradient(ellipse 65% 75% at 50% 50%, black 60%, transparent 100%)' } : undefined}
                         />
 
                         {/* Fallback wenn Kamera aus ist */}
@@ -1756,6 +1815,9 @@ export default function MeetChat() {
                           }}
                         />
                       )}
+                      {bgMode === 'blur' && (
+                        <div className="absolute inset-0 backdrop-blur-xl bg-zinc-900/40 pointer-events-none" />
+                      )}
                       <video
                         ref={localVideoRef}
                         autoPlay
@@ -1767,7 +1829,7 @@ export default function MeetChat() {
                           (bgMode === 'preset' || bgMode === 'custom' || bgMode === 'screensaver') && "opacity-90",
                           !isCamOn && "opacity-0 pointer-events-none"
                         )}
-                        style={bgMode === 'blur' ? { filter: `blur(${bgBlurAmount})` } : undefined}
+                        style={bgMode === 'blur' ? { maskImage: 'radial-gradient(ellipse 65% 75% at 50% 50%, black 60%, transparent 100%)', WebkitMaskImage: 'radial-gradient(ellipse 65% 75% at 50% 50%, black 60%, transparent 100%)' } : undefined}
                       />
 
                       {/* Fallback wenn Kamera aus ist */}
@@ -1861,10 +1923,10 @@ export default function MeetChat() {
                 <div className="absolute top-4 left-4 z-30 bg-background/80 backdrop-blur-md border border-border rounded-lg p-2 flex flex-col gap-2 shadow-xl">
                   <div className="flex flex-col gap-2 border-b border-border pb-2">
                     {['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#71717a'].map(color => (
-                      <button key={color} onClick={() => { setStrokeColor(color); setStrokeWidth(3); }} className={cn("w-6 h-6 rounded-full border-2 transition-transform hover:scale-110", strokeColor === color && strokeWidth !== 20 ? "border-text-primary scale-110" : "border-transparent")} style={{ backgroundColor: color }} />
+                      <button key={color} onClick={() => { setStrokeColor(color); setStrokeWidth(3); setIsEraser(false); }} className={cn("w-6 h-6 rounded-full border-2 transition-transform hover:scale-110", strokeColor === color && !isEraser ? "border-text-primary scale-110" : "border-transparent")} style={{ backgroundColor: color }} />
                     ))}
                   </div>
-                  <button onClick={() => { setStrokeColor('var(--color-surface)'); setStrokeWidth(20); }} className={cn("p-2 rounded-md transition-colors flex items-center justify-center", strokeWidth === 20 ? "bg-white/10 text-text-primary" : "text-text-muted hover:bg-white/5 hover:text-text-primary")}><Eraser size={18} /></button>
+                  <button onClick={() => { setIsEraser(true); setStrokeColor('#18181b'); setStrokeWidth(20); }} className={cn("p-2 rounded-md transition-colors flex items-center justify-center", isEraser ? "bg-white/10 text-text-primary" : "text-text-muted hover:bg-white/5 hover:text-text-primary")}><Eraser size={18} /></button>
                   <button onClick={clearCanvas} className="p-2 rounded-md text-text-muted hover:bg-red-500/10 hover:text-red-500 transition-colors flex items-center justify-center"><Trash2 size={18} /></button>
                 </div>
                 <canvas ref={canvasRef} onPointerDown={startDrawing} onPointerMove={draw} onPointerUp={stopDrawing} onPointerOut={stopDrawing} className="absolute inset-0 w-full h-full cursor-crosshair touch-none" />

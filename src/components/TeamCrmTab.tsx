@@ -229,7 +229,8 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         trade: u.trade || extraMeta.trade || fallback.trade || '',
         contactPersonRole: u.contact_person_role || extraMeta.contactPersonRole || fallback.contactPersonRole || '',
         paymentTerms: u.payment_terms || extraMeta.paymentTerms || fallback.paymentTerms || '30 Tage netto',
-        assignedProjectId: u.project_id || extraMeta.assignedProjectId || fallback.assignedProjectId || ''
+        assignedProjectId: u.project_id || extraMeta.assignedProjectId || fallback.assignedProjectId || '',
+        projectRoles: extraMeta.projectRoles || fallback.projectRoles || {}
       };
     });
 
@@ -309,7 +310,8 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
   });
 
   const [vcardSessionId] = useState(() => Math.random().toString(36).substring(2, 15));
-  const mobileUploadUrl = `${window.location.origin}/mobile-upload/vcard/${vcardSessionId}`;
+  const safeCompanyIdForQr = currentUser?.companyId || currentUser?.uid || '';
+  const mobileUploadUrl = `${window.location.origin}/mobile-upload/vcard/${vcardSessionId}${safeCompanyIdForQr ? `?companyId=${encodeURIComponent(safeCompanyIdForQr)}` : ''}`;
 
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [printSettings, setPrintSettings] = useState({ format: 'a4', orientation: 'portrait', scale: 0.85 });
@@ -349,7 +351,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
           .from('documents')
           .select('*')
           .eq('category', 'temp_receipt')
-          .eq('company_id', vcardSessionId)
+          .or(`folder_id.eq.${vcardSessionId},company_id.eq.${vcardSessionId}`)
           .order('created_at', { ascending: false })
           .limit(1);
 
@@ -361,7 +363,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         if (data && data.length > 0) {
           const rec = data[0];
           let parsed: any = null;
-          try { parsed = JSON.parse(rec.name || (rec as any).file_name || '{}'); } catch (e) {}
+          try { parsed = JSON.parse(rec.name || (rec as any).file_name || rec.url || (rec as any).file_url || '{}'); } catch (e) {}
           if (parsed && (parsed.firstName || parsed.company || parsed.email || parsed.lastName)) {
             setScannedContactData({
               firstName: parsed.firstName || '',
@@ -835,7 +837,29 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
       const finalRole = newContact.role || (isExt ? 'partner' : 'employee');
       const finalStatus = newContact.status || (isExt ? 'neu' : 'team');
 
+      let existingMeta: any = {};
+      if (newContact.id) {
+        if ((selectedContact as any)?.projectRoles) {
+          existingMeta.projectRoles = (selectedContact as any).projectRoles;
+        }
+        try {
+          const { data: existingRow } = await supabase
+            .from('company_users')
+            .select('notes')
+            .eq('id', newContact.id)
+            .maybeSingle();
+          if (existingRow?.notes && existingRow.notes.includes('__CRM_META__:')) {
+            const parts = existingRow.notes.split('__CRM_META__:');
+            if (parts[1]) {
+              const parsed = JSON.parse(parts[1]);
+              existingMeta = { ...parsed, ...existingMeta, projectRoles: { ...(parsed.projectRoles || {}), ...(existingMeta.projectRoles || {}) } };
+            }
+          }
+        } catch (_) {}
+      }
+
       const extraMeta = {
+        ...existingMeta,
         jobTitle: newContact.jobTitle || null,
         department: newContact.department || null,
         hourlyRate: newContact.hourlyRate || null,

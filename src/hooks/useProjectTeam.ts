@@ -111,9 +111,10 @@ export function useProjectTeam() {
             (cu.email && (m as any).user_email && cu.email.toLowerCase() === (m as any).user_email.toLowerCase())
           );
           if (!role && matchedUser) {
-            if (matchedUser.notes && matchedUser.notes.startsWith('__CRM_META__:')) {
+            if (matchedUser.notes && matchedUser.notes.includes('__CRM_META__:')) {
               try {
-                const meta = JSON.parse(matchedUser.notes.replace('__CRM_META__:', ''));
+                const parts = matchedUser.notes.split('__CRM_META__:');
+                const meta = JSON.parse(parts[1]);
                 if (meta.projectRoles && meta.projectRoles[m.project_id]) {
                   role = meta.projectRoles[m.project_id];
                 }
@@ -226,7 +227,7 @@ export function useProjectTeam() {
       let u: any = null;
       const { data: byId } = await supabase.from('company_users')
         .select('id, notes')
-        .eq('id', memberData.userId)
+        .or(`id.eq.${memberData.userId},user_id.eq.${memberData.userId}`)
         .maybeSingle();
       u = byId;
 
@@ -240,16 +241,20 @@ export function useProjectTeam() {
       }
 
       if (u) {
+        const rawNotes = u.notes || '';
+        const parts = rawNotes.split('__CRM_META__:');
+        const cleanText = (parts[0] || '').trim();
         let meta: any = {};
-        if (u.notes && u.notes.startsWith('__CRM_META__:')) {
+        if (parts[1]) {
           try {
-            meta = JSON.parse(u.notes.replace('__CRM_META__:', ''));
+            meta = JSON.parse(parts[1]);
           } catch (e) {}
         }
         if (!meta.projectRoles) meta.projectRoles = {};
         meta.projectRoles[projectId] = initialRole;
+        const updatedNotes = (cleanText ? `${cleanText}\n\n` : '') + `__CRM_META__:${JSON.stringify(meta)}`;
         await supabase.from('company_users')
-          .update({ notes: `__CRM_META__:${JSON.stringify(meta)}` })
+          .update({ notes: updatedNotes })
           .eq('id', u.id);
       }
     } catch (e) {}
@@ -283,7 +288,7 @@ export function useProjectTeam() {
       let u: any = null;
       const { data: byId } = await supabase.from('company_users')
         .select('id, notes')
-        .eq('id', userId)
+        .or(`id.eq.${userId},user_id.eq.${userId}`)
         .maybeSingle();
       u = byId;
 
@@ -301,16 +306,20 @@ export function useProjectTeam() {
       }
 
       if (u) {
+        const rawNotes = u.notes || '';
+        const parts = rawNotes.split('__CRM_META__:');
+        const cleanText = (parts[0] || '').trim();
         let meta: any = {};
-        if (u.notes && u.notes.startsWith('__CRM_META__:')) {
+        if (parts[1]) {
           try {
-            meta = JSON.parse(u.notes.replace('__CRM_META__:', ''));
+            meta = JSON.parse(parts[1]);
           } catch (e) {}
         }
         if (!meta.projectRoles) meta.projectRoles = {};
         meta.projectRoles[projectId] = newRole;
+        const updatedNotes = (cleanText ? `${cleanText}\n\n` : '') + `__CRM_META__:${JSON.stringify(meta)}`;
         await supabase.from('company_users')
-          .update({ notes: `__CRM_META__:${JSON.stringify(meta)}` })
+          .update({ notes: updatedNotes })
           .eq('id', u.id);
       }
     } catch (e) {

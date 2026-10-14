@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from './AuthContext';
 import { supabase } from '../lib/supabase';
 import { offboardProject } from '../services/projectService';
@@ -487,16 +487,21 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     await addTimeEntryInternal(entryData, safeCompanyId, currentUser.uid);
   };
 
+  const contextValue = useMemo(() => ({
+    projects, activeProjectId, companyUsers, projectMembers, timeEntries, defects,
+    setActiveProject: setActiveProjectId, addProject, removeProject, updateProject, renameProject, updateProjectStatus,
+    fetchCompanyUsers, fetchProjects, fetchProjectDetails, refreshAllData,
+    addCompanyUser, updateCompanyUser, removeCompanyUser, addProjectMember, updateProjectMemberRole, removeProjectMember,
+    addTimeEntry,
+    isDemoMode: false,
+    demoData: demoTemplates.construction
+  }), [
+    projects, activeProjectId, companyUsers, projectMembers, timeEntries, defects,
+    fetchCompanyUsers, fetchProjects, fetchProjectDetails, refreshAllData
+  ]);
+
   return (
-    <ProjectContext.Provider value={{ 
-      projects, activeProjectId, companyUsers, projectMembers, timeEntries, defects, 
-      setActiveProject: setActiveProjectId, addProject, removeProject, updateProject, renameProject, updateProjectStatus, 
-      fetchCompanyUsers, fetchProjects, fetchProjectDetails, refreshAllData,
-      addCompanyUser, updateCompanyUser, removeCompanyUser, addProjectMember, updateProjectMemberRole, removeProjectMember, 
-      addTimeEntry,
-      isDemoMode: false,
-      demoData: demoTemplates.construction
-    }}>
+    <ProjectContext.Provider value={contextValue}>
       {children}
     </ProjectContext.Provider>
   );

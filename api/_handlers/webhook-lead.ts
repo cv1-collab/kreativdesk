@@ -12,9 +12,12 @@ function isSafeExternalUrl(urlStr: string): boolean {
       hostname === '0.0.0.0' ||
       hostname === '::1' ||
       hostname === '[::1]' ||
+      hostname.includes(':') ||
       hostname === '169.254.169.254' ||
       hostname.endsWith('.local') ||
       hostname.endsWith('.internal') ||
+      hostname.endsWith('.nip.io') ||
+      hostname.endsWith('.sslip.io') ||
       hostname.startsWith('10.') ||
       hostname.startsWith('192.168.') ||
       /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname)
@@ -41,14 +44,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { event = 'PROPOSAL_ACCEPTED', proposalId, companyId, acceptanceData, acceptedAt, webhookUrl, rawPayload, customHeaders, ...rest } = req.body || {};
+    const { event = 'PROPOSAL_ACCEPTED', proposalId, shareToken, companyId, acceptanceData, acceptedAt, webhookUrl, rawPayload, customHeaders, ...rest } = req.body || {};
     const user = await verifyAuth(req);
+
+    let verifiedProp: any = null;
+    if (!user) {
+      if (event !== 'PROPOSAL_ACCEPTED' || !proposalId || typeof proposalId !== 'string') {
+        return res.status(401).json({ error: 'Unauthorized: Valid proposal reference required' });
+      }
+      const { data: prop } = await supabaseAdmin
+        .from('smart_proposals')
+        .select('id, company_id, title, share_token')
+        .eq('id', proposalId)
+        .maybeSingle();
+      if (!prop) {
+        return res.status(403).json({ error: 'Forbidden: Invalid proposal reference' });
+      }
+      if (shareToken && prop.share_token && prop.share_token !== shareToken) {
+        return res.status(403).json({ error: 'Forbidden: Invalid share token' });
+      }
+      verifiedProp = prop;
+    }
 
     // Only allow client-supplied webhookUrl override when caller is an authenticated user
     let targetUrl: string | undefined = user && webhookUrl ? webhookUrl : undefined;
 
-    if (!targetUrl && (companyId || proposalId)) {
-      let resolvedCompanyId = companyId;
+    if (!targetUrl && (companyId || proposalId || verifiedProp)) {
+      let resolvedCompanyId = verifiedProp ? verifiedProp.company_id : companyId;
       if (!resolvedCompanyId && proposalId) {
         const { data: prop } = await supabaseAdmin
           .from('smart_proposals')
@@ -65,10 +87,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .maybeSingle();
         targetUrl = (comp as any)?.webhook_url;
 
-        // Ensure in-app notification is persisted via supabaseAdmin when client is unauthenticated
-        if (!user && event === 'PROPOSAL_ACCEPTED' && acceptanceData?.acceptedByName) {
+        // Ensure in-app notification is persisted via supabaseAdmin when client is unauthenticated and verifiedProp matched
+        if (!user && verifiedProp && event === 'PROPOSAL_ACCEPTED' && acceptanceData?.acceptedByName) {
           try {
-            const propTitle = rest.proposalTitle || 'Projekt';
+            const propTitle = verifiedProp.title || rest.proposalTitle || 'Projekt';
             const totalText = acceptanceData.finalTotalCHF
               ? `CHF ${Number(acceptanceData.finalTotalCHF).toLocaleString('de-CH')}`
               : 'Angenommen';
@@ -93,7 +115,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let forwarded = false;
     let upstreamStatus = 200;
     let upstreamStatusText = 'OK';
-    let upstreamBody = '';
 
     if (targetUrl && isSafeExternalUrl(targetUrl)) {
       try {
@@ -110,7 +131,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           : JSON.stringify({
               event,
               proposalId,
-              companyId,
+              companyId: verifiedProp ? verifiedProp.company_id : companyId,
               acceptanceData,
               ...rest,
               acceptedAt: acceptedAt || new Date().toISOString(),
@@ -125,7 +146,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         forwarded = whRes.ok;
         upstreamStatus = whRes.status;
         upstreamStatusText = whRes.statusText;
-        upstreamBody = (await whRes.text().catch(() => '')).slice(0, 500);
       } catch (fwdErr: any) {
         console.warn('Lead webhook forwarding failed:', fwdErr);
         upstreamStatus = 502;
@@ -138,7 +158,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       forwarded,
       status: upstreamStatus,
       statusText: upstreamStatusText,
-      responseBody: upstreamBody,
+      responseBody: undefined,
       event,
       proposalId,
       timestamp: new Date().toISOString()

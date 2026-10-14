@@ -22,6 +22,7 @@ import { checkIsSuperAdmin } from '../config/admins';
 import { syncCompanySeats } from '../services/userService';
 import { applyBrandColor, DEFAULT_BRAND_COLOR } from '../utils/brandColorManager';
 import { saveSystemConfigJSON, fetchSystemConfigJSON } from '../utils/configHelper';
+import { getBexioConfig, saveBexioConfig, testBexioConnection, loadBexioConfigFromCloud } from '../services/bexioService';
 import API from './API';
 import ModuleGuideButton from './ModuleGuideButton';
 import QRCode from 'react-qr-code';
@@ -498,6 +499,12 @@ export default function SettingsTab() {
 
       const safeCompanyId = compId || currentUser.uid;
 
+      try {
+        const bexioCfg = await loadBexioConfigFromCloud(safeCompanyId);
+        if (bexioCfg.apiToken) setBexioApiToken(bexioCfg.apiToken);
+        setBexioIntegration(Boolean(bexioCfg.enabled || bexioCfg.apiToken));
+      } catch (_) {}
+
       // 3. Echte belegte Lizenzen (Seats) ohne doppelte Zählung ermitteln (nur interne Teammitglieder, keine externen Handwerker/CRM-Kontakte)
       const actualSeats = await syncCompanySeats(safeCompanyId);
       setUsedSeats(actualSeats);
@@ -555,7 +562,7 @@ export default function SettingsTab() {
 
   // Helper zum direkten Speichern von Teil-Updates in Supabase documents
   const updateCompanyProfileConfig = async (updates: Record<string, any>) => {
-    const compId = currentUser?.companyId;
+    const compId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
     const ownerId = currentUser?.uid;
     if (!compId || !ownerId) return;
 
@@ -648,6 +655,32 @@ export default function SettingsTab() {
       };
 
       await updateCompanyProfileConfig(profileConfig);
+
+      // Sync webhookUrl to safeStorage so webhookNotifier.ts sees it
+      const cleanWhUrl = webhookUrl.trim();
+      safeStorage.setItem('interactv_webhook_url', cleanWhUrl);
+      try {
+        const existingWhs = safeStorage.getItem<any[]>(`kreativdesk_webhooks_${compId}`, []);
+        const filteredWhs = Array.isArray(existingWhs) ? existingWhs.filter((w: any) => w?.id !== 'wh_default') : [];
+        if (cleanWhUrl) {
+          filteredWhs.unshift({
+            id: 'wh_default',
+            name: 'B2B Lead & System Webhook',
+            url: cleanWhUrl,
+            events: ['lead.created', 'invoice.created', 'defect.created', 'project.created'],
+            active: true
+          });
+        }
+        safeStorage.setItem(`kreativdesk_webhooks_${compId}`, filteredWhs);
+      } catch (_) {}
+
+      // Save Bexio configuration
+      saveBexioConfig({
+        apiToken: bexioApiToken.trim(),
+        enabled: bexioIntegration,
+        qrIban: iban.trim() || undefined,
+        companyId: compId
+      });
 
       // Persist brand color across instance and storage
       applyBrandColor(primaryColor, true);
@@ -840,13 +873,46 @@ export default function SettingsTab() {
       const safeCompanyId = currentUser.companyId;
       if (!safeCompanyId) throw new Error("No companyId");
       
-      const exportData: any = { accountInfo: {}, projects: [], documents: [] };
+      const exportData: any = {
+        accountInfo: {
+          uid: currentUser.uid,
+          email: currentUser.email,
+          name: currentUser.name || currentUser.displayName,
+          role: currentUser.role,
+          companyId: safeCompanyId,
+          agencyName,
+          contactPerson,
+          phone,
+          website,
+          address,
+          zipCode,
+          city,
+          uidNumber,
+          vatNumber,
+          iban,
+          exportedAt: new Date().toISOString()
+        },
+        projects: [],
+        documents: [],
+        defects: [],
+        time_entries: []
+      };
 
-      const { data: projects } = await supabase.from('projects').select('*').eq('company_id', safeCompanyId);
+      const [
+        { data: projects },
+        { data: docs },
+        { data: defects },
+        { data: timeEntries }
+      ] = await Promise.all([
+        supabase.from('projects').select('*').eq('company_id', safeCompanyId),
+        supabase.from('documents').select('*').eq('company_id', safeCompanyId),
+        supabase.from('defects').select('*').eq('company_id', safeCompanyId),
+        supabase.from('time_entries').select('*').eq('company_id', safeCompanyId)
+      ]);
       exportData.projects = projects || [];
-
-      const { data: docs } = await supabase.from('documents').select('*').eq('company_id', safeCompanyId);
       exportData.documents = docs || [];
+      exportData.defects = defects || [];
+      exportData.time_entries = timeEntries || [];
 
       // 1. Initialize JSZip
       const zip = new JSZip();
@@ -1052,11 +1118,6 @@ export default function SettingsTab() {
                 <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">{t('bank_details')}</label>
                 <input type="text" value={iban} onChange={e => setIban(e.target.value)} placeholder="CH00 0000 0000 0000 0000 0" className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm focus:border-accent-ai outline-none text-text-primary font-mono transition-all shadow-inner" />
               </div>
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">B2B Lead Webhook URL</label>
-                <input type="url" value={webhookUrl} onChange={e => setWebhookUrl(e.target.value)} placeholder="https://make.com/hooks/..." className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm focus:border-accent-ai outline-none text-text-primary transition-all shadow-inner" />
-                <p className="text-[10px] text-text-muted mt-2">{t('webhook_desc')}</p>
-              </div>
               <div className="sm:col-span-2 mt-4 pt-4 border-t border-border/50">
                 <h4 className="text-sm font-bold text-text-primary mb-4 flex items-center gap-2">
                   <FileText size={16} className="text-accent-ai" /> Dokumente & AGB
@@ -1202,6 +1263,72 @@ export default function SettingsTab() {
                 </div>
               </div>
 
+              {/* BEXIO ERP INTEGRATION */}
+              <div className="sm:col-span-2 mt-4 pt-4 border-t border-border/50 relative">
+                {!hasFeature(currentUser, 'bexioIntegration') && (
+                  <div className="absolute inset-0 bg-background/50 backdrop-blur-[1px] z-10 flex items-center justify-center rounded-xl">
+                    <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('open-upgrade-modal'))} className="bg-surface px-4 py-2 rounded-lg border border-border shadow-lg flex items-center gap-2 text-sm font-bold text-text-primary hover:bg-white/5">
+                      <Lock size={16} className="text-accent-ai" /> Bexio ERP Integration freischalten
+                    </button>
+                  </div>
+                )}
+                <h4 className="text-sm font-bold text-text-primary mb-2 flex items-center gap-2">
+                  <Coins size={16} className="text-accent-ai" /> Bexio ERP Integration
+                </h4>
+                <p className="text-xs text-text-muted mb-4 leading-relaxed">
+                  Synchronisiere angenommene Offerten, Kontakte und Rechnungsentwürfe automatisch mit deinem Schweizer Bexio Buchhaltungskonto.
+                </p>
+                <div className="p-4 bg-background/30 rounded-xl border border-border/30 space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5">Bexio Personal Access Token (PAT)</label>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        type="password"
+                        value={bexioApiToken}
+                        onChange={e => setBexioApiToken(e.target.value)}
+                        placeholder="eyJhbGciOiJSUzI1NiIsInR5cCI6..."
+                        className="flex-1 bg-background border border-border/50 rounded-lg px-4 py-2.5 text-xs focus:border-accent-ai outline-none text-text-primary font-mono shadow-inner"
+                      />
+                      <button
+                        type="button"
+                        disabled={isTestingBexio || !bexioApiToken.trim()}
+                        onClick={async () => {
+                          const compId = currentUser?.companyId || currentUser?.uid || '';
+                          setIsTestingBexio(true);
+                          try {
+                            saveBexioConfig({ apiToken: bexioApiToken.trim(), enabled: Boolean(bexioApiToken.trim()) }, compId);
+                            const res = await testBexioConnection();
+                            if (res.success) {
+                              addToast(res.message || 'Bexio Verbindung erfolgreich!', 'success');
+                            } else {
+                              addToast(res.message || 'Bexio Verbindung fehlgeschlagen', 'error');
+                            }
+                          } catch (err: any) {
+                            addToast(err?.message || 'Bexio Test fehlgeschlagen', 'error');
+                          } finally {
+                            setIsTestingBexio(false);
+                          }
+                        }}
+                        className="px-4 py-2.5 bg-background border border-border hover:bg-white/5 text-text-primary rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-2 shrink-0 disabled:opacity-50 cursor-pointer"
+                      >
+                        {isTestingBexio ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Verbindung testen
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const compId = currentUser?.companyId || currentUser?.uid || '';
+                          saveBexioConfig({ apiToken: bexioApiToken.trim(), enabled: Boolean(bexioApiToken.trim()) }, compId);
+                          addToast(bexioApiToken.trim() ? 'Bexio Token gespeichert & aktiviert!' : 'Bexio Integration deaktiviert.', 'success');
+                        }}
+                        className="px-4 py-2.5 bg-accent-ai/10 hover:bg-accent-ai/20 text-accent-ai rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+                      >
+                        <Save size={14} /> Token speichern
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* FINANZEN & WÄHRUNG STANDARDS */}
               <div className="sm:col-span-2 mt-4 pt-4 border-t border-border/50">
                 <h4 className="text-sm font-bold text-text-primary mb-4 flex items-center gap-2">
@@ -1309,6 +1436,15 @@ export default function SettingsTab() {
                     setIs2FAEnabled(false);
                     safeStorage.setItem(`user_2fa_enabled_${currentUser?.uid || 'user'}`, 'false');
                     setShow2FASetup(false);
+                    setMfaFactorId(null);
+                    if (supabase?.auth?.mfa) {
+                      try {
+                        const { data: factors } = await supabase.auth.mfa.listFactors();
+                        for (const f of factors?.totp || []) {
+                          await supabase.auth.mfa.unenroll({ factorId: f.id });
+                        }
+                      } catch (_) {}
+                    }
                     addToast('2FA deaktiviert.', 'info');
                   } else {
                     const nextOpen = !show2FASetup;
@@ -1850,9 +1986,10 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
             setZipCode(parts[0] || '');
             setCity(parts.slice(1).join(' ') || '');
           }
-          if (loadedCu.notes && loadedCu.notes.startsWith('__CRM_META__:')) {
+          if (loadedCu.notes && loadedCu.notes.includes('__CRM_META__:')) {
             try {
-              const meta = JSON.parse(loadedCu.notes.replace('__CRM_META__:', ''));
+              const metaPart = loadedCu.notes.split('__CRM_META__:')[1];
+              const meta = JSON.parse(metaPart);
               if (meta.jobTitle) setJobTitle(meta.jobTitle);
               if (meta.department) setDepartment(meta.department);
               if (meta.personalBio) setPersonalBio(meta.personalBio);
@@ -1901,20 +2038,24 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
             .eq('email', currentUser.email)
             .maybeSingle();
 
+          const rawNotes = existingCu?.notes || '';
+          const parts = rawNotes.split('__CRM_META__:');
+          const cleanText = (parts[0] || '').trim();
           let meta: any = {};
-          if (existingCu?.notes && existingCu.notes.startsWith('__CRM_META__:')) {
-            try { meta = JSON.parse(existingCu.notes.replace('__CRM_META__:', '')); } catch (_) {}
+          if (parts[1]) {
+            try { meta = JSON.parse(parts[1]); } catch (_) {}
           }
           meta.jobTitle = trimmedJob;
           meta.department = trimmedDept;
           meta.personalBio = trimmedBio;
+          const updatedNotes = (cleanText ? `${cleanText}\n\n` : '') + `__CRM_META__:${JSON.stringify(meta)}`;
 
           await supabase.from('company_users').update({
             name: trimmedName,
             phone: trimmedPhone || null,
             street: trimmedStreet || null,
             zip_city: trimmedZipCity || null,
-            notes: `__CRM_META__:${JSON.stringify(meta)}`
+            notes: updatedNotes
           } as any).eq('email', currentUser.email);
         } catch (cuErr) {
           console.warn('company_users update handled:', cuErr);
@@ -2332,20 +2473,36 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
           <button 
             type="button"
             onClick={async () => {
-              const nextOpen = !show2FASetup;
-              setShow2FASetup(nextOpen);
-              if (nextOpen && !mfaFactorId && supabase?.auth?.mfa) {
-                try {
-                  const { data: enrollData } = await supabase.auth.mfa.enroll({
-                    factorType: 'totp',
-                    friendlyName: `KreativDesk-${Date.now()}`
-                  });
-                  if (enrollData?.id && enrollData?.totp?.secret) {
-                    setMfaFactorId(enrollData.id);
-                    setMfaSecretOverride(enrollData.totp.secret);
-                    if (enrollData.totp.uri) setMfaUriOverride(enrollData.totp.uri);
-                  }
-                } catch (_) {}
+              if (is2FAEnabled) {
+                setIs2FAEnabled(false);
+                safeStorage.setItem(`user_2fa_enabled_${currentUser?.uid || 'user'}`, 'false');
+                setShow2FASetup(false);
+                setMfaFactorId(null);
+                if (supabase?.auth?.mfa) {
+                  try {
+                    const { data: factors } = await supabase.auth.mfa.listFactors();
+                    for (const f of factors?.totp || []) {
+                      await supabase.auth.mfa.unenroll({ factorId: f.id });
+                    }
+                  } catch (_) {}
+                }
+                addToast('2FA deaktiviert.', 'info');
+              } else {
+                const nextOpen = !show2FASetup;
+                setShow2FASetup(nextOpen);
+                if (nextOpen && !mfaFactorId && supabase?.auth?.mfa) {
+                  try {
+                    const { data: enrollData } = await supabase.auth.mfa.enroll({
+                      factorType: 'totp',
+                      friendlyName: `KreativDesk-${Date.now()}`
+                    });
+                    if (enrollData?.id && enrollData?.totp?.secret) {
+                      setMfaFactorId(enrollData.id);
+                      setMfaSecretOverride(enrollData.totp.secret);
+                      if (enrollData.totp.uri) setMfaUriOverride(enrollData.totp.uri);
+                    }
+                  } catch (_) {}
+                }
               }
             }}
             className={cn(

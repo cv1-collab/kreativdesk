@@ -18,7 +18,7 @@ import { checkStorageLimit } from '../utils/storageGuard';
 import UniversalPDFStudio from './UniversalPDFStudio';
 import { callGeminiAPI } from '../utils/geminiClient';
 import { cn, sanitizeUrl } from '../utils';
-import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
+import { uploadPdfBlobWithFallback, uploadFileWithFallback } from '../utils/cloudStorageHelper';
 import { notifyNewDocument } from '../utils/documentNotificationHelper';
 import { isPdfFile, convertPdfPageToImage } from '../utils/pdfToImageHelper';
 
@@ -250,7 +250,8 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mobileCameraRef = useRef<HTMLInputElement>(null);
   const [uploadSessionId] = useState(() => Math.random().toString(36).substring(2, 15));
-  const mobileUploadUrl = `${window.location.origin}/mobile-upload/extern/${uploadSessionId}`;
+  const safeCompanyIdForQr = currentUser?.companyId || currentUser?.uid || '';
+  const mobileUploadUrl = `${window.location.origin}/mobile-upload/extern/${uploadSessionId}${safeCompanyIdForQr ? `?companyId=${encodeURIComponent(safeCompanyIdForQr)}` : ''}`;
 
   const formatCHF = (val: number) => new Intl.NumberFormat('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
 
@@ -409,7 +410,8 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
         const { data: docs } = await supabase
           .from('documents')
           .select('*')
-          .eq('company_id', uploadSessionId)
+          .eq('category', 'temp_receipt')
+          .or(`folder_id.eq.${uploadSessionId},company_id.eq.${uploadSessionId}`)
           .order('created_at', { ascending: false })
           .limit(1);
 
@@ -516,6 +518,22 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
         opCostData.bkp ? `BKP ${opCostData.bkp}` : ''
       ].filter(Boolean).join(' · ');
 
+      const uploadedReceiptUrls: string[] = [];
+      for (let idx = 0; idx < opCostReceipts.length; idx++) {
+        const receiptItem = opCostReceipts[idx];
+        if (receiptItem.startsWith('data:')) {
+          const uploadedUrl = await uploadFileWithFallback(
+            receiptItem,
+            `opcost_receipt_${Date.now()}_${idx + 1}.jpg`,
+            safeCompanyId,
+            'receipts'
+          );
+          uploadedReceiptUrls.push(uploadedUrl);
+        } else {
+          uploadedReceiptUrls.push(receiptItem);
+        }
+      }
+
       await supabase.from('transactions').insert({ 
         type: 'operating_cost', 
         amount: -Math.abs(Number(opCostData.amount) || 0), 
@@ -526,7 +544,7 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
         project_id: cleanProjectId, 
         owner_id: currentUser.uid, 
         company_id: safeCompanyId, 
-        receipt_urls: [finalPdfUrl, ...opCostReceipts], 
+        receipt_urls: [finalPdfUrl, ...uploadedReceiptUrls], 
         created_at: new Date().toISOString() 
       });
       

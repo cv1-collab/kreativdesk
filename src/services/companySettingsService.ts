@@ -94,7 +94,7 @@ export function saveCompanySettings(settings: Partial<CompanySettings>, companyI
       // Upsert into documents table under company_settings category
       let docQuery = supabase
         .from('documents')
-        .select('id')
+        .select('id, url, file_url')
         .eq('category', 'company_settings')
         .eq('name', 'company_profile_config');
       if (safeId && safeId !== 'global') {
@@ -103,12 +103,39 @@ export function saveCompanySettings(settings: Partial<CompanySettings>, companyI
       docQuery
         .maybeSingle()
         .then(({ data: existing }) => {
+          let existingConfig: Record<string, any> = {};
+          const cachedProfile = safeStorage.getItem<any>(`company_profile_${safeId}`, null);
+          if (cachedProfile && typeof cachedProfile === 'object') {
+            existingConfig = { ...cachedProfile };
+          } else if (typeof cachedProfile === 'string') {
+            try { existingConfig = JSON.parse(cachedProfile); } catch (_) {}
+          }
+          if (existing?.file_url || existing?.url) {
+            try {
+              const parsed = JSON.parse(existing.file_url || existing.url);
+              existingConfig = { ...existingConfig, ...parsed };
+            } catch (_) {}
+          }
+
+          const cleanProfileData = Object.fromEntries(
+            Object.entries(profileData).filter(([, v]) => v !== undefined)
+          );
+          const mergedConfig = { ...existingConfig, ...cleanProfileData };
+          if (updated.logoUrl) {
+            mergedConfig.logoUrl = updated.logoUrl;
+          }
+          const mergedJson = JSON.stringify(mergedConfig);
+
+          if (typeof window !== 'undefined' && safeId && safeId !== 'global') {
+            safeStorage.setItem(`company_profile_${safeId}`, mergedConfig);
+          }
+
           if (existing?.id) {
             let upd = supabase
               .from('documents')
               .update({
-                url: JSON.stringify(profileData),
-                file_url: JSON.stringify(profileData),
+                url: mergedJson,
+                file_url: mergedJson,
                 uploaded_at: new Date().toISOString()
               })
               .eq('id', existing.id);
@@ -124,8 +151,8 @@ export function saveCompanySettings(settings: Partial<CompanySettings>, companyI
                 category: 'company_settings',
                 type: 'application/json',
                 company_id: safeId !== 'global' ? safeId : null,
-                url: JSON.stringify(profileData),
-                file_url: JSON.stringify(profileData),
+                url: mergedJson,
+                file_url: mergedJson,
                 is_folder: false
               })
               .then(() => {});

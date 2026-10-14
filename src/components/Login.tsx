@@ -4,10 +4,55 @@ import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { Command, Loader2, X, ArrowLeft, Sun, Moon, Eye, EyeOff, Mail } from 'lucide-react';
+import { Command, Loader2, X, ArrowLeft, Sun, Moon, Eye, EyeOff, Mail, Shield } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { safeStorage } from '../utils/safeStorage';
 import { mapAuthErrorMessage } from '../utils/passwordValidation';
+
+const verifyTotpTokenRfc6238 = async (base32Secret: string, token: string): Promise<boolean> => {
+  const cleanToken = token.trim();
+  if (!/^\d{6}$/.test(cleanToken)) return false;
+  try {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    const cleaned = base32Secret.toUpperCase().replace(/[^A-Z2-7]/g, '');
+    let bits = '';
+    for (const ch of cleaned) {
+      const val = alphabet.indexOf(ch);
+      if (val >= 0) bits += val.toString(2).padStart(5, '0');
+    }
+    const keyBytes = new Uint8Array(Math.floor(bits.length / 8));
+    for (let i = 0; i < keyBytes.length; i++) {
+      keyBytes[i] = parseInt(bits.slice(i * 8, i * 8 + 8), 2);
+    }
+    const cryptoKey = await window.crypto.subtle.importKey(
+      'raw',
+      keyBytes,
+      { name: 'HMAC', hash: 'SHA-1' },
+      false,
+      ['sign']
+    );
+    const currentCounter = Math.floor(Date.now() / 1000 / 30);
+    for (const offset of [-1, 0, 1]) {
+      const counter = currentCounter + offset;
+      const buf = new ArrayBuffer(8);
+      const view = new DataView(buf);
+      view.setUint32(0, Math.floor(counter / 0x100000000), false);
+      view.setUint32(4, counter >>> 0, false);
+      const sig = new Uint8Array(await window.crypto.subtle.sign('HMAC', cryptoKey, buf));
+      const dynamicOffset = sig[sig.length - 1] & 0x0f;
+      const binary =
+        ((sig[dynamicOffset] & 0x7f) << 24) |
+        ((sig[dynamicOffset + 1] & 0xff) << 16) |
+        ((sig[dynamicOffset + 2] & 0xff) << 8) |
+        (sig[dynamicOffset + 3] & 0xff);
+      const otp = String(binary % 1_000_000).padStart(6, '0');
+      if (otp === cleanToken) return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+};
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -59,6 +104,12 @@ export default function Login() {
   const [infoMessage, setInfoMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [bootStep, setBootStep] = useState(-1);
+
+  const [requires2FA, setRequires2FA] = useState(false);
+  const [totpCode, setTotpCode] = useState('');
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
+  const [pendingUser, setPendingUser] = useState<{ id: string; email?: string } | null>(null);
+  const [verifying2FA, setVerifying2FA] = useState(false);
   
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
@@ -70,7 +121,7 @@ export default function Login() {
   const { currentUser } = useAuth();
 
   React.useEffect(() => {
-    if (currentUser) {
+    if (currentUser && !requires2FA) {
       const timer = setTimeout(() => {
         setLoading(false);
         if (checkIsSuperAdmin(currentUser.email)) {
@@ -81,7 +132,7 @@ export default function Login() {
       }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [currentUser, navigate]);
+  }, [currentUser, navigate, requires2FA]);
 
   React.useEffect(() => {
     try {
@@ -131,7 +182,7 @@ export default function Login() {
     fetchBg();
   }, []);
 
-  if (currentUser && !loading) {
+  if (currentUser && !loading && !requires2FA) {
     if (checkIsSuperAdmin(currentUser.email)) return <Navigate to="/admin" />;
     return <Navigate to="/app" />;
   }
@@ -172,6 +223,35 @@ export default function Login() {
 
       if (error) throw error;
 
+      const uid = data?.user?.id;
+      let needsMfa = false;
+      let activeFactorId: string | null = null;
+
+      if (supabase.auth.mfa) {
+        try {
+          const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+          const { data: factorsData } = await supabase.auth.mfa.listFactors();
+          const verifiedTotp = factorsData?.totp?.find((f: any) => f.status === 'verified');
+          if (verifiedTotp) {
+            activeFactorId = verifiedTotp.id;
+            if (aal?.nextLevel === 'aal2' && aal?.currentLevel !== 'aal2') {
+              needsMfa = true;
+            }
+          }
+        } catch (_) {}
+      }
+
+      const local2FAEnabled = uid ? safeStorage.getString(`user_2fa_enabled_${uid}`, 'false') === 'true' : false;
+      const local2FASecret = uid ? safeStorage.getString(`user_2fa_secret_${uid}`, '') : '';
+
+      if (needsMfa || (local2FAEnabled && (local2FASecret || activeFactorId))) {
+        setMfaFactorId(activeFactorId);
+        setPendingUser({ id: uid || '', email: data?.user?.email });
+        setRequires2FA(true);
+        setLoading(false);
+        return;
+      }
+
       startBootSequence(() => {
         setLoading(false);
         if (data?.user?.email && checkIsSuperAdmin(data.user.email)) {
@@ -185,6 +265,65 @@ export default function Login() {
       setError(mapAuthErrorMessage(err, currentLang)); 
       setLoading(false);
     }
+  }
+
+  async function handleVerify2FA(e: React.FormEvent) {
+    e.preventDefault();
+    const cleanCode = totpCode.trim();
+    if (!/^\d{6}$/.test(cleanCode)) {
+      setError(currentLang === 'de' ? 'Bitte gib den 6-stelligen Code aus deiner Authenticator-App ein.' : 'Please enter the 6-digit code from your Authenticator app.');
+      return;
+    }
+    setError('');
+    setVerifying2FA(true);
+    try {
+      let verified = false;
+      if (mfaFactorId && supabase.auth.mfa) {
+        try {
+          const { error: mfaErr } = await supabase.auth.mfa.challengeAndVerify({
+            factorId: mfaFactorId,
+            code: cleanCode
+          });
+          if (!mfaErr) verified = true;
+        } catch (_) {}
+      }
+      if (!verified && pendingUser?.id) {
+        const localSecret = safeStorage.getString(`user_2fa_secret_${pendingUser.id}`, '');
+        if (localSecret) {
+          verified = await verifyTotpTokenRfc6238(localSecret, cleanCode);
+        }
+      }
+      if (!verified) {
+        setError(currentLang === 'de' ? 'Ungültiger 2FA-Code. Bitte prüfe deine Authenticator-App.' : 'Invalid 2FA code. Please check your Authenticator app.');
+        setVerifying2FA(false);
+        return;
+      }
+
+      setLoading(true);
+      startBootSequence(() => {
+        setRequires2FA(false);
+        setVerifying2FA(false);
+        setLoading(false);
+        const targetEmail = pendingUser?.email || currentUser?.email || email;
+        if (targetEmail && checkIsSuperAdmin(targetEmail)) {
+          navigate('/admin');
+        } else {
+          navigate('/app');
+        }
+      });
+    } catch (_) {
+      setError(currentLang === 'de' ? 'Fehler bei der 2FA-Verifizierung.' : '2FA verification failed.');
+      setVerifying2FA(false);
+    }
+  }
+
+  async function handleCancel2FA() {
+    setRequires2FA(false);
+    setTotpCode('');
+    setMfaFactorId(null);
+    setPendingUser(null);
+    setError('');
+    await supabase.auth.signOut();
   }
 
   async function handlePasswordReset(e: React.FormEvent) {
@@ -270,6 +409,58 @@ export default function Login() {
             </div>
           )}
 
+          {requires2FA ? (
+            <form className="space-y-5" onSubmit={handleVerify2FA}>
+              <div className="flex items-center gap-3 p-3.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400">
+                <Shield size={20} className="shrink-0" />
+                <div className="text-xs leading-relaxed">
+                  <div className="font-bold">{currentLang === 'de' ? 'Zwei-Faktor-Authentifizierung (2FA)' : 'Two-Factor Authentication (2FA)'}</div>
+                  <div>{currentLang === 'de' ? 'Bitte gib den 6-stelligen Code aus deiner Authenticator-App ein.' : 'Please enter the 6-digit code from your Authenticator app.'}</div>
+                </div>
+              </div>
+
+              {error && (
+                <div className="bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-sm p-3.5 rounded-xl flex items-center gap-2 font-medium">
+                  <X size={16} className="shrink-0" /> <span>{error}</span>
+                </div>
+              )}
+
+              <div>
+                <label htmlFor="login-totp" className="block text-sm font-semibold text-slate-700 dark:text-[#fafafa] mb-1.5">
+                  {currentLang === 'de' ? '6-stelliger Sicherheitscode' : '6-digit Security Code'}
+                </label>
+                <input
+                  id="login-totp"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  required
+                  maxLength={6}
+                  value={totpCode}
+                  onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="000000"
+                  className="w-full bg-slate-50 dark:bg-[#09090b] border border-slate-200 dark:border-[#27272a] rounded-xl px-4 py-3 text-center text-lg font-mono tracking-[0.4em] font-bold text-slate-900 dark:text-[#fafafa] placeholder:text-slate-400 dark:placeholder:text-[#52525b] focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                />
+              </div>
+
+              <div className="flex flex-col gap-2.5">
+                <button
+                  disabled={verifying2FA || loading || totpCode.length < 6}
+                  type="submit"
+                  className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-xl shadow-lg shadow-blue-500/25 text-sm font-bold text-white bg-blue-600 hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-all cursor-pointer active:scale-[0.99]"
+                >
+                  {verifying2FA ? <Loader2 className="w-5 h-5 animate-spin" /> : (currentLang === 'de' ? 'Verifizieren & Anmelden' : 'Verify & Sign In')}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancel2FA}
+                  className="w-full py-2.5 px-4 rounded-xl border border-slate-200 dark:border-[#27272a] text-xs font-bold text-slate-600 dark:text-[#a1a1aa] hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                >
+                  {currentLang === 'de' ? 'Zurück' : 'Back'}
+                </button>
+              </div>
+            </form>
+          ) : (
           <form className="space-y-5" onSubmit={handleSubmit}>
             {error && (
               <div className="bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-sm p-3.5 rounded-xl flex items-center gap-2 font-medium">
@@ -339,6 +530,7 @@ export default function Login() {
               {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : t('sign_in')}
             </button>
           </form>
+          )}
         </div>
 
         <p className="mt-6 text-center text-sm text-slate-500 dark:text-[#a1a1aa] font-medium">

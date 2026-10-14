@@ -136,8 +136,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (!routeHandler) {
     return res.status(404).json({
-      error: `API route not found: /api/${route}`,
-      availableRoutes: Object.keys(handlers)
+      error: `API route not found: /api/${route}`
     });
   }
 

@@ -699,6 +699,9 @@ export default function GuestMeet() {
                       }}
                     />
                   )}
+                  {bgMode === 'blur' && (
+                    <div className="absolute inset-0 backdrop-blur-xl bg-zinc-900/40 pointer-events-none" />
+                  )}
                   <video
                     ref={soloLocalVideoRef}
                     autoPlay
@@ -710,7 +713,7 @@ export default function GuestMeet() {
                       (bgMode === 'preset' || bgMode === 'custom') && "opacity-90",
                       !isCamOn && "opacity-0 pointer-events-none"
                     )}
-                    style={bgMode === 'blur' ? { filter: `blur(${bgBlurAmount})` } : undefined}
+                    style={bgMode === 'blur' ? { maskImage: 'radial-gradient(ellipse 65% 75% at 50% 50%, black 60%, transparent 100%)', WebkitMaskImage: 'radial-gradient(ellipse 65% 75% at 50% 50%, black 60%, transparent 100%)' } : undefined}
                   />
 
                   {/* Fallback wenn Kamera aus ist */}
@@ -749,6 +752,9 @@ export default function GuestMeet() {
                     }}
                   />
                 )}
+                {bgMode === 'blur' && (
+                  <div className="absolute inset-0 backdrop-blur-xl bg-zinc-900/40 pointer-events-none" />
+                )}
                 <video
                   ref={localVideoRef}
                   autoPlay
@@ -758,7 +764,7 @@ export default function GuestMeet() {
                     "w-full h-full object-cover relative z-10 transform -scale-x-100 transition-all duration-300",
                     (bgMode === 'preset' || bgMode === 'custom') && "opacity-90"
                   )}
-                  style={bgMode === 'blur' ? { filter: `blur(${bgBlurAmount})` } : undefined}
+                  style={bgMode === 'blur' ? { maskImage: 'radial-gradient(ellipse 65% 75% at 50% 50%, black 60%, transparent 100%)', WebkitMaskImage: 'radial-gradient(ellipse 65% 75% at 50% 50%, black 60%, transparent 100%)' } : undefined}
                 />
                 <button
                   onClick={() => setShowBgModal(true)}

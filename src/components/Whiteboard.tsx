@@ -680,7 +680,22 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
     }
   };
 
-  // 3. Debounced Auto-Save: Sichert lokal und in der Cloud (site_data)
+  // 3a. Pan/Zoom: Sichert stageScale & stagePos ausschliesslich lokal (ohne Supabase-Upserts!)
+  useEffect(() => {
+    if (wbCacheByProject[projectId || 'global']) {
+      wbCacheByProject[projectId || 'global'].stageScale = stageScale;
+      wbCacheByProject[projectId || 'global'].stagePos = stagePos;
+    }
+    try {
+      const key = getDraftStorageKey(projectId);
+      const existing = safeStorage.getItem<any>(key, null);
+      if (existing) {
+        safeStorage.setItem(key, { ...existing, stageScale, stagePos });
+      }
+    } catch (_) {}
+  }, [stageScale, stagePos, projectId]);
+
+  // 3b. Debounced Auto-Save: Sichert lokal und in der Cloud (site_data) nur bei echten Inhaltsänderungen
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -724,7 +739,7 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [layers, activeLayerId, bgImageSrc, bgImagePos, stageScale, stagePos, activeColor, projectId, isDemo, currentUser, activeProject?.company_id]);
+  }, [layers, bgImageSrc, projectId, currentUser?.companyId]);
   
   const isDrawing = useRef(false);
   const drawingStartPos = useRef<{ x: number, y: number } | null>(null);
@@ -1346,11 +1361,14 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
       const safeCompanyId = currentUser.companyId || currentUser.uid;
       const fetchNotes = async () => {
         try {
-          const { data, error } = await supabase
+          let query = supabase
             .from('audio_notes')
             .select('*')
-            .eq('company_id', safeCompanyId)
-            .order('created_at', { ascending: false });
+            .eq('company_id', safeCompanyId);
+          if (projectId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectId)) {
+            query = query.eq('project_id', projectId);
+          }
+          const { data, error } = await query.order('created_at', { ascending: false });
           if (!error && data) {
             const parsedNotes = data.map((n: any) => {
               if (n.audio_url && n.audio_url.startsWith('{')) {
@@ -1389,7 +1407,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
       };
       fetchNotes();
     }
-  }, [currentUser]);
+  }, [currentUser, projectId]);
 
   useEffect(() => {
     const cleanup = addFullscreenChangeListener(() => {
@@ -2286,7 +2304,9 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
         const downloadUrl = pubData.publicUrl;
 
         const id = `wb-${Date.now()}`;
-        const targetProjectId = activeProjectId && activeProjectId !== 'global' ? activeProjectId : null;
+        const resolvedProjectId = propProjectId || routeProjectId || activeProjectId;
+        const targetProjectId = resolvedProjectId && resolvedProjectId !== 'global' ? resolvedProjectId : null;
+        const exportTitle = new Date().toLocaleDateString('de-CH');
         try {
           await supabase.from('whiteboard_exports').insert({ 
             id, 
@@ -2296,6 +2316,18 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
             created_at: new Date().toISOString() 
           });
         } catch (wbErr) {}
+
+        try {
+          await (supabase.from('slides') as any).insert({
+            project_id: targetProjectId,
+            company_id: safeCompanyId,
+            title: 'Whiteboard: ' + exportTitle,
+            category: 'Konzept & Ideen',
+            image_url: downloadUrl,
+            description: 'Exportiert aus dem Projekt-Whiteboard',
+            created_at: new Date().toISOString()
+          });
+        } catch (slideErr) {}
 
         try {
           await supabase.from('documents').insert({
@@ -3232,7 +3264,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
                                   lineCap="round" 
                                   lineJoin="round" 
                                   globalCompositeOperation={item.tool === 'eraser' ? 'destination-out' : 'source-over'} 
-                                  draggable={tool === 'select'} 
+                                  draggable={tool === 'select' && !layer.locked && item.tool !== 'eraser'} 
                                   listening={tool === 'select'} 
                                   onClick={() => { if (tool === 'select') setSelectedShapeId(item.id); }} 
                                   onTap={() => { if (tool === 'select') setSelectedShapeId(item.id); }} 
@@ -3263,7 +3295,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
                                 key={item.id || i} 
                                 x={item.x} 
                                 y={item.y} 
-                                draggable={tool === 'select'} 
+                                draggable={tool === 'select' && !layer.locked} 
                                 listening={tool === 'select'} 
                                 onClick={() => { if (tool === 'select') setSelectedShapeId(item.id); }} 
                                 onTap={() => { if (tool === 'select') setSelectedShapeId(item.id); }} 
@@ -3337,7 +3369,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
                             return (
                               <Group 
                                 key={item.id || i}
-                                draggable={tool === 'select'} 
+                                draggable={tool === 'select' && !layer.locked} 
                                 listening={tool === 'select'} 
                                 onClick={() => { if (tool === 'select') setSelectedShapeId(item.id); }} 
                                 onTap={() => { if (tool === 'select') setSelectedShapeId(item.id); }} 
@@ -3384,7 +3416,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
                                 key={item.id || i}
                                 x={item.x} 
                                 y={item.y} 
-                                draggable={tool === 'select'} 
+                                draggable={tool === 'select' && !layer.locked} 
                                 listening={tool === 'select'} 
                                 onClick={() => { if (tool === 'select') setSelectedShapeId(item.id); }} 
                                 onTap={() => { if (tool === 'select') setSelectedShapeId(item.id); }} 
@@ -3442,7 +3474,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
                                   stroke={item.color} 
                                   strokeWidth={3 / stageScale} 
                                   fill={`${item.color}33`} 
-                                  draggable={tool === 'select'} 
+                                  draggable={tool === 'select' && !layer.locked} 
                                   listening={tool === 'select'} 
                                   onClick={() => { if (tool === 'select') setSelectedShapeId(item.id); }} 
                                   onTap={() => { if (tool === 'select') setSelectedShapeId(item.id); }} 

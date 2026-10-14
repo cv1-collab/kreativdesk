@@ -14,27 +14,28 @@ import { useQueryClient } from '@tanstack/react-query';
 import { DOCUMENTS_QUERY_KEY } from '../hooks/queries/useDocumentsQuery';
 import NotificationCenter from './NotificationCenter';
 import { useTour } from '../contexts/TourContext';
-import ExpenseReport from './ExpenseReport';
-import InvoiceStudio from './InvoiceStudio';
-import PitchDeckStudio from './PitchDeckStudio';
-import OpCostStudio from './OpCostStudio';
-import DashboardOverviewTab from './DashboardOverviewTab';
-import TeamCrmTab from './TeamCrmTab';
-import DocumentsTab from './DocumentsTab';
 import { seedDemoProjectToSupabase, ensureDefaultCompanyFolders, getOrCreateRealCompanyId } from '../services/seedService';
 import { fetchNotifications, sendNotification } from '../lib/notifications';
 import { deleteFileFromStorage } from '../utils/cloudStorageHelper';
-import AgendaTab from './AgendaTab';
-import LeadsTab from './LeadsTab';
-import TemplatesTab from './TemplatesTab';
-import FinanceTab from './FinanceTab';
-import SettingsTab from './SettingsTab';
-import AuditLogsTab from './AuditLogsTab';
 import WelcomeOnboarding from './WelcomeOnboarding';
 import ModuleGuideButton from './ModuleGuideButton';
 import { safeStorage } from '../utils/safeStorage';
-import MeetChat from './MeetChat';
-import ProposalManagerDashboard from './ProposalManagerDashboard';
+
+const ExpenseReport = React.lazy(() => import('./ExpenseReport'));
+const InvoiceStudio = React.lazy(() => import('./InvoiceStudio'));
+const PitchDeckStudio = React.lazy(() => import('./PitchDeckStudio'));
+const OpCostStudio = React.lazy(() => import('./OpCostStudio'));
+const DashboardOverviewTab = React.lazy(() => import('./DashboardOverviewTab'));
+const TeamCrmTab = React.lazy(() => import('./TeamCrmTab'));
+const DocumentsTab = React.lazy(() => import('./DocumentsTab'));
+const AgendaTab = React.lazy(() => import('./AgendaTab'));
+const LeadsTab = React.lazy(() => import('./LeadsTab'));
+const TemplatesTab = React.lazy(() => import('./TemplatesTab'));
+const FinanceTab = React.lazy(() => import('./FinanceTab'));
+const SettingsTab = React.lazy(() => import('./SettingsTab'));
+const AuditLogsTab = React.lazy(() => import('./AuditLogsTab'));
+const MeetChat = React.lazy(() => import('./MeetChat'));
+const ProposalManagerDashboard = React.lazy(() => import('./ProposalManagerDashboard'));
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Building2, Plus, Users, Settings, MoreVertical, LogOut, Briefcase, 
@@ -425,17 +426,23 @@ export default function CompanyDashboard() {
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => setIsMounted(true), []);
 
+  const foldersInitializedRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!currentUser || !currentUser.uid) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     const fetchData = async () => {
-      await ensureDefaultCompanyFolders(safeCompanyId, currentUser.uid);
+      if (foldersInitializedRef.current !== safeCompanyId) {
+        foldersInitializedRef.current = safeCompanyId;
+        await ensureDefaultCompanyFolders(safeCompanyId, currentUser.uid);
+      }
 
       const { data: docs } = await supabase
         .from('documents')
         .select('*')
-        .eq('company_id', safeCompanyId);
+        .eq('company_id', safeCompanyId)
+        .neq('category', 'system_config');
 
       if (docs) {
         setAllDocuments(docs.map(d => ({ ...d, isFolder: d.is_folder, folderId: d.folder_id, fileUrl: d.url })));
@@ -474,7 +481,7 @@ export default function CompanyDashboard() {
         supabase.removeChannel(channel).catch(() => {});
       }
     };
-  }, [currentUser, isNotificationOpen]);
+  }, [currentUser?.companyId, currentUser?.uid]);
 
   const safeAllDocs = useMemo(() => Array.isArray(allDocuments) ? allDocuments : [], [allDocuments]);
   const safeCompanyUsers = Array.isArray(companyUsers) ? companyUsers : [];
@@ -966,6 +973,7 @@ export default function CompanyDashboard() {
 
         <div className="flex-1 overflow-y-auto relative custom-scrollbar w-full p-4 md:p-8">
            {isMounted && (
+             <React.Suspense fallback={<div className="flex items-center justify-center p-12"><div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>}>
              <div className="w-full h-full flex flex-col">
                {activeTab === 'dashboard' && (
                  <DashboardOverviewTab 
@@ -1159,6 +1167,7 @@ export default function CompanyDashboard() {
                
                {activeTab === 'settings' && <div className="h-full w-full"><SettingsTab /></div>}
              </div>
+             </React.Suspense>
            )}
         </div>
       </main>
@@ -1359,10 +1368,11 @@ export default function CompanyDashboard() {
         document.body
       )}
 
-      {isMounted && showExpenseModal && createPortal(<ExpenseReport onClose={() => setShowExpenseModal(false)} onSave={() => setShowExpenseModal(false)} />, document.body)}
-      {isMounted && showInvoiceModal && createPortal(<InvoiceStudio type="invoice" onClose={() => setShowInvoiceModal(false)} />, document.body)}
-      {isMounted && showQuoteModal && createPortal(<InvoiceStudio type="quote" onClose={() => setShowQuoteModal(false)} />, document.body)}
+      {isMounted && showExpenseModal && createPortal(<React.Suspense fallback={<div className="flex items-center justify-center p-12"><div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>}><ExpenseReport onClose={() => setShowExpenseModal(false)} onSave={() => setShowExpenseModal(false)} /></React.Suspense>, document.body)}
+      {isMounted && showInvoiceModal && createPortal(<React.Suspense fallback={<div className="flex items-center justify-center p-12"><div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>}><InvoiceStudio type="invoice" onClose={() => setShowInvoiceModal(false)} /></React.Suspense>, document.body)}
+      {isMounted && showQuoteModal && createPortal(<React.Suspense fallback={<div className="flex items-center justify-center p-12"><div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>}><InvoiceStudio type="quote" onClose={() => setShowQuoteModal(false)} /></React.Suspense>, document.body)}
       {isMounted && showPitchModal && createPortal(
+        <React.Suspense fallback={<div className="flex items-center justify-center p-12"><div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>}>
         <PitchDeckStudio 
           initialOpenPublishModal={pitchModalInitialPublish}
           onClose={() => {
@@ -1372,10 +1382,11 @@ export default function CompanyDashboard() {
               window.history.replaceState(null, '', window.location.pathname + window.location.search);
             }
           }} 
-        />, 
+        />
+        </React.Suspense>, 
         document.body
       )}
-      {isMounted && showOpCostModal && createPortal(<OpCostStudio onClose={() => setShowOpCostModal(false)} />, document.body)}
+      {isMounted && showOpCostModal && createPortal(<React.Suspense fallback={<div className="flex items-center justify-center p-12"><div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>}><OpCostStudio onClose={() => setShowOpCostModal(false)} /></React.Suspense>, document.body)}
     </div>
   );
 }

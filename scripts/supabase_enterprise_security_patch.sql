@@ -171,6 +171,8 @@ ALTER TABLE IF EXISTS public.smart_proposals ENABLE ROW LEVEL SECURITY;
 -- Alte offene Policies entfernen
 DROP POLICY IF EXISTS "Public can view active proposals via share token" ON public.smart_proposals;
 DROP POLICY IF EXISTS "Public can sign and accept proposal" ON public.smart_proposals;
+DROP POLICY IF EXISTS "Allow anon view smart_proposals by token" ON public.smart_proposals;
+DROP POLICY IF EXISTS "Allow anon accept smart_proposals" ON public.smart_proposals;
 DROP POLICY IF EXISTS "Company users can manage proposals" ON public.smart_proposals;
 DROP POLICY IF EXISTS "Company users can manage own company proposals" ON public.smart_proposals;
 
@@ -239,6 +241,27 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.get_proposal_by_share_token(text, text) TO anon, authenticated;
+
+-- Sichere RPC-Funktion: Aufrufzähler der Offerte erhöhen
+CREATE OR REPLACE FUNCTION public.increment_proposal_views(p_share_token text)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF p_share_token IS NULL OR trim(p_share_token) = '' THEN
+    RETURN;
+  END IF;
+
+  UPDATE public.smart_proposals
+  SET views_count = COALESCE(views_count, 0) + 1,
+      last_viewed_at = now()
+  WHERE share_token = p_share_token;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.increment_proposal_views(text) TO anon, authenticated;
 
 -- Sichere RPC-Funktion: Digitale Signatur / Annahme der Offerte
 CREATE OR REPLACE FUNCTION public.sign_accept_proposal(p_share_token text, p_acceptance_data jsonb)
@@ -475,6 +498,11 @@ BEGIN
     RAISE EXCEPTION 'Forbidden: Cannot escalate role to super_admin';
   END IF;
 
+  -- Kein Nicht-Super-Admin (auch kein Owner/Admin) darf die company_id eines bestehenden Profils auf einen fremden Mandanten ändern
+  IF OLD.company_id IS NOT NULL AND NEW.company_id IS DISTINCT FROM OLD.company_id THEN
+    NEW.company_id := OLD.company_id;
+  END IF;
+
   SELECT role, company_id INTO v_caller_role, v_caller_company
   FROM public.profiles
   WHERE id = auth.uid();
@@ -488,17 +516,11 @@ BEGIN
     IF OLD.role IS NOT NULL AND NEW.role IS DISTINCT FROM OLD.role THEN
       NEW.role := OLD.role;
     END IF;
-    IF OLD.company_id IS NOT NULL AND NEW.company_id IS DISTINCT FROM OLD.company_id THEN
-      NEW.company_id := OLD.company_id;
-    END IF;
     IF OLD.can_view_finance IS NOT NULL AND NEW.can_view_finance IS DISTINCT FROM OLD.can_view_finance THEN
       NEW.can_view_finance := OLD.can_view_finance;
     END IF;
-    IF OLD.can_edit_projects IS NOT NULL AND NEW.can_edit_projects IS DISTINCT FROM OLD.can_edit_projects THEN
-      NEW.can_edit_projects := OLD.can_edit_projects;
-    END IF;
-    IF OLD.can_manage_team IS NOT NULL AND NEW.can_manage_team IS DISTINCT FROM OLD.can_manage_team THEN
-      NEW.can_manage_team := OLD.can_manage_team;
+    IF OLD.can_approve_budget IS NOT NULL AND NEW.can_approve_budget IS DISTINCT FROM OLD.can_approve_budget THEN
+      NEW.can_approve_budget := OLD.can_approve_budget;
     END IF;
   END IF;
 

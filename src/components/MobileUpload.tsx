@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { 
   UploadCloud, CheckCircle2, Loader2, Camera, Sparkles, 
@@ -59,6 +59,12 @@ const compressImageFile = (file: File, maxDimension = 1920, quality = 0.85): Pro
 export default function MobileUpload() {
   const { addToast } = useToast();
   const { type, sessionId } = useParams<{ type?: string; sessionId: string }>();
+  const [searchParams] = useSearchParams();
+  const companyIdParam = searchParams.get('companyId') || '';
+  const validCompanyUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(companyIdParam)
+    ? companyIdParam
+    : (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId || '') ? sessionId! : null);
+
   const isVcard = type === 'vcard';
   const isDemoSession = sessionId?.startsWith('demo') || sessionId === 'demo' || sessionId === 'demo-session';
 
@@ -84,6 +90,27 @@ export default function MobileUpload() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [isSubmittingRapport, setIsSubmittingRapport] = useState(false);
   const [rapportSuccess, setRapportSuccess] = useState(false);
+
+  const sendBroadcastWhenSubscribed = async (channelName: string, eventName: string, payload: any) => {
+    const ch = supabase.channel(channelName);
+    await new Promise<void>((resolve) => {
+      const timeout = setTimeout(() => resolve(), 3500);
+      ch.subscribe((status) => {
+        if (status === 'SUBSCRIBED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          clearTimeout(timeout);
+          resolve();
+        }
+      });
+    });
+    await ch.send({
+      type: 'broadcast',
+      event: eventName,
+      payload
+    });
+    setTimeout(() => {
+      try { supabase.removeChannel(ch); } catch (e) {}
+    }, 3000);
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -139,14 +166,14 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
       }
 
       setUploadProgress(70);
-      const downloadUrl = await uploadFileWithFallback(file, file.name, sessionId, 'temp_mobile_uploads');
+      const downloadUrl = await uploadFileWithFallback(file, file.name, validCompanyUuid || sessionId, 'temp_mobile_uploads');
 
       setUploadProgress(90);
       const payloadString = extractedData ? JSON.stringify(extractedData) : file.name;
 
       try {
         await supabase.from('documents').insert({
-          company_id: sessionId || 'global',
+          company_id: validCompanyUuid,
           project_id: null,
           name: payloadString,
           url: downloadUrl,
@@ -154,34 +181,13 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
           size: `${Math.round(file.size / 1024)} KB`,
           type: file.type || 'application/octet-stream',
           category: 'temp_receipt',
-          folder_id: 'root',
+          folder_id: sessionId,
           is_folder: false,
           created_at: new Date().toISOString()
         });
       } catch (docErr) {
         console.warn("documents temp_receipt insert note:", docErr);
       }
-
-      const sendBroadcastWhenSubscribed = async (channelName: string, eventName: string, payload: any) => {
-        const ch = supabase.channel(channelName);
-        await new Promise<void>((resolve) => {
-          const timeout = setTimeout(() => resolve(), 3500);
-          ch.subscribe((status) => {
-            if (status === 'SUBSCRIBED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-              clearTimeout(timeout);
-              resolve();
-            }
-          });
-        });
-        await ch.send({
-          type: 'broadcast',
-          event: eventName,
-          payload
-        });
-        setTimeout(() => {
-          try { supabase.removeChannel(ch); } catch (e) {}
-        }, 3000);
-      };
 
       // Broadcast to connected desktop sessions in real-time
       if (isVcard && extractedData) {
@@ -235,24 +241,43 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
     }
     setIsSubmittingRapport(true);
     try {
+      const uploadedPhotoUrls: string[] = [];
+      for (let i = 0; i < photos.length; i++) {
+        const photoItem = photos[i];
+        if (photoItem.startsWith('data:')) {
+          const uploadedUrl = await uploadFileWithFallback(
+            photoItem,
+            `rapport_${rapportData.date}_${i + 1}.jpg`,
+            validCompanyUuid || sessionId || 'global',
+            'temp_mobile_uploads'
+          );
+          uploadedPhotoUrls.push(uploadedUrl);
+        } else {
+          uploadedPhotoUrls.push(photoItem);
+        }
+      }
+
       const rapportPayload = {
         ...rapportData,
-        photosCount: photos.length,
+        photos: uploadedPhotoUrls,
+        uploadedPhotoUrls,
+        photosCount: uploadedPhotoUrls.length,
         submittedAt: new Date().toISOString(),
       };
 
       if (sessionId) {
+        const serializedRapport = JSON.stringify(rapportPayload);
         try {
           await supabase.from('documents').insert({
-            company_id: sessionId || 'global',
+            company_id: validCompanyUuid,
             project_id: null,
             name: `Baurapport_${rapportData.date}.json`,
-            url: photos[0] || '',
-            file_url: photos[0] || '',
-            size: '1 KB',
+            url: serializedRapport,
+            file_url: serializedRapport,
+            size: `${Math.max(1, Math.round(serializedRapport.length / 1024))} KB`,
             type: 'application/json',
             category: 'temp_receipt',
-            folder_id: 'root',
+            folder_id: sessionId,
             is_folder: false,
             created_at: new Date().toISOString()
           });
@@ -261,16 +286,7 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
         }
 
         try {
-          const channel = supabase.channel(`rapport_upload_${sessionId}`);
-          await channel.subscribe();
-          await channel.send({
-            type: 'broadcast',
-            event: 'rapport_created',
-            payload: rapportPayload
-          });
-          setTimeout(() => {
-            try { supabase.removeChannel(channel); } catch (e) {}
-          }, 3000);
+          await sendBroadcastWhenSubscribed(`rapport_upload_${sessionId}`, 'rapport_created', rapportPayload);
         } catch (e) {}
       }
 

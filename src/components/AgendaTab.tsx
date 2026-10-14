@@ -437,7 +437,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         const localCacheKey = `agenda_cache_${safeCompanyId}`;
         const localCachedEvents = safeStorage.getItem<any[]>(localCacheKey, []);
 
-        const { data: dbEvents } = await supabase
+        const { data: dbEvents, error: eventsError } = await supabase
           .from('calendar_events')
           .select('*')
           .eq('company_id', safeCompanyId);
@@ -448,32 +448,46 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         } catch (e) {}
 
         const configEvents = config?.events || [];
+        const isUuidId = (id: any) => typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+        const dbEventIds = new Set((dbEvents || []).map((e: any) => e.id));
+
+        const allowedFallbackEvents = (!eventsError && dbEvents)
+          ? configEvents.filter((evt: any) => evt && evt.id && (!isUuidId(evt.id) || dbEventIds.has(evt.id)))
+          : [...localCachedEvents, ...configEvents];
+
+        const metaLookup = new Map<string, any>();
+        [...localCachedEvents, ...configEvents].forEach((evt: any) => {
+          if (evt?.id) metaLookup.set(evt.id, evt);
+        });
+
         const eventMap = new Map();
-        [...localCachedEvents, ...configEvents, ...(dbEvents || [])].forEach((evt: any) => {
+        [...allowedFallbackEvents, ...(dbEvents || [])].forEach((evt: any) => {
           if (evt && (evt.title || evt.id)) {
-            const dateStr = evt.date || evt.event_date || evt.start_date || (evt.created_at ? evt.created_at.split('T')[0] : '');
-            const desc = evt.description || '';
+            const meta = (evt.id && metaLookup.get(evt.id)) || {};
+            const dateStr = evt.date || evt.event_date || evt.start_date || meta.date || (evt.created_at ? evt.created_at.split('T')[0] : '');
+            const desc = evt.description || meta.description || '';
             const timeMatch = desc.match(/(?:Uhrzeit|Zeit|Time):\s*(\d{1,2}:\d{2})/i);
-            const extractedTime = evt.time || (timeMatch ? timeMatch[1] : undefined);
+            const extractedTime = evt.time || meta.time || (timeMatch ? timeMatch[1] : undefined);
 
             const typeMatch = desc.match(/Typ:\s*([a-zA-Z0-9_-]+)/i);
-            const extractedType = evt.type || (typeMatch ? typeMatch[1] : (desc.toLowerCase().includes('call') || desc.toLowerCase().includes('video') ? 'call' : 'meeting'));
+            const extractedType = evt.type || meta.type || (typeMatch ? typeMatch[1] : (desc.toLowerCase().includes('call') || desc.toLowerCase().includes('video') ? 'call' : 'meeting'));
 
             const linkMatch = desc.match(/Meeting Link:\s*([^\n\r]+)/i);
-            const link = evt.meetingLink || evt.meeting_link || evt.location || (linkMatch ? linkMatch[1].trim() : null);
+            const link = evt.meetingLink || evt.meeting_link || evt.location || meta.meetingLink || meta.meeting_link || (linkMatch ? linkMatch[1].trim() : null);
 
             const normalized = {
+              ...meta,
               ...evt,
               id: evt.id || `evt-${Date.now()}-${Math.random()}`,
               date: dateStr,
               event_date: dateStr,
               start_date: dateStr,
               time: extractedTime,
-              projectId: evt.projectId || evt.project_id || 'global',
-              project_id: evt.projectId || evt.project_id || 'global',
+              projectId: evt.projectId || evt.project_id || meta.projectId || meta.project_id || 'global',
+              project_id: evt.projectId || evt.project_id || meta.project_id || meta.projectId || 'global',
               meetingLink: link,
               meeting_link: link,
-              location: link || evt.location || '',
+              location: link || evt.location || meta.location || '',
               type: extractedType
             };
             eventMap.set(normalized.id, normalized);
@@ -495,18 +509,28 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
 
         const configTimes = configTime?.entries || [];
 
-        const { data: dbTimes } = await supabase
+        const { data: dbTimes, error: timesError } = await supabase
           .from('time_entries')
           .select('*')
           .eq('company_id', safeCompanyId)
           .order('created_at', { ascending: false });
 
+        const dbTimeIds = new Set((dbTimes || []).map((t: any) => t.id));
+        const timeMetaLookup = new Map<string, any>();
+        [...localCachedTimes, ...configTimes].forEach((t: any) => {
+          if (t?.id) timeMetaLookup.set(t.id, t);
+        });
+
+        const allowedFallbackTimes = (!timesError && dbTimes)
+          ? configTimes.filter((t: any) => t && t.id && (!isUuidId(t.id) || dbTimeIds.has(t.id)))
+          : [...configTimes, ...localCachedTimes];
+
         const timeMap = new Map();
-        [...(dbTimes || []), ...configTimes, ...localCachedTimes].forEach((t: any) => {
+        [...(dbTimes || []), ...allowedFallbackTimes].forEach((t: any) => {
           if (t && (t.id || t.hours)) {
             const entryId = t.id || `time-${t.date}-${t.hours}`;
-            const existing = timeMap.get(entryId) || {};
-            const rate = Number(t.hourly_rate || t.hourlyRate || existing.hourlyRate || 120);
+            const existing = timeMap.get(entryId) || timeMetaLookup.get(entryId) || {};
+            const rate = Number(t.hourly_rate || t.hourlyRate || existing.hourlyRate || existing.hourly_rate || 120);
             const isBillable = t.isBillable !== undefined ? Boolean(t.isBillable) : (t.is_billable !== undefined ? Boolean(t.is_billable) : (existing.isBillable !== undefined ? existing.isBillable : true));
             timeMap.set(entryId, {
               ...existing,
@@ -517,10 +541,10 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
               hourly_rate: rate,
               isBillable,
               is_billable: isBillable,
-              projectId: t.projectId || t.project_id || existing.projectId || 'global',
-              project_id: t.projectId || t.project_id || existing.project_id || 'global',
-              userId: t.userId || t.user_id || existing.userId || currentUser.uid,
-              user_id: t.userId || t.user_id || existing.user_id || currentUser.uid,
+              projectId: t.projectId || t.project_id || existing.projectId || existing.project_id || 'global',
+              project_id: t.projectId || t.project_id || existing.project_id || existing.projectId || 'global',
+              userId: t.userId || t.user_id || existing.userId || existing.user_id || currentUser.uid,
+              user_id: t.userId || t.user_id || existing.user_id || existing.userId || currentUser.uid,
               date: t.date || existing.date || (t.created_at ? t.created_at.split('T')[0] : new Date().toISOString().split('T')[0])
             });
           }

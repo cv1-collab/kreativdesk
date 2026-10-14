@@ -31,7 +31,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+    const clientIp = (
+      (req.headers['x-vercel-forwarded-for'] as string) ||
+      (req.headers['x-real-ip'] as string) ||
+      (req.headers['x-forwarded-for'] as string)?.split(',')[0] ||
+      req.socket?.remoteAddress ||
+      'unknown'
+    ).trim();
     if (!checkChatRateLimit(clientIp, 15)) {
       return res.status(429).json({ error: 'Zu viele Anfragen. Bitte warte einen Moment.' });
     }
@@ -44,6 +50,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (userQuestion.length > 1200) {
       return res.status(400).json({ error: 'Frage ist zu lang (max. 1200 Zeichen).' });
+    }
+
+    if (JSON.stringify(proposalContext).length > 25000) {
+      return res.status(400).json({ error: 'Proposal context payload is too large (max 25KB).' });
     }
 
     const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || process.env.GOOGLE_AI_KEY;
@@ -79,13 +89,13 @@ DEINE AUFGABE:
       { role: 'model', parts: [{ text: 'Verstanden. Ich stehe dem Kunden als kompetenter Angebots-Assistent zur Seite und beantworte alle Fragen basierend auf den Offertendaten.' }] }
     ];
 
-    // Historie der letzten Nachrichten hinzufügen
+    // Historie der letzten Nachrichten hinzufügen (max. 15 Einträge, je max. 1500 Zeichen)
     if (Array.isArray(messageHistory)) {
-      messageHistory.slice(-4).forEach((msg: any) => {
-        if (msg.role && msg.text) {
+      messageHistory.slice(-15).slice(-4).forEach((msg: any) => {
+        if (msg?.role && typeof msg?.text === 'string' && msg.text.trim()) {
           contents.push({
             role: msg.role === 'user' ? 'user' : 'model',
-            parts: [{ text: msg.text }]
+            parts: [{ text: msg.text.slice(0, 1500) }]
           });
         }
       });

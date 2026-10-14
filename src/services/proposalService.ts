@@ -185,7 +185,7 @@ export async function getProposalByShareToken(shareToken: string, pinCode?: stri
         const row = Array.isArray(rows) && rows.length > 0 ? rows[0] : (rows && !Array.isArray(rows) ? rows : null);
         if (!rpcErr && row) {
           if (row.pin_code !== '__PIN_REQUIRED__') {
-            incrementProposalViews(row.id, row.views_count || 0);
+            incrementProposalViews(row.id, row.views_count || 0, row.share_token || shareToken);
           }
           return mapDbToProposal(row);
         }
@@ -201,7 +201,7 @@ export async function getProposalByShareToken(shareToken: string, pinCode?: stri
         .maybeSingle();
 
       if (!error && data) {
-        incrementProposalViews(data.id, data.views_count || 0);
+        incrementProposalViews(data.id, data.views_count || 0, data.share_token || shareToken);
         return mapDbToProposal(data);
       }
     }
@@ -398,6 +398,7 @@ export async function acceptProposalByClient(
 
   let resolvedCompanyId = acceptanceData.companyId || item?.companyId;
   let resolvedTitle = acceptanceData.title || item?.title || 'Offerte';
+  let resolvedShareToken = acceptanceData.shareToken || (item as any)?.shareToken;
 
   try {
     if (supabase) {
@@ -413,8 +414,9 @@ export async function acceptProposalByClient(
 
       if (propRow?.company_id) resolvedCompanyId = propRow.company_id;
       if (propRow?.title) resolvedTitle = propRow.title;
+      if (propRow?.share_token) resolvedShareToken = propRow.share_token;
 
-      const shareToken = acceptanceData.shareToken || (propRow as any)?.share_token || (item as any)?.shareToken;
+      const shareToken = resolvedShareToken;
 
       let rpcSuccess = false;
       if (shareToken) {
@@ -475,6 +477,7 @@ export async function acceptProposalByClient(
       body: JSON.stringify({
         event: 'PROPOSAL_ACCEPTED',
         proposalId,
+        shareToken: resolvedShareToken || item?.shareToken,
         companyId: resolvedCompanyId,
         proposalTitle: resolvedTitle,
         acceptanceData: {
@@ -496,6 +499,7 @@ export async function acceptProposalByClient(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           proposalId,
+          shareToken: resolvedShareToken || item?.shareToken,
           recipientEmail: acceptanceData.email,
           quoteData: {
             quoteNumber: `OFF-${proposalId.slice(-6)}`,
@@ -535,18 +539,22 @@ export async function deleteProposal(proposalId: string): Promise<boolean> {
   return true;
 }
 
-function incrementProposalViews(id: string, currentViews: number) {
+async function incrementProposalViews(id: string, currentViews: number, shareToken?: string) {
   try {
     if (supabase) {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session?.access_token) {
-          supabase
-            .from('smart_proposals')
-            .update({ views_count: currentViews + 1, last_viewed_at: new Date().toISOString() })
-            .eq('id', id)
-            .then();
-        }
-      }).catch(() => {});
+      if (shareToken) {
+        try {
+          const { error: rpcErr } = await (supabase as any).rpc('increment_proposal_views', { p_share_token: shareToken });
+          if (!rpcErr) return;
+        } catch (_) {}
+      }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        await supabase
+          .from('smart_proposals')
+          .update({ views_count: currentViews + 1, last_viewed_at: new Date().toISOString() })
+          .eq('id', id);
+      }
     }
   } catch (e) {}
 }

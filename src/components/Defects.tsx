@@ -295,7 +295,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
       return;
     }
     const recognition = new SpeechRecognition();
-    recognition.lang = 'de-DE';
+    recognition.lang = language === 'en' ? 'en-US' : 'de-DE';
     recognition.interimResults = false;
     recognition.onstart = () => {
       setIsListening(true);
@@ -534,16 +534,22 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
     }
     try {
       if (editingId) { 
-        await supabase.from('defects').update({
+        const updatePayload: any = {
           prompt: currentDefect.title || 'Mangel',
           description: currentDefect.description || '',
           status: currentDefect.status || 'To Do',
           severity: currentDefect.priority || 'Medium',
           trade: currentDefect.trade || null,
+          assignee: currentDefect.assignee || null,
           location: currentDefect.location || null,
           due_date: currentDefect.dueDate || null,
           image_url: currentDefect.imageUrl || null
-        }).eq('id', editingId);
+        };
+        const { error: updErr } = await supabase.from('defects').update(updatePayload).eq('id', editingId);
+        if (updErr) {
+          const { assignee: _omit, ...fallbackUpdate } = updatePayload;
+          await supabase.from('defects').update(fallbackUpdate).eq('id', editingId);
+        }
         setDefects(prev => prev.map(d => d.id === editingId ? { ...d, ...currentDefect } as Defect : d));
         invalidateDefects();
       } else { 
@@ -557,12 +563,19 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
           status: currentDefect.status || 'To Do',
           severity: currentDefect.priority || 'Medium',
           trade: currentDefect.trade || null,
+          assignee: currentDefect.assignee || null,
           location: currentDefect.location || null,
           due_date: currentDefect.dueDate || null,
           image_url: currentDefect.imageUrl || null,
           created_at: new Date().toISOString()
         };
-        const { data: created, error } = await supabase.from('defects').insert(payload).select().maybeSingle();
+        let { data: created, error } = await supabase.from('defects').insert(payload).select().maybeSingle();
+        if (error) {
+          const { assignee: _omit, ...fallbackPayload } = payload;
+          const retryRes = await supabase.from('defects').insert(fallbackPayload).select().maybeSingle();
+          created = retryRes.data;
+          error = retryRes.error;
+        }
         if (error) throw error;
 
         const newDefectItem: any = {
@@ -1123,7 +1136,28 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
                           placeholder="z.B. Elektro" 
                         />
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-1 flex items-center h-5">
+                          {language === 'en' ? 'Assigned Contractor / Company' : 'Zuständiger Handwerker / Firma'}
+                        </label>
+                        <input
+                          type="text"
+                          list="defect-assignee-options"
+                          value={currentDefect.assignee || ''}
+                          onChange={e => setCurrentDefect({ ...currentDefect, assignee: e.target.value })}
+                          className="w-full bg-background border border-border/50 rounded-lg py-3 px-4 text-sm font-bold text-text-primary focus:outline-none focus:border-accent-ai shadow-sm"
+                          placeholder={language === 'en' ? 'Select or enter contractor...' : 'Handwerker / Firma wählen oder eingeben...'}
+                        />
+                        <datalist id="defect-assignee-options">
+                          {(companyUsers || []).map((u: any, idx: number) => {
+                            const label = u.company_name || u.companyName
+                              ? `${u.name || u.email} (${u.company_name || u.companyName})`
+                              : (u.name || u.email || '');
+                            return label ? <option key={u.id || idx} value={label} /> : null;
+                          })}
+                        </datalist>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 md:col-span-2">
                         <div><label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-1 flex items-center h-5">{t('priority')}</label><select value={currentDefect.priority} onChange={e => setCurrentDefect({...currentDefect, priority: e.target.value})} className="w-full bg-background border border-border/50 rounded-lg py-3 px-4 text-sm font-bold text-text-primary focus:outline-none focus:border-accent-ai cursor-pointer shadow-sm"><option value="Low" className="bg-surface">{t('low')}</option><option value="Medium" className="bg-surface">{t('medium')}</option><option value="High" className="bg-surface">{t('high')}</option><option value="Critical" className="bg-surface">{t('critical')}</option></select></div>
                         <div><label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-1 flex items-center h-5">{t('status')}</label><select value={currentDefect.status} onChange={e => setCurrentDefect({...currentDefect, status: e.target.value})} className="w-full bg-background border border-border/50 rounded-lg py-3 px-4 text-sm font-bold text-text-primary focus:outline-none focus:border-accent-ai cursor-pointer shadow-sm"><option value="To Do" className="bg-surface">{t('to_do')}</option><option value="In Progress" className="bg-surface">{t('in_progress')}</option><option value="In Review" className="bg-surface">{t('in_review')}</option><option value="Done" className="bg-surface">{t('done')}</option></select></div>
                       </div>
