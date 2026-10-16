@@ -1525,37 +1525,42 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
 
       const isDemoProject = isDemoMode || targetId?.startsWith('demo-') || targetId === 'demo-1' || targetId === 'global';
       if (slidesArr.length === 0) {
-        try {
-          const projTitle = activeProject?.name || "Projekt Status Overview";
-          const starterSlides = [
-            { title: projTitle, content: "Zusammenfassung des aktuellen Projektstatus, Architektur-Meilensteine und Kostenübersicht.", layout: 'title-only', notes: "Einleitung und Übersicht für Bauherrschaft & Team.", order_index: 0 },
-            { title: "Aktueller Baufortschritt", content: "Die Rohbauarbeiten verlaufen planmässig. Der Innenausbau und die Detailplanung sind mit dem Projektteam abgestimmt.", layout: 'split', notes: "Wichtige Meilensteine besprechen.", order_index: 1 },
-            { title: "Das Projekt-Team", content: "", layout: 'team-grid', notes: "Vorstellung der Projektleitung und Fachplaner.", order_index: 2 },
-            { title: "Projekt-Budget", content: "", layout: 'data-budget', notes: "BKP Kostenübersicht.", order_index: 3 },
-          ];
-          
-          const slidesToInsert = starterSlides.map((s, i) => ({
-            id: isDemoProject ? `slide-demo-${targetId}-${i}` : `slide-${targetId}-${i}`,
-            ...s,
-            fontSize: 18,
-            titleFontSize: 36,
-            projectId: targetId,
-            project_id: targetId,
-            companyId: safeCompanyId,
-            company_id: safeCompanyId,
-            ownerId: currentUser?.uid,
-            owner_id: currentUser?.uid,
-            created_at: new Date().toISOString()
-          }));
+        const cachedSlides = safeStorage.getItem<any[]>(`pitch_deck_slides_${targetId}`, null);
+        if (cachedSlides && Array.isArray(cachedSlides) && cachedSlides.length > 0) {
+          slidesArr.push(...cachedSlides);
+        } else {
+          try {
+            const projTitle = activeProject?.name || "Projekt Status Overview";
+            const starterSlides = [
+              { title: projTitle, content: "Zusammenfassung des aktuellen Projektstatus, Architektur-Meilensteine und Kostenübersicht.", layout: 'title-only', notes: "Einleitung und Übersicht für Bauherrschaft & Team.", order_index: 0 },
+              { title: "Aktueller Baufortschritt", content: "Die Rohbauarbeiten verlaufen planmässig. Der Innenausbau und die Detailplanung sind mit dem Projektteam abgestimmt.", layout: 'split', notes: "Wichtige Meilensteine besprechen.", order_index: 1 },
+              { title: "Das Projekt-Team", content: "", layout: 'team-grid', notes: "Vorstellung der Projektleitung und Fachplaner.", order_index: 2 },
+              { title: "Projekt-Budget", content: "", layout: 'data-budget', notes: "BKP Kostenübersicht.", order_index: 3 },
+            ];
+            
+            const slidesToInsert = starterSlides.map((s, i) => ({
+              id: isDemoProject ? `slide-demo-${targetId}-${i}` : `slide-${targetId}-${i}`,
+              ...s,
+              fontSize: 18,
+              titleFontSize: 36,
+              projectId: targetId,
+              project_id: targetId,
+              companyId: safeCompanyId,
+              company_id: safeCompanyId,
+              ownerId: currentUser?.uid,
+              owner_id: currentUser?.uid,
+              created_at: new Date().toISOString()
+            }));
 
-          slidesArr.push(...slidesToInsert);
+            slidesArr.push(...slidesToInsert);
 
-          if (!isDemoProject && targetId && targetId !== 'global' && currentUser?.uid && safeCompanyId) {
-            await supabase
-              .from('slides')
-              .upsert(slidesToInsert.map((s: any) => serializeSlideForDb(s)), { onConflict: 'id' });
-          }
-        } catch(e) { console.warn("Error seeding starter deck", e); }
+            if (!isDemoProject && targetId && targetId !== 'global' && currentUser?.uid && safeCompanyId) {
+              await supabase
+                .from('slides')
+                .upsert(slidesToInsert.map((s: any) => serializeSlideForDb(s)), { onConflict: 'id' });
+            }
+          } catch(e) { console.warn("Error seeding starter deck", e); }
+        }
       }
 
       if (slidesArr.length > 0) {
@@ -1613,6 +1618,22 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
     };
   }, [currentUser, projectId, importProjectId, targetId, isDemoMode, setActiveSlideId, setSlides, activeProject?.name]);
 
+  const pendingSlideUpsertRef = useRef<any | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+        updateTimeoutRef.current = null;
+      }
+      if (pendingSlideUpsertRef.current) {
+        const payload = pendingSlideUpsertRef.current;
+        pendingSlideUpsertRef.current = null;
+        supabase.from('slides').upsert(payload, { onConflict: 'id' }).then(() => {}, () => {});
+      }
+    };
+  }, []);
+
   const handleLocalUpdate = (field: 'title' | 'content' | 'notes', value: string) => {
     if (!isTypingBurstRef.current) {
       pushHistorySnapshot();
@@ -1630,21 +1651,24 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
     const updatedSlide = activeSlide ? { ...activeSlide, [field]: value } : null;
     if (updatedSlide) {
       setSlides(prev => prev.map(s => s.id === updatedSlide.id ? updatedSlide : s));
+      if (!isPreviewMode && targetId && targetId !== 'global' && !targetId.startsWith('demo-')) {
+        const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+        pendingSlideUpsertRef.current = serializeSlideForDb({
+          ...updatedSlide,
+          projectId: targetId,
+          companyId: safeCompanyId,
+          ownerId: updatedSlide.ownerId || currentUser?.uid
+        });
+      }
     }
 
     if (updateTimeoutRef.current) clearTimeout(updateTimeoutRef.current);
     updateTimeoutRef.current = setTimeout(async () => {
-      if (updatedSlide && !isPreviewMode && targetId && targetId !== 'global') {
-        const safeCompanyId = currentUser?.companyId || currentUser?.uid;
-        await supabase.from('slides').upsert(
-          serializeSlideForDb({
-            ...updatedSlide,
-            projectId: targetId,
-            companyId: safeCompanyId,
-            ownerId: updatedSlide.ownerId || currentUser?.uid
-          }),
-          { onConflict: 'id' }
-        );
+      updateTimeoutRef.current = null;
+      const payload = pendingSlideUpsertRef.current;
+      pendingSlideUpsertRef.current = null;
+      if (payload) {
+        await supabase.from('slides').upsert(payload, { onConflict: 'id' });
       }
     }, 500); 
   };

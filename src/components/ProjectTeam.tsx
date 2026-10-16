@@ -134,6 +134,7 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
     try {
       await addProjectMember(currentProjectId, {
         userId: selectedUserId,
+        name: selectedUser?.name || '',
         userEmail: selectedUser?.email || '',
         projectRole: selectedRole,
         companyRole: targetRole
@@ -200,6 +201,7 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
       
       await addProjectMember(currentProjectId, {
         userId: newUserId,
+        name: newUserName,
         userEmail: newUserEmail,
         projectRole: selectedRole,
         companyRole: newUserCompanyRole

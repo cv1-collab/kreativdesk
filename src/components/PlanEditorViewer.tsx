@@ -192,6 +192,7 @@ const MM_TO_PX = 3;
 const formatBytes = (bytes: number) => { if (!bytes || bytes === 0) return '0 Bytes'; const k = 1024; const sizes = ['Bytes', 'KB', 'MB', 'GB']; const i = Math.floor(Math.log(bytes) / Math.log(k)); return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]; };
 
 const sessionImageCache: Record<string, string> = {};
+const cadMemoryCache: Record<string, any> = {};
 
 const CADPlanPDFDocument = ({ settings, docHeader, planImage, elements, layers, planScale, originalFormat, originalOrientation, t }: any) => {
   const isLandscape = settings.orientation === 'landscape';
@@ -532,12 +533,33 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   const cadCacheKey = `kreativdesk_cad_cache_${tenantScopeId}_${currentProjectId}`;
   const cadStorageKey = `cad_state_${tenantScopeId}_${currentProjectId}`;
 
-  const getCachedPlan = useCallback(() => {
-    return safeStorage.getItem<any>(cadCacheKey, null) || safeStorage.getItem<any>(`kreativdesk_cad_cache_${currentProjectId}`, null);
+  const getCachedPlan = useCallback((specificPlanId?: string | null) => {
+    const restoreImg = (entry: any) => {
+      if (!entry) return null;
+      if (entry.planImage === '__SESSION_IMG__' && entry.id) {
+        return {
+          ...entry,
+          planImage: sessionImageCache[`__cad_img_${entry.id}`] || cadMemoryCache[`${cadCacheKey}_plan_${entry.id}`]?.planImage || cadMemoryCache[cadCacheKey]?.planImage || dummySvgPlan
+        };
+      }
+      return entry;
+    };
+    if (specificPlanId) {
+      const perPlanKey = `${cadCacheKey}_plan_${specificPlanId}`;
+      const memPlan = cadMemoryCache[perPlanKey];
+      if (memPlan) return restoreImg(memPlan);
+      const storedPlan = safeStorage.getItem<any>(perPlanKey, null);
+      if (storedPlan) return restoreImg(storedPlan);
+    }
+    const memMain = cadMemoryCache[cadCacheKey];
+    if (memMain && (!specificPlanId || memMain.id === specificPlanId)) return restoreImg(memMain);
+    const storedMain = safeStorage.getItem<any>(cadCacheKey, null) || safeStorage.getItem<any>(`kreativdesk_cad_cache_${currentProjectId}`, null);
+    if (storedMain && (!specificPlanId || storedMain.id === specificPlanId)) return restoreImg(storedMain);
+    return null;
   }, [cadCacheKey, currentProjectId]);
 
   const initialCache = getCachedPlan();
-  const [projectPlans, setProjectPlans] = useState<any[]>([]);
+  const [projectPlans, setProjectPlans] = useState<any[]>(() => initialCache ? [initialCache] : []);
   
   const [activePlanId, setActivePlanIdRaw] = useState<string | null>(() => {
     if (initialCache?.id) return initialCache.id;
@@ -587,7 +609,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   const [history, setHistory] = useState<PlanElement[][]>([]);
   const [future, setFuture] = useState<PlanElement[][]>([]);
   const elementsBeforeDragRef = useRef<PlanElement[] | null>(null);
-  const hasUnsavedChangesRef = useRef(false);
+  const hasUnsavedChangesRef = useRef(Boolean(initialCache?.hasUnsavedChanges));
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const commitElements = useCallback((nextElements: PlanElement[]) => {
@@ -764,31 +786,164 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     elements: PlanElement[];
     layers: Layer[];
     activeLayerId: string;
+    hasUnsavedChanges?: boolean;
+    updatedAt?: number;
   }) => {
-    if (data.id && data.planImage) {
-      safeStorage.setItem(cadCacheKey, data);
+    if (!data.id || !data.planImage) return;
+    const payload = {
+      ...data,
+      hasUnsavedChanges: data.hasUnsavedChanges !== undefined ? data.hasUnsavedChanges : hasUnsavedChangesRef.current,
+      updatedAt: data.updatedAt || Date.now()
+    };
+    cadMemoryCache[cadCacheKey] = payload;
+    cadMemoryCache[`${cadCacheKey}_plan_${data.id}`] = payload;
+    if (data.planImage.startsWith('data:')) {
+      sessionImageCache[`__cad_img_${data.id}`] = data.planImage;
+    }
+
+    const okMain = safeStorage.setItem(cadCacheKey, payload);
+    if (!okMain && data.planImage.length > 50000) {
+      sessionImageCache[`__cad_img_${data.id}`] = data.planImage;
+      safeStorage.setItem(cadCacheKey, { ...payload, planImage: '__SESSION_IMG__' });
+    }
+    const perPlanKey = `${cadCacheKey}_plan_${data.id}`;
+    const okPlan = safeStorage.setItem(perPlanKey, payload);
+    if (!okPlan && data.planImage.length > 50000) {
+      sessionImageCache[`__cad_img_${data.id}`] = data.planImage;
+      safeStorage.setItem(perPlanKey, { ...payload, planImage: '__SESSION_IMG__' });
     }
   }, [cadCacheKey]);
 
-  // Sync editor modifications into local intermediate cache
+  const pendingCloudSaveRef = useRef<(() => Promise<void>) | null>(null);
+
+  // Sync editor modifications immediately into local & in-memory intermediate cache (no debounce loss on fast module switch)
   useEffect(() => {
     if (!activePlanId || !planImage) return;
-    const timeout = setTimeout(() => {
-      savePlanToCache({
-        id: activePlanId,
+    savePlanToCache({
+      id: activePlanId,
+      planName,
+      planImage,
+      paperFormat,
+      paperOrientation,
+      planScale,
+      isCalibrated,
+      elements,
+      layers,
+      activeLayerId,
+      hasUnsavedChanges: hasUnsavedChangesRef.current,
+      updatedAt: Date.now()
+    });
+    setProjectPlans(prev => {
+      if (!prev.some(p => p.id === activePlanId)) return prev;
+      return prev.map(p => p.id === activePlanId ? {
+        ...p,
         planName,
+        plan_name: planName,
         planImage,
+        plan_image: planImage,
         paperFormat,
+        paper_format: paperFormat,
         paperOrientation,
+        paper_orientation: paperOrientation,
         planScale,
+        plan_scale: planScale,
         isCalibrated,
+        is_calibrated: isCalibrated,
         elements,
         layers,
-        activeLayerId
-      });
-    }, 300);
-    return () => clearTimeout(timeout);
+        activeLayerId,
+        active_layer_id: activeLayerId,
+        hasUnsavedChanges: hasUnsavedChangesRef.current,
+        updatedAt: Date.now()
+      } : p);
+    });
   }, [activePlanId, planImage, planName, paperFormat, paperOrientation, planScale, isCalibrated, elements, layers, activeLayerId, savePlanToCache]);
+
+  // Automatic background cloud sync to Supabase cad_plans with unmount flush
+  useEffect(() => {
+    if (
+      isDemoMode ||
+      !currentProjectId ||
+      currentProjectId === 'demo-1' ||
+      !activePlanId ||
+      !planImage ||
+      activePlanId === 'demo-cad-1' ||
+      activePlanId === 'system-fallback-plan' ||
+      activePlanId.startsWith('demo-cad-') ||
+      activePlanId.startsWith('sample-plan-') ||
+      !hasUnsavedChangesRef.current
+    ) {
+      pendingCloudSaveRef.current = null;
+      return;
+    }
+
+    const performCloudSave = async () => {
+      pendingCloudSaveRef.current = null;
+      try {
+        const metaEl = {
+          id: '__plan_meta__',
+          type: '__plan_meta__',
+          plan_image: planImage,
+          paper_format: paperFormat,
+          paper_orientation: paperOrientation,
+          plan_scale: planScale,
+          is_calibrated: isCalibrated
+        };
+        const elementsToPersist = [...elements.filter((e: any) => e?.id !== '__plan_meta__'), metaEl];
+        const cleanLayers = layers.filter((l: any) => l?.id !== '__plan_meta__');
+        const nowIso = new Date().toISOString();
+
+        const { error: updateErr } = await supabase
+          .from('cad_plans')
+          .update({
+            name: planName,
+            elements: elementsToPersist,
+            layers: cleanLayers,
+            active_layer_id: activeLayerId,
+            updated_at: nowIso
+          })
+          .eq('id', activePlanId);
+
+        if (!updateErr) {
+          hasUnsavedChangesRef.current = false;
+          savePlanToCache({
+            id: activePlanId,
+            planName,
+            planImage,
+            paperFormat,
+            paperOrientation,
+            planScale,
+            isCalibrated,
+            elements,
+            layers: cleanLayers,
+            activeLayerId,
+            hasUnsavedChanges: false,
+            updatedAt: Date.now()
+          });
+        }
+      } catch (err) {
+        console.warn('CAD auto-save background warning:', err);
+      }
+    };
+
+    pendingCloudSaveRef.current = performCloudSave;
+    const timer = setTimeout(() => {
+      performCloudSave();
+    }, 600);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [activePlanId, planImage, planName, paperFormat, paperOrientation, planScale, isCalibrated, elements, layers, activeLayerId, isDemoMode, currentProjectId, savePlanToCache]);
+
+  // Flush any pending cloud save when switching away from the CAD module
+  useEffect(() => {
+    return () => {
+      if (pendingCloudSaveRef.current) {
+        pendingCloudSaveRef.current();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -880,6 +1035,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
     if (lineDistanceOnPaper_mm > 0) {
       const computedScaleRatio = Math.round((knownMeters * 1000) / lineDistanceOnPaper_mm);
+      hasUnsavedChangesRef.current = true;
       setPlanScale(computedScaleRatio);
       setIsCalibrated(true);
       addToast(
@@ -1049,18 +1205,24 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
   const loadPlanDataToEditor = useCallback((planData: any) => {
     if (!planData) return;
-    hasUnsavedChangesRef.current = false;
+    const cachedForPlan = planData.id ? getCachedPlan(planData.id) : null;
+    const preserveUnsaved = Boolean(planData.hasUnsavedChanges || cachedForPlan?.hasUnsavedChanges);
+    hasUnsavedChangesRef.current = preserveUnsaved;
     setActivePlanId(planData.id);
     const metaEl = Array.isArray(planData.elements) ? planData.elements.find((e: any) => e?.id === '__plan_meta__') : null;
-    const resolvedImage = planData.planImage || planData.plan_image || metaEl?.plan_image || null;
-    const resolvedName = planData.planName || planData.plan_name || planData.name || 'Unbenannt';
-    const resolvedElements = (planData.elements || []).filter((e: any) => e?.id !== '__plan_meta__');
-    const resolvedLayers = planData.layers || [{ id: 'default', name: 'Standard-Ebene', visible: true, locked: false, opacity: 1 }];
-    const resolvedActiveLayerId = planData.activeLayerId || planData.active_layer_id || 'default';
-    const resolvedPaperFormat = planData.paperFormat || planData.paper_format || metaEl?.paper_format || 'A3';
-    const resolvedPaperOrientation = planData.paperOrientation || planData.paper_orientation || metaEl?.paper_orientation || 'landscape';
-    const resolvedPlanScale = planData.planScale || planData.plan_scale || metaEl?.plan_scale || 50;
-    const resolvedIsCalibrated = Boolean(planData.isCalibrated || planData.is_calibrated || metaEl?.is_calibrated);
+    const resolvedImage = planData.planImage || planData.plan_image || metaEl?.plan_image || cachedForPlan?.planImage || null;
+    const resolvedName = planData.planName || planData.plan_name || planData.name || cachedForPlan?.planName || 'Unbenannt';
+    const rawElements = (planData.elements || []).filter((e: any) => e?.id !== '__plan_meta__');
+    const cachedElements = (cachedForPlan?.elements || []).filter((e: any) => e?.id !== '__plan_meta__');
+    const resolvedElements = (preserveUnsaved && cachedElements.length > 0 && rawElements.filter((e: any) => e?.type !== 'defect').length === 0)
+      ? cachedElements
+      : rawElements;
+    const resolvedLayers = planData.layers || cachedForPlan?.layers || [{ id: 'default', name: 'Standard-Ebene', visible: true, locked: false, opacity: 1 }];
+    const resolvedActiveLayerId = planData.activeLayerId || planData.active_layer_id || cachedForPlan?.activeLayerId || 'default';
+    const resolvedPaperFormat = planData.paperFormat || planData.paper_format || metaEl?.paper_format || cachedForPlan?.paperFormat || 'A3';
+    const resolvedPaperOrientation = planData.paperOrientation || planData.paper_orientation || metaEl?.paper_orientation || cachedForPlan?.paperOrientation || 'landscape';
+    const resolvedPlanScale = planData.planScale || planData.plan_scale || metaEl?.plan_scale || cachedForPlan?.planScale || 50;
+    const resolvedIsCalibrated = Boolean(planData.isCalibrated ?? planData.is_calibrated ?? metaEl?.is_calibrated ?? cachedForPlan?.isCalibrated);
 
     setPlanImage(resolvedImage);
     setPlanName(resolvedName);
@@ -1086,9 +1248,11 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       isCalibrated: resolvedIsCalibrated,
       elements: resolvedElements,
       layers: resolvedLayers,
-      activeLayerId: resolvedActiveLayerId
+      activeLayerId: resolvedActiveLayerId,
+      hasUnsavedChanges: preserveUnsaved,
+      updatedAt: cachedForPlan?.updatedAt || Date.now()
     });
-  }, [setActivePlanId, savePlanToCache]);
+  }, [setActivePlanId, savePlanToCache, getCachedPlan]);
 
   useEffect(() => {
     const isDemoProject = isDemoMode || Boolean(activeProject?.name?.toLowerCase().includes('demo')) || currentProjectId === 'demo-1' || currentProjectId.startsWith('demo');
@@ -1097,21 +1261,24 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     // 🔥 OFFLINE DEMO-WEICHE (Zero Latency)
     // ==========================================
     if (isDemoMode && demoData) {
+       const cachedDemo = getCachedPlan('demo-cad-1') || getCachedPlan();
        const mockPlan = {
-         id: 'demo-cad-1',
+         id: cachedDemo?.id || 'demo-cad-1',
          projectId: currentProjectId,
          companyId: 'demo-company',
-         planName: 'Grundriss 4.5 Zimmer Wohnung (Architektur SIA 1:50)',
-         planImage: dummySvgPlan, 
-         paperFormat: 'A3',
-         paperOrientation: 'landscape',
-         planScale: 50,
-         elements: [...defaultDemoDefectPins],
-         layers: [{ id: 'default', name: 'Architektur & Tragwerk', visible: true, locked: false, opacity: 1 }],
-         activeLayerId: 'default'
+         planName: cachedDemo?.planName || 'Grundriss 4.5 Zimmer Wohnung (Architektur SIA 1:50)',
+         planImage: cachedDemo?.planImage || dummySvgPlan, 
+         paperFormat: cachedDemo?.paperFormat || 'A3',
+         paperOrientation: cachedDemo?.paperOrientation || 'landscape',
+         planScale: cachedDemo?.planScale || 50,
+         isCalibrated: Boolean(cachedDemo?.isCalibrated),
+         elements: (cachedDemo?.elements && cachedDemo.elements.length > 0) ? cachedDemo.elements : [...defaultDemoDefectPins],
+         layers: (cachedDemo?.layers && cachedDemo.layers.length > 0) ? cachedDemo.layers : [{ id: 'default', name: 'Architektur & Tragwerk', visible: true, locked: false, opacity: 1 }],
+         activeLayerId: cachedDemo?.activeLayerId || 'default',
+         hasUnsavedChanges: Boolean(cachedDemo?.hasUnsavedChanges)
        };
        setProjectPlans([mockPlan]);
-       if (!activePlanIdRef.current) loadPlanDataToEditor(mockPlan);
+       loadPlanDataToEditor(mockPlan);
        return; 
     }
 
@@ -1121,18 +1288,21 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     if (!currentProjectId) return;
 
     if (currentProjectId === 'demo-1') {
+       const cachedDemo = getCachedPlan('demo-cad-1') || getCachedPlan();
        const mockPlan = {
-         id: 'demo-cad-1',
+         id: cachedDemo?.id || 'demo-cad-1',
          projectId: 'demo-1',
          companyId: 'demo-company',
-         planName: 'Grundriss 4.5 Zimmer Wohnung (Architektur SIA 1:50)',
-         planImage: dummySvgPlan, 
-         paperFormat: 'A3',
-         paperOrientation: 'landscape',
-         planScale: 50,
-         elements: [...defaultDemoDefectPins],
-         layers: [{ id: 'default', name: 'Architektur & Tragwerk', visible: true, locked: false, opacity: 1 }],
-         activeLayerId: 'default'
+         planName: cachedDemo?.planName || 'Grundriss 4.5 Zimmer Wohnung (Architektur SIA 1:50)',
+         planImage: cachedDemo?.planImage || dummySvgPlan, 
+         paperFormat: cachedDemo?.paperFormat || 'A3',
+         paperOrientation: cachedDemo?.paperOrientation || 'landscape',
+         planScale: cachedDemo?.planScale || 50,
+         isCalibrated: Boolean(cachedDemo?.isCalibrated),
+         elements: (cachedDemo?.elements && cachedDemo.elements.length > 0) ? cachedDemo.elements : [...defaultDemoDefectPins],
+         layers: (cachedDemo?.layers && cachedDemo.layers.length > 0) ? cachedDemo.layers : [{ id: 'default', name: 'Architektur & Tragwerk', visible: true, locked: false, opacity: 1 }],
+         activeLayerId: cachedDemo?.activeLayerId || 'default',
+         hasUnsavedChanges: Boolean(cachedDemo?.hasUnsavedChanges)
        };
        setProjectPlans([mockPlan]);
        loadPlanDataToEditor(mockPlan);
@@ -1226,19 +1396,39 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
         if (plans && plans.length > 0) {
           const mappedPlans = plans.map((p: any) => {
+            const planCache = getCachedPlan(p.id);
             const metaEl = Array.isArray(p.elements) ? p.elements.find((e: any) => e?.id === '__plan_meta__') : null;
             const bgImgEl = Array.isArray(p.elements) ? p.elements.find((e: any) => e?.id === 'bg-img' || e?.type === 'image') : null;
-            const resolvedImage = p.plan_image || p.planImage || metaEl?.plan_image || bgImgEl?.url || (isDemoProject ? dummySvgPlan : null);
+            const resolvedImage = p.plan_image || p.planImage || metaEl?.plan_image || bgImgEl?.url || planCache?.planImage || (isDemoProject ? dummySvgPlan : null);
 
             const dbDefectIdSet = new Set(dbDefects.map(d => d.id));
-            const mergedElements: PlanElement[] = (p.elements || []).filter((e: any) => {
+            const dbRawElements: PlanElement[] = (p.elements || []).filter((e: any) => {
               if (e?.id === '__plan_meta__') return false;
-              // Clean up ghost pins: if element is a defect pin, only keep it if it still exists in the database
               if (e?.type === 'defect') {
                 return dbDefectIdSet.has(e.id);
               }
               return true;
             });
+
+            const cachedRawElements: PlanElement[] = (planCache?.elements || []).filter((e: any) => {
+              if (e?.id === '__plan_meta__') return false;
+              if (e?.type === 'defect' && e?.isSynced) {
+                return dbDefectIdSet.has(e.id);
+              }
+              return true;
+            });
+
+            const dbDrawingsCount = dbRawElements.filter((e: any) => e?.type !== 'defect').length;
+            const cacheDrawingsCount = cachedRawElements.filter((e: any) => e?.type !== 'defect').length;
+            const dbUpdatedAt = p.updated_at ? new Date(p.updated_at).getTime() : 0;
+            const useCachedState = Boolean(
+              planCache &&
+              (planCache.hasUnsavedChanges ||
+                (planCache.updatedAt && planCache.updatedAt > dbUpdatedAt) ||
+                (dbDrawingsCount === 0 && cacheDrawingsCount > 0))
+            );
+
+            const mergedElements: PlanElement[] = useCachedState ? [...cachedRawElements] : [...dbRawElements];
 
             // Merge / sync defects from Supabase defects table
             dbDefects.forEach(dbDef => {
@@ -1271,29 +1461,43 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
             return {
               ...p,
-              plan_name: p.name || p.plan_name || (isDemoProject ? 'Grundriss EG - Architektur & Tragwerk' : 'Unbenannter Plan'),
+              plan_name: (useCachedState && planCache?.planName) || p.name || p.plan_name || (isDemoProject ? 'Grundriss EG - Architektur & Tragwerk' : 'Unbenannter Plan'),
+              planName: (useCachedState && planCache?.planName) || p.name || p.plan_name || (isDemoProject ? 'Grundriss EG - Architektur & Tragwerk' : 'Unbenannter Plan'),
               plan_image: resolvedImage,
-              paper_format: p.paper_format || metaEl?.paper_format || 'A3',
-              paper_orientation: p.paper_orientation || metaEl?.paper_orientation || 'landscape',
-              plan_scale: p.plan_scale || metaEl?.plan_scale || 50,
-              elements: mergedElements
+              planImage: resolvedImage,
+              paper_format: (useCachedState && planCache?.paperFormat) || p.paper_format || metaEl?.paper_format || 'A3',
+              paperFormat: (useCachedState && planCache?.paperFormat) || p.paper_format || metaEl?.paper_format || 'A3',
+              paper_orientation: (useCachedState && planCache?.paperOrientation) || p.paper_orientation || metaEl?.paper_orientation || 'landscape',
+              paperOrientation: (useCachedState && planCache?.paperOrientation) || p.paper_orientation || metaEl?.paper_orientation || 'landscape',
+              plan_scale: (useCachedState && planCache?.planScale) || p.plan_scale || metaEl?.plan_scale || 50,
+              planScale: (useCachedState && planCache?.planScale) || p.plan_scale || metaEl?.plan_scale || 50,
+              is_calibrated: useCachedState ? Boolean(planCache?.isCalibrated) : Boolean(p.is_calibrated || metaEl?.is_calibrated),
+              isCalibrated: useCachedState ? Boolean(planCache?.isCalibrated) : Boolean(p.is_calibrated || metaEl?.is_calibrated),
+              layers: (useCachedState && planCache?.layers?.length) ? planCache.layers : (p.layers || [{ id: 'default', name: 'Standard-Ebene', visible: true, locked: false, opacity: 1 }]),
+              active_layer_id: (useCachedState && planCache?.activeLayerId) || p.active_layer_id || 'default',
+              activeLayerId: (useCachedState && planCache?.activeLayerId) || p.active_layer_id || 'default',
+              elements: mergedElements,
+              hasUnsavedChanges: Boolean(planCache?.hasUnsavedChanges),
+              updatedAt: useCachedState ? planCache?.updatedAt : dbUpdatedAt
             };
           });
-          setProjectPlans(mappedPlans as any);
-          
-          // Select and load the active plan, or fallback to the first plan in list (do NOT overwrite unsaved local edits!)
-          if (!hasUnsavedChangesRef.current) {
-            const targetPlan = (activePlanIdRef.current ? mappedPlans.find((p: any) => p.id === activePlanIdRef.current) : null) || mappedPlans[0];
-            loadPlanDataToEditor(targetPlan);
+
+          const generalCached = getCachedPlan();
+          if (generalCached?.id && generalCached.planImage && !mappedPlans.some((mp: any) => mp.id === generalCached.id)) {
+            mappedPlans.unshift(generalCached);
           }
+
+          setProjectPlans(mappedPlans as any);
+
+          const preferredPlanId = activePlanIdRef.current || generalCached?.id;
+          const targetPlan = (preferredPlanId ? mappedPlans.find((p: any) => p.id === preferredPlanId) : null) || mappedPlans[0];
+          loadPlanDataToEditor(targetPlan);
         } else {
           // Falls keine Pläne in der DB gefunden wurden, prüfen, ob ein lokaler Entwurf im Cache vorliegt
           const cached = getCachedPlan();
           if (cached && (cached.planImage || (cached.elements && cached.elements.length > 0))) {
             setProjectPlans([cached]);
-            if (!hasUnsavedChangesRef.current) {
-              loadPlanDataToEditor(cached);
-            }
+            loadPlanDataToEditor(cached);
           } else if (isDemoProject) {
             // Im Demo-Projekt sofort den hochwertigen Schweizer Architekturgrundriss laden!
             const defaultDemoPlan = {
@@ -1310,9 +1514,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
               active_layer_id: 'default'
             };
             setProjectPlans([defaultDemoPlan]);
-            if (!hasUnsavedChangesRef.current) {
-              loadPlanDataToEditor(defaultDemoPlan);
-            }
+            loadPlanDataToEditor(defaultDemoPlan);
           } else {
             setProjectPlans([]);
             setActivePlanId(null);
@@ -1636,14 +1838,31 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   };
 
   const handleManualSave = async () => {
-    if (isDemoMode) {
+    if (!activePlanId || !planImage) return;
+    const cleanLayers = layers.filter((l: any) => l?.id !== '__plan_meta__');
+
+    savePlanToCache({
+      id: activePlanId,
+      planName,
+      planImage,
+      paperFormat,
+      paperOrientation,
+      planScale,
+      isCalibrated,
+      elements,
+      layers: cleanLayers,
+      activeLayerId,
+      hasUnsavedChanges: false,
+      updatedAt: Date.now()
+    });
+
+    if (isDemoMode || currentProjectId === 'demo-1' || activePlanId === 'demo-cad-1' || activePlanId === 'system-fallback-plan') {
       hasUnsavedChangesRef.current = false;
       addToast(t('save') + " ok", "success");
       setIsSaving(false);
       return;
     }
 
-    if (!activePlanId || activePlanId === 'demo-cad-1' || activePlanId === 'system-fallback-plan') return addToast("Demo-Plan kann nicht überschrieben werden. Lade bitte einen eigenen Plan hoch.", "info");
     setIsSaving(true);
     try {
       const metaEl = {
@@ -1656,12 +1875,67 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         is_calibrated: isCalibrated
       };
       const elementsToPersist = [...elements.filter((e: any) => e?.id !== '__plan_meta__'), metaEl];
+      const safeCompId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid || null;
+
+      if (activePlanId.startsWith('sample-plan-') || activePlanId.startsWith('demo-cad-')) {
+        const oldTempId = activePlanId;
+        const { data: insertedPlan, error: insertErr } = await supabase
+          .from('cad_plans')
+          .insert({
+            project_id: currentProjectId,
+            company_id: safeCompId,
+            name: planName || 'Muster-Grundriss (Architektur 1:50)',
+            elements: elementsToPersist,
+            layers: cleanLayers,
+            active_layer_id: activeLayerId
+          })
+          .select()
+          .maybeSingle();
+
+        if (!insertErr && insertedPlan?.id) {
+          hasUnsavedChangesRef.current = false;
+          delete cadMemoryCache[`${cadCacheKey}_plan_${oldTempId}`];
+          safeStorage.removeItem(`${cadCacheKey}_plan_${oldTempId}`);
+          setActivePlanId(insertedPlan.id);
+          savePlanToCache({
+            id: insertedPlan.id,
+            planName,
+            planImage,
+            paperFormat,
+            paperOrientation,
+            planScale,
+            isCalibrated,
+            elements,
+            layers: cleanLayers,
+            activeLayerId,
+            hasUnsavedChanges: false,
+            updatedAt: Date.now()
+          });
+          setProjectPlans(prev => prev.map(p => p.id === oldTempId ? {
+            ...p,
+            id: insertedPlan.id,
+            planName,
+            plan_name: planName,
+            elements,
+            layers: cleanLayers,
+            active_layer_id: activeLayerId,
+            paper_format: paperFormat,
+            paper_orientation: paperOrientation,
+            plan_scale: planScale,
+            is_calibrated: isCalibrated,
+            hasUnsavedChanges: false
+          } : p));
+          addToast(t('save') + " ok", "success");
+          return;
+        }
+      }
+
       const { error: updateErr } = await supabase
         .from('cad_plans')
         .update({ 
           name: planName,
           elements: elementsToPersist, 
-          layers: layers.filter((l: any) => l?.id !== '__plan_meta__'), 
+          layers: cleanLayers, 
           active_layer_id: activeLayerId, 
           updated_at: new Date().toISOString() 
         })
@@ -1669,26 +1943,41 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
       if (updateErr) {
         console.error("Fehler beim Speichern in Supabase:", updateErr);
-        addToast("Fehler beim Speichern: " + updateErr.message, "error");
+        addToast("Lokal zwischengespeichert (Cloud-Sync: " + updateErr.message + ")", "info");
       } else {
         hasUnsavedChangesRef.current = false;
+        savePlanToCache({
+          id: activePlanId,
+          planName,
+          planImage,
+          paperFormat,
+          paperOrientation,
+          planScale,
+          isCalibrated,
+          elements,
+          layers: cleanLayers,
+          activeLayerId,
+          hasUnsavedChanges: false,
+          updatedAt: Date.now()
+        });
         setProjectPlans(prev => prev.map(p => p.id === activePlanId ? {
           ...p,
           planName,
           plan_name: planName,
-          elements: elementsToPersist,
-          layers: layers.filter((l: any) => l?.id !== '__plan_meta__'),
+          elements,
+          layers: cleanLayers,
           active_layer_id: activeLayerId,
           paper_format: paperFormat,
           paper_orientation: paperOrientation,
           plan_scale: planScale,
-          is_calibrated: isCalibrated
+          is_calibrated: isCalibrated,
+          hasUnsavedChanges: false
         } : p));
         addToast(t('save') + " ok", "success");
       }
     } catch (e: any) {
       console.error("Fehler beim Speichern:", e);
-      addToast("Fehler beim Speichern", "error");
+      addToast("Lokal im Zwischenspeicher gesichert", "info");
     } finally { 
       setIsSaving(false); 
     }
@@ -1699,10 +1988,15 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     if (activePlanId && window.confirm(t('confirm_delete_plan'))) {
       const deletedId = activePlanId;
       try {
-        await supabase.from('cad_plans').delete().eq('id', deletedId);
+        if (!deletedId.startsWith('sample-plan-') && !deletedId.startsWith('demo-cad-')) {
+          await supabase.from('cad_plans').delete().eq('id', deletedId);
+        }
         const remainingPlans = projectPlans.filter(p => p.id !== deletedId);
         setProjectPlans(remainingPlans);
+        delete cadMemoryCache[cadCacheKey];
+        delete cadMemoryCache[`${cadCacheKey}_plan_${deletedId}`];
         safeStorage.removeItem(cadCacheKey);
+        safeStorage.removeItem(`${cadCacheKey}_plan_${deletedId}`);
         if (remainingPlans.length > 0) {
           loadPlanDataToEditor(remainingPlans[0]);
         } else {
@@ -3202,7 +3496,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                       <span className="text-[10px] font-extrabold uppercase tracking-wider text-text-muted hidden md:inline">{t('plan_layout')}:</span>
                       <select 
                         value={paperFormat} 
-                        onChange={e => setPaperFormat(e.target.value)} 
+                        onChange={e => { hasUnsavedChangesRef.current = true; setPaperFormat(e.target.value); }} 
                         className="bg-transparent text-xs font-bold text-text-primary outline-none cursor-pointer"
                       >
                         {Object.keys(PAPER_DIMENSIONS).map(f => (
@@ -3211,7 +3505,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                       </select>
                       <select 
                         value={paperOrientation} 
-                        onChange={e => setPaperOrientation(e.target.value as any)} 
+                        onChange={e => { hasUnsavedChangesRef.current = true; setPaperOrientation(e.target.value as any); }} 
                         className="bg-transparent text-xs font-bold text-text-primary outline-none cursor-pointer hidden md:block"
                       >
                         <option value="landscape" className="bg-surface">{t('landscape')}</option>
@@ -3226,7 +3520,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                       <span className="text-xs font-bold text-text-muted">1:</span>
                       <select 
                         value={planScale} 
-                        onChange={e => setPlanScale(Number(e.target.value))} 
+                        onChange={e => { hasUnsavedChangesRef.current = true; setPlanScale(Number(e.target.value)); }} 
                         className="bg-transparent text-xs font-bold text-text-primary outline-none cursor-pointer"
                       >
                         <option value={20} className="bg-surface">20</option>
@@ -3531,6 +3825,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                           } 
                           onChange={e => {
                             const val = e.target.value;
+                            hasUnsavedChangesRef.current = true;
                             setLayers(layers.map(l => l.id === layer.id ? { ...l, name: val } : l));
                           }} 
                           className="bg-transparent flex-1 min-w-0 outline-none text-[11px] font-bold text-text-primary truncate" 
@@ -3584,6 +3879,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                         onClick={e => e.stopPropagation()}
                         onChange={e => {
                           const val = Number(e.target.value);
+                          hasUnsavedChangesRef.current = true;
                           setLayers(layers.map(l => l.id === layer.id ? { ...l, opacity: val } : l));
                         }} 
                         className="flex-1 min-w-0 w-full accent-accent-ai h-1 cursor-pointer" 
@@ -4447,22 +4743,63 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
                   <button
                     type="button"
-                    onClick={() => {
-                      const samplePlan = {
-                        id: `sample-plan-${Date.now()}`,
+                    onClick={async () => {
+                      const tempId = `sample-plan-${Date.now()}`;
+                      const defaultLayers = [{ id: 'default', name: 'Architektur & Tragwerk', visible: true, locked: false, opacity: 1 }];
+                      const samplePlan: any = {
+                        id: tempId,
                         project_id: currentProjectId,
                         plan_name: 'Muster-Grundriss (Architektur 1:50)',
+                        planName: 'Muster-Grundriss (Architektur 1:50)',
                         plan_image: dummySvgPlan,
+                        planImage: dummySvgPlan,
                         paper_format: 'A3',
+                        paperFormat: 'A3',
                         paper_orientation: 'landscape',
-                        paper_scale: 50,
+                        paperOrientation: 'landscape',
+                        plan_scale: 50,
+                        planScale: 50,
                         elements: [...defaultDemoDefectPins],
-                        layers: [{ id: 'default', name: 'Architektur & Tragwerk', visible: true, locked: false, opacity: 1 }],
-                        active_layer_id: 'default'
+                        layers: defaultLayers,
+                        active_layer_id: 'default',
+                        activeLayerId: 'default'
                       };
-                      setProjectPlans(prev => [samplePlan as any, ...prev]);
+                      setProjectPlans(prev => [samplePlan, ...prev]);
                       loadPlanDataToEditor(samplePlan);
                       addToast('Muster-Grundriss erfolgreich geladen!', 'success');
+
+                      if (!isDemoMode && currentProjectId && currentProjectId !== 'demo-1' && currentUser) {
+                        try {
+                          const safeCompId = currentUser.companyId || (currentUser as any).company_id || currentUser.uid || null;
+                          const metaEl = {
+                            id: '__plan_meta__',
+                            type: '__plan_meta__',
+                            plan_image: dummySvgPlan,
+                            paper_format: 'A3',
+                            paper_orientation: 'landscape',
+                            plan_scale: 50,
+                            is_calibrated: false
+                          };
+                          const { data: created } = await supabase
+                            .from('cad_plans')
+                            .insert({
+                              project_id: currentProjectId,
+                              company_id: safeCompId,
+                              name: 'Muster-Grundriss (Architektur 1:50)',
+                              elements: [...defaultDemoDefectPins, metaEl],
+                              layers: defaultLayers,
+                              active_layer_id: 'default'
+                            })
+                            .select()
+                            .maybeSingle();
+                          if (created?.id) {
+                            delete cadMemoryCache[`${cadCacheKey}_plan_${tempId}`];
+                            safeStorage.removeItem(`${cadCacheKey}_plan_${tempId}`);
+                            setActivePlanId(created.id);
+                            setProjectPlans(prev => prev.map(p => p.id === tempId ? { ...p, id: created.id } : p));
+                          }
+                        } catch (_) {}
+                      }
                     }}
                     className="w-full py-2.5 px-4 bg-background border border-border hover:bg-white/5 text-text-muted hover:text-text-primary rounded-xl font-semibold text-xs transition-colors"
                   >

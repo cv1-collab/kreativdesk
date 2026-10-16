@@ -782,12 +782,21 @@ export default function Finance() {
 
   // === MULTI-TENANT FILTERUNG ===
   useEffect(() => {
-    // 🔥 DEMO-BRÜCKE: Lade Daten aus deinem Template!
+    // 🔥 DEMO-BRÜCKE: Lade Daten aus Zwischenspeicher oder Template!
     if ((isDemoMode || currentProjectId === 'demo-1' || currentProjectId?.startsWith('demo-')) && demoData) {
+      const demoCacheKey = `finance_cache_${currentProjectId || 'demo-1'}`;
+      const cachedDemo = safeStorage.getItem<any>(demoCacheKey, null);
       if (demoData.financeGroups) {
-        setVersions([{ id: 'demo-v1', name: 'Originalbudget', vatRate: 8.1, status: 'approved', groups: demoData.financeGroups }]);
-        setActiveVersionId('demo-v1');
-        setProjectHeader(prev => ({ ...prev, project: demoData.project?.name || 'Demo Projekt', version: 'Originalbudget' }));
+        if (cachedDemo && Array.isArray(cachedDemo.versions) && cachedDemo.versions.length > 0) {
+          setVersions(cachedDemo.versions);
+          if (cachedDemo.activeVersionId) setActiveVersionId(cachedDemo.activeVersionId);
+          if (cachedDemo.projectHeader) setProjectHeader(cachedDemo.projectHeader);
+          if (cachedDemo.includeOptions !== undefined) setIncludeOptions(Boolean(cachedDemo.includeOptions));
+        } else {
+          setVersions([{ id: 'demo-v1', name: 'Originalbudget', vatRate: 8.1, status: 'approved', groups: demoData.financeGroups }]);
+          setActiveVersionId('demo-v1');
+          setProjectHeader(prev => ({ ...prev, project: demoData.project?.name || 'Demo Projekt', version: 'Originalbudget' }));
+        }
 
         const dummyTxs: any[] = [];
         let txId = 1;
@@ -810,6 +819,7 @@ export default function Finance() {
         dummyTxs.push({ id: `demo-rev-1`, date: new Date().toISOString().split('T')[0], description: 'Akontozahlung Bauherr', category: 'Debitorenrechnung', amount: totalPlan * 0.7, status: 'Bezahlt' });
         setTransactions(dummyTxs);
       }
+      skipNextAutoSaveRef.current = true;
       setIsInitialLoad(false);
       return;
     }
@@ -825,6 +835,17 @@ export default function Finance() {
     if (!safeCompanyId) return;
     const fetchData = async () => {
       if (!safeCompanyId) return;
+
+      // SafeStorage Cache Key (0ms Sofort-Hydration beim Modulwechsel)
+      const localCacheKey = `finance_cache_${currentProjectId}`;
+      const cachedData = safeStorage.getItem<any>(localCacheKey, null);
+      if (cachedData && Array.isArray(cachedData.versions) && cachedData.versions.length > 0) {
+        setVersions(cachedData.versions);
+        if (cachedData.activeVersionId) setActiveVersionId(cachedData.activeVersionId);
+        if (cachedData.projectHeader) setProjectHeader(cachedData.projectHeader);
+        if (cachedData.includeOptions !== undefined) setIncludeOptions(Boolean(cachedData.includeOptions));
+      }
+
       const { data: txs } = await supabase
         .from('transactions')
         .select('*')
@@ -847,17 +868,18 @@ export default function Finance() {
         setTransactions([]);
       }
 
-      // SafeStorage Cache Key
-      const localCacheKey = `finance_cache_${currentProjectId}`;
-      const cachedData = safeStorage.getItem<any>(localCacheKey, null);
-
       // FETCH BUDGET VERSIONS FROM SYSTEM_CONFIG (silently handle missing column/table error)
       let finConfig: any = null;
       try {
         finConfig = await fetchSystemConfigJSON(`finance_${currentProjectId}`, safeCompanyId);
       } catch (e) { }
 
-      const configData = finConfig || cachedData;
+      const localIsNewer = Boolean(
+        cachedData?.versions?.length > 0 &&
+        (cachedData.hasPendingSync || (cachedData.updatedAt && (!finConfig?.updatedAt || cachedData.updatedAt > finConfig.updatedAt)))
+      );
+
+      const configData = localIsNewer ? cachedData : (finConfig || cachedData);
       const hasValidVersions = Array.isArray(configData?.versions) && configData.versions.length > 0;
 
       if (hasValidVersions) {
@@ -886,7 +908,8 @@ export default function Finance() {
             date: new Date().toISOString().split('T')[0],
             version: 'Originalbudget'
           },
-          includeOptions: false
+          includeOptions: false,
+          updatedAt: Date.now()
         };
         setVersions([initVersion]);
         setActiveVersionId(initVersion.id);
@@ -934,36 +957,66 @@ export default function Finance() {
   }, [currentUser, currentProjectId, isDemoMode, demoData, activeProject, canViewFinance]);
 
   const skipNextAutoSaveRef = useRef(true);
+  const pendingFinanceCloudSaveRef = useRef<{ key: string; saveData: any; safeCompanyId: string; uid: string; localCacheKey: string } | null>(null);
 
   // AUTO-SAVE TO LOCAL STORAGE & SUPABASE DOCUMENTS ON BUDGET CHANGES
   useEffect(() => {
-    const safeCompanyId = currentUser?.companyId || currentUser?.uid;
-    if (isDemoMode || isInitialLoad || !currentUser || !safeCompanyId || isReadOnly || !currentProjectId) return;
+    if (isInitialLoad || isReadOnly) return;
 
     if (skipNextAutoSaveRef.current) {
       skipNextAutoSaveRef.current = false;
       return;
     }
 
-    const localCacheKey = `finance_cache_${currentProjectId}`;
+    const isDemo = isDemoMode || currentProjectId === 'demo-1' || currentProjectId?.startsWith('demo-') || !currentUser;
+    const effectiveProjectId = currentProjectId || 'demo-1';
+    const safeCompanyId = currentUser?.companyId || currentUser?.uid || 'demo';
+    const localCacheKey = `finance_cache_${effectiveProjectId}`;
     const saveData = {
       versions,
       activeVersionId,
       projectHeader,
       includeOptions,
-      ownerId: currentUser.uid,
+      ownerId: currentUser?.uid || 'demo',
       companyId: safeCompanyId,
-      projectId: currentProjectId
+      projectId: effectiveProjectId,
+      updatedAt: Date.now(),
+      hasPendingSync: !isDemo
     };
     safeStorage.setItem(localCacheKey, saveData);
 
+    if (isDemo || !currentUser || !safeCompanyId || !currentProjectId) return;
+
+    pendingFinanceCloudSaveRef.current = {
+      key: `finance_${currentProjectId}`,
+      saveData,
+      safeCompanyId,
+      uid: currentUser.uid,
+      localCacheKey
+    };
+
     const timeout = setTimeout(async () => {
+      const pending = pendingFinanceCloudSaveRef.current;
+      pendingFinanceCloudSaveRef.current = null;
+      if (!pending) return;
       try {
-        await saveSystemConfigJSON(`finance_${currentProjectId}`, saveData, safeCompanyId, currentUser.uid);
+        await saveSystemConfigJSON(pending.key, pending.saveData, pending.safeCompanyId, pending.uid);
+        safeStorage.setItem(pending.localCacheKey, { ...pending.saveData, hasPendingSync: false });
       } catch (e) { }
-    }, 1500);
+    }, 600);
     return () => clearTimeout(timeout);
   }, [versions, activeVersionId, projectHeader, includeOptions, currentProjectId, currentUser, isReadOnly, isDemoMode, isInitialLoad]);
+
+  // Unmount-Flush: Offene Budget-Änderungen beim Modulwechsel sofort an Supabase senden
+  useEffect(() => {
+    return () => {
+      if (pendingFinanceCloudSaveRef.current) {
+        const pending = pendingFinanceCloudSaveRef.current;
+        pendingFinanceCloudSaveRef.current = null;
+        saveSystemConfigJSON(pending.key, pending.saveData, pending.safeCompanyId, pending.uid).then(() => {}, () => {});
+      }
+    };
+  }, []);
 
   const [companyColor, setCompanyColor] = useState('#10b981');
   useEffect(() => {

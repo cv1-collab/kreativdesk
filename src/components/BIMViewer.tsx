@@ -257,8 +257,9 @@ const BIMReportPDFDocument = ({ settings, docHeader, snapshotImage, auditReport,
 // 3D Canvas Viewport and model loaders extracted to ./bim/BIMCanvasViewport.tsx for Three.js state-isolation.
 
 export default function BIMViewer({ projectId: propProjectId }: { projectId?: string } = {}) {
-  const { projectId: routeProjectId } = useParams<{ projectId: string }>();
-  const projectId = propProjectId || routeProjectId;
+  const { projectId: routeProjectId, id: routeId } = useParams<{ projectId: string; id: string }>();
+  const { projects, isDemoMode, demoData, activeProjectId } = useProject() as any;
+  const projectId = propProjectId || routeProjectId || routeId || activeProjectId || 'default';
   const { language, t: globalT } = useLanguage();
   const t = (key: string) => (localTranslations as any)[language]?.[key] || localTranslations['de']?.[key] || globalT(key);
 
@@ -269,7 +270,6 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
   const navigate = useNavigate();
   
   const { theme } = useTheme(); 
-  const { projects, isDemoMode, demoData } = useProject() as any;
   const activeProject = projects?.find((p: any) => p.id === projectId);
 
   useEffect(() => {
@@ -443,44 +443,50 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
   };
 
   const mainInputRef = useRef<HTMLInputElement>(null);
+  const isBimCacheHydratedRef = useRef(false);
 
   useEffect(() => {
-    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
-    if (!projectId || !activeModelId || !safeCompanyId) return;
+    if (!projectId || !activeModelId) return;
+    isBimCacheHydratedRef.current = false;
 
-    if (activeModelId === 'default') {
-      const cached = safeStorage.session.getString(`bim_cache_${projectId}_default`);
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached);
-          setDefectPins(parsed.defectPins ? parsed.defectPins.map((p: any) => ({
-            ...p, 
-            position: new THREE.Vector3(p.position.x, p.position.y, p.position.z),
-            normal: new THREE.Vector3(p.normal.x, p.normal.y, p.normal.z)
-          })) : []);
-          setMeasurePoints(parsed.measurePoints ? parsed.measurePoints.map((p: any) => new THREE.Vector3(p.x, p.y, p.z)) : []);
-        } catch (e) {
-          setDefectPins([]);
-          setMeasurePoints([]);
-        }
-      } else if (isDemoMode) {
-        setDefectPins([
-          {
-            position: new THREE.Vector3(0, 2.2, 2.1), 
-            normal: new THREE.Vector3(0, 0, 1),
-            id: 'DEF-1',
-            description: 'Riss im Sichtbeton Achse B'
-          }
-        ]);
-        setMeasurePoints([]);
-      } else {
+    const cacheKey = `bim_cache_${projectId}_${activeModelId}`;
+    const legacyDefaultCache = activeModelId === 'default' ? safeStorage.session.getString(`bim_cache_${projectId}_default`) : null;
+    const cached = safeStorage.getString(cacheKey) || safeStorage.session.getString(cacheKey) || legacyDefaultCache;
+
+    let restoredPins: any[] | null = null;
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        restoredPins = parsed.defectPins ? parsed.defectPins.map((p: any) => ({
+          ...p,
+          position: new THREE.Vector3(p.position.x, p.position.y, p.position.z),
+          normal: new THREE.Vector3(p.normal?.x ?? 0, p.normal?.y ?? 1, p.normal?.z ?? 0)
+        })) : [];
+        setDefectPins(restoredPins);
+        setMeasurePoints(parsed.measurePoints ? parsed.measurePoints.map((p: any) => new THREE.Vector3(p.x, p.y, p.z)) : []);
+      } catch (e) {
         setDefectPins([]);
         setMeasurePoints([]);
       }
-      if (isDemoMode) return;
+    } else if (isDemoMode || projectId === 'demo-1' || projectId?.startsWith('demo-')) {
+      setDefectPins([
+        {
+          position: new THREE.Vector3(0, 2.2, 2.1),
+          normal: new THREE.Vector3(0, 0, 1),
+          id: 'DEF-1',
+          description: 'Riss im Sichtbeton Achse B'
+        }
+      ]);
+      setMeasurePoints([]);
+    } else {
+      setDefectPins([]);
+      setMeasurePoints([]);
     }
 
-    if (isDemoMode) return;
+    isBimCacheHydratedRef.current = true;
+
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (isDemoMode || projectId === 'demo-1' || projectId?.startsWith('demo-') || !safeCompanyId) return;
 
     const fetchDefects = async () => {
       const { data } = await supabase.from('defects').select('*').eq('company_id', safeCompanyId).eq('project_id', projectId);
@@ -500,7 +506,10 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
              });
           }
         });
-        setDefectPins(loadedPins); 
+        // Preserve local cached pins for 'default' model if DB has no pins for 'default'
+        if (loadedPins.length > 0 || !restoredPins || restoredPins.length === 0) {
+          setDefectPins(loadedPins);
+        }
       }
     };
 
@@ -529,17 +538,19 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
   }, [projectId, activeModelId, currentUser, isDemoMode]);
 
   useEffect(() => {
-    if (activeModelId === 'default') {
-      const cacheData = {
-        defectPins: defectPins.map(p => ({
-          ...p,
-          position: { x: p.position.x, y: p.position.y, z: p.position.z },
-          normal: { x: p.normal.x, y: p.normal.y, z: p.normal.z }
-        })),
-        measurePoints: measurePoints.map(p => ({ x: p.x, y: p.y, z: p.z }))
-      };
-      safeStorage.session.setItem(`bim_cache_${projectId}_default`, JSON.stringify(cacheData));
-    }
+    if (!isBimCacheHydratedRef.current || !projectId || !activeModelId) return;
+    const cacheData = {
+      defectPins: defectPins.map(p => ({
+        ...p,
+        position: { x: p.position.x, y: p.position.y, z: p.position.z },
+        normal: { x: p.normal.x, y: p.normal.y, z: p.normal.z }
+      })),
+      measurePoints: measurePoints.map(p => ({ x: p.x, y: p.y, z: p.z }))
+    };
+    const serialized = JSON.stringify(cacheData);
+    const cacheKey = `bim_cache_${projectId}_${activeModelId}`;
+    safeStorage.setItem(cacheKey, serialized);
+    safeStorage.session.setItem(cacheKey, serialized);
   }, [defectPins, measurePoints, activeModelId, projectId]);
 
   const [isUploading, setIsUploading] = useState(false);

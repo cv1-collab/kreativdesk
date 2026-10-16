@@ -64,6 +64,7 @@ interface WbCacheEntry {
   stageScale: number;
   stagePos: { x: number; y: number };
   activeColor: string;
+  updatedAt?: string | number;
 }
 
 const createDefaultWbState = (): WbCacheEntry => ({
@@ -88,14 +89,24 @@ const getProjectWbCache = (pid: string | undefined): WbCacheEntry => {
 const getDraftStorageKey = (pid: string | undefined) => `wb_draft_${pid || 'global'}`;
 
 const loadProjectDraft = (pid: string | undefined) => {
+  const mem = wbCacheByProject[pid || 'global'];
   try {
     const key = getDraftStorageKey(pid);
     const saved = safeStorage.getItem<any>(key, null);
     if (saved && Array.isArray(saved.layers) && saved.layers.length > 0) {
-      return saved;
+      if (mem && mem.updatedAt && (!saved.updatedAt || mem.updatedAt >= saved.updatedAt)) {
+        return mem;
+      }
+      return {
+        ...saved,
+        bgImageSrc: saved.bgImageSrc === '__WB_MEM_IMG__' ? (mem?.bgImageSrc || null) : (saved.bgImageSrc || mem?.bgImageSrc || null)
+      };
     }
   } catch (e) {
     console.warn("Failed to load whiteboard draft:", e);
+  }
+  if (mem && Array.isArray(mem.layers) && mem.layers.some(l => (l.items || []).length > 0 || mem.bgImageSrc)) {
+    return mem;
   }
   return null;
 };
@@ -392,14 +403,14 @@ const KonvaImageItem: React.FC<{
 };
 
 export default function Whiteboard({ projectId: propProjectId }: { projectId?: string }) {
-  const { id: routeProjectId } = useParams<{ id: string }>();
+  const { projectId: routeParamProjectId, id: routeProjectId } = useParams<{ projectId?: string; id?: string }>();
   const { currentUser } = useAuth();
   const { addToast } = useToast();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const { language, t: globalT } = useLanguage();
   const { projects, activeProjectId, isDemoMode } = useProject() as any;
-  const projectId = propProjectId || routeProjectId || activeProjectId;
+  const projectId = propProjectId || routeParamProjectId || routeProjectId || activeProjectId;
   const isDemo = isDemoMode || projectId === 'demo-1' || projectId?.startsWith('demo-');
   const activeProject = projects?.find((p: any) => p.id === projectId);
   
@@ -537,7 +548,7 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
       setActiveColor(cleanState.activeColor);
     }
 
-    // B) Zentralen Projekt-Stand aus Supabase site_data abrufen (Team-Stand)
+    // B) Zentralen Projekt-Stand aus Supabase site_data abrufen (Team-Stand), aber neuere lokale Zeichnungen schützen
     const fetchCloudProjectWhiteboard = async () => {
       if (!projectId || isDemo) return;
       try {
@@ -552,6 +563,16 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
         if (!error && data?.data && isMounted) {
           const cloud = data.data;
           if (Array.isArray(cloud.layers) && cloud.layers.length > 0) {
+            const currentLocal = loadProjectDraft(projectId);
+            const localItemsCount = (currentLocal?.layers || []).reduce((acc: number, l: any) => acc + ((l?.items || []).length), 0);
+            const cloudItemsCount = (cloud.layers || []).reduce((acc: number, l: any) => acc + ((l?.items || []).length), 0);
+            const localTime = currentLocal?.updatedAt ? new Date(currentLocal.updatedAt).getTime() : 0;
+            const cloudTime = cloud.updatedAt ? new Date(cloud.updatedAt).getTime() : 0;
+
+            if (localItemsCount > 0 && ((localTime > cloudTime) || (cloudItemsCount === 0))) {
+              return;
+            }
+
             isReceivingRemoteRef.current = true;
             setLayers(cloud.layers);
             if (cloud.activeLayerId) setActiveLayerId(cloud.activeLayerId);
@@ -568,7 +589,8 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
               bgImagePos: cloud.bgImagePos || { x: 0, y: 0 },
               stageScale: cloud.stageScale || 1,
               stagePos: cloud.stagePos || { x: 0, y: 0 },
-              activeColor: cloud.activeColor || '#3b82f6'
+              activeColor: cloud.activeColor || '#3b82f6',
+              updatedAt: cloud.updatedAt || new Date().toISOString()
             };
             setTimeout(() => { isReceivingRemoteRef.current = false; }, 100);
           }
@@ -710,51 +732,92 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
     } catch (_) {}
   }, [stageScale, stagePos, projectId]);
 
-  // 3b. Debounced Auto-Save: Sichert lokal und in der Cloud (site_data) nur bei echten Inhaltsänderungen
+  // 3b. Sofortiger lokaler Zwischenspeicher + Debounced Cloud Auto-Save (inkl. Unmount-Flush)
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingCloudDraftRef = useRef<any | null>(null);
 
   useEffect(() => {
-    wbCacheByProject[projectId || 'global'] = { layers, activeLayerId, bgImageSrc, bgImagePos, stageScale, stagePos, activeColor };
-    
+    const nowTs = Date.now();
+    const draftData = {
+      layers,
+      activeLayerId,
+      bgImageSrc,
+      bgImagePos,
+      stageScale,
+      stagePos,
+      activeColor,
+      updatedAt: new Date(nowTs).toISOString(),
+      updatedAtMs: nowTs
+    };
+
+    // 1. Sofort im In-Memory-Cache sichern (0ms Latenz beim Modulwechsel)
+    wbCacheByProject[projectId || 'global'] = {
+      layers,
+      activeLayerId,
+      bgImageSrc,
+      bgImagePos,
+      stageScale,
+      stagePos,
+      activeColor,
+      updatedAt: nowTs
+    };
+
+    // 2. Sofort synchron im LocalStorage sichern (mit Quota-Fallback bei großen Hintergrundbildern)
+    try {
+      const key = getDraftStorageKey(projectId);
+      const savedOk = safeStorage.setItem(key, draftData);
+      if (!savedOk && bgImageSrc && bgImageSrc.startsWith('data:')) {
+        safeStorage.setItem(key, { ...draftData, bgImageSrc: null });
+      }
+    } catch (_) {}
+
+    // 3. Cloud-Sync vorbereiten (und bei schnellem Modulwechsel beim Unmount trotzdem ausführen)
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || activeProject?.company_id || null;
+    const cleanProjectId = (projectId && projectId !== 'global') ? projectId : null;
+    if (cleanProjectId && !isDemo && !isReceivingRemoteRef.current && currentUser && safeCompanyId) {
+      pendingCloudDraftRef.current = {
+        id: `wb_${cleanProjectId}`,
+        company_id: safeCompanyId,
+        project_id: cleanProjectId,
+        data: draftData
+      };
+    }
+
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
     }
 
     saveTimerRef.current = setTimeout(async () => {
-      try {
-        const draftData = {
-          layers,
-          activeLayerId,
-          bgImageSrc,
-          bgImagePos,
-          stageScale,
-          stagePos,
-          activeColor,
-          updatedAt: new Date().toISOString()
-        };
-        const key = getDraftStorageKey(projectId);
-        safeStorage.setItem(key, draftData);
-
-        // In Supabase site_data sichern, wenn ein echtes Projekt aktiv ist und keine Remote-Aktualisierung empfangen wird
-        const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || activeProject?.company_id || null;
-        const cleanProjectId = (projectId && projectId !== 'global') ? projectId : null;
-        if (cleanProjectId && !isDemo && !isReceivingRemoteRef.current && currentUser && safeCompanyId) {
-          await supabase.from('site_data').upsert({
-            id: `wb_${cleanProjectId}`,
-            company_id: safeCompanyId,
-            project_id: cleanProjectId,
-            data: draftData
-          });
+      const payload = pendingCloudDraftRef.current;
+      pendingCloudDraftRef.current = null;
+      saveTimerRef.current = null;
+      if (payload) {
+        try {
+          await supabase.from('site_data').upsert(payload);
+        } catch (e) {
+          console.warn("Failed to save whiteboard draft/cloud:", e);
         }
-      } catch (e) {
-        console.warn("Failed to save whiteboard draft/cloud:", e);
       }
-    }, 1200);
+    }, 600);
 
     return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
     };
-  }, [layers, bgImageSrc, projectId, currentUser?.companyId]);
+  }, [layers, activeLayerId, bgImageSrc, bgImagePos, stageScale, stagePos, activeColor, projectId, currentUser?.companyId, isDemo]);
+
+  // Unmount-Flush: Offene Cloud-Speicherung beim Verlassen des Moduls sofort absenden
+  useEffect(() => {
+    return () => {
+      if (pendingCloudDraftRef.current) {
+        const payload = pendingCloudDraftRef.current;
+        pendingCloudDraftRef.current = null;
+        supabase.from('site_data').upsert(payload).then(() => {}, () => {});
+      }
+    };
+  }, []);
   
   const isDrawing = useRef(false);
   const drawingStartPos = useRef<{ x: number, y: number } | null>(null);

@@ -759,35 +759,40 @@ export default function MeetChat() {
   }, [activeProjectId, setActiveProject, callStatus, joinCall, startCall]);
 
   useEffect(() => {
-    // DEMO-MODUS: Offline Initial-State, keine Supabase WebSocket Kanäle
+    // DEMO-MODUS: Offline Initial-State, keine Supabase WebSocket Kanäle (mit Cache-Erhalt beim Modulwechsel)
     if (isDemo) {
-      setMessages([
-        {
-          id: 'demo-msg-1',
-          sender: 'Sarah Meier',
-          avatar: 'SM',
-          time: '10:14',
-          text: 'Guten Morgen Team! Die Statik-Prüfung für das 2. OG wurde soeben freigegeben.',
-          createdAt: new Date(Date.now() - 3600000).toISOString()
-        },
-        {
-          id: 'demo-msg-2',
-          sender: 'Michael Chen',
-          avatar: 'MC',
-          time: '10:18',
-          text: 'Perfekt, der Baumeister startet morgen früh mit der Armierung.',
-          createdAt: new Date(Date.now() - 3000000).toISOString()
-        },
-        {
-          id: 'demo-msg-3',
-          sender: 'KI Concierge',
-          avatar: 'AI',
-          time: '10:19',
-          text: 'Automatischer Reminder: Wöchentliche Bauherren-Besprechung um 14:00 Uhr.',
-          isAI: true,
-          createdAt: new Date(Date.now() - 2500000).toISOString()
-        }
-      ]);
+      const cachedDemoMsgs = safeStorage.getJSON<ChatMessage[] | null>(chatCacheKey, null);
+      if (cachedDemoMsgs && Array.isArray(cachedDemoMsgs) && cachedDemoMsgs.length > 0) {
+        setMessages(cachedDemoMsgs);
+      } else {
+        setMessages([
+          {
+            id: 'demo-msg-1',
+            sender: 'Sarah Meier',
+            avatar: 'SM',
+            time: '10:14',
+            text: 'Guten Morgen Team! Die Statik-Prüfung für das 2. OG wurde soeben freigegeben.',
+            createdAt: new Date(Date.now() - 3600000).toISOString()
+          },
+          {
+            id: 'demo-msg-2',
+            sender: 'Michael Chen',
+            avatar: 'MC',
+            time: '10:18',
+            text: 'Perfekt, der Baumeister startet morgen früh mit der Armierung.',
+            createdAt: new Date(Date.now() - 3000000).toISOString()
+          },
+          {
+            id: 'demo-msg-3',
+            sender: 'KI Concierge',
+            avatar: 'AI',
+            time: '10:19',
+            text: 'Automatischer Reminder: Wöchentliche Bauherren-Besprechung um 14:00 Uhr.',
+            isAI: true,
+            createdAt: new Date(Date.now() - 2500000).toISOString()
+          }
+        ]);
+      }
       setUpcomingCalls([
         {
           id: 'demo-call-1',
@@ -949,6 +954,7 @@ export default function MeetChat() {
           size: payload.width || 3,
           isEraser: Boolean(payload.isEraser)
         });
+        safeStorage.setJSON(`meetchat_wb_strokes_${currentMeetingCallId || currentProjectId}`, wbStrokesRef.current);
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
@@ -966,6 +972,7 @@ export default function MeetChat() {
       })
       .on('broadcast', { event: 'meet_wb_clear' }, () => {
         wbStrokesRef.current = [];
+        safeStorage.removeItem(`meetchat_wb_strokes_${currentMeetingCallId || currentProjectId}`);
         const canvas = canvasRef.current;
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
@@ -1321,7 +1328,15 @@ export default function MeetChat() {
   const [strokeColor, setStrokeColor] = useState('#3b82f6');
   const [strokeWidth, setStrokeWidth] = useState(3);
   const [isEraser, setIsEraser] = useState(false);
-  const wbStrokesRef = useRef<Array<{ points: { x: number; y: number }[]; color: string; size: number; isEraser?: boolean }>>([]);
+  const wbStrokesCacheKey = `meetchat_wb_strokes_${currentMeetingCallId || currentProjectId}`;
+  const wbStrokesRef = useRef<Array<{ points: { x: number; y: number }[]; color: string; size: number; isEraser?: boolean }>>(
+    safeStorage.getJSON(wbStrokesCacheKey, []) || []
+  );
+
+  useEffect(() => {
+    const cachedStrokes = safeStorage.getJSON<Array<{ points: { x: number; y: number }[]; color: string; size: number; isEraser?: boolean }> | null>(wbStrokesCacheKey, null);
+    wbStrokesRef.current = Array.isArray(cachedStrokes) ? cachedStrokes : [];
+  }, [wbStrokesCacheKey]);
 
   useEffect(() => {
     if (activeView === 'whiteboard' && canvasRef.current && canvasContainerRef.current) {
@@ -1351,7 +1366,7 @@ export default function MeetChat() {
         }
       }
     }
-  }, [activeView]);
+  }, [activeView, wbStrokesCacheKey]);
 
   const startDrawing = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -1400,6 +1415,7 @@ export default function MeetChat() {
     if (currentStroke) {
       currentStroke.points.push({ x, y });
     }
+    safeStorage.setJSON(wbStrokesCacheKey, wbStrokesRef.current);
 
     if (lastDrawPtRef.current && chatChannelRef.current && canvas.width > 0 && canvas.height > 0 && !isDemo) {
       chatChannelRef.current.send({
@@ -1422,9 +1438,11 @@ export default function MeetChat() {
   const stopDrawing = () => {
     setIsDrawing(false);
     lastDrawPtRef.current = null;
+    safeStorage.setJSON(wbStrokesCacheKey, wbStrokesRef.current);
   };
   const clearCanvas = () => {
     wbStrokesRef.current = [];
+    safeStorage.removeItem(wbStrokesCacheKey);
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');

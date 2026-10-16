@@ -74,7 +74,18 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   const { currentUser } = useAuth();
   
   const [projects, setProjects] = useState<Project[]>([]);
-  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [activeProjectId, setActiveProjectIdRaw] = useState<string | null>(() => {
+    return safeStorage.getString('kreativdesk_active_project_id') || null;
+  });
+
+  const setActiveProjectId = useCallback((val: string | null | ((prev: string | null) => string | null)) => {
+    setActiveProjectIdRaw(prev => {
+      const next = typeof val === 'function' ? val(prev) : val;
+      if (next) safeStorage.setItem('kreativdesk_active_project_id', next);
+      else safeStorage.removeItem('kreativdesk_active_project_id');
+      return next;
+    });
+  }, []);
 
   // Modular Custom Domain Hooks
   const { defects, fetchDefects } = useProjectDefects();
@@ -158,9 +169,10 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
               if (cu.id) myIds.add(String(cu.id));
               if (cu.user_id) myIds.add(String(cu.user_id));
               if ((cu as any).project_id) assignedProjectIds.add(String((cu as any).project_id));
-              if (cu.notes && typeof cu.notes === 'string' && cu.notes.startsWith('__CRM_META__:')) {
+              if (cu.notes && typeof cu.notes === 'string' && cu.notes.includes('__CRM_META__:')) {
                 try {
-                  const meta = JSON.parse(cu.notes.replace('__CRM_META__:', ''));
+                  const parts = cu.notes.split('__CRM_META__:');
+                  const meta = JSON.parse(parts[1] || '{}');
                   if (meta?.assignedProjectId) assignedProjectIds.add(String(meta.assignedProjectId));
                   if (meta?.projectRoles && typeof meta.projectRoles === 'object') {
                     Object.keys(meta.projectRoles).forEach(pid => assignedProjectIds.add(pid));
@@ -192,7 +204,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.error("Error fetching projects:", err);
     }
-  }, [currentUser, getSafeCompanyId]);
+  }, [currentUser, getSafeCompanyId, setActiveProjectId]);
 
   const fetchCompanyUsers = useCallback(async () => {
     const safeCompanyId = getSafeCompanyId();

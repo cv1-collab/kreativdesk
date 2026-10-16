@@ -805,6 +805,25 @@ export default function Calendar() {
     // DEMO-MODUS: Wenn Demo-Projekt oder kein angemeldeter User (Landing Page / Demo App)
     const isDemo = projectIsDemoMode || currentProjectId === 'demo-1' || currentProjectId?.startsWith('demo-') || activeProjectId === 'demo-1' || !currentUser;
     if (isDemo) {
+       const demoDocId = currentProjectId || activeProjectId || 'demo-1';
+       const demoCacheKey = `schedule_cache_${demoDocId}`;
+       const cachedDemo = safeStorage.getItem<any>(demoCacheKey, null);
+       if (cachedDemo?.schedules && Array.isArray(cachedDemo.schedules) && cachedDemo.schedules.length > 0) {
+          const scheds = cachedDemo.schedules;
+          const activeId = cachedDemo.activeScheduleId || scheds[0].id;
+          const target = scheds.find((s: Schedule) => s.id === activeId) || scheds[0];
+          setSchedules(scheds);
+          setActiveScheduleId(target.id);
+          setScheduleName(target.name || 'Masterplan Bau');
+          setGanttTasks(target.ganttTasks || []);
+          setSmartMarkers(target.smartMarkers || []);
+          setShapes(target.shapes || []);
+          setTargetYear(target.targetYear || new Date().getFullYear());
+          hasLoadedInitial.current = true;
+          setIsInitialLoad(false);
+          return;
+       }
+
        const effectiveDemoData = demoData || demoTemplates.construction;
        hasLoadedInitial.current = true;
        setIsInitialLoad(false);
@@ -851,8 +870,24 @@ export default function Calendar() {
         const localCacheKey = `schedule_cache_${scheduleDocId}`;
         const cachedData = safeStorage.getItem<any>(localCacheKey, null);
 
+        // Sofortige Hydration aus lokalem Cache (0ms Latenz beim Modulwechsel)
+        if (cachedData?.schedules && Array.isArray(cachedData.schedules) && cachedData.schedules.length > 0) {
+          const scheds = cachedData.schedules;
+          setSchedules(scheds);
+          const activeId = cachedData.activeScheduleId || scheds[0].id;
+          const target = scheds.find((s: Schedule) => s.id === activeId) || scheds[0];
+          setActiveScheduleId(target.id);
+          setScheduleName(target.name || 'Masterplan');
+          setGanttTasks(target.ganttTasks || []);
+          setSmartMarkers(target.smartMarkers || []);
+          setShapes(target.shapes || []);
+          setTargetYear(target.targetYear || new Date().getFullYear());
+          hasLoadedInitial.current = true;
+        }
+
         // 1. Primär aus project_schedules Tabelle laden
         let dbScheduleData: any = null;
+        let dbUpdatedAtMs = 0;
         try {
           const { data, error } = await supabase
             .from('project_schedules')
@@ -865,6 +900,10 @@ export default function Calendar() {
               schedules: data.schedules,
               activeScheduleId: data.active_schedule_id || (data.schedules[0]?.id ?? null)
             };
+            if (data.updated_at) {
+              const parsedTs = new Date(data.updated_at).getTime();
+              if (!isNaN(parsedTs)) dbUpdatedAtMs = parsedTs;
+            }
           }
         } catch (e) {}
 
@@ -876,12 +915,17 @@ export default function Calendar() {
           } catch (e) {}
         }
 
-        const configData = dbScheduleData || rawData || cachedData;
+        const localIsNewer = Boolean(
+          cachedData?.schedules?.length > 0 &&
+          (cachedData.hasPendingSync || (cachedData.updatedAt && (!dbUpdatedAtMs || cachedData.updatedAt > dbUpdatedAtMs)))
+        );
+
+        const configData = localIsNewer ? cachedData : (dbScheduleData || rawData || cachedData);
 
         if (configData?.schedules && configData.schedules.length > 0) {
           const scheds = configData.schedules;
           setSchedules(scheds);
-          if (!hasLoadedInitial.current) {
+          if (!hasLoadedInitial.current || !localIsNewer) {
             const activeId = configData.activeScheduleId || scheds[0].id;
             const target = scheds.find((s: Schedule) => s.id === activeId) || scheds[0];
             setActiveScheduleId(target.id);
@@ -916,7 +960,7 @@ export default function Calendar() {
           setSchedules([initialSchedule]);
           setActiveScheduleId(initialSchedule.id);
           
-          const schedPayload = { schedules: [initialSchedule], activeScheduleId: initialSchedule.id, companyId: safeCompanyId, projectId: currentProjectId };
+          const schedPayload = { schedules: [initialSchedule], activeScheduleId: initialSchedule.id, companyId: safeCompanyId, projectId: currentProjectId, updatedAt: Date.now() };
           safeStorage.setItem(localCacheKey, schedPayload);
 
           try {
@@ -969,27 +1013,90 @@ export default function Calendar() {
   }, [currentProjectId, currentUser, isDemoMode, demoData, activeProjectId, projectIsDemoMode]);
 
   const autoSaveTimeout = useRef<NodeJS.Timeout | null>(null);
+  const pendingScheduleCloudSaveRef = useRef<{ scheduleDocId: string; updated: Schedule[]; activeScheduleId: string; safeCompanyId: string; currentProjectId: string } | null>(null);
+
   useEffect(() => {
-    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
-    if (isDemoMode || isInitialLoad || !activeScheduleId || !safeCompanyId || !currentProjectId) return;
+    if (isInitialLoad || !activeScheduleId) return;
     if (skipNextScheduleAutoSaveRef.current) {
       skipNextScheduleAutoSaveRef.current = false;
       return;
     }
+
+    const isDemo = projectIsDemoMode || isDemoMode || currentProjectId === 'demo-1' || currentProjectId?.startsWith('demo-') || activeProjectId === 'demo-1' || !currentUser;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid || 'demo';
+    const effectiveProjectId = currentProjectId || activeProjectId || 'demo-1';
+    const scheduleDocId = isDemo ? effectiveProjectId : (effectiveProjectId === 'global' ? `global_${safeCompanyId}` : effectiveProjectId);
+    const updated = schedules.map(s => s.id === activeScheduleId ? { ...s, ganttTasks, smartMarkers, shapes, targetYear } : s);
+
+    // 1. Sofort synchron im lokalen Zwischenspeicher sichern (verhindert Datenverlust bei sofortigem Modulwechsel)
+    safeStorage.setItem(`schedule_cache_${scheduleDocId}`, {
+      schedules: updated,
+      activeScheduleId,
+      companyId: safeCompanyId,
+      projectId: effectiveProjectId,
+      updatedAt: Date.now(),
+      hasPendingSync: !isDemo
+    });
+
+    if (isDemo || !currentUser || !safeCompanyId || !currentProjectId) return;
+
+    pendingScheduleCloudSaveRef.current = {
+      scheduleDocId,
+      updated,
+      activeScheduleId,
+      safeCompanyId,
+      currentProjectId
+    };
+
     if (autoSaveTimeout.current) clearTimeout(autoSaveTimeout.current);
     
     autoSaveTimeout.current = setTimeout(async () => {
+      const pending = pendingScheduleCloudSaveRef.current;
+      pendingScheduleCloudSaveRef.current = null;
+      autoSaveTimeout.current = null;
+      if (!pending) return;
       try {
-        const scheduleDocId = currentProjectId === 'global' ? `global_${safeCompanyId}` : currentProjectId;
-        const updated = schedules.map(s => s.id === activeScheduleId ? { ...s, ganttTasks, smartMarkers, shapes, targetYear } : s);
-        safeStorage.setItem(`schedule_cache_${scheduleDocId}`, { schedules: updated, activeScheduleId, companyId: safeCompanyId, projectId: currentProjectId });
-        await supabase.from('project_schedules').upsert({ id: scheduleDocId, schedules: updated, active_schedule_id: activeScheduleId, company_id: safeCompanyId });
+        await supabase.from('project_schedules').upsert({
+          id: pending.scheduleDocId,
+          schedules: pending.updated,
+          active_schedule_id: pending.activeScheduleId,
+          company_id: pending.safeCompanyId
+        });
+        safeStorage.setItem(`schedule_cache_${pending.scheduleDocId}`, {
+          schedules: pending.updated,
+          activeScheduleId: pending.activeScheduleId,
+          companyId: pending.safeCompanyId,
+          projectId: pending.currentProjectId,
+          updatedAt: Date.now(),
+          hasPendingSync: false
+        });
       } catch (err) {
         console.warn("Auto-save schedule error:", err);
       }
-    }, 1000);
-    return () => clearTimeout(autoSaveTimeout.current!);
-  }, [ganttTasks, smartMarkers, shapes, targetYear, activeScheduleId, isInitialLoad, currentUser, currentProjectId, isDemoMode, schedules]);
+    }, 600);
+    return () => {
+      if (autoSaveTimeout.current) {
+        clearTimeout(autoSaveTimeout.current);
+        autoSaveTimeout.current = null;
+      }
+    };
+  }, [ganttTasks, smartMarkers, shapes, targetYear, activeScheduleId, isInitialLoad, currentUser, currentProjectId, activeProjectId, isDemoMode, projectIsDemoMode, schedules]);
+
+  // Unmount-Flush: Offene Terminplan-Änderungen beim Modulwechsel noch an Supabase senden
+  useEffect(() => {
+    return () => {
+      if (pendingScheduleCloudSaveRef.current) {
+        const pending = pendingScheduleCloudSaveRef.current;
+        pendingScheduleCloudSaveRef.current = null;
+        supabase.from('project_schedules').upsert({
+          id: pending.scheduleDocId,
+          schedules: pending.updated,
+          active_schedule_id: pending.activeScheduleId,
+          company_id: pending.safeCompanyId
+        }).then(() => {}, () => {});
+      }
+    };
+  }, []);
 
   const setTargetYearHelper = (year: number) => {
     setTargetYear(year);

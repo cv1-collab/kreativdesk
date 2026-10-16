@@ -345,14 +345,28 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
   }, [safeCompanyId, currentProjectId, isDemo, invalidateDefects]);
 
   useEffect(() => {
+    const cacheKey = `defects_cache_${currentProjectId || 'demo-1'}`;
     if (isDemo) {
-      setDefects(DEMO_DEFECTS);
+      const cachedDemo = safeStorage.getItem<Defect[] | null>(cacheKey, null);
+      if (cachedDemo && Array.isArray(cachedDemo) && cachedDemo.length > 0) {
+        setDefects(cachedDemo);
+      } else {
+        setDefects(DEMO_DEFECTS);
+      }
       return;
     }
-    if (queryDefects) {
+    if (queryDefects && queryDefects.length > 0) {
       setDefects(queryDefects as any);
+      safeStorage.setItem(cacheKey, queryDefects);
+    } else {
+      const cached = safeStorage.getItem<Defect[] | null>(cacheKey, null);
+      if (cached && Array.isArray(cached) && cached.length > 0) {
+        setDefects(cached);
+      } else if (queryDefects) {
+        setDefects(queryDefects as any);
+      }
     }
-  }, [isDemo, queryDefects]);
+  }, [isDemo, queryDefects, currentProjectId]);
 
   // Zero-Leakage Filtered Defects:
   // If user is a Field Guest / external contractor, they ONLY see defects matching their trade, assignee, or created by them!
@@ -440,9 +454,13 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
   const handleDropLogic = async (id: string, status: string) => {
     if (!id) return;
 
-    setDefects(prev => prev.map(d => d.id === id ? { ...d, status } : d));
+    setDefects(prev => {
+      const next = prev.map(d => d.id === id ? { ...d, status } : d);
+      safeStorage.setItem(`defects_cache_${currentProjectId || 'demo-1'}`, next);
+      return next;
+    });
 
-    if (currentProjectId === 'demo-1') return;
+    if (isDemo || currentProjectId === 'demo-1') return;
 
     try { 
       await supabase.from('defects').update({ status }).eq('id', id); 
@@ -488,21 +506,30 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
   const handleSaveDefect = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (currentProjectId === 'demo-1') {
+    if (isDemo || currentProjectId === 'demo-1') {
        setIsSubmitting(true);
        setTimeout(() => {
+         const cacheKey = `defects_cache_${currentProjectId || 'demo-1'}`;
          if (editingId) {
-           setDefects(prev => prev.map(d => d.id === editingId ? { ...d, ...currentDefect } as Defect : d));
+           setDefects(prev => {
+             const next = prev.map(d => d.id === editingId ? { ...d, ...currentDefect } as Defect : d);
+             safeStorage.setItem(cacheKey, next);
+             return next;
+           });
          } else {
            const newId = `DEF-${Date.now()}`;
-           setDefects(prev => [...prev, { ...currentDefect, id: newId, projectId: 'demo-1' } as Defect]);
+           setDefects(prev => {
+             const next = [...prev, { ...currentDefect, id: newId, projectId: currentProjectId || 'demo-1' } as Defect];
+             safeStorage.setItem(cacheKey, next);
+             return next;
+           });
          }
          setIsModalOpen(false); 
          setCurrentDefect(DEFAULT_DEFECT); 
          setShowQrScanner(false); 
          addToast(t('upload_success'), 'success');
          setIsSubmitting(false);
-       }, 500);
+       }, 300);
        return;
     }
 

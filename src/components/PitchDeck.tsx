@@ -225,8 +225,15 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
           }
         ];
 
-        setSlides(dynamicSlides);
-        setActiveSlideId(dynamicSlides[0].id);
+        const cacheKey = `pitch_deck_slides_${currentProjectId || 'demo-1'}`;
+        const cachedDemoSlides = safeStorage.getItem<any[] | null>(cacheKey, null);
+        if (cachedDemoSlides && Array.isArray(cachedDemoSlides) && cachedDemoSlides.length > 0) {
+          setSlides(cachedDemoSlides);
+          setActiveSlideId(prev => (prev && cachedDemoSlides.some((s: any) => s.id === prev)) ? prev : cachedDemoSlides[0].id);
+        } else {
+          setSlides(dynamicSlides);
+          setActiveSlideId(dynamicSlides[0].id);
+        }
       } catch(e) {
         console.error("Error loading demo slides:", e);
       } finally {
