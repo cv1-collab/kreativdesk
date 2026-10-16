@@ -271,8 +271,13 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
     'internal_3d': t('internal_3d'), 'internal_calls': t('internal_calls'), 'internal_strategy': t('internal_strategy'), 'internal_absence': t('internal_absence')
   };
 
-  const [localTimeEntries, setLocalTimeEntries] = useState<any[]>([]);
-  const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
+  const initialCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid || 'demo';
+  const [localTimeEntries, setLocalTimeEntries] = useState<any[]>(() =>
+    safeStorage.getItem<any[]>(`time_entries_cache_${initialCompanyId}`, [])
+  );
+  const [calendarEvents, setCalendarEvents] = useState<any[]>(() =>
+    safeStorage.getItem<any[]>(`agenda_cache_${initialCompanyId}`, [])
+  );
   const [realUsers, setRealUsers] = useState<any[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
   const [editExternalEmailInput, setEditExternalEmailInput] = useState<string>('');
@@ -448,12 +453,10 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         } catch (e) {}
 
         const configEvents = config?.events || [];
-        const isUuidId = (id: any) => typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-        const dbEventIds = new Set((dbEvents || []).map((e: any) => e.id));
-
-        const allowedFallbackEvents = (!eventsError && dbEvents)
-          ? configEvents.filter((evt: any) => evt && evt.id && (!isUuidId(evt.id) || dbEventIds.has(evt.id)))
-          : [...localCachedEvents, ...configEvents];
+        const deletedEventIds = new Set(safeStorage.getItem<string[]>(`agenda_deleted_${safeCompanyId}`, []));
+        const allowedFallbackEvents = [...localCachedEvents, ...configEvents].filter(
+          (evt: any) => evt && evt.id && !deletedEventIds.has(evt.id)
+        );
 
         const metaLookup = new Map<string, any>();
         [...localCachedEvents, ...configEvents].forEach((evt: any) => {
@@ -462,7 +465,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
 
         const eventMap = new Map();
         [...allowedFallbackEvents, ...(dbEvents || [])].forEach((evt: any) => {
-          if (evt && (evt.title || evt.id)) {
+          if (evt && (evt.title || evt.id) && !deletedEventIds.has(evt.id)) {
             const meta = (evt.id && metaLookup.get(evt.id)) || {};
             const dateStr = evt.date || evt.event_date || evt.start_date || meta.date || (evt.created_at ? evt.created_at.split('T')[0] : '');
             const desc = evt.description || meta.description || '';
@@ -515,20 +518,21 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
           .eq('company_id', safeCompanyId)
           .order('created_at', { ascending: false });
 
-        const dbTimeIds = new Set((dbTimes || []).map((t: any) => t.id));
+        const deletedTimeIds = new Set(safeStorage.getItem<string[]>(`time_deleted_${safeCompanyId}`, []));
         const timeMetaLookup = new Map<string, any>();
         [...localCachedTimes, ...configTimes].forEach((t: any) => {
           if (t?.id) timeMetaLookup.set(t.id, t);
         });
 
-        const allowedFallbackTimes = (!timesError && dbTimes)
-          ? configTimes.filter((t: any) => t && t.id && (!isUuidId(t.id) || dbTimeIds.has(t.id)))
-          : [...configTimes, ...localCachedTimes];
+        const allowedFallbackTimes = [...configTimes, ...localCachedTimes].filter(
+          (t: any) => t && (t.id || t.hours) && !deletedTimeIds.has(t.id)
+        );
 
         const timeMap = new Map();
         [...(dbTimes || []), ...allowedFallbackTimes].forEach((t: any) => {
           if (t && (t.id || t.hours)) {
             const entryId = t.id || `time-${t.date}-${t.hours}`;
+            if (deletedTimeIds.has(entryId)) return;
             const existing = timeMap.get(entryId) || timeMetaLookup.get(entryId) || {};
             const rate = Number(t.hourly_rate || t.hourlyRate || existing.hourlyRate || existing.hourly_rate || 120);
             const isBillable = t.isBillable !== undefined ? Boolean(t.isBillable) : (t.is_billable !== undefined ? Boolean(t.is_billable) : (existing.isBillable !== undefined ? existing.isBillable : true));
@@ -586,11 +590,37 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
   };
 
   const TIMER_STORAGE_KEY = 'kreativdesk_live_timer';
+  const TIME_FORM_STORAGE_KEY = `kreativdesk_time_form_${initialCompanyId}`;
 
-  const [timeEntryForm, setTimeEntryForm] = useState({ type: 'internal', userId: '', projectId: '', date: new Date().toISOString().split('T')[0], hours: 0, hourlyRate: 0, description: '', isBillable: true });
+  const [timeEntryForm, setTimeEntryFormRaw] = useState(() =>
+    safeStorage.getItem<any>(TIME_FORM_STORAGE_KEY, {
+      type: 'internal',
+      userId: '',
+      projectId: '',
+      date: new Date().toISOString().split('T')[0],
+      hours: 0,
+      hourlyRate: 0,
+      description: '',
+      isBillable: true
+    })
+  );
+  const setTimeEntryForm = (next: any) => {
+    setTimeEntryFormRaw((prev: any) => {
+      const resolved = typeof next === 'function' ? next(prev) : next;
+      safeStorage.setItem(TIME_FORM_STORAGE_KEY, resolved);
+      return resolved;
+    });
+  };
   const [customExternalName, setCustomExternalName] = useState('');
   const [isCustomExternal, setIsCustomExternal] = useState(false);
-  const [timeTrackingMode, setTimeTrackingMode] = useState<'manual' | 'timer'>('manual');
+  const [timeTrackingMode, setTimeTrackingModeRaw] = useState<'manual' | 'timer'>(() => {
+    const saved = safeStorage.getString(`kreativdesk_time_mode_${initialCompanyId}`, 'manual');
+    return saved === 'timer' ? 'timer' : 'manual';
+  });
+  const setTimeTrackingMode = (mode: 'manual' | 'timer') => {
+    setTimeTrackingModeRaw(mode);
+    safeStorage.setItem(`kreativdesk_time_mode_${initialCompanyId}`, mode);
+  };
   
   const [timerSeconds, setTimerSeconds] = useState<number>(() => {
     const parsed = safeStorage.getItem<any>(TIMER_STORAGE_KEY, null);
@@ -1094,6 +1124,12 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
       try {
         // 1. Live-State & LocalStorage-Cache sofort aktualisieren
         const localCacheKey = `agenda_cache_${safeCompanyId}`;
+        if (safeCompanyId) {
+          const prevDeleted = safeStorage.getItem<string[]>(`agenda_deleted_${safeCompanyId}`, []);
+          if (!prevDeleted.includes(eventId)) {
+            safeStorage.setItem(`agenda_deleted_${safeCompanyId}`, [...prevDeleted, eventId]);
+          }
+        }
         setCalendarEvents(prev => {
           const updated = prev.filter(ev => ev.id !== eventId);
           if (safeCompanyId) {
@@ -1272,6 +1308,12 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
     if (window.confirm(t('delete') + '?')) {
       try {
         // 1. Live-State & LocalStorage-Cache sofort aktualisieren
+        if (safeCompanyId) {
+          const prevDeleted = safeStorage.getItem<string[]>(`time_deleted_${safeCompanyId}`, []);
+          if (!prevDeleted.includes(entryId)) {
+            safeStorage.setItem(`time_deleted_${safeCompanyId}`, [...prevDeleted, entryId]);
+          }
+        }
         setLocalTimeEntries(prev => {
           const updated = prev.filter((t: any) => t.id !== entryId);
           if (safeCompanyId) {

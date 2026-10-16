@@ -189,14 +189,23 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
   
   // Zieht die ID aus Prop (Demo), URL oder Context!
   const currentProjectId = propProjectId || routeProjectId || projectCtx?.activeProjectId;
+  const [customLinks, setCustomLinks] = useState<Record<string, string>>(() =>
+    currentProjectId ? safeStorage.getItem<Record<string, string>>(`camera_links_${currentProjectId}`, {}) : {}
+  );
+  useEffect(() => {
+    if (currentProjectId) {
+      setCustomLinks(safeStorage.getItem<Record<string, string>>(`camera_links_${currentProjectId}`, {}));
+    }
+  }, [currentProjectId]);
+
   const rawProject = projects.find((p: any) => p.id === currentProjectId);
   const activeProject = rawProject ? {
     ...rawProject,
-    cam1Url: rawProject.cam1Url || rawProject.cam1_url || '',
-    cam2Url: rawProject.cam2Url || rawProject.cam2_url || '',
-    droneUrl: rawProject.droneUrl || rawProject.drone_url || '',
-    logisticsUrl: rawProject.logisticsUrl || rawProject.logistics_url || '',
-    accessUrl: rawProject.accessUrl || rawProject.access_url || '',
+    cam1Url: customLinks.cam1Url ?? (rawProject.cam1Url || rawProject.cam1_url || ''),
+    cam2Url: customLinks.cam2Url ?? (rawProject.cam2Url || rawProject.cam2_url || ''),
+    droneUrl: customLinks.droneUrl ?? (rawProject.droneUrl || rawProject.drone_url || ''),
+    logisticsUrl: customLinks.logisticsUrl ?? (rawProject.logisticsUrl || rawProject.logistics_url || ''),
+    accessUrl: customLinks.accessUrl ?? (rawProject.accessUrl || rawProject.access_url || ''),
     siteLocation: rawProject.siteLocation || rawProject.site_location || ''
   } : null;
 
@@ -229,7 +238,16 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
 
   const [isWeatherModalOpen, setIsWeatherModalOpen] = useState(false);
   const [locationInput, setLocationInput] = useState('');
-  const [customLocation, setCustomLocation] = useState<string | null>(null);
+  const [customLocation, setCustomLocation] = useState<string | null>(() => {
+    if (!currentProjectId) return null;
+    const savedLoc = safeStorage.getString(`project_location_${currentProjectId}`, '');
+    return savedLoc ? savedLoc : null;
+  });
+  useEffect(() => {
+    if (!currentProjectId) return;
+    const savedLoc = safeStorage.getString(`project_location_${currentProjectId}`, '');
+    setCustomLocation(savedLoc ? savedLoc : null);
+  }, [currentProjectId]);
   const [weatherData, setWeatherData] = useState<{temp: number, wind: number, rain: number, name: string} | null>(null);
   const [isFetchingWeather, setIsFetchingWeather] = useState(false);
 
@@ -323,6 +341,10 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
     
     setIsSavingLink(true);
     try {
+      const nextLinks = { ...customLinks, [linkModal.type]: linkModal.url };
+      setCustomLinks(nextLinks);
+      safeStorage.setItem(`camera_links_${activeProject.id}`, nextLinks);
+
       const columnMap: Record<string, string> = {
         cam1Url: 'cam1_url',
         cam2Url: 'cam2_url',
@@ -337,15 +359,13 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
       } as any).eq('id', activeProject.id);
 
       if (error) {
-        console.error("Link Save Supabase Error:", error);
-        addToast(`Fehler beim Speichern: ${error.message}`, "error");
-      } else {
-        if (typeof projectCtx?.fetchProjects === 'function') {
-          projectCtx.fetchProjects();
-        }
-        addToast(t('integration_linked_success'), "success");
-        setLinkModal(null);
+        console.warn("Link Save Supabase fallback to local cache:", error);
       }
+      if (typeof projectCtx?.fetchProjects === 'function') {
+        projectCtx.fetchProjects();
+      }
+      addToast(t('integration_linked_success'), "success");
+      setLinkModal(null);
     } catch (error: any) {
       console.error("Link Save Error:", error);
       addToast(t('error_saving'), "error");

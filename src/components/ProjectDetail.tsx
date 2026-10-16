@@ -7,6 +7,7 @@ import PitchDeckStudio from './PitchDeckStudio';
 import { ArrowLeft, FolderOpen, MonitorPlay, ChevronRight, KanbanSquare, Plus, LayoutDashboard, GripVertical, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { cn } from '../utils';
+import { safeStorage } from '../utils/safeStorage';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -42,7 +43,16 @@ export default function ProjectDetail() {
 
   const project = projects.find(p => p.id === projectId);
   const [isPitchStudioOpen, setIsPitchStudioOpen] = useState(false);
-  const [tasks, setTasks] = useState<any[]>([]);
+  const tasksCacheKey = `project_tasks_cache_${projectId || 'default'}`;
+  const [tasks, setTasksRaw] = useState<any[]>(() => safeStorage.getItem<any[]>(tasksCacheKey, []));
+
+  const setTasks = useCallback((next: any[] | ((prev: any[]) => any[])) => {
+    setTasksRaw(prev => {
+      const resolved = typeof next === 'function' ? next(prev) : next;
+      safeStorage.setItem(tasksCacheKey, resolved);
+      return resolved;
+    });
+  }, [tasksCacheKey]);
 
   const fetchTasks = useCallback(async () => {
     if (!projectId || !currentUser) return;
@@ -54,11 +64,13 @@ export default function ProjectDetail() {
         .eq('project_id', projectId)
         .eq('company_id', safeCompanyId);
 
-      if (data) setTasks(data);
+      if (data && data.length > 0) {
+        setTasks(data);
+      }
     } catch (err) {
       console.error("Error fetching tasks:", err);
     }
-  }, [projectId, currentUser]);
+  }, [projectId, currentUser, setTasks]);
 
   useEffect(() => {
     fetchTasks();
@@ -71,7 +83,10 @@ export default function ProjectDetail() {
   const handleDrop = async (e: React.DragEvent, status: string) => {
     const taskId = e.dataTransfer.getData('taskId');
     if (taskId) {
-      await supabase.from('project_tasks').update({ status }).eq('id', taskId);
+      setTasks(prev => prev.map(tk => tk.id === taskId ? { ...tk, status } : tk));
+      try {
+        await supabase.from('project_tasks').update({ status }).eq('id', taskId);
+      } catch (err) {}
       fetchTasks();
     }
   };
@@ -82,23 +97,40 @@ export default function ProjectDetail() {
 
   const handleAddTask = async (status: string) => {
     const title = window.prompt(t('task_title'));
-    if (title && currentUser && projectId) {
-      const safeCompanyId = currentUser.companyId || currentUser.uid;
-      await supabase.from('project_tasks').insert({
+    if (title && projectId) {
+      const safeCompanyId = currentUser?.companyId || currentUser?.uid || 'demo';
+      const localTask = {
+        id: `task-${Date.now()}`,
         title,
         status,
         project_id: projectId,
         company_id: safeCompanyId,
-        owner_id: currentUser.uid,
+        owner_id: currentUser?.uid || 'user',
         created_at: new Date().toISOString()
-      });
-      fetchTasks();
+      };
+      setTasks(prev => [...prev, localTask]);
+      if (currentUser) {
+        try {
+          await supabase.from('project_tasks').insert({
+            title,
+            status,
+            project_id: projectId,
+            company_id: safeCompanyId,
+            owner_id: currentUser.uid,
+            created_at: localTask.created_at
+          });
+          fetchTasks();
+        } catch (err) {}
+      }
     }
   };
 
   const handleDeleteTask = async (taskId: string) => {
     if (window.confirm(t('delete_confirm'))) {
-      await supabase.from('project_tasks').delete().eq('id', taskId);
+      setTasks(prev => prev.filter(tk => tk.id !== taskId));
+      try {
+        await supabase.from('project_tasks').delete().eq('id', taskId);
+      } catch (err) {}
       fetchTasks();
     }
   };

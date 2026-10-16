@@ -18,6 +18,7 @@ import { DOCUMENTS_QUERY_KEY } from '../hooks/queries/useDocumentsQuery';
 import { motion, AnimatePresence } from 'motion/react';
 import { callGeminiAPI } from '../utils/geminiClient';
 import { uploadPdfBlobWithFallback, uploadFileWithFallback } from '../utils/cloudStorageHelper';
+import { safeStorage } from '../utils/safeStorage';
 
 // FIX: Unterdrückt die "Buffer is not defined" Warnung von React-PDF in Vite
 if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
@@ -280,18 +281,54 @@ export default function LeadsTab() {
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => { setIsMounted(true); }, []);
 
-  const [collectedLeads, setCollectedLeads] = useState<any[]>([]);
-  const [leadForm, setLeadForm] = useState({ firstName: '', lastName: '', company: '', email: '', phone: '', website: '', zipCode: '', city: '', projectType: 'Planung', source: 'Webseite', message: '' });
-  const [leadTab, setLeadTab] = useState<'form' | 'leads' | 'scanner'>('leads');
+  const safeCompanyId = currentUser?.companyId || currentUser?.uid || 'demo';
+  const [collectedLeads, setCollectedLeadsRaw] = useState<any[]>(() =>
+    safeStorage.getItem<any[]>(`leads_cache_${safeCompanyId}`, [])
+  );
+  const setCollectedLeads = useCallback((next: any[] | ((prev: any[]) => any[])) => {
+    setCollectedLeadsRaw(prev => {
+      const resolved = typeof next === 'function' ? next(prev) : next;
+      safeStorage.setItem(`leads_cache_${safeCompanyId}`, resolved);
+      return resolved;
+    });
+  }, [safeCompanyId]);
+
+  const [leadForm, setLeadFormRaw] = useState(() =>
+    safeStorage.getItem(`leads_form_draft_${safeCompanyId}`, { firstName: '', lastName: '', company: '', email: '', phone: '', website: '', zipCode: '', city: '', projectType: 'Planung', source: 'Webseite', message: '' })
+  );
+  const setLeadForm = (next: any) => {
+    setLeadFormRaw((prev: any) => {
+      const resolved = typeof next === 'function' ? next(prev) : next;
+      safeStorage.setItem(`leads_form_draft_${safeCompanyId}`, resolved);
+      return resolved;
+    });
+  };
+
+  const [leadTab, setLeadTabRaw] = useState<'form' | 'leads' | 'scanner'>(() => {
+    const saved = safeStorage.getString(`leads_active_tab_${safeCompanyId}`, 'leads');
+    return (saved === 'form' || saved === 'leads' || saved === 'scanner') ? saved : 'leads';
+  });
+  const setLeadTab = (tab: 'form' | 'leads' | 'scanner') => {
+    setLeadTabRaw(tab);
+    safeStorage.setItem(`leads_active_tab_${safeCompanyId}`, tab);
+  };
 
   const [isSubmittingScanner, setIsSubmittingScanner] = useState(false);
   const [vcardSessionId] = useState(() => Math.random().toString(36).substring(2, 15));
-  const safeCompanyId = currentUser?.companyId || currentUser?.uid || 'demo';
   const mobileUploadUrl = `${window.location.origin}/mobile-upload/vcard/${vcardSessionId}${safeCompanyId && safeCompanyId !== 'demo' ? `?companyId=${encodeURIComponent(safeCompanyId)}` : ''}`;
 
-  const [scannedData, setScannedData] = useState({
-    firstName: '', lastName: '', company: '', email: '', phone: '', street: '', zipCity: '', description: ''
-  });
+  const [scannedData, setScannedDataRaw] = useState(() =>
+    safeStorage.getItem(`leads_scanned_draft_${safeCompanyId}`, {
+      firstName: '', lastName: '', company: '', email: '', phone: '', street: '', zipCity: '', description: ''
+    })
+  );
+  const setScannedData = (next: any) => {
+    setScannedDataRaw((prev: any) => {
+      const resolved = typeof next === 'function' ? next(prev) : next;
+      safeStorage.setItem(`leads_scanned_draft_${safeCompanyId}`, resolved);
+      return resolved;
+    });
+  };
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<any>(null);
