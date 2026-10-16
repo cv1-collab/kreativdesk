@@ -426,14 +426,9 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
         <div className="flex-1 overflow-y-auto p-2 md:p-6 pb-32 md:pb-8 custom-scrollbar space-y-6">
           
           <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0 px-2 md:px-0">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center justify-center shrink-0 shadow-xs">
-                <Camera size={18} />
-              </div>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text-primary">{t('site_monitoring_title')}</h1>
-                <p className="text-text-muted text-xs sm:text-sm mt-0.5 font-medium">{t('site_monitoring_desc')}</p>
-              </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text-primary">{t('site_monitoring_title')}</h1>
+              <p className="text-text-muted text-xs sm:text-sm mt-0.5 font-medium">{t('site_monitoring_desc')}</p>
             </div>
             <div className="flex items-center gap-2">
               <ModuleGuideButton moduleId="camera" className="h-9" />

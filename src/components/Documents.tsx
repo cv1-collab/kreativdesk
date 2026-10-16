@@ -325,13 +325,15 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
   const isProjectMode = Boolean(defaultProjId);
   const currentProject = projects.find((p: any) => p.id === defaultProjId);
 
-  // External collaborators (partners, clients, sub-contractors, viewers/guests) only get read-only access
+  // External collaborators (partners, clients, sub-contractors, external guests) only get read-only access
   const isExternalPartner = Boolean(
     currentUser?.role === 'client' ||
     currentUser?.role === 'guest' ||
     (currentUser as any)?.isExternal ||
-    (currentUser?.role as any) === 'viewer' ||
-    (currentUser?.role as any) === 'partner'
+    (currentUser?.role as any) === 'partner' ||
+    (currentUser?.role as any) === 'external' ||
+    (currentUser?.role as any) === 'subcontractor' ||
+    (currentUser?.role as any) === 'handwerker'
   );
 
   const isDemo = isDemoMode || defaultProjId === 'demo-1' || defaultProjId?.startsWith('demo-') || activeProjectId === 'demo-1';

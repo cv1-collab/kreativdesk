@@ -80,7 +80,20 @@ async function startServer() {
         .maybeSingle();
 
       if (profile && profile.has_active_subscription === false) {
-        return res.status(403).json({ error: 'Forbidden: Active subscription required.' });
+        let companyHasPaidPlan = false;
+        if (profile.company_id) {
+          const { data: comp } = await supabaseAdmin
+            .from('companies')
+            .select('plan')
+            .eq('id', profile.company_id)
+            .maybeSingle();
+          if (comp?.plan && !String(comp.plan).toLowerCase().includes('trial')) {
+            companyHasPaidPlan = true;
+          }
+        }
+        if (!companyHasPaidPlan) {
+          return res.status(403).json({ error: 'Forbidden: Active subscription required.' });
+        }
       }
       
       (req as any).dbUser = profile;
@@ -178,7 +191,8 @@ async function startServer() {
             .update({ 
               has_active_subscription: true, 
               plan: planName,
-              stripe_customer_id: session.customer
+              stripe_customer_id: session.customer,
+              trial_ends_at: null
             })
             .eq('id', userId);
 
@@ -189,11 +203,19 @@ async function startServer() {
             .maybeSingle();
 
           if (profile?.company_id) {
-            let newMaxSeats = 1;
+            const { data: existingComp } = await supabaseAdmin
+              .from('companies')
+              .select('max_seats')
+              .eq('id', profile.company_id)
+              .maybeSingle();
+
+            let newMaxSeats = Number(session.metadata?.seats) || 1;
             const p = planName.toLowerCase();
-            if (p.includes('studio')) newMaxSeats = 5;
-            else if (p.includes('agency')) newMaxSeats = 15;
-            else if (p.includes('enterprise')) newMaxSeats = 30;
+            if (p.includes('team starter') || p.includes('expert')) newMaxSeats = Math.max(newMaxSeats, 3);
+            else if (p.includes('studio')) newMaxSeats = Math.max(newMaxSeats, 10);
+            else if (p.includes('agency')) newMaxSeats = Math.max(newMaxSeats, 30);
+            else if (p.includes('enterprise')) newMaxSeats = Math.max(newMaxSeats, 999);
+            newMaxSeats = Math.max(newMaxSeats, Number(existingComp?.max_seats || 1));
             
             await supabaseAdmin
               .from('companies')

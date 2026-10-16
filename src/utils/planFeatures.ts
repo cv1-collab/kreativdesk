@@ -26,7 +26,8 @@ const FULL_FEATURES = [
   'custom_branding',
   'branding',
   'controlling',
-  'rbac'
+  'rbac',
+  'bexioIntegration'
 ];
 
 export const PLAN_FEATURES: Record<string, { maxProjects: number; storageLimit: number; features: string[] }> = {
@@ -38,7 +39,7 @@ export const PLAN_FEATURES: Record<string, { maxProjects: number; storageLimit: 
   Pro: {
     maxProjects: 9999, // Unlimited
     storageLimit: 100 * 1024 * 1024 * 1024, // 100 GB
-    features: ['2d_viewer', 'budget_tracking', 'meet_chat', 'document_hub', '3d_bim', 'ai_audit', 'mobile_app']
+    features: ['2d_viewer', 'budget_tracking', 'meet_chat', 'document_hub', '3d_bim', 'ai_audit', 'mobile_app', 'bexioIntegration']
   },
   'Team Starter': {
     maxProjects: 9999,
@@ -109,11 +110,12 @@ export function hasFeature(user: any, featureId: string): boolean {
     return true;
   }
 
-  const mappedPlan = PLAN_FEATURES[plan as PlanTier];
+  const matchedKey = Object.keys(PLAN_FEATURES).find(k => k.toLowerCase() === planLower);
+  const mappedPlan = matchedKey ? PLAN_FEATURES[matchedKey] : PLAN_FEATURES[plan as PlanTier];
   if (!mappedPlan) {
     // If plan string is 'Workspace Member' or user is team member, inherit access
     const role = (user.role || '').toLowerCase();
-    if (role === 'employee' || role === 'management' || planLower.includes('workspace')) {
+    if (['admin', 'project_lead', 'projektleiter', 'employee', 'management'].includes(role) || planLower.includes('workspace')) {
       return true;
     }
     return false;

@@ -534,7 +534,7 @@ export default function Login() {
         </div>
 
         <p className="mt-6 text-center text-sm text-slate-500 dark:text-[#a1a1aa] font-medium">
-          {t('no_account')} <Link to="/signup" className="font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors">{t('sign_up')}</Link>
+          {t('no_account')} <Link to={`/signup${window.location.search || ''}`} className="font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors">{t('sign_up')}</Link>
         </p>
       </div>
 

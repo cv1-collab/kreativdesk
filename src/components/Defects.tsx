@@ -317,8 +317,9 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
     recognition.start();
   };
 
+  const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
   const [uploadSessionId] = useState(() => Math.random().toString(36).substring(2, 15));
-  const mobileUploadUrl = `${window.location.origin}/mobile-upload/defect/${uploadSessionId}`;
+  const mobileUploadUrl = `${window.location.origin}/mobile-upload/defect/${uploadSessionId}${safeCompanyId ? `?companyId=${encodeURIComponent(safeCompanyId)}` : ''}`;
 
   const projectHeader = { 
     project: activeProject?.name || t('new_project') || 'Neues Projekt', 
@@ -332,7 +333,6 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
   const wasDragged = useRef(false);
 
   // === MULTI-TENANT FILTERUNG MIT TANSTACK QUERY & REALTIME SYNC ===
-  const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
   const { defects: queryDefects, invalidateDefects } = useDefectsQuery(
     isDemo ? null : safeCompanyId,
     isDemo ? null : currentProjectId
@@ -358,6 +358,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
   // If user is a Field Guest / external contractor, they ONLY see defects matching their trade, assignee, or created by them!
   const displayDefects = React.useMemo(() => {
     if (!isFieldGuest) return defects;
+    const currentUserId = currentUser?.uid || currentUser?.id;
     
     return defects.filter(d => {
       // 1. Match by trade / gewerk
@@ -374,14 +375,14 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
         if (userCompany && ass.includes(userCompany.toLowerCase())) return true;
       }
       // 3. Match if created by this user
-      if (d.ownerId && d.ownerId === currentUser?.id) return true;
+      if (d.ownerId && currentUserId && d.ownerId === currentUserId) return true;
 
       // If contractor has no specific trade assigned yet, show items directly assigned to them
       if (!userTrade && !d.assignee) return false;
 
       return false;
     });
-  }, [defects, isFieldGuest, userTrade, userCompany, userName, userEmail, currentUser?.id]);
+  }, [defects, isFieldGuest, userTrade, userCompany, userName, userEmail, currentUser?.uid, currentUser?.id]);
 
   useEffect(() => {
     return offlineSyncManager.registerAutoSync((msg, type) => {
@@ -415,7 +416,8 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
         const { data: docs } = await supabase
           .from('documents')
           .select('url, file_url')
-          .eq('company_id', uploadSessionId)
+          .eq('category', 'temp_receipt')
+          .eq('folder_id', uploadSessionId)
           .order('created_at', { ascending: false })
           .limit(1);
 
@@ -657,7 +659,8 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
     const targetDefect = defects.find(d => d.id === id);
 
     // ZERO LEAKAGE: Contractors can only delete their own tickets
-    if (isFieldGuest && targetDefect && targetDefect.ownerId !== currentUser?.id) {
+    const currentUserId = currentUser?.uid || currentUser?.id;
+    if (isFieldGuest && targetDefect && targetDefect.ownerId !== currentUserId) {
       addToast(currentLang === 'de' ? 'Nur eigene erstellte Tickets können gelöscht werden.' : 'You can only delete your own tickets.', 'info');
       return;
     }

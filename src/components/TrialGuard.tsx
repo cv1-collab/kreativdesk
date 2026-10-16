@@ -24,6 +24,7 @@ export default function TrialGuard({ children }: TrialGuardProps) {
   let isLocked = false;
   const roleLower = (currentUser?.role || '').toLowerCase();
   const isMemberOrExternal = [
+    'admin',
     'employee',
     'management',
     'external',
@@ -34,6 +35,7 @@ export default function TrialGuard({ children }: TrialGuardProps) {
     'handwerker',
     'bauherr',
     'project_lead',
+    'projektleiter',
     'field guest',
     'external planner'
   ].includes(roleLower);

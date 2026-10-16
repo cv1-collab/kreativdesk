@@ -795,7 +795,8 @@ BEGIN
 
   SELECT * INTO v_inv 
   FROM public.invites 
-  WHERE token = p_token AND status = 'pending'
+  WHERE token = p_token
+    AND (status = 'pending' OR (status = 'used' AND used_by = p_user_id))
     AND (expires_at IS NULL OR expires_at > now())
   LIMIT 1;
 
@@ -804,6 +805,8 @@ BEGIN
   END IF;
 
   v_safe_role := CASE WHEN v_inv.role IN ('super_admin', 'owner') THEN 'admin' ELSE coalesce(v_inv.role, 'employee') END;
+
+  PERFORM set_config('app.bypass_profile_trigger', 'true', true);
 
   UPDATE public.invites
   SET status = 'used', used_by = p_user_id, used_at = now()
@@ -1106,7 +1109,12 @@ CREATE POLICY "Strict profile update" ON public.profiles
     app_security.is_super_admin()
     OR (
       (id = auth.uid() OR (company_id::text = app_security.get_my_company_id() AND app_security.is_company_admin()))
-      AND (company_id IS NULL OR company_id::text = app_security.get_my_company_id())
+      AND (
+        company_id IS NULL
+        OR company_id::text = app_security.get_my_company_id()
+        OR EXISTS (SELECT 1 FROM public.invites i WHERE i.company_id = profiles.company_id AND (i.used_by = auth.uid() OR lower(i.email) = lower(profiles.email)))
+        OR EXISTS (SELECT 1 FROM public.company_users cu WHERE cu.company_id = profiles.company_id AND (cu.user_id = auth.uid() OR lower(cu.email) = lower(profiles.email)))
+      )
       AND (role IS NULL OR role != 'super_admin')
     )
   );
@@ -1125,8 +1133,12 @@ DECLARE
   v_caller_role text;
   v_caller_company uuid;
   v_is_company_admin boolean := false;
+  v_has_valid_invite boolean := false;
 BEGIN
-  IF current_setting('role', true) = 'service_role' OR auth.uid() IS NULL OR app_security.is_super_admin() THEN
+  IF current_setting('role', true) = 'service_role'
+     OR current_setting('app.bypass_profile_trigger', true) = 'true'
+     OR auth.uid() IS NULL
+     OR app_security.is_super_admin() THEN
     RETURN NEW;
   END IF;
 
@@ -1141,8 +1153,16 @@ BEGIN
     RAISE EXCEPTION 'Forbidden: Cannot escalate role to super_admin';
   END IF;
 
-  -- Kein Nicht-Super-Admin darf die company_id eines bestehenden Profils auf einen fremden Mandanten ändern
-  IF OLD.company_id IS NOT NULL AND NEW.company_id IS DISTINCT FROM OLD.company_id THEN
+  -- Prüfen, ob der Benutzer über eine gültige Einladung oder einen Team-Eintrag (company_users) der Firma beitritt
+  IF NEW.company_id IS NOT NULL THEN
+    SELECT (
+      EXISTS (SELECT 1 FROM public.invites i WHERE i.company_id = NEW.company_id AND (i.used_by = NEW.id OR lower(i.email) = lower(NEW.email)))
+      OR EXISTS (SELECT 1 FROM public.company_users cu WHERE cu.company_id = NEW.company_id AND (cu.user_id = NEW.id OR lower(cu.email) = lower(NEW.email)))
+    ) INTO v_has_valid_invite;
+  END IF;
+
+  -- Kein Nicht-Super-Admin darf die company_id eines bestehenden Profils auf einen fremden Mandanten ohne Einladung ändern
+  IF OLD.company_id IS NOT NULL AND NEW.company_id IS DISTINCT FROM OLD.company_id AND NOT v_has_valid_invite THEN
     NEW.company_id := OLD.company_id;
   END IF;
 
@@ -1154,7 +1174,7 @@ BEGIN
     v_is_company_admin := true;
   END IF;
 
-  IF NOT v_is_company_admin THEN
+  IF NOT v_is_company_admin AND NOT v_has_valid_invite THEN
     IF OLD.role IS NOT NULL AND NEW.role IS DISTINCT FROM OLD.role THEN
       NEW.role := OLD.role;
     END IF;
@@ -1289,15 +1309,14 @@ CREATE POLICY "Allow anon upload to temp_mobile_uploads" ON storage.objects
     AND name LIKE 'temp_mobile_uploads/%'
   );
 
--- Überschreiben & Löschen von Dateien im Storage nur für den Ersteller, Firmen-Admin der jeweiligen Firma oder Super-Admin
+-- Überschreiben von Dateien im Storage für Ersteller, Team-Mitglieder derselben Firma oder Super-Admin
 CREATE POLICY "Authenticated Storage Update" ON storage.objects
   FOR UPDATE TO authenticated
   USING (
     app_security.is_super_admin()
     OR owner = auth.uid()
     OR (
-      app_security.is_company_admin()
-      AND app_security.get_my_company_id() IS NOT NULL
+      app_security.get_my_company_id() IS NOT NULL
       AND (split_part(name, '/', 1) = app_security.get_my_company_id() OR split_part(name, '/', 2) = app_security.get_my_company_id())
     )
   );

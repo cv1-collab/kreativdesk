@@ -572,7 +572,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
 
   const allContacts = [
     ...safeRealUsers.map(u => ({ ...u, isAppUser: true, isExternal: false })),
-    ...safeCompanyUsers.filter(cu => !safeRealUsers.some(ru => ru.email === cu.email))
+    ...safeCompanyUsers.filter(cu => !safeRealUsers.some(ru => (ru.email || '').toLowerCase().trim() === (cu.email || '').toLowerCase().trim()))
   ];
 
   const internalTeam = allContacts.filter(u => u.isAppUser || u.isExternal === false || u.role);
@@ -582,7 +582,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
     if (!u) return t('unknown');
     if (typeof u === 'string') return u;
     if (u.firstName || u.lastName) return `${u.firstName || ''} ${u.lastName || ''}`.trim();
-    return u.displayName || u.name || u.email || t('unknown');
+    return u.displayName || u.name || u.full_name || u.email || t('unknown');
   };
 
   const TIMER_STORAGE_KEY = 'kreativdesk_live_timer';
@@ -665,7 +665,9 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
       return;
     }
 
-    const targetUserId = isCustom ? customExternalName.trim() : (timeEntryForm.userId || currentUser.uid);
+    const matchedContact = allContacts.find((c: any) => c.id === timeEntryForm.userId || c.user_id === timeEntryForm.userId);
+    const resolvedAuthUserId = matchedContact?.user_id || matchedContact?.profileId || timeEntryForm.userId || currentUser.uid;
+    const targetUserId = isCustom ? customExternalName.trim() : resolvedAuthUserId;
 
     const finalHours = timeTrackingMode === 'timer' ? Number((timerSeconds / 3600).toFixed(2)) : timeEntryForm.hours;
     if (!timeEntryForm.projectId || finalHours <= 0) { addToast('Bitte Projekt und Stunden angeben.', 'error'); return; }
@@ -676,8 +678,8 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         id: entryId,
         user_id: targetUserId,
         userId: targetUserId,
-        user_name: targetUserId,
-        userName: targetUserId,
+        user_name: matchedContact ? formatName(matchedContact) : targetUserId,
+        userName: matchedContact ? formatName(matchedContact) : targetUserId,
         project_id: timeEntryForm.projectId,
         projectId: timeEntryForm.projectId,
         date: timeEntryForm.date || new Date().toISOString().split('T')[0],
@@ -707,14 +709,16 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
       } catch (backupErr) {}
 
       // 3. Insert into Supabase time_entries
-      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(entryId);
-      const cleanEntryProjId = (newEntryObj.project_id && newEntryObj.project_id !== 'global' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(newEntryObj.project_id)) ? newEntryObj.project_id : null;
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const isUuid = uuidRegex.test(entryId);
+      const isUserUuid = uuidRegex.test(String(newEntryObj.user_id || ''));
+      const cleanEntryProjId = (newEntryObj.project_id && newEntryObj.project_id !== 'global' && uuidRegex.test(newEntryObj.project_id)) ? newEntryObj.project_id : null;
       const teInsertPayload: any = {
-        user_id: newEntryObj.user_id,
+        user_id: isUserUuid ? newEntryObj.user_id : currentUser.uid,
         project_id: cleanEntryProjId,
         date: newEntryObj.date,
         hours: finalHours,
-        description: newEntryObj.description,
+        description: isUserUuid ? newEntryObj.description : `[${newEntryObj.user_name}] ${newEntryObj.description}`,
         created_at: newEntryObj.created_at,
         company_id: safeCompanyId
       };
@@ -930,7 +934,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
               recipients,
               language: currentLang,
               type: newEvent.type,
-              senderName: currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Carlo Vescio',
+              senderName: currentUser?.displayName || currentUser?.name || currentUser?.email?.split('@')[0] || 'Projektleitung',
               companyId: safeCompanyId
             })
           });
@@ -939,7 +943,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         }
 
         // 2. Open prefilled mailto link for direct mail app dispatch (Bilingual DE/EN)
-        const host = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Carlo Vescio';
+        const host = currentUser?.displayName || currentUser?.name || currentUser?.email?.split('@')[0] || 'Projektleitung';
         const isDe = currentLang === 'de';
         const isCall = newEvent.type === 'call';
         const subject = encodeURIComponent(
@@ -1223,9 +1227,11 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
       .eq('name', folderName)
       .eq('is_folder', true)
       .eq('company_id', safeCompanyId)
+      .is('project_id', null)
+      .limit(1)
       .maybeSingle();
     if (existing) return existing.id;
-    const { data: newF } = await supabase.from('documents').insert({ name: folderName, is_folder: true, category: 'company', owner_id: currentUser.uid, company_id: safeCompanyId, project_id: null, created_at: new Date().toISOString() }).select().maybeSingle();
+    const { data: newF } = await supabase.from('documents').insert({ name: folderName, is_folder: true, category: 'company', folder_id: 'root', owner_id: currentUser.uid, company_id: safeCompanyId, project_id: null, created_at: new Date().toISOString() }).select().maybeSingle();
     return newF ? newF.id : 'root';
   };
 
@@ -1304,14 +1310,9 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
   return (
     <div className="space-y-6 animate-in fade-in duration-300 text-text-primary">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
-            <Calendar size={18} />
-          </div>
-          <div>
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-text-primary">{t('agenda_rapport')}</h2>
-            <p className="text-xs sm:text-sm text-text-muted mt-0.5 font-medium">{t('agenda_desc')}</p>
-          </div>
+        <div>
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-text-primary">{t('agenda_rapport')}</h2>
+          <p className="text-xs sm:text-sm text-text-muted mt-0.5 font-medium">{t('agenda_desc')}</p>
         </div>
 
         <div className="tour-agenda-actions flex flex-wrap gap-2 items-center">
@@ -1761,7 +1762,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
                                 if (extEmails.length === 0) return;
                                 const link = selectedEvent.meetingLink || selectedEvent.meeting_link;
                                 const recipients = extEmails.join(',');
-                                const host = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Carlo Vescio';
+                                const host = currentUser?.displayName || currentUser?.name || currentUser?.email?.split('@')[0] || 'Projektleitung';
                                 const isDe = currentLang === 'de';
                                 const isCall = selectedEvent.type === 'call';
                                 const subject = encodeURIComponent(

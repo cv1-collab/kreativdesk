@@ -197,14 +197,15 @@ export default async function handler(req: any, res: any) {
     }
 
     // 2. Create or Update Profile in Supabase with valid UUID company_id
+    const isPaidOrInvited = isInvite || allowDirectEnterprise || (plan && !String(plan).toLowerCase().includes('trial'));
     await supabaseAdmin.from('profiles').upsert({
       id: uid,
       email: verifiedEmail,
       role: assignedRole,
       company_id: assignedCompanyId,
-      has_active_subscription: existingProfile?.has_active_subscription ?? true,
+      has_active_subscription: isPaidOrInvited ? true : (existingProfile?.has_active_subscription ?? true),
       plan: existingProfile?.plan && !isInvite ? existingProfile.plan : plan,
-      trial_ends_at: existingProfile?.trial_ends_at || trialEndDate.toISOString(),
+      trial_ends_at: isPaidOrInvited ? null : (existingProfile?.trial_ends_at || trialEndDate.toISOString()),
       created_at: now
     });
 

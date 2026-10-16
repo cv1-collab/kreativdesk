@@ -1490,10 +1490,33 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
 
       try {
         if (targetId && targetId !== 'global' && currentUser?.uid) {
-          const query = supabase.from('slides').select('*').eq('project_id', targetId);
+          let query = supabase.from('slides').select('*').eq('project_id', targetId);
+          if (safeCompanyId) {
+            query = query.eq('company_id', safeCompanyId);
+          }
           const { data: loadedSlides } = await query;
           if (loadedSlides && loadedSlides.length > 0) {
             slidesArr = loadedSlides.map((d: any) => deserializeSlideFromDb(d, currentUser?.uid));
+          }
+
+          // Load shared deck_settings from Supabase documents so team members see identical branding & theme
+          let settingsQuery = supabase
+            .from('documents')
+            .select('url, file_url')
+            .eq('project_id', targetId)
+            .eq('category', 'pitch_deck_config')
+            .eq('name', 'deck_settings');
+          if (safeCompanyId) {
+            settingsQuery = settingsQuery.eq('company_id', safeCompanyId);
+          }
+          const { data: settingsDocs } = await settingsQuery;
+          const rawSettings = settingsDocs?.[0]?.file_url || settingsDocs?.[0]?.url;
+          if (rawSettings) {
+            try {
+              const parsedSettings = JSON.parse(rawSettings);
+              setDeckSettings(prev => ({ ...prev, ...parsedSettings }));
+              safeStorage.setItem(`pitch_deckSettings_${targetId}`, parsedSettings);
+            } catch (_) {}
           }
         }
       } catch (err) {
@@ -1501,28 +1524,38 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
       }
 
       const isDemoProject = isDemoMode || targetId?.startsWith('demo-') || targetId === 'demo-1' || targetId === 'global';
-      if (slidesArr.length === 0 && isDemoProject) {
+      if (slidesArr.length === 0) {
         try {
-          const demoSlides = [
-            { title: "Projekt Status Overview", content: "Dies ist eine kurze Zusammenfassung des aktuellen Projektstatus für das Testbau Projekt.", layout: 'title-only', notes: "Einleitung und Übersicht für den Investor.", order_index: 0 },
-            { title: "Aktueller Baufortschritt", content: "Die Rohbauarbeiten sind zu 80% abgeschlossen. Der Innenausbau startet planmässig nächste Woche.", layout: 'split', notes: "Auf Verzögerungen bei der Rohbaulieferung eingehen.", order_index: 1 },
-            { title: "Das Projekt-Team", content: "", layout: 'team-grid', notes: "Vorstellung des Hauptarchitekten und Bauleiters.", order_index: 2 },
-            { title: "Projekt-Budget", content: "", layout: 'data-budget', notes: "BKP 2 Bauleistungen heben.", order_index: 3 },
+          const projTitle = activeProject?.name || "Projekt Status Overview";
+          const starterSlides = [
+            { title: projTitle, content: "Zusammenfassung des aktuellen Projektstatus, Architektur-Meilensteine und Kostenübersicht.", layout: 'title-only', notes: "Einleitung und Übersicht für Bauherrschaft & Team.", order_index: 0 },
+            { title: "Aktueller Baufortschritt", content: "Die Rohbauarbeiten verlaufen planmässig. Der Innenausbau und die Detailplanung sind mit dem Projektteam abgestimmt.", layout: 'split', notes: "Wichtige Meilensteine besprechen.", order_index: 1 },
+            { title: "Das Projekt-Team", content: "", layout: 'team-grid', notes: "Vorstellung der Projektleitung und Fachplaner.", order_index: 2 },
+            { title: "Projekt-Budget", content: "", layout: 'data-budget', notes: "BKP Kostenübersicht.", order_index: 3 },
           ];
           
-          const slidesToInsert = demoSlides.map((s, i) => ({
-            id: `slide-demo-${targetId}-${i}`,
+          const slidesToInsert = starterSlides.map((s, i) => ({
+            id: isDemoProject ? `slide-demo-${targetId}-${i}` : `slide-${targetId}-${i}`,
             ...s,
             fontSize: 18,
             titleFontSize: 36,
+            projectId: targetId,
             project_id: targetId,
-            company_id: currentUser?.companyId || safeCompanyId,
+            companyId: safeCompanyId,
+            company_id: safeCompanyId,
+            ownerId: currentUser?.uid,
             owner_id: currentUser?.uid,
             created_at: new Date().toISOString()
           }));
 
           slidesArr.push(...slidesToInsert);
-        } catch(e) { console.warn("Error seeding demo deck", e); }
+
+          if (!isDemoProject && targetId && targetId !== 'global' && currentUser?.uid && safeCompanyId) {
+            await supabase
+              .from('slides')
+              .upsert(slidesToInsert.map((s: any) => serializeSlideForDb(s)), { onConflict: 'id' });
+          }
+        } catch(e) { console.warn("Error seeding starter deck", e); }
       }
 
       if (slidesArr.length > 0) {
@@ -1540,7 +1573,45 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
     };
 
     fetchSlides();
-  }, [currentUser, projectId, importProjectId, targetId, isDemoMode, setActiveSlideId, setSlides]);
+
+    if (!targetId || targetId === 'global' || isDemoMode) return;
+
+    const channel = supabase
+      .channel(`pitchdeck_studio_live_${safeCompanyId || 'tenant'}_${targetId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'slides',
+        filter: `project_id=eq.${targetId}`
+      }, () => {
+        if (!isTypingBurstRef.current) {
+          fetchSlides();
+        }
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'documents',
+        filter: `project_id=eq.${targetId}`
+      }, (payload) => {
+        const docRow = payload.new as any;
+        if (docRow && docRow.category === 'pitch_deck_config' && docRow.name === 'deck_settings') {
+          const raw = docRow.file_url || docRow.url;
+          if (raw) {
+            try {
+              const parsed = JSON.parse(raw);
+              setDeckSettings(prev => ({ ...prev, ...parsed }));
+              safeStorage.setItem(`pitch_deckSettings_${targetId}`, parsed);
+            } catch (_) {}
+          }
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel).catch(() => {});
+    };
+  }, [currentUser, projectId, importProjectId, targetId, isDemoMode, setActiveSlideId, setSlides, activeProject?.name]);
 
   const handleLocalUpdate = (field: 'title' | 'content' | 'notes', value: string) => {
     if (!isTypingBurstRef.current) {
@@ -1556,14 +1627,24 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
     if (field === 'content') setLocalContent(value);
     if (field === 'notes') setLocalNotes(value);
 
-    if (activeSlide) {
-      setSlides(prev => prev.map(s => s.id === activeSlide.id ? { ...s, [field]: value } : s));
+    const updatedSlide = activeSlide ? { ...activeSlide, [field]: value } : null;
+    if (updatedSlide) {
+      setSlides(prev => prev.map(s => s.id === updatedSlide.id ? updatedSlide : s));
     }
 
     if (updateTimeoutRef.current) clearTimeout(updateTimeoutRef.current);
-    updateTimeoutRef.current = setTimeout(() => {
-      if (activeSlide && !isPreviewMode) {
-        supabase.from('slides').update({ [field]: value } as any).eq('id', activeSlide.id);
+    updateTimeoutRef.current = setTimeout(async () => {
+      if (updatedSlide && !isPreviewMode && targetId && targetId !== 'global') {
+        const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+        await supabase.from('slides').upsert(
+          serializeSlideForDb({
+            ...updatedSlide,
+            projectId: targetId,
+            companyId: safeCompanyId,
+            ownerId: updatedSlide.ownerId || currentUser?.uid
+          }),
+          { onConflict: 'id' }
+        );
       }
     }, 500); 
   };

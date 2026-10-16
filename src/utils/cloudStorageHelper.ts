@@ -59,12 +59,13 @@ export const uploadFileWithFallback = async (fileInput: File | Blob | string, fi
     file = fileInput;
   }
   const safeCompanyId = companyId || 'global';
-  const safeFileName = `${Date.now()}_${fileName.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+  const safeFileName = `${Date.now()}_${Math.random().toString(36).slice(2, 6)}_${fileName.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
   const storagePath = `${folder}/${safeCompanyId}/${safeFileName}`;
+  const shouldUpsert = folder !== 'temp_mobile_uploads';
 
   // 1. Try 'documents' bucket
   try {
-    const { error } = await supabase.storage.from('documents').upload(storagePath, file, { upsert: true });
+    const { error } = await supabase.storage.from('documents').upload(storagePath, file, { upsert: shouldUpsert });
     if (!error) {
       const { data: pubData } = supabase.storage.from('documents').getPublicUrl(storagePath);
       if (pubData?.publicUrl) return pubData.publicUrl;
@@ -75,7 +76,7 @@ export const uploadFileWithFallback = async (fileInput: File | Blob | string, fi
 
   // 2. Try 'avatars' bucket
   try {
-    const { error } = await supabase.storage.from('avatars').upload(storagePath, file, { upsert: true });
+    const { error } = await supabase.storage.from('avatars').upload(storagePath, file, { upsert: shouldUpsert });
     if (!error) {
       const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(storagePath);
       if (pubData?.publicUrl) return pubData.publicUrl;

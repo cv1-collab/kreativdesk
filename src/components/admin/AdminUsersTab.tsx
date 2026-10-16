@@ -312,7 +312,7 @@ export default function AdminUsersTab() {
   const handleSendInviteEmail = async (user: any) => {
     if (!user?.email) return;
     await handleCopyInviteLink(user);
-    const host = 'Carlo Vescio';
+    const host = 'Kreativ Desk OS Team';
     const compName = user.companyName || 'Kreativ Desk OS';
     const { data: existingInvites } = await supabase
       .from('invites')

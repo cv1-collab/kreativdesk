@@ -100,10 +100,21 @@ export default function AIConcierge() {
     if (isOpen && currentUser && !projectContext && safeCompanyId) {
       const fetchContext = async () => {
         try {
-          const { data: transactions } = await supabase.from('transactions').select('*').eq('company_id', safeCompanyId);
-          const { data: defects } = await supabase.from('defects').select('*').eq('company_id', safeCompanyId);
+          const rawRole = (currentUser?.role || '').toLowerCase().trim();
+          const isExt = Boolean((currentUser as any)?.isExternal) || rawRole === 'guest' || rawRole === 'client' || rawRole === 'external' || rawRole === 'subcontractor' || rawRole === 'handwerker';
+          const canSeeFinance = !isExt && (rawRole === 'owner' || rawRole === 'admin' || rawRole === 'management' || rawRole === 'super_admin' || currentUser?.canViewFinance !== false);
 
-          const txs = transactions || [];
+          let txs: any[] = [];
+          if (canSeeFinance) {
+            let txQuery = supabase.from('transactions').select('*').eq('company_id', safeCompanyId);
+            if (activeProjectId) txQuery = txQuery.eq('project_id', activeProjectId);
+            const { data: transactions } = await txQuery;
+            txs = transactions || [];
+          }
+
+          let defQuery = supabase.from('defects').select('*').eq('company_id', safeCompanyId);
+          if (activeProjectId) defQuery = defQuery.eq('project_id', activeProjectId);
+          const { data: defects } = await defQuery;
           const defs = defects || [];
 
           const totalSpent = txs.filter((t: any) => t.amount < 0).reduce((sum: number, t: any) => sum + Math.abs(t.amount), 0);

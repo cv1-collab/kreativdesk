@@ -211,6 +211,9 @@ export default function Signup() {
         ? `${window.location.origin}/pricing?plan=${encodeURIComponent(selectedPlanParam)}&billing=${encodeURIComponent(selectedBillingParam || 'yearly')}`
         : `${window.location.origin}/app`;
 
+      const resolvedCompanyId = searchParams.get('companyId') || (inviteInfo as any)?.company_id || (inviteInfo as any)?.companyId || null;
+      const resolvedInviteRole = (inviteInfo as any)?.role || (effectiveInviteToken || resolvedCompanyId ? 'employee' : undefined);
+
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
         password,
@@ -218,8 +221,9 @@ export default function Signup() {
           emailRedirectTo: emailRedirectUrl,
           data: {
             inviteToken: effectiveInviteToken,
-            companyId: searchParams.get('companyId') || (inviteInfo as any)?.companyId || null,
-            role: (inviteInfo as any)?.role || undefined,
+            companyId: resolvedCompanyId,
+            company_id: resolvedCompanyId,
+            role: resolvedInviteRole,
             selectedPlan: selectedPlanParam || undefined,
             billingCycle: selectedBillingParam || undefined,
             full_name: searchParams.get('name') || cleanEmail.split('@')[0]
@@ -513,7 +517,7 @@ export default function Signup() {
               </form>
 
               <p className="mt-6 text-center text-sm text-slate-500 dark:text-[#a1a1aa] font-medium">
-                {t('already_have_account')} <Link to="/login" className="font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors">{t('sign_in')}</Link>
+                {t('already_have_account')} <Link to={`/login${window.location.search || ''}`} className="font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors">{t('sign_in')}</Link>
               </p>
             </div>
           )}

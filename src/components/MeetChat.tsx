@@ -1246,7 +1246,7 @@ export default function MeetChat() {
               recipients,
               language: currentLang,
               type: 'call',
-              senderName: currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Carlo Vescio',
+              senderName: currentUser?.displayName || currentUser?.name || currentUser?.email?.split('@')[0] || 'Projektleitung',
               companyId: currentUser.companyId
             })
           });
@@ -1255,7 +1255,7 @@ export default function MeetChat() {
         }
 
         // 2. Open prefilled mailto link for direct mail app dispatch (Bilingual DE/EN)
-        const host = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Carlo Vescio';
+        const host = currentUser?.displayName || currentUser?.name || currentUser?.email?.split('@')[0] || 'Projektleitung';
         const isDe = currentLang === 'de';
         const subject = encodeURIComponent(
           isDe ? `📹 Einladung zum Live-Videocall | Kreativ Desk OS` : `📹 Invitation to Live Video Call | Kreativ Desk OS`

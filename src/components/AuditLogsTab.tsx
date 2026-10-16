@@ -324,20 +324,15 @@ export default function AuditLogsTab({
         
         {/* Header Title & Actions */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-border/50 pb-5">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-400 border border-sky-500/20 flex items-center justify-center shrink-0 shadow-xs">
-              <Shield size={18} />
-            </div>
-            <div>
-              <h3 className="text-lg sm:text-xl font-bold tracking-tight text-text-primary">
-                {title || (language === 'de' ? 'Audit-Logs & Governance' : 'Audit Logs & Governance')}
-              </h3>
-              <p className="text-text-muted text-xs sm:text-sm font-medium mt-0.5">
-                {description || (language === 'de' 
-                  ? 'Revisionssichere, lückenlose Dokumentation aller Firmenaktivitäten und Änderungen.' 
-                  : 'Tamper-proof, audit-ready log of all organization activities.')}
-              </p>
-            </div>
+          <div>
+            <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-text-primary">
+              {title || (language === 'de' ? 'Audit-Logs & Governance' : 'Audit Logs & Governance')}
+            </h3>
+            <p className="text-text-muted text-xs sm:text-sm font-medium mt-0.5">
+              {description || (language === 'de' 
+                ? 'Revisionssichere, lückenlose Dokumentation aller Firmenaktivitäten und Änderungen.' 
+                : 'Tamper-proof, audit-ready log of all organization activities.')}
+            </p>
           </div>
 
           <div className="flex items-center gap-2.5 w-full lg:w-auto flex-wrap">

@@ -54,6 +54,7 @@
   --color-text-primary: var(--text-primary);
   --color-text-muted: var(--text-muted);
   
+  --color-primary: #3b82f6;
   --color-accent-success: #10b981;
   --color-accent-ai: #3b82f6;
   --color-accent-error: #ef4444;

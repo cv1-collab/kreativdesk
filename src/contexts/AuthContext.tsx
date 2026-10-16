@@ -83,13 +83,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const storedInvite = safeStorage.getString('pending_invite_token');
       const effectiveInviteToken = urlInvite || metaInvite || (storedInvite ? storedInvite : null);
 
+      const EXTERNAL_INVITE_ROLES = ['guest', 'client', 'external', 'partner', 'subcontractor', 'field guest', 'external planner', 'bauherr', 'handwerker'];
+      const canonicalizeRole = (raw?: string | null, forceExternal?: boolean): Role => {
+        const r = String(raw || '').toLowerCase().trim();
+        if (forceExternal || EXTERNAL_INVITE_ROLES.includes(r)) {
+          return (r === 'client' || r === 'bauherr' || r === 'kunde') ? 'client' : 'guest';
+        }
+        if (r === 'super_admin' || r === 'superadmin') return 'super_admin';
+        if (r === 'owner') return 'owner';
+        if (r === 'admin' || r === 'management' || r === 'geschaeftsleitung' || r === 'geschäftsleitung') return ('admin' as Role);
+        if (r === 'project_lead' || r === 'projektleiter') return ('project_lead' as Role);
+        return 'employee';
+      };
+
       let pendingInvite: any = null;
       if (effectiveInviteToken) {
-        const { data: inv } = await supabase
+        let { data: inv } = await supabase
           .from('invites')
           .select('*')
           .eq('token', effectiveInviteToken)
           .maybeSingle();
+
+        if (!inv) {
+          try {
+            const { data: rpcRes } = await supabase.rpc('get_invite_details', { p_token: effectiveInviteToken });
+            const rpcInv = Array.isArray(rpcRes) ? rpcRes[0] : rpcRes;
+            if (rpcInv && rpcInv.company_id) {
+              inv = { ...rpcInv, token: effectiveInviteToken };
+            }
+          } catch (_) {}
+        }
 
         if (inv) {
           const isGeneric = !inv.email || inv.email.startsWith('invite_') || inv.email.endsWith('@workspace.local');
@@ -98,8 +121,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           
           // CRITICAL: A company owner testing their own invite link must NEVER consume the invite!
           if (emailMatches || wasUsedByMe || (isGeneric && inv.status === 'pending')) {
-            if (inv.company_id !== ownedComp?.id) {
-              pendingInvite = inv;
+            if (inv.company_id && inv.company_id !== ownedComp?.id) {
+              pendingInvite = { ...inv, token: inv.token || effectiveInviteToken };
+              if (!isSuperUserCheck) {
+                isCompanyOwner = false;
+                ownedComp = null;
+              }
             }
           }
         }
@@ -115,14 +142,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('Fehler beim Laden des Profils:', error);
       }
 
-      const EXTERNAL_INVITE_ROLES = ['guest', 'client', 'external', 'partner', 'subcontractor', 'field guest', 'external planner', 'bauherr', 'handwerker'];
       let targetCompanyId: string | null = null;
       let targetRole: Role = 'owner';
       let targetPlan: string = 'Enterprise';
       let isInvitedUser = false;
 
-      // Check fallback by user email ONLY if user is not already assigned to a company, not owner, and not super admin
-      if (!isCompanyOwner && !isSuperUserCheck && !profile?.company_id) {
+      const initialAutoTrialCompId = (
+        ownedComp &&
+        (!ownedComp.plan || String(ownedComp.plan).toLowerCase().includes('trial')) &&
+        typeof ownedComp.name === 'string' &&
+        (ownedComp.name.endsWith("'s Organization") || ownedComp.name.endsWith("'s Workspace") || ownedComp.name.endsWith("s Workspace"))
+      ) ? ownedComp.id : null;
+      const isAutoCreatedTrialComp = Boolean(initialAutoTrialCompId);
+
+      // Check fallback by user email if user is not already assigned to a real company (or only has an auto-created trial company)
+      if ((!isCompanyOwner || isAutoCreatedTrialComp) && !isSuperUserCheck && (!profile?.company_id || profile?.company_id === ownedComp?.id)) {
         if (!pendingInvite && user.email) {
           const { data: inv } = await supabase
             .from('invites')
@@ -131,8 +165,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();
-          if (inv && (inv.status === 'pending' || inv.used_by === user.id)) {
+          if (inv && inv.company_id && inv.company_id !== ownedComp?.id && (inv.status === 'pending' || inv.used_by === user.id)) {
             pendingInvite = inv;
+            isCompanyOwner = false;
+            ownedComp = null;
           }
         }
 
@@ -147,8 +183,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           if (cuRecords && cuRecords.length > 0) {
             const matchedCu =
-              cuRecords.find((cu: any) => cu.user_id === user.id) || cuRecords[0];
-            if (matchedCu && matchedCu.company_id) {
+              cuRecords.find((cu: any) => cu.company_id !== ownedComp?.id && cu.user_id === user.id) ||
+              cuRecords.find((cu: any) => cu.company_id !== ownedComp?.id) ||
+              cuRecords[0];
+            if (matchedCu && matchedCu.company_id && matchedCu.company_id !== ownedComp?.id) {
               // Ensure referenced company actually exists in database!
               const { data: validComp } = await supabase
                 .from('companies')
@@ -160,8 +198,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 targetCompanyId = validComp.id;
                 targetPlan = validComp.plan || 'Enterprise';
                 const cuIsExt = matchedCu.is_external === true || String(matchedCu.status || '').toLowerCase() === 'external' || EXTERNAL_INVITE_ROLES.includes(String(matchedCu.role || '').toLowerCase());
-                targetRole = cuIsExt ? ('guest' as Role) : ((matchedCu.role as Role) || 'employee');
+                targetRole = canonicalizeRole(matchedCu.role, cuIsExt);
                 isInvitedUser = true;
+                isCompanyOwner = false;
+                ownedComp = null;
               }
             }
           }
@@ -172,14 +212,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         targetCompanyId = pendingInvite.company_id;
         const rawInvRole = String(pendingInvite.role || (user.user_metadata as any)?.role || 'employee').trim();
         const rawInvRoleLower = rawInvRole.toLowerCase();
-        if (EXTERNAL_INVITE_ROLES.includes(rawInvRoleLower)) {
-          targetRole = (rawInvRoleLower === 'client' || rawInvRoleLower === 'bauherr') ? 'client' : 'guest';
-        } else {
-          targetRole = (rawInvRole as Role) || 'employee';
-        }
+        targetRole = canonicalizeRole(rawInvRole, EXTERNAL_INVITE_ROLES.includes(rawInvRoleLower));
         isInvitedUser = true;
 
-        if (pendingInvite.status !== 'used') {
+        if (pendingInvite.token) {
+          try {
+            await supabase.rpc('accept_invite_by_token', {
+              p_token: pendingInvite.token,
+              p_user_id: user.id
+            });
+          } catch (_) {}
+        }
+
+        if (pendingInvite.id && pendingInvite.status !== 'used') {
           await supabase
             .from('invites')
             .update({
@@ -195,7 +240,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // SELF-HEALING: If not recognized as ownedComp by owner_id, check if user's profile is owner of a company, or accepted an owner invite
-      if (!ownedComp && profile?.company_id && (profile?.role === 'owner' || isSuperUserCheck)) {
+      if (!ownedComp && !isInvitedUser && profile?.company_id && (profile?.role === 'owner' || isSuperUserCheck)) {
         const { data: candidateComp } = await supabase
           .from('companies')
           .select('id, name, plan, max_seats, used_seats, owner_id')
@@ -215,7 +260,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const rawName = profile?.name || (profile as any)?.full_name || (profile as any)?.display_name || user.user_metadata?.full_name;
       const userName = rawName || (user.email === 'cv1@gmx.ch' ? 'Carlo Vescio' : user.email?.split('@')[0] || 'User');
       let effectiveCompanyId = profile?.company_id || ownedComp?.id || null;
-      let effectiveRole = (profile?.role as Role) || (isCompanyOwner ? 'owner' : 'employee');
+      let effectiveRole = canonicalizeRole(profile?.role || (isCompanyOwner ? 'owner' : 'employee'));
 
       const isSuperUser = checkIsSuperAdmin(user.email) || profile?.role === 'super_admin';
       if (isSuperUser) {
@@ -230,18 +275,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         effectiveCompanyId = previewCompanyId;
       }
 
-      // If user was invited and is NOT an owner, associate them with the inviting company
+      // If user was invited and is NOT an owner of another real company, associate them with the inviting company
       if (isInvitedUser && targetCompanyId && !isCompanyOwner) {
         effectiveCompanyId = targetCompanyId;
         if (!isSuperUser) {
           effectiveRole = targetRole;
         }
 
+        if (initialAutoTrialCompId && initialAutoTrialCompId !== targetCompanyId) {
+          try {
+            await supabase.from('companies').update({ owner_id: null }).eq('id', initialAutoTrialCompId).eq('owner_id', user.id);
+          } catch (_) {}
+        }
+
         const isExternalInvite = EXTERNAL_INVITE_ROLES.includes(String(targetRole || '').toLowerCase());
 
         const { data: compPlanData } = await supabase
           .from('companies')
-          .select('id, name, plan, used_seats')
+          .select('id, name, plan, used_seats, owner_id')
           .eq('id', targetCompanyId)
           .maybeSingle();
 
@@ -251,8 +302,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await supabase.from('profiles').update({ 
             company_id: targetCompanyId, 
             role: isSuperUser ? 'super_admin' : targetRole,
-            plan: targetPlan
+            plan: targetPlan,
+            has_active_subscription: true,
+            trial_ends_at: null
           }).eq('id', user.id);
+        }
+
+        if (targetRole === 'owner' && compPlanData && !compPlanData.owner_id) {
+          try {
+            await supabase.from('companies').update({ owner_id: user.id }).eq('id', targetCompanyId);
+          } catch (_) {}
         }
 
         // Add or update company_users record and migrate pre-assigned project_members
@@ -399,6 +458,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } catch (_) {}
         }
 
+        const companyHasPaidPlan = Boolean(resolvedCompanyPlan && !String(resolvedCompanyPlan).toLowerCase().includes('trial'));
+        const isExternalRoleEffective = effectiveRole === 'guest' || effectiveRole === 'client';
+        const isLeadershipRole = effectiveRole === 'owner' || effectiveRole === 'management' || isSuperUser;
+
         const appUser: AppUser = {
           id: user.id,
           uid: user.id,
@@ -408,16 +471,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           photoURL: (profile as any)?.avatar || (profile as any)?.photo_url || '',
           emailVerified: true,
           role: effectiveRole,
-          hasActiveSubscription: profile.has_active_subscription ?? true,
+          hasActiveSubscription: isSuperUser || companyHasPaidPlan || (profile.has_active_subscription ?? true),
           stripeCustomerId: profile.stripe_customer_id,
           plan: userPlan,
           companyPlan: resolvedCompanyPlan,
           companyName: resolvedCompanyName,
           companyId: effectiveCompanyId || user.id,
           company_id: effectiveCompanyId || user.id,
-          trialEndsAt: (effectiveRole === 'owner' && !isSuperUser) ? profile.trial_ends_at : undefined,
-          canViewFinance: profile.can_view_finance ?? true,
-          canApproveBudget: profile.can_approve_budget ?? true,
+          trialEndsAt: (effectiveRole === 'owner' && !isSuperUser && !companyHasPaidPlan) ? profile.trial_ends_at : undefined,
+          canViewFinance: isExternalRoleEffective ? false : (profile.can_view_finance ?? true),
+          canApproveBudget: isExternalRoleEffective ? false : (profile.can_approve_budget ?? isLeadershipRole),
           hasSeenTour: profile.has_seen_tour ?? false,
           hasCompletedOnboarding: profile.has_completed_onboarding ?? false,
           maxSeats: companyData?.max_seats ? Number(companyData.max_seats) : (isSuperUser ? 10 : 1),
@@ -504,21 +567,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const resolvedCompanyPlan = companyData?.plan || (isSuperUser ? 'Enterprise' : 'Free Trial');
         const resolvedCompanyName = (isSuperUser && previewCompanyName) || companyData?.name || 'Workspace';
         const userPlan = isInvitedUser ? (targetPlan || resolvedCompanyPlan) : (resolvedCompanyPlan || 'Free Trial');
+        const companyHasPaidPlan = Boolean(resolvedCompanyPlan && !String(resolvedCompanyPlan).toLowerCase().includes('trial'));
 
         const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         const deviceTypeKey = isMobileDevice ? 'active_mobile_session_id' : 'active_desktop_session_id';
         const initialSessionId = `sess_${deviceTypeKey}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
         safeStorage.setItem(`kreativ_session_id_${deviceTypeKey}_${user.id}`, initialSessionId);
 
+        const resolvedNewRole = isInvitedUser ? targetRole : (isSuperUser ? 'super_admin' : 'owner');
+        const isExternalRoleNew = resolvedNewRole === 'guest' || resolvedNewRole === 'client';
+        const isLeadershipRoleNew = resolvedNewRole === 'owner' || resolvedNewRole === 'management' || isSuperUser;
+
         const newProfile: any = {
           id: user.id,
           email: user.email || '',
           name: userName,
-          role: isInvitedUser ? targetRole : (isSuperUser ? 'super_admin' : 'owner'),
+          role: resolvedNewRole,
           company_id: effectiveCompanyId,
           plan: userPlan,
           has_active_subscription: true,
-          trial_ends_at: (isInvitedUser || isSuperUser) ? null : trialEndDate.toISOString(),
+          trial_ends_at: (isInvitedUser || isSuperUser || companyHasPaidPlan) ? null : trialEndDate.toISOString(),
           has_seen_tour: false,
           [deviceTypeKey]: initialSessionId
         };
@@ -541,8 +609,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           companyPlan: resolvedCompanyPlan,
           companyName: resolvedCompanyName,
           trialEndsAt: newProfile.trial_ends_at || undefined,
-          canViewFinance: true,
-          canApproveBudget: true,
+          canViewFinance: !isExternalRoleNew,
+          canApproveBudget: isLeadershipRoleNew,
           hasSeenTour: false,
           hasCompletedOnboarding: false,
           maxSeats: companyData?.max_seats ? Number(companyData.max_seats) : (isSuperUser ? 10 : 1)
@@ -716,6 +784,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       'custom_accent_color'
     ];
     tenantCacheKeys.forEach(key => safeStorage.removeItem(key));
+    try {
+      const prefixesToPurge = [
+        'kreativdesk_cad_cache_',
+        'cad_state_',
+        'pitch_deck_slides_',
+        'pitch_deckSettings_',
+        'pitch_deck_settings_',
+        'finance_cache_',
+        'sys_cfg_',
+        'time_entries_cache_',
+        'agenda_cache_',
+        'schedule_cache_',
+        'wb_draft_'
+      ];
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (k && prefixesToPurge.some(p => k.startsWith(p))) {
+          localStorage.removeItem(k);
+        }
+      }
+    } catch (_) {}
     safeStorage.session.removeItem('admin_preview_company_id');
     safeStorage.session.removeItem('admin_preview_company_name');
     queryClient.clear();

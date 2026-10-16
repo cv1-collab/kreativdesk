@@ -40,7 +40,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Invalid meetingLink: must start with https:// or http://' });
     }
 
-    const host = senderName || 'Carlo Vescio';
+    const host = senderName || 'Projektleitung';
     const rawRecipientList = Array.isArray(recipients) ? recipients : [recipients];
     const recipientList = rawRecipientList.slice(0, 25);
     const recipientEmailStr = recipientList.join(',');

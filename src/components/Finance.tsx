@@ -499,7 +499,9 @@ export default function Finance() {
   const activeProject = projects?.find((p: any) => p.id === currentProjectId);
 
   const currentMember = projectMembers?.find((m: any) => m.projectId === currentProjectId && m.userId === currentUser?.uid);
-  const isReadOnly = currentMember ? (currentMember.projectRole === 'Viewer') : false;
+  const normRoleForFinance = String(currentUser?.role || '').toLowerCase().trim();
+  const isAlwaysEditorInFinance = ['owner', 'super_admin', 'admin', 'management', 'geschaeftsleitung', 'geschäftsleitung', 'project_lead', 'projektleiter'].includes(normRoleForFinance);
+  const isReadOnly = !isAlwaysEditorInFinance && currentMember ? (currentMember.projectRole === 'Viewer') : false;
 
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => setIsMounted(true), []);
@@ -707,7 +709,8 @@ export default function Finance() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [opCostSessionId] = useState(() => Math.random().toString(36).substring(2, 15));
-  const mobileUploadUrl = `${window.location.origin}/mobile-upload/extern/${opCostSessionId}`;
+  const safeCompanyIdForQr = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid || '';
+  const mobileUploadUrl = `${window.location.origin}/mobile-upload/extern/${opCostSessionId}${safeCompanyIdForQr ? `?companyId=${encodeURIComponent(safeCompanyIdForQr)}` : ''}`;
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -750,7 +753,8 @@ export default function Finance() {
         const { data: docs } = await supabase
           .from('documents')
           .select('*')
-          .eq('company_id', opCostSessionId)
+          .eq('category', 'temp_receipt')
+          .eq('folder_id', opCostSessionId)
           .order('created_at', { ascending: false })
           .limit(1);
 
@@ -890,13 +894,14 @@ export default function Finance() {
         safeStorage.setItem(localCacheKey, initialFinanceData);
       }
 
+      skipNextAutoSaveRef.current = true;
       setIsInitialLoad(false);
     };
 
     fetchData();
 
     const channel = supabase
-      .channel('finance-changes')
+      .channel(`finance-changes-${safeCompanyId}-${currentProjectId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `company_id=eq.${safeCompanyId}` }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'documents', filter: `company_id=eq.${safeCompanyId}` }, (payload) => {
         const docRow = payload.new as any;
@@ -906,8 +911,13 @@ export default function Finance() {
             if (rawJson) {
               const parsed = JSON.parse(rawJson);
               if (parsed.versions && Array.isArray(parsed.versions) && parsed.versions.length > 0) {
+                skipNextAutoSaveRef.current = true;
                 setVersions(parsed.versions);
-                if (parsed.activeVersionId) setActiveVersionId(parsed.activeVersionId);
+                setActiveVersionId(prev =>
+                  parsed.versions.some((v: any) => v.id === prev)
+                    ? prev
+                    : (parsed.activeVersionId || parsed.versions[0].id)
+                );
                 if (parsed.projectHeader) setProjectHeader(parsed.projectHeader);
                 if (parsed.includeOptions !== undefined) setIncludeOptions(Boolean(parsed.includeOptions));
                 safeStorage.setItem(`finance_cache_${currentProjectId}`, parsed);
@@ -923,10 +933,17 @@ export default function Finance() {
     };
   }, [currentUser, currentProjectId, isDemoMode, demoData, activeProject, canViewFinance]);
 
+  const skipNextAutoSaveRef = useRef(true);
+
   // AUTO-SAVE TO LOCAL STORAGE & SUPABASE DOCUMENTS ON BUDGET CHANGES
   useEffect(() => {
     const safeCompanyId = currentUser?.companyId || currentUser?.uid;
     if (isDemoMode || isInitialLoad || !currentUser || !safeCompanyId || isReadOnly || !currentProjectId) return;
+
+    if (skipNextAutoSaveRef.current) {
+      skipNextAutoSaveRef.current = false;
+      return;
+    }
 
     const localCacheKey = `finance_cache_${currentProjectId}`;
     const saveData = {
@@ -1422,7 +1439,9 @@ export default function Finance() {
   };
 
   const handleToggleApproveVersion = () => {
-    if (currentUser?.role !== 'owner' && !currentUser?.canApproveBudget) {
+    const normRole = String(currentUser?.role || '').toLowerCase().trim();
+    const canApprove = normRole === 'owner' || normRole === 'admin' || normRole === 'super_admin' || normRole === 'management' || Boolean(currentUser?.canApproveBudget);
+    if (!canApprove) {
       return addToast('Du hast keine Berechtigung, Budgets freizugeben.', 'error');
     }
     const isCurrentlyApproved = activeVersion.status === 'approved';
@@ -1587,11 +1606,11 @@ export default function Finance() {
       query = query.is('project_id', null);
     }
 
-    const { data: existing } = await query.maybeSingle();
+    const { data: existing } = await query.limit(1).maybeSingle();
     if (existing) return existing.id;
 
     const { data: newF } = await supabase.from('documents').insert({
-      name: folderName, is_folder: true, category: cleanProjectId ? docCategory : 'company', owner_id: currentUser.uid, company_id: safeCompanyId, project_id: cleanProjectId, created_at: new Date().toISOString()
+      name: folderName, is_folder: true, folder_id: 'root', category: cleanProjectId ? docCategory : 'company', owner_id: currentUser.uid, company_id: safeCompanyId, project_id: cleanProjectId, created_at: new Date().toISOString()
     }).select().maybeSingle();
     return newF ? newF.id : 'root';
   };
@@ -2296,16 +2315,11 @@ export default function Finance() {
       <header className="flex flex-col gap-4 shrink-0 z-40 px-4 sm:px-0 pt-4 sm:pt-0 pb-4 border-b border-border/50 sm:border-none bg-surface/50 sm:bg-transparent">
         <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
           <div className="flex items-start justify-between w-full xl:w-auto">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
-                <DollarSign size={18} />
-              </div>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text-primary">
-                  {t('finance_budget')}
-                </h1>
-                <p className="text-xs sm:text-sm text-text-muted mt-0.5 font-medium">{projectHeader.project}</p>
-              </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text-primary">
+                {t('finance_budget')}
+              </h1>
+              <p className="text-xs sm:text-sm text-text-muted mt-0.5 font-medium">{projectHeader.project}</p>
             </div>
             <button
               onClick={() => { setIsLandscapeMode(true); setForceLandscapeView(true); setIsRotatedCss(true); }}
@@ -2559,7 +2573,7 @@ export default function Finance() {
                   <div className="w-px h-4 bg-border mx-1"></div>
                   {!isReadOnly && (() => {
                     const normUserRole = (currentUser?.role || '').toLowerCase().trim();
-                    const isOwnerOrAdmin = normUserRole === 'owner' || normUserRole === 'super_admin' || normUserRole === 'admin' || normUserRole === 'management';
+                    const isOwnerOrAdmin = normUserRole === 'owner' || normUserRole === 'super_admin' || normUserRole === 'admin' || normUserRole === 'management' || normUserRole === 'project_lead' || normUserRole === 'projektleiter';
                     return isOwnerOrAdmin || currentUser?.canApproveBudget;
                   })() && (
                     <button
@@ -2662,7 +2676,7 @@ export default function Finance() {
             </div>
             {!isReadOnly && (() => {
               const normUserRole = (currentUser?.role || '').toLowerCase().trim();
-              const isOwnerOrAdmin = normUserRole === 'owner' || normUserRole === 'super_admin' || normUserRole === 'admin' || normUserRole === 'management';
+              const isOwnerOrAdmin = normUserRole === 'owner' || normUserRole === 'super_admin' || normUserRole === 'admin' || normUserRole === 'management' || normUserRole === 'project_lead' || normUserRole === 'projektleiter';
               return isOwnerOrAdmin || currentUser?.canApproveBudget;
             })() && (
               <button

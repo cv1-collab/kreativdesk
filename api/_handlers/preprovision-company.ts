@@ -26,10 +26,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const now = new Date().toISOString();
 
     // 1. Create Company Workspace (Let PostgreSQL generate the UUID id)
+    const effectivePlan = plan || 'Enterprise';
+    const effectiveMaxSeats = Number(maxSeats) || (effectivePlan.toLowerCase().includes('enterprise') ? 50 : 5);
     const { data: company, error: compErr } = await supabaseAdmin.from('companies').insert({
       name: companyName,
-      plan: plan || 'Enterprise',
-      max_seats: maxSeats || 1,
+      plan: effectivePlan,
+      max_seats: effectiveMaxSeats,
       used_seats: 1,
       created_at: now
     }).select().maybeSingle();
@@ -58,6 +60,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       role: 'owner',
       status: 'team',
       is_external: false,
+      can_view_finance: true,
+      can_approve_budget: true,
       created_at: now
     });
 
@@ -85,7 +89,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const { data: project } = await supabaseAdmin.from('projects').insert({
         name: `Projekt ${companyName.split(' ')[0] || 'Neubau'}`,
         description: 'Vorkonfiguriertes Ausführungsprojekt mit 2D/3D Plan-Ordner & Mängel-Tracking.',
-        status: 'in_progress',
+        status: 'active',
         company_id: companyId,
         created_at: now
       }).select().maybeSingle();
@@ -110,10 +114,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         created_at: now
       }));
       await supabaseAdmin.from('invites').insert(employeeRecords);
+
+      const employeeCrmRecords = employeeEmails.map((empEmail: string) => {
+        const cleanEmp = empEmail.toLowerCase().trim();
+        return {
+          company_id: companyId,
+          name: cleanEmp.split('@')[0],
+          email: cleanEmp,
+          role: 'employee',
+          status: 'team',
+          is_external: false,
+          can_view_finance: true,
+          can_approve_budget: false,
+          created_at: now
+        };
+      });
+      await supabaseAdmin.from('company_users').insert(employeeCrmRecords);
     }
 
     const inviteIdentifier = ceoInvite.token || ceoInvite.id;
-    const vipLink = `https://www.kreativdesk.ch/signup?invite=${inviteIdentifier}&email=${encodeURIComponent(ceoEmail)}`;
+    const vipLink = `https://www.kreativdesk.ch/signup?invite=${inviteIdentifier}&companyId=${companyId}&email=${encodeURIComponent(ceoEmail)}`;
 
     return res.status(200).json({
       success: true,

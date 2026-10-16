@@ -84,8 +84,8 @@ export default function AgendaRapport() {
   return (
     <div className="flex-1 flex flex-col bg-background p-6 overflow-hidden">
       <header className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold flex items-center gap-2">
-          <Clock className="text-accent-ai" /> {t('time_tracking')}
+        <h2 className="text-2xl font-bold tracking-tight">
+          {t('time_tracking')}
         </h2>
       </header>
 

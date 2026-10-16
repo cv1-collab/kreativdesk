@@ -1092,7 +1092,7 @@ export default function SettingsTab() {
                   if (formatted && !/^https?:\/\//i.test(formatted)) {
                     setWebsite(`https://${formatted}`);
                   }
-                }} placeholder="www.vesciodesign.ch" className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm focus:border-accent-ai outline-none text-text-primary font-medium transition-all shadow-inner" />
+                }} placeholder="www.ihre-firma.ch" className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm focus:border-accent-ai outline-none text-text-primary font-medium transition-all shadow-inner" />
               </div>
               <div className="sm:col-span-2">
                 <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">{t('headquarters')}</label>
@@ -1967,13 +1967,15 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
       if (!currentUser?.email && !currentUser?.uid) return;
       try {
         let loadedCu: any = null;
+        const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
         if (currentUser.email) {
-          const { data } = await supabase
+          let cuQuery = supabase
             .from('company_users')
             .select('*')
-            .eq('email', currentUser.email)
-            .maybeSingle();
-          if (data) loadedCu = data;
+            .ilike('email', currentUser.email);
+          if (safeCompanyId) cuQuery = cuQuery.eq('company_id', safeCompanyId);
+          const { data } = await cuQuery.limit(1);
+          if (data && data.length > 0) loadedCu = data[0];
         }
 
         const localCache = safeStorage.getItem<any>(`user_profile_${currentUser.uid}`, null);
@@ -2009,7 +2011,7 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
       }
     };
     loadUserData();
-  }, [currentUser?.email, currentUser?.uid]);
+  }, [currentUser?.email, currentUser?.uid, currentUser?.companyId]);
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2028,15 +2030,18 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
       const trimmedJob = jobTitle.trim();
       const trimmedDept = department.trim();
       const trimmedBio = personalBio.trim();
+      const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
 
       // 1. Update company_users in database
       if (currentUser?.email) {
         try {
-          const { data: existingCu } = await supabase
+          let selQuery = supabase
             .from('company_users')
             .select('notes')
-            .eq('email', currentUser.email)
-            .maybeSingle();
+            .ilike('email', currentUser.email);
+          if (safeCompanyId) selQuery = selQuery.eq('company_id', safeCompanyId);
+          const { data: existingRows } = await selQuery.limit(1);
+          const existingCu = existingRows?.[0];
 
           const rawNotes = existingCu?.notes || '';
           const parts = rawNotes.split('__CRM_META__:');
@@ -2050,13 +2055,15 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
           meta.personalBio = trimmedBio;
           const updatedNotes = (cleanText ? `${cleanText}\n\n` : '') + `__CRM_META__:${JSON.stringify(meta)}`;
 
-          await supabase.from('company_users').update({
+          let updQuery = supabase.from('company_users').update({
             name: trimmedName,
             phone: trimmedPhone || null,
             street: trimmedStreet || null,
             zip_city: trimmedZipCity || null,
             notes: updatedNotes
-          } as any).eq('email', currentUser.email);
+          } as any).ilike('email', currentUser.email);
+          if (safeCompanyId) updQuery = updQuery.eq('company_id', safeCompanyId);
+          await updQuery;
         } catch (cuErr) {
           console.warn('company_users update handled:', cuErr);
         }
@@ -2065,9 +2072,6 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
       // 2. Update profiles table
       if (currentUser?.uid) {
         await supabase.from('profiles').update({ name: trimmedName }).eq('id', currentUser.uid);
-        if (currentUser?.email) {
-          await supabase.from('profiles').update({ name: trimmedName }).eq('email', currentUser.email);
-        }
       }
 
       // 3. Update Supabase Auth user metadata
@@ -2147,7 +2151,10 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
       // Update company_users
       if (currentUser?.email) {
         try {
-          await supabase.from('company_users').update({ photo_url: photoUrl, avatar: photoUrl } as any).eq('email', currentUser.email);
+          const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+          let cuUpd = supabase.from('company_users').update({ photo_url: photoUrl, avatar: photoUrl } as any).ilike('email', currentUser.email);
+          if (safeCompanyId) cuUpd = cuUpd.eq('company_id', safeCompanyId);
+          await cuUpd;
         } catch (cuErr) {
           console.warn('company_users update warning:', cuErr);
         }
@@ -2182,7 +2189,10 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
       }
       if (currentUser?.email) {
         try {
-          await supabase.from('company_users').update({ photo_url: null, avatar: null } as any).eq('email', currentUser.email);
+          const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+          let cuClr = supabase.from('company_users').update({ photo_url: null, avatar: null } as any).ilike('email', currentUser.email);
+          if (safeCompanyId) cuClr = cuClr.eq('company_id', safeCompanyId);
+          await cuClr;
         } catch (cuErr) {
           console.warn('company_users clear warning:', cuErr);
         }
@@ -2682,35 +2692,59 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
         
         const localCrmCache: Record<string, any> = safeStorage.getItem<Record<string, any>>(`crm_metadata_${safeCompanyId}`, {});
 
+        const normalizeMemberRole = (raw?: string | null, isExt?: boolean): string => {
+          const r = String(raw || '').toLowerCase().trim();
+          if (r === 'super_admin' || r === 'superadmin') return 'super_admin';
+          if (r === 'owner') return 'owner';
+          if (r === 'admin' || r === 'management' || r === 'geschaeftsleitung' || r === 'geschäftsleitung') return 'admin';
+          if (r === 'project_lead' || r === 'projektleiter') return 'project_lead';
+          if (r === 'client' || r === 'bauherr' || r === 'kunde') return 'client';
+          if (isExt || ['guest', 'external', 'external planner', 'partner', 'subcontractor', 'field guest', 'handwerker'].includes(r)) return 'guest';
+          return 'employee';
+        };
+
         const map = new Map();
         (profMembers || []).forEach((p: any) => {
-          const key = (p.email || p.id || '').toLowerCase();
+          const key = (p.email || p.id || '').toLowerCase().trim();
+          const normRole = normalizeMemberRole(p.role, false);
           map.set(key, {
             ...p,
             id: p.id,
+            profileId: p.id,
             email: p.email,
-            name: p.name || p.email,
-            role: p.role || 'owner',
+            name: p.name || p.full_name || p.display_name || p.email,
+            role: normRole,
             isRegistered: true,
-            canViewFinance: p.can_view_finance ?? p.canViewFinance ?? false,
-            canApproveBudget: p.can_approve_budget ?? p.canApproveBudget ?? false
+            canViewFinance: p.can_view_finance ?? p.canViewFinance ?? (normRole === 'owner' || normRole === 'admin' || normRole === 'super_admin' ? true : true),
+            canApproveBudget: p.can_approve_budget ?? p.canApproveBudget ?? (normRole === 'owner' || normRole === 'admin' || normRole === 'super_admin')
           });
         });
         (cuMembers || []).forEach((c: any) => {
-          const key = (c.email || c.id || '').toLowerCase();
+          const key = (c.email || c.id || '').toLowerCase().trim();
           const fallback = localCrmCache[c.id] || (c.email ? localCrmCache[c.email] : null) || {};
-          const existing = map.get(key) || (c.id ? map.get(c.id) : null) || {};
-          
+          const existing = map.get(key) || (c.user_id ? Array.from(map.values()).find((m: any) => m.profileId === c.user_id) : null) || (c.id ? map.get(c.id) : null) || {};
+          const isRegistered = Boolean(existing.isRegistered);
+          const isExt = c.is_external === true || (c.status && c.status !== 'team');
+          const resolvedRole = isRegistered
+            ? normalizeMemberRole(existing.role || c.role, isExt)
+            : normalizeMemberRole(c.role || existing.role || 'employee', isExt);
+
           map.set(key, {
             ...existing,
             ...c,
-            id: c.id || existing.id,
+            id: existing.profileId || c.user_id || c.id || existing.id,
+            profileId: existing.profileId || c.user_id || null,
+            crmId: c.id || existing.crmId || null,
             email: c.email || existing.email || c.name,
             name: c.name || existing.name || c.email,
-            role: c.role || existing.role || 'Internal',
-            isRegistered: Boolean(existing.isRegistered),
-            canViewFinance: c.can_view_finance ?? fallback.canViewFinance ?? existing.canViewFinance ?? false,
-            canApproveBudget: c.can_approve_budget ?? fallback.canApproveBudget ?? existing.canApproveBudget ?? false
+            role: resolvedRole,
+            isRegistered,
+            canViewFinance: isRegistered
+              ? (existing.canViewFinance ?? c.can_view_finance ?? fallback.canViewFinance ?? true)
+              : (c.can_view_finance ?? fallback.canViewFinance ?? existing.canViewFinance ?? false),
+            canApproveBudget: isRegistered
+              ? (existing.canApproveBudget ?? c.can_approve_budget ?? fallback.canApproveBudget ?? false)
+              : (c.can_approve_budget ?? fallback.canApproveBudget ?? existing.canApproveBudget ?? false)
           });
         });
         setTeamMembers(Array.from(map.values()));
@@ -2725,50 +2759,75 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
 
   const rawRole = (currentUser?.role || '').toLowerCase().trim();
   const isSuperAdmin = currentUser?.role === 'super_admin' || currentUser?.email === 'cv1@gmx.ch' || currentUser?.email === 'carlo@vesciodesign.ch';
-  const isOwner = rawRole === 'owner' || isSuperAdmin;
+  const isOwner = rawRole === 'owner' || rawRole === 'admin' || rawRole === 'management' || isSuperAdmin;
 
   const updateRole = async (userId: string, newRole: string) => {
     if (!isSuperAdmin && !isOwner) {
-      addToast('Nur der Inhaber oder Super-Admin darf Rollen ändern.', 'error');
+      addToast('Nur der Inhaber oder Admin darf Rollen ändern.', 'error');
       return;
     }
-    if (userId === currentUser?.uid && !isSuperAdmin) {
+    const member = teamMembers.find(m => m.id === userId || m.profileId === userId || m.crmId === userId);
+    const isSelf = userId === currentUser?.uid || member?.profileId === currentUser?.uid || (member?.email && currentUser?.email && member.email.toLowerCase() === currentUser.email.toLowerCase());
+    if (isSelf && !isSuperAdmin) {
       addToast('Du kannst deine eigene Rolle nicht ändern.', 'error');
       return;
     }
 
     try {
-      const member = teamMembers.find(m => m.id === userId);
       if (member?.role === 'super_admin' && !isSuperAdmin) {
         addToast('Die Super-Admin Rolle kann nicht verändert werden.', 'error');
         return;
       }
 
-      const isExt = newRole === 'External Planner' || newRole === 'Client' || newRole === 'partner';
-      
-      await supabase.from('profiles').update({ role: newRole }).eq('id', userId);
+      const canonicalRole = (() => {
+        const r = String(newRole || '').toLowerCase().trim();
+        if (r === 'owner') return 'owner';
+        if (r === 'admin' || r === 'management') return 'admin';
+        if (r === 'project_lead' || r === 'projektleiter') return 'project_lead';
+        if (r === 'client' || r === 'bauherr') return 'client';
+        if (r === 'guest' || r === 'external planner' || r === 'partner' || r === 'external') return 'guest';
+        return 'employee';
+      })();
+      const isExt = canonicalRole === 'guest' || canonicalRole === 'client';
+      const targetProfileId = member?.profileId || userId;
+      const targetCrmId = member?.crmId || userId;
+      const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+
+      if (targetProfileId) {
+        let profById = supabase.from('profiles').update({ role: canonicalRole }).eq('id', targetProfileId);
+        if (safeCompanyId) profById = profById.eq('company_id', safeCompanyId);
+        await profById;
+      }
       if (member?.email) {
-        await supabase.from('profiles').update({ role: newRole }).eq('email', member.email);
+        let profByEmail = supabase.from('profiles').update({ role: canonicalRole }).ilike('email', member.email.trim());
+        if (safeCompanyId) profByEmail = profByEmail.eq('company_id', safeCompanyId);
+        await profByEmail;
       }
 
       try {
-        await supabase.from('company_users').update({ 
-          role: newRole,
-          is_external: isExt,
-          status: isExt ? 'partner' : 'team'
-        } as any).eq('id', userId);
-        if (member?.email) {
-          await supabase.from('company_users').update({ 
-            role: newRole,
+        if (targetCrmId) {
+          let cuById = supabase.from('company_users').update({ 
+            role: canonicalRole,
             is_external: isExt,
             status: isExt ? 'partner' : 'team'
-          } as any).eq('email', member.email);
+          } as any).eq('id', targetCrmId);
+          if (safeCompanyId) cuById = cuById.eq('company_id', safeCompanyId);
+          await cuById;
+        }
+        if (member?.email) {
+          let cuByEmail = supabase.from('company_users').update({ 
+            role: canonicalRole,
+            is_external: isExt,
+            status: isExt ? 'partner' : 'team'
+          } as any).ilike('email', member.email.trim());
+          if (safeCompanyId) cuByEmail = cuByEmail.eq('company_id', safeCompanyId);
+          await cuByEmail;
         }
       } catch (cuErr) {
         console.warn("company_users role update fallback:", cuErr);
       }
 
-      setTeamMembers(prev => prev.map(m => m.id === userId ? { ...m, role: newRole } : m));
+      setTeamMembers(prev => prev.map(m => (m.id === userId || m.profileId === userId || m.crmId === userId) ? { ...m, role: canonicalRole } : m));
       addToast('Rolle erfolgreich aktualisiert', 'success');
     } catch (err) {
       console.error("Role update error:", err);
@@ -2778,30 +2837,39 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
 
   const togglePermission = async (userId: string, field: 'canViewFinance' | 'canApproveBudget', currentValue: boolean) => {
     if (!isSuperAdmin && !isOwner) {
-      addToast('Nur der Inhaber oder Super-Admin darf Berechtigungen verwalten.', 'error');
+      addToast('Nur der Inhaber oder Admin darf Berechtigungen verwalten.', 'error');
       return;
     }
     try {
       const newValue = !currentValue;
       const colName = field === 'canViewFinance' ? 'can_view_finance' : 'can_approve_budget';
-      const member = teamMembers.find(m => m.id === userId);
+      const member = teamMembers.find(m => m.id === userId || m.profileId === userId || m.crmId === userId);
+      const targetProfileId = member?.profileId || userId;
+      const targetCrmId = member?.crmId || userId;
+      const safeCompanyId = currentUser?.companyId || currentUser?.uid;
       
       // Update profiles
-      await supabase.from('profiles').update({ [colName]: newValue } as any).eq('id', userId);
-      if (member?.email) {
-        await supabase.from('profiles').update({ [colName]: newValue } as any).eq('email', member.email);
+      if (targetProfileId) {
+        let profIdQuery = supabase.from('profiles').update({ [colName]: newValue } as any).eq('id', targetProfileId);
+        if (safeCompanyId) profIdQuery = profIdQuery.eq('company_id', safeCompanyId);
+        await profIdQuery;
       }
-
-      const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+      if (member?.email) {
+        let profEmailQuery = supabase.from('profiles').update({ [colName]: newValue } as any).ilike('email', member.email.trim());
+        if (safeCompanyId) profEmailQuery = profEmailQuery.eq('company_id', safeCompanyId);
+        await profEmailQuery;
+      }
 
       // Update company_users
       try {
-        let cuQuery = supabase.from('company_users').update({ [colName]: newValue } as any).eq('id', userId);
-        if (safeCompanyId) cuQuery = cuQuery.eq('company_id', safeCompanyId);
-        await cuQuery;
+        if (targetCrmId) {
+          let cuQuery = supabase.from('company_users').update({ [colName]: newValue } as any).eq('id', targetCrmId);
+          if (safeCompanyId) cuQuery = cuQuery.eq('company_id', safeCompanyId);
+          await cuQuery;
+        }
 
         if (member?.email) {
-          let cuEmailQuery = supabase.from('company_users').update({ [colName]: newValue } as any).eq('email', member.email);
+          let cuEmailQuery = supabase.from('company_users').update({ [colName]: newValue } as any).ilike('email', member.email.trim());
           if (safeCompanyId) cuEmailQuery = cuEmailQuery.eq('company_id', safeCompanyId);
           await cuEmailQuery;
         }
@@ -2811,17 +2879,17 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
 
       // Update local storage fallback
       if (safeCompanyId) {
-
         try {
           const cacheKey = `crm_metadata_${safeCompanyId}`;
           const currentCache = safeStorage.getItem<Record<string, any>>(cacheKey, {});
           if (currentCache[userId]) currentCache[userId][field] = newValue;
+          if (targetCrmId && currentCache[targetCrmId]) currentCache[targetCrmId][field] = newValue;
           if (member?.email && currentCache[member.email]) currentCache[member.email][field] = newValue;
           safeStorage.setItem(cacheKey, currentCache);
         } catch (_) {}
       }
 
-      setTeamMembers(prev => prev.map(m => m.id === userId ? { ...m, [field]: newValue, [colName]: newValue } : m));
+      setTeamMembers(prev => prev.map(m => (m.id === userId || m.profileId === userId || m.crmId === userId) ? { ...m, [field]: newValue, [colName]: newValue } : m));
       addToast('Berechtigung erfolgreich aktualisiert', 'success');
     } catch (err) {
       console.error("Permission update error:", err);
@@ -2893,6 +2961,16 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
     }
   };
 
+  const getRoleLabel = (r?: string) => {
+    const rl = String(r || '').toLowerCase();
+    if (rl === 'owner') return 'Inhaber / Geschäftsleitung';
+    if (rl === 'admin' || rl === 'management') return 'Admin';
+    if (rl === 'project_lead' || rl === 'projektleiter') return 'Projektleiter';
+    if (rl === 'guest' || rl === 'external planner') return 'Externer Planer';
+    if (rl === 'client') return 'Kunde / Auftraggeber';
+    return 'Interner Mitarbeiter';
+  };
+
   return (
     <div className="bg-surface border border-border/50 rounded-2xl p-6 shadow-sm space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-border/50 gap-2">
@@ -2934,20 +3012,22 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
                 <div className="flex items-center gap-2 pt-1">
                   {member.role === 'super_admin' ? (
                     <span className="text-[11px] font-bold text-purple-400">Super Admin (System-Inhaber)</span>
-                  ) : (!isSuperAdmin && !isOwner) || member.id === currentUser?.uid ? (
+                  ) : (!isSuperAdmin && !isOwner) || member.id === currentUser?.uid || member.profileId === currentUser?.uid || (member.email && currentUser?.email && member.email.toLowerCase() === currentUser.email.toLowerCase()) ? (
                     <span className="text-[11px] font-semibold text-text-muted px-2 py-1 bg-background/50 border border-border/40 rounded">
-                      {member.role === 'Admin' ? 'Admin' : member.role === 'Internal' ? 'Interner Mitarbeiter' : member.role || 'Mitarbeiter'}
+                      {getRoleLabel(member.role)}
                     </span>
                   ) : (
                     <select
-                      value={member.role || 'Internal'}
+                      value={member.role || 'employee'}
                       onChange={e => updateRole(member.id, e.target.value)}
                       className="bg-background border border-border/50 rounded px-2 py-1 text-[11px] font-semibold text-text-primary outline-none focus:border-accent-ai cursor-pointer"
                     >
-                      <option value="Admin">Admin</option>
-                      <option value="Internal">Interner Mitarbeiter</option>
-                      <option value="External Planner">Externer Planer</option>
-                      <option value="Client">Kunde / Auftraggeber</option>
+                      <option value="owner">Inhaber / Geschäftsleitung</option>
+                      <option value="admin">Admin</option>
+                      <option value="project_lead">Projektleiter</option>
+                      <option value="employee">Interner Mitarbeiter</option>
+                      <option value="guest">Externer Planer</option>
+                      <option value="client">Kunde / Auftraggeber</option>
                     </select>
                   )}
 

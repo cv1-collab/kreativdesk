@@ -267,22 +267,36 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
 
         const cleanProjectId = (targetProjectId && targetProjectId !== 'global') ? targetProjectId : null;
 
-        if (!cleanProjectId) {
-            targetCategory = 'company';
-            const { data: existingFolder } = await supabase
-              .from('documents')
-              .select('id')
-              .eq('company_id', safeCompanyId)
-              .eq('name', '01_FINANZEN')
-              .eq('is_folder', true)
-              .maybeSingle();
+        let folderQuery = supabase
+          .from('documents')
+          .select('id')
+          .eq('company_id', safeCompanyId)
+          .eq('name', '01_FINANZEN')
+          .eq('is_folder', true);
 
-            if (existingFolder) {
-                targetFolderId = existingFolder.id;
-            } else {
-                const { data: newF } = await supabase.from('documents').insert({ name: '01_FINANZEN', is_folder: true, category: 'company', project_id: null, folder_id: 'root', owner_id: currentUser.uid, company_id: safeCompanyId, created_at: new Date().toISOString() }).select().maybeSingle();
-                if (newF) targetFolderId = newF.id;
-            }
+        if (cleanProjectId) {
+          targetCategory = 'projects';
+          folderQuery = folderQuery.eq('project_id', cleanProjectId);
+        } else {
+          targetCategory = 'company';
+          folderQuery = folderQuery.is('project_id', null);
+        }
+
+        const { data: existingFolder } = await folderQuery.limit(1).maybeSingle();
+        if (existingFolder) {
+          targetFolderId = existingFolder.id;
+        } else {
+          const { data: newF } = await supabase.from('documents').insert({
+            name: '01_FINANZEN',
+            is_folder: true,
+            category: targetCategory,
+            project_id: cleanProjectId,
+            folder_id: 'root',
+            owner_id: currentUser.uid,
+            company_id: safeCompanyId,
+            created_at: new Date().toISOString()
+          }).select().maybeSingle();
+          if (newF) targetFolderId = newF.id;
         } 
 
         await supabase.from('documents').insert({ 

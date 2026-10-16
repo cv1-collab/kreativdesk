@@ -42,23 +42,29 @@ export function useProjectTeam() {
         .select('*')
         .eq('company_id', safeCompanyId);
 
-      const mappedProfiles: CompanyUser[] = (profs || []).map((p: any) => ({
-        id: p.id,
-        name: p.name || p.email,
-        email: p.email,
-        role: p.role === 'owner' ? 'Admin' : 'Internal',
-        avatar: p.photo_url || p.avatar || '',
-        ownerId: p.id,
-        companyId: p.company_id || safeCompanyId
-      }));
+      const mappedProfiles: CompanyUser[] = (profs || []).map((p: any) => {
+        const normRole = String(p.role || '').toLowerCase().trim();
+        const isAdminRole = normRole === 'owner' || normRole === 'admin' || normRole === 'super_admin';
+        return {
+          id: p.id,
+          name: p.name || p.email,
+          email: p.email,
+          role: isAdminRole ? 'Admin' : 'Internal',
+          avatar: p.photo_url || p.avatar || '',
+          ownerId: p.id,
+          companyId: p.company_id || safeCompanyId
+        };
+      });
 
       const mappedCrm: CompanyUser[] = (crmData || []).map((u: any) => ({
         id: u.id,
+        userId: u.user_id || u.id,
+        crmId: u.id,
         name: u.name || [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email || 'Kontakt',
         email: u.email || '',
         role: (u.role as any) || 'Internal',
         avatar: '',
-        ownerId: u.id,
+        ownerId: u.user_id || u.id,
         companyId: safeCompanyId
       }));
 
@@ -67,18 +73,21 @@ export function useProjectTeam() {
         const key = (p.email || p.id || '').toLowerCase();
         if (key) userMap.set(key, p); 
       });
-      mappedCrm.forEach(c => { 
+      mappedCrm.forEach((c: any) => { 
         const key = (c.email || c.id || '').toLowerCase();
         if (key) {
           const existing = userMap.get(key);
           if (existing) {
             userMap.set(key, {
-              ...existing,
               ...c,
-              id: existing.id || c.id,
+              ...existing,
+              id: existing.id || c.userId || c.id,
+              userId: existing.id || c.userId || c.id,
+              crmId: c.id,
               name: existing.name || c.name,
+              role: existing.role === 'Admin' ? 'Admin' : (c.role || existing.role),
               avatar: existing.avatar || c.avatar
-            });
+            } as any);
           } else {
             userMap.set(key, c);
           }
@@ -97,18 +106,24 @@ export function useProjectTeam() {
   const fetchProjectMembers = useCallback(async (safeCompanyId: string) => {
     if (!safeCompanyId) return [];
     try {
-      const [{ data: mems }, { data: crmUsers }] = await Promise.all([
+      const [{ data: mems }, { data: crmUsers }, { data: profs }] = await Promise.all([
         supabase.from('project_members').select('*').eq('company_id', safeCompanyId),
-        supabase.from('company_users').select('id, user_id, email, notes, role').eq('company_id', safeCompanyId)
+        supabase.from('company_users').select('id, user_id, email, notes, role').eq('company_id', safeCompanyId),
+        supabase.from('profiles').select('id, email, name').eq('company_id', safeCompanyId)
       ]);
 
       if (mems) {
         const mapped: ProjectMember[] = mems.map(m => {
-          let role = (m as any).project_role || (m as any).role;
+          let role = (m as any).project_role || ((m as any).role !== 'member' ? (m as any).role : null);
           const matchedUser = crmUsers?.find((cu: any) => 
             cu.id === m.user_id || 
             cu.user_id === m.user_id || 
             (cu.email && (m as any).user_email && cu.email.toLowerCase() === (m as any).user_email.toLowerCase())
+          );
+          const resolvedEmail = (m as any).user_email || matchedUser?.email || '';
+          const matchedProfile = profs?.find((p: any) =>
+            p.id === m.user_id ||
+            (resolvedEmail && p.email && p.email.toLowerCase() === resolvedEmail.toLowerCase())
           );
           if (!role && matchedUser) {
             if (matchedUser.notes && matchedUser.notes.includes('__CRM_META__:')) {
@@ -124,10 +139,10 @@ export function useProjectTeam() {
           return {
             id: m.id,
             projectId: m.project_id,
-            userId: m.user_id,
-            userEmail: (m as any).user_email || matchedUser?.email || '',
+            userId: matchedProfile?.id || matchedUser?.user_id || m.user_id,
+            userEmail: resolvedEmail || matchedProfile?.email || '',
             companyId: m.company_id,
-            projectRole: role || 'Viewer'
+            projectRole: role || 'Editor'
           };
         });
         setProjectMembers(mapped);
@@ -147,10 +162,10 @@ export function useProjectTeam() {
           name: userData.name || userData.email?.split('@')[0] || 'Teammitglied',
           email: (userData.email || '').toLowerCase().trim(),
           phone: userData.phone || '',
-          role: userData.role || 'Internal Staff',
+          role: userData.role || 'employee',
           department: userData.department || '',
           hourly_rate: Number(userData.hourlyRate ?? userData.hourly_rate ?? 0) || null,
-          status: userData.status || 'aktiv',
+          status: userData.status || 'team',
           created_at: new Date().toISOString()
         } as any);
       } catch (e) {
@@ -199,12 +214,13 @@ export function useProjectTeam() {
 
   const addProjectMember = useCallback(async (projectId: string, memberData: any, safeCompanyId: string) => {
     if (!projectId || !memberData?.userId) return;
-    const initialRole = memberData.projectRole || 'Viewer';
+    const initialRole = memberData.projectRole || 'Editor';
+    const cleanEmail = (memberData.userEmail || '').toLowerCase().trim();
     const newMember: ProjectMember = {
       id: `pm-${Date.now()}`,
       projectId,
       userId: memberData.userId,
-      userEmail: memberData.userEmail || '',
+      userEmail: cleanEmail,
       projectRole: initialRole,
       companyRole: memberData.companyRole || 'External Partner',
       companyId: safeCompanyId
@@ -213,12 +229,18 @@ export function useProjectTeam() {
     setProjectMembers(prev => [...prev, newMember]);
 
     try {
-      await supabase.from('project_members').insert({
+      const insertPayload: any = {
         project_id: projectId,
         user_id: memberData.userId,
         company_id: safeCompanyId,
         project_role: initialRole
-      } as any);
+      };
+      if (cleanEmail) insertPayload.user_email = cleanEmail;
+      const { error: insErr } = await supabase.from('project_members').insert(insertPayload);
+      if (insErr && cleanEmail) {
+        delete insertPayload.user_email;
+        await supabase.from('project_members').insert(insertPayload);
+      }
     } catch (err) {
       console.warn('addProjectMember error:', err);
     }
@@ -231,11 +253,11 @@ export function useProjectTeam() {
         .maybeSingle();
       u = byId;
 
-      if (!u && memberData.userEmail) {
+      if (!u && cleanEmail) {
         const { data: byEmail } = await supabase.from('company_users')
           .select('id, notes')
           .eq('company_id', safeCompanyId)
-          .ilike('email', memberData.userEmail)
+          .ilike('email', cleanEmail)
           .maybeSingle();
         u = byEmail;
       }
@@ -273,12 +295,25 @@ export function useProjectTeam() {
       return m;
     }));
 
-    // 2. Native database column update in project_members
+    // 2. Native database column update in project_members (match user_id, id, or linked company_users id)
     try {
+      const { data: cuMatch } = await supabase.from('company_users')
+        .select('id, user_id')
+        .eq('company_id', safeCompanyId)
+        .or(`id.eq.${userId},user_id.eq.${userId}`)
+        .maybeSingle();
+
+      const candidateIds = Array.from(new Set([userId, cuMatch?.id, cuMatch?.user_id].filter(Boolean)));
+      for (const cid of candidateIds) {
+        await supabase.from('project_members')
+          .update({ project_role: newRole } as any)
+          .eq('project_id', projectId)
+          .eq('user_id', cid);
+      }
       await supabase.from('project_members')
         .update({ project_role: newRole } as any)
         .eq('project_id', projectId)
-        .eq('user_id', userId);
+        .eq('id', userId);
     } catch (err) {
       console.warn('Native project_members update error:', err);
     }
@@ -330,10 +365,19 @@ export function useProjectTeam() {
 
   const removeProjectMember = useCallback(async (projectId: string, userId: string, safeCompanyId: string) => {
     if (!projectId || !userId) return;
-    setProjectMembers(prev => prev.filter(m => !(m.projectId === projectId && m.userId === userId)));
+    setProjectMembers(prev => prev.filter(m => !(m.projectId === projectId && (m.userId === userId || m.id === userId))));
 
     try {
-      await supabase.from('project_members').delete().eq('project_id', projectId).eq('user_id', userId);
+      const { data: cuMatch } = await supabase.from('company_users')
+        .select('id, user_id')
+        .eq('company_id', safeCompanyId)
+        .or(`id.eq.${userId},user_id.eq.${userId}`)
+        .maybeSingle();
+      const candidateIds = Array.from(new Set([userId, cuMatch?.id, cuMatch?.user_id].filter(Boolean)));
+      for (const cid of candidateIds) {
+        await supabase.from('project_members').delete().eq('project_id', projectId).eq('user_id', cid);
+      }
+      await supabase.from('project_members').delete().eq('project_id', projectId).eq('id', userId);
     } catch (err) {
       console.warn('removeProjectMember error:', err);
     }

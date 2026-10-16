@@ -13,7 +13,9 @@ export default function PrivateRoute({ children }: { children: React.ReactNode }
   }
 
   // 2. Abfrage: Hat der User ein aktives Abo / Trial?
-  if (currentUser.hasActiveSubscription === false) {
+  const effectivePlan = String(currentUser.companyPlan || currentUser.plan || '');
+  const hasPaidCompanyPlan = Boolean(effectivePlan && !effectivePlan.toLowerCase().includes('trial'));
+  if (currentUser.hasActiveSubscription === false && !hasPaidCompanyPlan) {
     
     // Ist es der FIRMEN-INHABER / ADMINISTRATOR (Owner / Admin / Super Admin)?
     const normRole = (currentUser.role || '').toLowerCase().trim();

@@ -72,7 +72,7 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserCompanyRole, setNewUserCompanyRole] = useState<'Internal' | 'External Planner' | 'Client' | 'Field Guest'>('Field Guest');
   const [newUserTrade, setNewUserTrade] = useState('');
-  const [selectedRole, setSelectedRole] = useState<'Owner' | 'Admin' | 'Editor' | 'Viewer'>('Viewer');
+  const [selectedRole, setSelectedRole] = useState<'Owner' | 'Admin' | 'Editor' | 'Viewer'>('Editor');
   const [isProcessing, setIsProcessing] = useState(false);
 
   const availableCompanyUsers = (allCompanyUsers || []).filter((cu: any) => !currentMembers.some((cm: any) => cm.userId === cu.id));
@@ -277,14 +277,9 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
     <div className="flex-1 flex flex-col h-full bg-background text-text-primary min-h-0 relative">
       <div className="flex-1 flex flex-col p-4 md:p-6 space-y-6 overflow-hidden">
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
-              <Users size={18} />
-            </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text-primary">{t('project_team')}</h1>
-              <p className="text-text-muted text-xs sm:text-sm mt-0.5 font-medium">{t('team_desc')}</p>
-            </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text-primary">{t('project_team')}</h1>
+            <p className="text-text-muted text-xs sm:text-sm mt-0.5 font-medium">{t('team_desc')}</p>
           </div>
           <div className="flex items-center gap-2 w-full md:w-auto">
             <ModuleGuideButton moduleId="team" className="h-9" />
@@ -308,7 +303,12 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
             </thead>
             <tbody className="divide-y divide-border">
               {currentMembers.map((member: any) => {
-                const user = allCompanyUsers.find((u: any) => u.id === member.userId || u.userId === member.userId) || member;
+                const user = allCompanyUsers.find((u: any) =>
+                  u.id === member.userId ||
+                  u.userId === member.userId ||
+                  (u.crmId && u.crmId === member.userId) ||
+                  (u.email && member.userEmail && u.email.toLowerCase() === member.userEmail.toLowerCase())
+                ) || member;
                 if (!user) return null; 
                 return (
                   <tr key={member.id} className="hover:bg-background transition-colors group">
@@ -382,7 +382,12 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
           <div className="md:hidden flex flex-col gap-4 p-4 pb-36">
             {currentMembers.length === 0 && <div className="text-center text-text-muted py-12 text-sm font-medium border-2 border-dashed border-border/50 rounded-2xl bg-surface/30">{t('no_team_members')}</div>}
             {currentMembers.map((member: any) => {
-              const user = allCompanyUsers.find((u: any) => u.id === member.userId || u.userId === member.userId) || member;
+              const user = allCompanyUsers.find((u: any) =>
+                u.id === member.userId ||
+                u.userId === member.userId ||
+                (u.crmId && u.crmId === member.userId) ||
+                (u.email && member.userEmail && u.email.toLowerCase() === member.userEmail.toLowerCase())
+              ) || member;
               if (!user) return null;
               const norm = (user.role || '').toLowerCase().trim();
               const isClient = norm === 'client' || norm === 'kunde';

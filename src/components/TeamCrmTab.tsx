@@ -201,6 +201,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
 
       return {
         id: u.id,
+        user_id: u.user_id || null,
         firstName: u.first_name || u.firstName || fallback.firstName || fullName.split(' ')[0] || '',
         lastName: u.last_name || u.lastName || fallback.lastName || fullName.split(' ').slice(1).join(' ') || '',
         name: fullName,
@@ -235,13 +236,14 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
     });
 
     const companyProfileCache = safeStorage.getItem<any>(`company_profile_${safeCompanyId}`, null);
-    const defaultWorkspaceCompany = companyProfileCache?.agencyName || (currentUser as any)?.companyName || (currentUser as any)?.company || 'vesciodesign';
+    const defaultWorkspaceCompany = companyProfileCache?.agencyName || (currentUser as any)?.companyName || (currentUser as any)?.company || 'Workspace';
 
     const mappedProfiles = (profilesData || []).map((p: any) => ({
       id: p.id,
+      profileId: p.id,
       firstName: p.name?.split(' ')[0] || p.name || 'Team',
       lastName: p.name?.split(' ').slice(1).join(' ') || '',
-      name: p.name || p.email || 'Team Member',
+      name: p.name || p.full_name || p.display_name || p.email || 'Team Member',
       email: p.email || '',
       company: p.company_name || p.company || defaultWorkspaceCompany,
       website: p.website || companyProfileCache?.website || '',
@@ -251,25 +253,31 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
       role: p.role || 'owner',
       isExternal: false,
       isAppUser: true,
-      canViewFinance: p.can_view_finance ?? false,
+      canViewFinance: p.can_view_finance ?? true,
       canApproveBudget: p.can_approve_budget ?? false
     }));
 
     const combinedMap = new Map();
     // Profiles first
     mappedProfiles.forEach(p => { 
-      const key = (p.email || p.id || '').toLowerCase();
+      const key = (p.email || p.id || '').toLowerCase().trim();
       if (key) combinedMap.set(key, p); 
     });
     // Merge or add CRM contacts
     mappedCrm.forEach(c => { 
-      const key = (c.email || c.id || '').toLowerCase();
+      const key = (c.email || c.id || '').toLowerCase().trim();
       if (key) {
-        const existing = combinedMap.get(key);
+        const existing = combinedMap.get(key) || (c.user_id ? Array.from(combinedMap.values()).find((m: any) => m.profileId === c.user_id) : null);
         if (existing) {
           combinedMap.set(key, { 
             ...existing, 
             ...c, 
+            id: c.id || existing.id,
+            crmId: c.id || null,
+            profileId: existing.profileId || c.user_id || existing.id,
+            role: existing.role || c.role || 'employee',
+            canViewFinance: existing.canViewFinance ?? c.canViewFinance ?? true,
+            canApproveBudget: existing.canApproveBudget ?? c.canApproveBudget ?? false,
             isAppUser: true, // If it had a profile, it is an active app user
             company: c.company || existing.company || defaultWorkspaceCompany,
             website: c.website || existing.website || '',
@@ -278,7 +286,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
             phone: c.phone || existing.phone || ''
           });
         } else {
-          combinedMap.set(key, c);
+          combinedMap.set(key, { ...c, crmId: c.id });
         }
       }
     });
@@ -351,7 +359,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
           .from('documents')
           .select('*')
           .eq('category', 'temp_receipt')
-          .or(`folder_id.eq.${vcardSessionId},company_id.eq.${vcardSessionId}`)
+          .eq('folder_id', vcardSessionId)
           .order('created_at', { ascending: false })
           .limit(1);
 
@@ -662,7 +670,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
 
   const getInviteEmailTemplate = (contact: any, inviteUrl: string, lang: 'de' | 'en', type: 'internal' | 'external') => {
     const name = formatName(contact);
-    const host = currentUser?.displayName || currentUser?.name || currentUser?.email?.split('@')[0] || 'Carlo Vescio';
+    const host = currentUser?.displayName || currentUser?.name || currentUser?.email?.split('@')[0] || 'Projektleitung';
     const companyName = (currentUser as any)?.companyName || (currentUser as any)?.company || 'Kreativ Desk';
     const roleTitle = contact?.jobTitle || (contact?.role === 'Internal' || contact?.role === 'employee' ? 'Interner Mitarbeiter' : contact?.role || 'Projektpartner');
 
@@ -877,7 +885,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         : `__CRM_META__:${JSON.stringify(extraMeta)}`;
 
       const companyProfileCache = safeStorage.getItem<any>(`company_profile_${safeCompanyId}`, null);
-      const defaultWorkspaceCompany = companyProfileCache?.agencyName || (currentUser as any)?.companyName || (currentUser as any)?.company || 'vesciodesign';
+      const defaultWorkspaceCompany = companyProfileCache?.agencyName || (currentUser as any)?.companyName || (currentUser as any)?.company || 'Workspace';
       const resolvedCompany = newContact.company || (!isExt ? defaultWorkspaceCompany : null);
 
       // Full payload with all CRM fields
@@ -946,34 +954,47 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
       };
 
       if (newContact.id) {
-        let updateRes = await supabase.from('company_users').update(fullDbPayload).eq('id', newContact.id).eq('company_id', safeCompanyId);
+        const targetCrmId = selectedContact?.crmId || newContact.id;
+        let updateRes = await supabase.from('company_users').update(fullDbPayload).eq('id', targetCrmId).eq('company_id', safeCompanyId);
         if (updateRes.error) {
           console.warn("Full update failed, trying base update:", updateRes.error);
-          updateRes = await supabase.from('company_users').update(baseDbPayload).eq('id', newContact.id).eq('company_id', safeCompanyId);
+          updateRes = await supabase.from('company_users').update(baseDbPayload).eq('id', targetCrmId).eq('company_id', safeCompanyId);
+        }
+        if (newContact.email) {
+          await supabase.from('company_users').update(fullDbPayload).ilike('email', newContact.email.trim()).eq('company_id', safeCompanyId);
         }
 
-        
+        const targetProfileId = selectedContact?.profileId || (selectedContact?.isAppUser ? newContact.id : null);
+        const isSelfEdit = newContact.id === currentUser?.uid || targetProfileId === currentUser?.uid || newContact.email?.toLowerCase() === currentUser?.email?.toLowerCase();
+        const profileUpdatePayload: Record<string, any> = {
+          name: fullName,
+          phone: newContact.phone || undefined
+        };
+        if (!isSelfEdit && finalRole) {
+          profileUpdatePayload.role = finalRole;
+        }
+        if (isSelfEdit) {
+          profileUpdatePayload.company_name = newContact.company || defaultWorkspaceCompany;
+        }
+        try {
+          if (targetProfileId) {
+            await (supabase.from('profiles').update(profileUpdatePayload as any) as any).eq('id', targetProfileId).eq('company_id', safeCompanyId);
+          } else if (newContact.email) {
+            await (supabase.from('profiles').update(profileUpdatePayload as any) as any).ilike('email', newContact.email.trim()).eq('company_id', safeCompanyId);
+          }
+        } catch (_) {}
+
         updateLocalCache(newContact.id);
         const updatedContact = { ...selectedContact, ...fullContactObject };
         setCrmUsers((prev: any[]) => prev.map(u => u.id === newContact.id ? updatedContact : u));
         setSelectedContact(updatedContact);
 
-        // Falls das eigene Profil aktualisiert wird, auch profiles & companies synchronisieren
-        if (newContact.id === currentUser?.uid || newContact.email?.toLowerCase() === currentUser?.email?.toLowerCase()) {
+        if (isSelfEdit && newContact.company) {
           try {
-            await (supabase.from('profiles').update({
-              name: fullName,
-              company_name: newContact.company || defaultWorkspaceCompany,
-              phone: newContact.phone || undefined
-            } as any) as any).eq('id', currentUser.uid);
+            await supabase.from('companies').update({
+              name: newContact.company
+            }).eq('id', safeCompanyId);
           } catch (_) {}
-          if (newContact.company) {
-            try {
-              await supabase.from('companies').update({
-                name: newContact.company
-              }).eq('id', safeCompanyId);
-            } catch (_) {}
-          }
         }
 
         addToast(t('save') + ' ' + t('completed'), 'success');
@@ -1220,9 +1241,11 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
       .eq('name', folderName)
       .eq('is_folder', true)
       .eq('company_id', safeCompanyId)
+      .is('project_id', null)
+      .limit(1)
       .maybeSingle();
     if (existing) return existing.id;
-    const { data: newF } = await supabase.from('documents').insert({ name: folderName, is_folder: true, category: 'company', owner_id: currentUser.uid, company_id: safeCompanyId, project_id: null, created_at: new Date().toISOString() }).select().maybeSingle();
+    const { data: newF } = await supabase.from('documents').insert({ name: folderName, is_folder: true, category: 'company', folder_id: 'root', owner_id: currentUser.uid, company_id: safeCompanyId, project_id: null, created_at: new Date().toISOString() }).select().maybeSingle();
     return newF ? newF.id : 'root';
   };
 
@@ -2302,7 +2325,7 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                                 type="text" 
                                 value={newContact.company} 
                                 onChange={e => setNewContact((prev: any) => ({...prev, company: e.target.value}))} 
-                                placeholder={(currentUser as any)?.companyName || "z. B. vesciodesign"} 
+                                placeholder={(currentUser as any)?.companyName || "z. B. Muster Architekten AG"} 
                                 className="w-full bg-surface border border-border/60 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-accent-ai font-medium text-text-primary" 
                               />
                             </div>
@@ -2314,7 +2337,7 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                                 type="text" 
                                 value={newContact.website} 
                                 onChange={e => setNewContact((prev: any) => ({...prev, website: e.target.value}))} 
-                                placeholder="z. B. www.vesciodesign.ch" 
+                                placeholder="z. B. www.ihre-firma.ch" 
                                 className="w-full bg-surface border border-border/60 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-accent-ai font-medium text-text-primary" 
                               />
                             </div>

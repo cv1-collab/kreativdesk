@@ -110,11 +110,13 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         await ensureDefaultCompanyFolders(safeCompanyId, currentUser.uid);
       }
 
-      const { data } = await supabase
-        .from('projects')
-        .select('*')
-        .or(`company_id.eq.${safeCompanyId},owner_id.eq.${currentUser.uid}`)
-        .order('created_at', { ascending: false });
+      let projQuery = supabase.from('projects').select('*');
+      if (safeCompanyId && safeCompanyId !== currentUser.uid) {
+        projQuery = projQuery.eq('company_id', safeCompanyId);
+      } else {
+        projQuery = projQuery.or(`company_id.eq.${safeCompanyId},owner_id.eq.${currentUser.uid}`);
+      }
+      const { data } = await projQuery.order('created_at', { ascending: false });
 
       if (data) {
         let mappedProjects: Project[] = data.map((p: any) => ({
@@ -155,9 +157,11 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
             (crmRows || []).forEach((cu: any) => {
               if (cu.id) myIds.add(String(cu.id));
               if (cu.user_id) myIds.add(String(cu.user_id));
+              if ((cu as any).project_id) assignedProjectIds.add(String((cu as any).project_id));
               if (cu.notes && typeof cu.notes === 'string' && cu.notes.startsWith('__CRM_META__:')) {
                 try {
                   const meta = JSON.parse(cu.notes.replace('__CRM_META__:', ''));
+                  if (meta?.assignedProjectId) assignedProjectIds.add(String(meta.assignedProjectId));
                   if (meta?.projectRoles && typeof meta.projectRoles === 'object') {
                     Object.keys(meta.projectRoles).forEach(pid => assignedProjectIds.add(pid));
                   }
@@ -173,9 +177,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
               }
             });
 
-            if (assignedProjectIds.size > 0) {
-              mappedProjects = mappedProjects.filter(p => assignedProjectIds.has(p.id) || p.ownerId === currentUser.uid);
-            }
+            mappedProjects = mappedProjects.filter(p => assignedProjectIds.has(p.id) || p.ownerId === currentUser.uid);
           } catch (_) {}
         }
 

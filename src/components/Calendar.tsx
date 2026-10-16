@@ -688,7 +688,7 @@ export default function Calendar() {
   const { projectId } = useParams<{ projectId: string }>();
   const { activeProjectId, projects, isDemoMode: projectIsDemoMode, demoData } = useProject() as any;
   const { hasPermission } = usePermissions();
-  const isDemoMode = projectIsDemoMode || !hasPermission('canCreateProject');
+  const isDemoMode = Boolean(projectIsDemoMode);
   const { addToast } = useToast();
   const { theme } = useTheme(); 
   const { currentUser } = useAuth();
@@ -798,6 +798,7 @@ export default function Calendar() {
   }, [viewMode, isMounted]);
 
   const hasLoadedInitial = useRef(false);
+  const skipNextScheduleAutoSaveRef = useRef(false);
 
   // === MULTI-TENANT & GLOBAL SILO FIX ===
   useEffect(() => {
@@ -857,6 +858,7 @@ export default function Calendar() {
             .from('project_schedules')
             .select('*')
             .eq('id', scheduleDocId)
+            .eq('company_id', safeCompanyId)
             .maybeSingle();
           if (!error && data && data.schedules && Array.isArray(data.schedules) && data.schedules.length > 0) {
             dbScheduleData = {
@@ -935,12 +937,45 @@ export default function Calendar() {
     };
 
     fetchSchedule();
+
+    const channel = supabase.channel(`schedule_sync_${scheduleDocId}_${safeCompanyId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'project_schedules',
+        filter: `id=eq.${scheduleDocId}`
+      }, (payload) => {
+        const newRow = payload.new as any;
+        if (!newRow || (newRow.company_id && newRow.company_id !== safeCompanyId)) return;
+        if (Array.isArray(newRow.schedules) && newRow.schedules.length > 0) {
+          skipNextScheduleAutoSaveRef.current = true;
+          const scheds: Schedule[] = newRow.schedules;
+          setSchedules(scheds);
+          const activeId = newRow.active_schedule_id || scheds[0].id;
+          const target = scheds.find((s: Schedule) => s.id === activeId) || scheds[0];
+          setActiveScheduleId(target.id);
+          setScheduleName(target.name || 'Masterplan');
+          setGanttTasks(target.ganttTasks || []);
+          setSmartMarkers(target.smartMarkers || []);
+          setShapes(target.shapes || []);
+          setTargetYear(target.targetYear || new Date().getFullYear());
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [currentProjectId, currentUser, isDemoMode, demoData, activeProjectId, projectIsDemoMode]);
 
   const autoSaveTimeout = useRef<NodeJS.Timeout | null>(null);
   useEffect(() => {
     const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
     if (isDemoMode || isInitialLoad || !activeScheduleId || !safeCompanyId || !currentProjectId) return;
+    if (skipNextScheduleAutoSaveRef.current) {
+      skipNextScheduleAutoSaveRef.current = false;
+      return;
+    }
     if (autoSaveTimeout.current) clearTimeout(autoSaveTimeout.current);
     
     autoSaveTimeout.current = setTimeout(async () => {
@@ -1099,7 +1134,8 @@ export default function Calendar() {
       .from('documents')
       .select('id')
       .eq('name', folderName)
-      .eq('company_id', safeCompanyId);
+      .eq('company_id', safeCompanyId)
+      .eq('is_folder', true);
 
     if (safeProjectId) {
       existingQuery = existingQuery.eq('project_id', safeProjectId);
@@ -1107,10 +1143,10 @@ export default function Calendar() {
       existingQuery = existingQuery.is('project_id', null);
     }
 
-    const { data: existing } = await existingQuery.maybeSingle();
+    const { data: existing } = await existingQuery.limit(1).maybeSingle();
     if (existing) return existing.id;
     const { data: newF } = await supabase.from('documents').insert({
-      name: folderName, is_folder: true, category: docCategory, owner_id: currentUser.uid, project_id: safeProjectId, company_id: safeCompanyId, created_at: new Date().toISOString()
+      name: folderName, is_folder: true, folder_id: 'root', category: docCategory, owner_id: currentUser.uid, project_id: safeProjectId, company_id: safeCompanyId, created_at: new Date().toISOString()
     }).select().maybeSingle();
     return newF ? newF.id : 'root';
   };
@@ -1511,16 +1547,11 @@ export default function Calendar() {
         <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 sm:mb-6 shrink-0 z-50 px-4 sm:px-0 mt-4 sm:mt-0">
           
           <div className="flex items-start justify-between w-full sm:w-auto">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
-                <CalendarIcon size={18} />
-              </div>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text-primary">
-                  {t('calendar_title')}
-                </h1>
-                <p className="text-xs sm:text-sm text-text-muted mt-0.5 font-medium">{project ? project.name : 'Workspace'}</p>
-              </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text-primary">
+                {t('calendar_title')}
+              </h1>
+              <p className="text-xs sm:text-sm text-text-muted mt-0.5 font-medium">{project ? project.name : 'Workspace'}</p>
             </div>
             
             {viewMode === 'gantt' && (

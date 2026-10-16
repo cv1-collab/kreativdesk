@@ -477,7 +477,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
         setDefectPins([]);
         setMeasurePoints([]);
       }
-      return;
+      if (isDemoMode) return;
     }
 
     if (isDemoMode) return;
@@ -1170,14 +1170,6 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
                     setDefectPins([]);
                     if (!isDemoMode && currentUser) {
                       const safeCompanyId = currentUser.companyId || (currentUser as any)?.company_id || currentUser.uid;
-                      try {
-                        await supabase
-                          .from('defects')
-                          .delete()
-                          .eq('project_id', projectId)
-                          .eq('company_id', safeCompanyId)
-                          .not('pin_pos', 'is', null);
-                      } catch (_) {}
                       if (pinIds.length > 0) {
                         try {
                           await supabase
@@ -1185,6 +1177,15 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
                             .delete()
                             .in('id', pinIds)
                             .eq('company_id', safeCompanyId);
+                        } catch (_) {}
+                      } else if (activeModelId) {
+                        try {
+                          await supabase
+                            .from('defects')
+                            .delete()
+                            .eq('project_id', projectId)
+                            .eq('company_id', safeCompanyId)
+                            .eq('model_id', activeModelId);
                         } catch (_) {}
                       }
                       queryClient.invalidateQueries({ queryKey: [DEFECTS_QUERY_KEY] });

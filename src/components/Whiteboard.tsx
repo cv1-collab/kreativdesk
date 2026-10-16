@@ -541,11 +541,13 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
     const fetchCloudProjectWhiteboard = async () => {
       if (!projectId || isDemo) return;
       try {
-        const { data, error } = await supabase
+        const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || activeProject?.company_id || null;
+        let query = supabase
           .from('site_data')
           .select('data')
-          .eq('id', `wb_${projectId}`)
-          .maybeSingle();
+          .eq('id', `wb_${projectId}`);
+        if (safeCompanyId) query = query.eq('company_id', safeCompanyId);
+        const { data, error } = await query.maybeSingle();
 
         if (!error && data?.data && isMounted) {
           const cloud = data.data;
@@ -581,9 +583,9 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
     return () => {
       isMounted = false;
     };
-  }, [projectId, isDemo]);
+  }, [projectId, isDemo, currentUser?.companyId]);
 
-  // 2. Echtzeit-Kollaboration via Supabase Realtime Broadcast
+  // 2. Echtzeit-Kollaboration via Supabase Realtime Broadcast + DB Sync
   const liveStateRef = useRef({ layers, activeLayerId, bgImageSrc, bgImagePos, currentUser });
   liveStateRef.current = { layers, activeLayerId, bgImageSrc, bgImagePos, currentUser };
 
@@ -615,6 +617,19 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
         setTimeout(() => {
           isReceivingRemoteRef.current = false;
         }, 120);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'site_data', filter: `id=eq.wb_${projectId}` }, (payload: any) => {
+        if (isDrawing.current) return;
+        const cloud = payload?.new?.data;
+        if (cloud && Array.isArray(cloud.layers) && cloud.layers.length > 0) {
+          isReceivingRemoteRef.current = true;
+          setLayers(cloud.layers);
+          if (cloud.bgImageSrc !== undefined) setBgImageSrc(cloud.bgImageSrc);
+          if (cloud.bgImagePos) setBgImagePos(cloud.bgImagePos);
+          setTimeout(() => {
+            isReceivingRemoteRef.current = false;
+          }, 150);
+        }
       })
       .on('broadcast', { event: 'wb_request_state' }, ({ payload }) => {
         if (!payload || payload.senderId === myId) return;
@@ -2143,16 +2158,21 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
   const ensureFolder = async (folderName: string, docCategory: string) => {
     const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
     if (!currentUser || !safeCompanyId) return '';
-    const currentProjectId = activeProject?.id && activeProject.id !== 'global' ? activeProject.id : null;
-    const { data: existingFolder } = await supabase
+    const currentProjectId = (projectId && projectId !== 'global') ? projectId : ((activeProject?.id && activeProject.id !== 'global') ? activeProject.id : null);
+    let folderQuery = supabase
       .from('documents')
       .select('id')
       .eq('company_id', safeCompanyId)
       .eq('name', folderName)
-      .eq('is_folder', true)
-      .maybeSingle();
+      .eq('is_folder', true);
+    if (currentProjectId) {
+      folderQuery = folderQuery.eq('project_id', currentProjectId);
+    } else {
+      folderQuery = folderQuery.is('project_id', null);
+    }
+    const { data: existingFolder } = await folderQuery.limit(1).maybeSingle();
     if (existingFolder) return existingFolder.id;
-    const { data: newF } = await supabase.from('documents').insert({ name: folderName, is_folder: true, category: docCategory, owner_id: currentUser.uid, company_id: safeCompanyId, project_id: currentProjectId, created_at: new Date().toISOString() }).select().maybeSingle();
+    const { data: newF } = await supabase.from('documents').insert({ name: folderName, is_folder: true, folder_id: 'root', category: docCategory, owner_id: currentUser.uid, company_id: safeCompanyId, project_id: currentProjectId, created_at: new Date().toISOString() }).select().maybeSingle();
     return newF ? newF.id : '';
   };
 
@@ -2169,7 +2189,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
 
       const docCategory = !activeProject?.id || activeProject?.id === 'global' ? 'company' : 'projects';
       const targetFolderId = await ensureFolder("Whiteboards", docCategory);
-      const targetProjectId = activeProject?.id && activeProject.id !== 'global' ? activeProject.id : null;
+      const targetProjectId = (projectId && projectId !== 'global') ? projectId : ((activeProject?.id && activeProject.id !== 'global') ? activeProject.id : null);
       await supabase.from('documents').insert({
         name: fileName, url: downloadUrl, file_url: downloadUrl, project_id: targetProjectId, folder_id: targetFolderId, category: docCategory, owner_id: currentUser.uid, company_id: safeCompanyId, uploaded_by: currentUser.uid, type: 'application/pdf', size: formatBytes(blob.size), is_folder: false, created_at: new Date().toISOString(), uploaded_at: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH')
       });
@@ -2204,7 +2224,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
           let targetFolderId = '';
           const cleanProjectId = (projectId && projectId !== 'global') ? projectId : null;
           if (cleanProjectId) {
-            const { data: existingF } = await supabase.from('documents').select('id').eq('company_id', safeCompanyId).eq('name', `Projekt: ${activeProject?.name || 'Unbenannt'}`).eq('is_folder', true).maybeSingle();
+            const { data: existingF } = await supabase.from('documents').select('id').eq('company_id', safeCompanyId).eq('name', `Projekt: ${activeProject?.name || 'Unbenannt'}`).eq('is_folder', true).limit(1).maybeSingle();
             if (existingF) targetFolderId = existingF.id;
           }
           
@@ -2466,7 +2486,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
                 audioData: base64Audio
               };
 
-              const safeAudioProjectId = (activeProjectId && activeProjectId !== 'global') ? activeProjectId : null;
+              const safeAudioProjectId = (projectId && projectId !== 'global') ? projectId : ((activeProjectId && activeProjectId !== 'global') ? activeProjectId : null);
               const newNoteRecord = {
                 id,
                 ...payload,

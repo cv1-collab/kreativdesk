@@ -16,7 +16,7 @@ import { cn } from '../utils';
 import { supabase } from '../lib/supabase';
 import { callGeminiAPI } from '../utils/geminiClient';
 import { checkStorageLimit, incrementStorage } from '../utils/storageGuard';
-import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
+import { uploadPdfBlobWithFallback, uploadFileWithFallback } from '../utils/cloudStorageHelper';
 import { notifyNewDocument } from '../utils/documentNotificationHelper';
 
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
@@ -128,7 +128,8 @@ export default function ExpenseReport({ onClose, onSave, initialCurrency }: Expe
   const mobileFileInputRef = useRef<HTMLInputElement>(null);
 
   const [sessionId] = useState(() => Math.random().toString(36).substring(2, 15));
-  const mobileUploadUrl = `${window.location.origin}/mobile-upload/spesen/${sessionId}`;
+  const safeCompanyIdForQr = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid || '';
+  const mobileUploadUrl = `${window.location.origin}/mobile-upload/spesen/${sessionId}${safeCompanyIdForQr ? `?companyId=${encodeURIComponent(safeCompanyIdForQr)}` : ''}`;
 
   const [isAnalyzingAI, setIsAnalyzingAI] = useState(false);
   const [isPdfStudioOpen, setIsPdfStudioOpen] = useState(false);
@@ -238,7 +239,8 @@ export default function ExpenseReport({ onClose, onSave, initialCurrency }: Expe
         const { data: docs } = await supabase
           .from('documents')
           .select('*')
-          .eq('company_id', sessionId)
+          .eq('category', 'temp_receipt')
+          .eq('folder_id', sessionId)
           .order('created_at', { ascending: false })
           .limit(1);
 
@@ -343,21 +345,52 @@ export default function ExpenseReport({ onClose, onSave, initialCurrency }: Expe
 
       let targetFolderId = 'root';
       const cleanProjectId = (headerData.projectId && headerData.projectId !== 'global') ? headerData.projectId : null;
-      const { data: existingFolder } = await supabase
+      let folderQuery = supabase
         .from('documents')
         .select('id')
         .eq('company_id', safeCompanyId)
         .eq('name', '01_FINANZEN')
-        .eq('is_folder', true)
-        .maybeSingle();
-      if (existingFolder) { targetFolderId = existingFolder.id; } 
-      else { 
-        const { data: newF } = await supabase.from('documents').insert({ name: '01_FINANZEN', is_folder: true, category: 'company', project_id: null, folder_id: 'root', owner_id: currentUser.uid, company_id: safeCompanyId, created_at: new Date().toISOString() }).select().maybeSingle(); 
-        if (newF) targetFolderId = newF.id; 
+        .eq('is_folder', true);
+      if (cleanProjectId) {
+        folderQuery = folderQuery.eq('project_id', cleanProjectId);
+      } else {
+        folderQuery = folderQuery.is('project_id', null);
+      }
+      const { data: existingFolder } = await folderQuery.limit(1).maybeSingle();
+      if (existingFolder) {
+        targetFolderId = existingFolder.id;
+      } else {
+        const { data: newF } = await supabase.from('documents').insert({
+          name: '01_FINANZEN',
+          is_folder: true,
+          category: cleanProjectId ? 'projects' : 'company',
+          project_id: cleanProjectId,
+          folder_id: 'root',
+          owner_id: currentUser.uid,
+          company_id: safeCompanyId,
+          created_at: new Date().toISOString()
+        }).select().maybeSingle();
+        if (newF) targetFolderId = newF.id;
+      }
+
+      const uploadedReceiptUrls: string[] = [];
+      for (let idx = 0; idx < receipts.length; idx++) {
+        const receiptItem = receipts[idx];
+        if (typeof receiptItem === 'string' && receiptItem.startsWith('data:')) {
+          const uploadedUrl = await uploadFileWithFallback(
+            receiptItem,
+            `spesen_receipt_${Date.now()}_${idx + 1}.jpg`,
+            safeCompanyId,
+            'receipts'
+          );
+          uploadedReceiptUrls.push(uploadedUrl);
+        } else if (receiptItem) {
+          uploadedReceiptUrls.push(receiptItem);
+        }
       }
 
       await supabase.from('transactions').insert({ 
-        type: 'expense', amount: totalAmount, category: 'Spesen', description: `Spesenabrechnung (${positions.length} Positionen)`, date: headerData.date, status: 'Pending', project_id: cleanProjectId, owner_id: currentUser.uid, company_id: safeCompanyId, receipt_urls: [finalPdfUrl, ...receipts], created_at: new Date().toISOString() 
+        type: 'expense', amount: totalAmount, category: 'Spesen', description: `Spesenabrechnung (${positions.length} Positionen)`, date: headerData.date, status: 'Pending', project_id: cleanProjectId, owner_id: currentUser.uid, company_id: safeCompanyId, receipt_urls: [finalPdfUrl, ...uploadedReceiptUrls], created_at: new Date().toISOString() 
       });
 
       await supabase.from('documents').insert({ 
@@ -577,7 +610,7 @@ export default function ExpenseReport({ onClose, onSave, initialCurrency }: Expe
             <div className="font-bold text-lg md:text-xl text-text-primary flex justify-between w-full sm:w-auto">{t('total')}: <span className="text-orange-500 ml-2">{currency} {formatAmount(totalAmount, currency)}</span></div>
             <div className="flex gap-3 w-full sm:w-auto">
               <button type="button" onClick={onClose} className="flex-1 sm:flex-none px-6 py-3 border border-border text-text-primary rounded-lg text-sm font-bold">{t('cancel')}</button>
-              <button onClick={() => setIsPdfStudioOpen(true)} disabled={totalAmount <= 0} className="hidden md:flex px-8 py-3 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg items-center justify-center gap-2 disabled:opacity-50 hover:bg-accent-ai/90 transition-all">
+              <button onClick={() => setIsPdfStudioOpen(true)} disabled={totalAmount <= 0} className="flex flex-1 sm:flex-none px-8 py-3 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg items-center justify-center gap-2 disabled:opacity-50 hover:bg-accent-ai/90 transition-all">
                 <FileText size={16}/> {t('generate_pdf')}
               </button>
             </div>

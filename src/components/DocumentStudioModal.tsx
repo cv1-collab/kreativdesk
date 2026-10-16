@@ -899,7 +899,7 @@ export default function DocumentStudioModal({
 
   // Letter metadata
   const [docPlaceDate, setDocPlaceDate] = useState(`Zürich, ${new Date().toLocaleDateString('de-CH', { day: '2-digit', month: 'long', year: 'numeric' })}`);
-  const [docReference, setDocReference] = useState(activeProject?.name ? `Ref: ${activeProject.name}` : 'Ref: Siemens Studio Umbau');
+  const [docReference, setDocReference] = useState(activeProject?.name ? `Ref: ${activeProject.name}` : 'Ref: Allgemeines Dokument');
 
   // Signature Block & Footer details
   const [showSignatures, setShowSignatures] = useState(true);

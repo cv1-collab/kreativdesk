@@ -286,7 +286,8 @@ export default function LeadsTab() {
 
   const [isSubmittingScanner, setIsSubmittingScanner] = useState(false);
   const [vcardSessionId] = useState(() => Math.random().toString(36).substring(2, 15));
-  const mobileUploadUrl = `${window.location.origin}/mobile-upload/vcard/${vcardSessionId}`;
+  const safeCompanyId = currentUser?.companyId || currentUser?.uid || 'demo';
+  const mobileUploadUrl = `${window.location.origin}/mobile-upload/vcard/${vcardSessionId}${safeCompanyId && safeCompanyId !== 'demo' ? `?companyId=${encodeURIComponent(safeCompanyId)}` : ''}`;
 
   const [scannedData, setScannedData] = useState({
     firstName: '', lastName: '', company: '', email: '', phone: '', street: '', zipCity: '', description: ''
@@ -304,7 +305,6 @@ export default function LeadsTab() {
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
   const isMobileOrTablet = windowWidth < 1024;
 
-  const safeCompanyId = currentUser?.companyId || currentUser?.uid || 'demo';
   const leadFormUrl = `${window.location.origin}/lead-form/${safeCompanyId}`;
 
   // Kamera-Scan States
@@ -349,7 +349,7 @@ export default function LeadsTab() {
           .from('documents')
           .select('*')
           .eq('category', 'temp_receipt')
-          .eq('company_id', vcardSessionId)
+          .eq('folder_id', vcardSessionId)
           .order('created_at', { ascending: false })
           .limit(1);
 
@@ -397,12 +397,7 @@ export default function LeadsTab() {
     const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     try {
-      let query = supabase.from('leads').select('*');
-      if (safeCompanyId === 'dce2daae-e8d5-4596-a264-a3fcdb326a6c') {
-        query = query.or(`company_id.eq.${safeCompanyId},company_id.eq.kreativ-desk-website`);
-      } else {
-        query = query.eq('company_id', safeCompanyId);
-      }
+      const query = supabase.from('leads').select('*').eq('company_id', safeCompanyId);
       const { data } = await query.order('created_at', { ascending: false });
 
       if (data) {

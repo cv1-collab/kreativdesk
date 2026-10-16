@@ -109,8 +109,7 @@ export async function getCompanyProposals(companyId: string, projectId?: string,
       if (companyId && companyId !== 'default-company') {
         conditions.push(`company_id.eq.${companyId}`);
         conditions.push(`owner_id.eq.${companyId}`);
-      }
-      if (ownerId && ownerId !== companyId && ownerId !== 'default-user') {
+      } else if (ownerId && ownerId !== 'default-user') {
         conditions.push(`owner_id.eq.${ownerId}`);
         conditions.push(`company_id.eq.${ownerId}`);
       }
@@ -125,33 +124,24 @@ export async function getCompanyProposals(companyId: string, projectId?: string,
 
       const { data, error } = await query.order('created_at', { ascending: false });
 
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         dbProposals = data.map(mapDbToProposal);
+        const localList = safeStorage.getItem<SmartProposal[]>(STORAGE_KEY, []).filter(p => !p.title?.toLowerCase().includes('siemens'));
+        if (!projectId || projectId === 'global') {
+          safeStorage.setItem(STORAGE_KEY, dbProposals);
+        } else {
+          const otherProjects = localList.filter(p => p.projectId !== projectId);
+          safeStorage.setItem(STORAGE_KEY, [...dbProposals, ...otherProjects]);
+        }
+        return dbProposals;
       }
     }
   } catch (e) {
     console.warn('Supabase fetch proposals error, checking local storage', e);
   }
 
-  // LocalStorage Fallback & Sync: Sicherstellen, dass lokale Entwürfe nicht verloren gehen
+  // LocalStorage Fallback bei Offline / Netzwerkfehler
   const localList = safeStorage.getItem<SmartProposal[]>(STORAGE_KEY, []).filter(p => !p.title?.toLowerCase().includes('siemens'));
-
-  if (dbProposals.length > 0) {
-    const mergedMap = new Map<string, SmartProposal>();
-    dbProposals.forEach(p => mergedMap.set(p.id, p));
-    localList.forEach(p => {
-      const matchComp = !companyId || companyId === 'default-company' ||
-        p.companyId === companyId || p.ownerId === companyId ||
-        (ownerId && (p.ownerId === ownerId || p.companyId === ownerId));
-      const matchProj = !projectId || projectId === 'global' || p.projectId === projectId;
-      if (!mergedMap.has(p.id) && matchComp && matchProj) {
-        mergedMap.set(p.id, p);
-      }
-    });
-    const result = Array.from(mergedMap.values());
-    safeStorage.setItem(STORAGE_KEY, result);
-    return result;
-  }
 
   return localList.filter(p => {
     const matchComp = !companyId || companyId === 'default-company' ||

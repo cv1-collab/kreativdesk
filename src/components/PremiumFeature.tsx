@@ -59,7 +59,7 @@ export default function PremiumFeature({ children, title, description, featureId
     }
 
     const roleLower = (currentUser.role || '').toLowerCase();
-    const isMemberOrExternal = ['employee', 'management', 'guest', 'client', 'external', 'partner', 'subcontractor', 'project_lead', 'handwerker', 'bauherr'].includes(roleLower);
+    const isMemberOrExternal = ['admin', 'employee', 'management', 'guest', 'client', 'external', 'partner', 'subcontractor', 'project_lead', 'projektleiter', 'handwerker', 'bauherr'].includes(roleLower);
     if (isMemberOrExternal) {
       setIsPremiumValid(true);
       return;

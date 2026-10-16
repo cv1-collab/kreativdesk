@@ -47,6 +47,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   ],
   employee: [
     'canCreateProject',
+    'canViewAllProjects',
     'canViewProjectBudget',
     'canUploadFiles', 'canUseAI', 'canExportGLB', 'canDeleteFiles',
     'canComment', 'canViewProjects'
@@ -63,14 +64,41 @@ export function normalizeRole(rawRole?: string | null): Role {
   if (!rawRole) return 'guest';
   const r = rawRole.toLowerCase().trim();
   if (r === 'super_admin' || r === 'superadmin') return 'super_admin';
-  if (r === 'owner') return 'owner';
-  if (r === 'management' || r === 'manager' || r === 'admin' || r === 'geschaeftsleitung') return 'management';
-  if (r === 'project_lead' || r === 'lead' || r === 'editor') return 'employee';
-  if (r === 'internal' || r === 'employee' || r === 'member' || r === 'user' || r === 'team') return 'employee';
-  if (r === 'client' || r === 'kunde' || r === 'bauherr' || r === 'client guest') return 'client';
+  if (r === 'owner' || r === 'inhaber' || r === 'eigentümer') return 'owner';
+  if (
+    r === 'management' ||
+    r === 'manager' ||
+    r === 'admin' ||
+    r === 'administrator' ||
+    r === 'geschaeftsleitung' ||
+    r === 'geschäftsleitung' ||
+    r === 'project_lead' ||
+    r === 'projektleiter' ||
+    r === 'bauleiter'
+  ) return 'management';
+  if (
+    r === 'lead' ||
+    r === 'editor' ||
+    r === 'internal' ||
+    r === 'internal staff' ||
+    r === 'interner mitarbeiter' ||
+    r === 'employee' ||
+    r === 'mitarbeiter' ||
+    r === 'member' ||
+    r === 'user' ||
+    r === 'team' ||
+    r === 'architekt' ||
+    r === 'planer' ||
+    r === 'fachplaner' ||
+    r === 'zeichner' ||
+    r === 'zeichnung' ||
+    r === 'praktikant' ||
+    r === 'specialist' ||
+    r === 'viewer'
+  ) return 'employee';
+  if (r === 'client' || r === 'kunde' || r === 'bauherr' || r === 'client guest' || r === 'auftraggeber') return 'client';
   if (
     r === 'guest' || 
-    r === 'viewer' || 
     r === 'field guest' || 
     r === 'field_guest' || 
     r === 'contractor' || 
@@ -78,6 +106,7 @@ export function normalizeRole(rawRole?: string | null): Role {
     r === 'external' || 
     r === 'external planner' || 
     r === 'external partner' || 
+    r === 'externer planer' ||
     r === 'partner' || 
     r === 'subcontractor' || 
     r === 'collaborator'

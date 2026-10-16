@@ -96,7 +96,7 @@ export default function PublicLeadForm() {
   // Cross-Device Session Logic
   const [sessionId] = useState(() => Math.random().toString(36).substring(2, 15));
   const [showQR, setShowQR] = useState(false);
-  const mobileUploadUrl = `${window.location.origin}/mobile-upload/vcard/${sessionId}`;
+  const mobileUploadUrl = `${window.location.origin}/mobile-upload/vcard/${sessionId}${companyId ? `?companyId=${encodeURIComponent(companyId)}` : ''}`;
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -137,7 +137,7 @@ export default function PublicLeadForm() {
           .from('documents')
           .select('*')
           .eq('category', 'temp_receipt')
-          .eq('company_id', sessionId)
+          .eq('folder_id', sessionId)
           .order('created_at', { ascending: false })
           .limit(1);
 

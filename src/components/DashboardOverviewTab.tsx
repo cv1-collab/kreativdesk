@@ -270,7 +270,7 @@ export default function DashboardOverviewTab({
                       <span>{currentLang === 'de' ? 'Master-Vorlagen' : 'Templates'}</span>
                       <ArrowRight size={12} />
                     </button>
-                    {(currentUser?.canViewFinance !== false && !['employee', 'guest', 'client'].includes(String(currentUser?.role || '').toLowerCase())) && (
+                    {(currentUser?.canViewFinance !== false && !['guest', 'client', 'external', 'partner', 'subcontractor', 'handwerker', 'bauherr', 'field guest', 'external planner'].includes(String(currentUser?.role || '').toLowerCase().trim())) && (
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();

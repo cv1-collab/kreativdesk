@@ -19,7 +19,10 @@ export function usePermissions() {
       normRole === 'owner' ||
       normRole === 'admin' ||
       normRole === 'management' ||
-      normRole === 'geschaeftsleitung';
+      normRole === 'geschaeftsleitung' ||
+      normRole === 'geschäftsleitung' ||
+      normRole === 'project_lead' ||
+      normRole === 'projektleiter';
     
     if (isOwnerOrAdmin) return true;
 

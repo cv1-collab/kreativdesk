@@ -239,30 +239,61 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
       return;
     }
 
+    const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+
     const fetchSlides = async () => {
-      // 0ms Cache Fallback from Studio Persistence
-      const cached = safeStorage.getItem<any[] | null>(`pitch_deck_slides_${currentProjectId}`, null) || safeStorage.getItem<any[] | null>(`pitch_deck_slides_global`, null);
+      // 0ms Cache Fallback from Studio Persistence (strictly scoped to currentProjectId)
+      const cached = safeStorage.getItem<any[] | null>(`pitch_deck_slides_${currentProjectId}`, null);
       if (cached && Array.isArray(cached) && cached.length > 0) {
         setSlides(cached);
-        setActiveSlideId(cached[0].id);
+        setActiveSlideId(prev => (prev && cached.some((s: any) => s.id === prev)) ? prev : cached[0].id);
       }
 
       try {
-        const { data } = await supabase
+        let slidesQuery = supabase
           .from('slides')
           .select('*')
           .eq('project_id', currentProjectId)
           .order('order_index', { ascending: true });
+        if (safeCompanyId) {
+          slidesQuery = slidesQuery.eq('company_id', safeCompanyId);
+        }
+        const { data } = await slidesQuery;
 
         if (data && data.length > 0) {
           const loadedSlides: Slide[] = data.map(d => deserializeSlideFromDb(d, currentUser?.uid) as any);
           setSlides(loadedSlides);
-          if (loadedSlides.length > 0) setActiveSlideId(loadedSlides[0].id);
+          safeStorage.setItem(`pitch_deck_slides_${currentProjectId}`, loadedSlides);
+          if (loadedSlides.length > 0) {
+            setActiveSlideId(prev => (prev && loadedSlides.some(s => s.id === prev)) ? prev : loadedSlides[0].id);
+          }
         } else {
           const isDemo = isDemoMode || currentProjectId?.startsWith('demo-') || currentProjectId === 'demo-1' || currentProjectId === 'global';
           if (isDemo) {
             loadDemoSlides();
+          } else if (!cached || cached.length === 0) {
+            loadDemoSlides();
           }
+        }
+
+        // Load shared deck_settings from Supabase documents so team members see the exact same design/logo
+        let settingsQuery = supabase
+          .from('documents')
+          .select('url, file_url')
+          .eq('project_id', currentProjectId)
+          .eq('category', 'pitch_deck_config')
+          .eq('name', 'deck_settings');
+        if (safeCompanyId) {
+          settingsQuery = settingsQuery.eq('company_id', safeCompanyId);
+        }
+        const { data: settingsDocs } = await settingsQuery;
+        const rawSettings = settingsDocs?.[0]?.file_url || settingsDocs?.[0]?.url;
+        if (rawSettings) {
+          try {
+            const parsedSettings = JSON.parse(rawSettings);
+            safeStorage.setItem(`pitch_deckSettings_${currentProjectId}`, parsedSettings);
+            setCloudDeckSettings(parsedSettings);
+          } catch (_) {}
         }
       } catch (e) {
         console.error("Fetch slides error:", e);
@@ -272,7 +303,43 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
     };
 
     fetchSlides();
+
+    const channel = supabase
+      .channel(`pitchdeck_live_${safeCompanyId || 'tenant'}_${currentProjectId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'slides',
+        filter: `project_id=eq.${currentProjectId}`
+      }, () => {
+        fetchSlides();
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'documents',
+        filter: `project_id=eq.${currentProjectId}`
+      }, (payload) => {
+        const docRow = payload.new as any;
+        if (docRow && docRow.category === 'pitch_deck_config' && docRow.name === 'deck_settings') {
+          const raw = docRow.file_url || docRow.url;
+          if (raw) {
+            try {
+              const parsed = JSON.parse(raw);
+              safeStorage.setItem(`pitch_deckSettings_${currentProjectId}`, parsed);
+              setCloudDeckSettings(parsed);
+            } catch (_) {}
+          }
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel).catch(() => {});
+    };
   }, [currentUser, currentProjectId, showStudio, isDemoMode]);
+
+  const [cloudDeckSettings, setCloudDeckSettings] = useState<any>(null);
 
   useEffect(() => {
     const cleanup = addFullscreenChangeListener(() => {
@@ -310,7 +377,8 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
   const deckSettings = {
     logoUrl: '', footerText: 'Vertraulich – Projekt Status Report', themeColor: '#3b82f6', themeStyle: 'scenography', transitionEffect: 'slide',
     ...(activeProject?.deckSettings || {}),
-    ...(cachedSettings || {})
+    ...(cachedSettings || {}),
+    ...(cloudDeckSettings || {})
   };
 
   const getThemeClasses = () => {
@@ -1157,12 +1225,9 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
     <div className="flex flex-col w-full h-full bg-background text-text-primary rounded-xl overflow-hidden border border-border relative">
       {!isFullscreen && (
         <header className="min-h-16 py-2.5 border-b border-border flex flex-wrap items-center justify-between px-3 sm:px-6 shrink-0 bg-surface/95 backdrop-blur-xl gap-2 shadow-xs">
-          <div className="flex items-center gap-2.5 sm:gap-3">
-            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 shrink-0 shadow-xs"><Presentation size={17} /></div>
-            <div>
-              <h2 className="font-bold text-xs sm:text-sm text-text-primary">Pitch Deck</h2>
-              <p className="text-[9px] sm:text-[10px] text-text-muted uppercase tracking-widest font-bold">{t('presentation_viewer')}</p>
-            </div>
+          <div>
+            <h2 className="font-bold text-xs sm:text-sm text-text-primary">Pitch Deck</h2>
+            <p className="text-[9px] sm:text-[10px] text-text-muted uppercase tracking-widest font-bold">{t('presentation_viewer')}</p>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
              <ModuleGuideButton moduleId="pitch" />

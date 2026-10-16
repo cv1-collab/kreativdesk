@@ -411,7 +411,7 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
           .from('documents')
           .select('*')
           .eq('category', 'temp_receipt')
-          .or(`folder_id.eq.${uploadSessionId},company_id.eq.${uploadSessionId}`)
+          .eq('folder_id', uploadSessionId)
           .order('created_at', { ascending: false })
           .limit(1);
 
@@ -488,20 +488,26 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
 
       let targetFolderId = 'root';
       const cleanProjectId = (opCostData.projectId && opCostData.projectId !== 'global') ? opCostData.projectId : null;
-      const { data: existingFolder } = await supabase
+      let folderQuery = supabase
         .from('documents')
         .select('*')
         .eq('company_id', safeCompanyId)
         .eq('name', '01_FINANZEN')
-        .maybeSingle();
+        .eq('is_folder', true);
+      if (cleanProjectId) {
+        folderQuery = folderQuery.eq('project_id', cleanProjectId);
+      } else {
+        folderQuery = folderQuery.is('project_id', null);
+      }
+      const { data: existingFolder } = await folderQuery.limit(1).maybeSingle();
       if (existingFolder) { 
         targetFolderId = existingFolder.id; 
       } else { 
         const { data: newF } = await supabase.from('documents').insert({ 
           name: '01_FINANZEN', 
           is_folder: true, 
-          category: 'company', 
-          project_id: null, 
+          category: cleanProjectId ? 'projects' : 'company', 
+          project_id: cleanProjectId, 
           folder_id: 'root', 
           owner_id: currentUser.uid, 
           company_id: safeCompanyId, 

@@ -558,16 +558,11 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
     <div className="w-full h-full flex flex-col space-y-8 md:space-y-10 animate-in fade-in duration-300 pb-24">
       {/* Top Header */}
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
-            <LayoutTemplate size={18} />
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text-primary">
-              {t('templates_hub')}
-            </h1>
-            <p className="text-text-muted mt-0.5 text-xs sm:text-sm font-medium">{t('templates_desc')}</p>
-          </div>
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text-primary">
+            {t('templates_hub')}
+          </h1>
+          <p className="text-text-muted mt-0.5 text-xs sm:text-sm font-medium">{t('templates_desc')}</p>
         </div>
 
         {/* Actions & Company Active Branding Indicator */}

@@ -185,7 +185,7 @@ export default async function handler(req: any, res: any) {
         company_id: targetCompanyId,
         has_active_subscription: true,
         plan: isInvitedUser ? invitedCompanyPlan : 'Expert Trial',
-        trial_ends_at: trialEndDate.toISOString(),
+        trial_ends_at: isInvitedUser ? null : trialEndDate.toISOString(),
         created_at: timestamp.toISOString()
       };
 
@@ -200,6 +200,18 @@ export default async function handler(req: any, res: any) {
     let hasActiveSub = profile.has_active_subscription || false;
     let currentPlan = profile.plan || 'Free Trial';
     let needsDbUpdate = false;
+
+    if (profile.company_id) {
+      const { data: comp } = await supabaseAdmin
+        .from('companies')
+        .select('plan')
+        .eq('id', profile.company_id)
+        .maybeSingle();
+      if (comp?.plan && !String(comp.plan).toLowerCase().includes('trial')) {
+        currentPlan = comp.plan;
+        hasActiveSub = true;
+      }
+    }
 
     if (profile.stripe_customer_id && process.env.STRIPE_SECRET_KEY) {
       try {
