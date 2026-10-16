@@ -72,7 +72,7 @@ export default function API() {
     }
   }, [currentUser, isDe, isDemo]);
 
-  const loadWebhooks = useCallback(() => {
+  const loadWebhooks = useCallback(async () => {
     if (isDemo) {
       setEndpoints([
         {
@@ -92,6 +92,8 @@ export default function API() {
     setEndpoints(epList);
     const sec = webhookNotifier.getSecretKey(companyId);
     setSecretKey(sec);
+    const syncedList = await webhookNotifier.loadWebhooksFromCloud(companyId);
+    setEndpoints(syncedList);
   }, [currentUser, isDemo]);
 
   useEffect(() => {
@@ -133,8 +135,11 @@ export default function API() {
       addToast(isDe ? 'Demo API-Keys können nicht gelöscht werden.' : 'Demo API keys cannot be deleted.', 'info');
       return;
     }
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
     try {
-      await supabase.from('api_keys').delete().eq('id', id);
+      let query = supabase.from('api_keys').delete().eq('id', id);
+      if (safeCompanyId) query = query.eq('company_id', safeCompanyId);
+      await query;
       addToast(isDe ? 'API Key gelöscht.' : 'API Key deleted.', 'info');
       fetchKeys();
     } catch (err) {
@@ -281,6 +286,50 @@ export default function API() {
               </div>
             ))
           )}
+        </div>
+
+        {/* OPEN REST API & INCOMING WEBHOOK ENDPOINTS REFERENCE */}
+        <div className="mt-5 p-4 bg-background/80 border border-border/60 rounded-2xl space-y-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs font-bold uppercase tracking-wider text-text-primary flex items-center gap-1.5">
+              <Network size={14} className="text-blue-500" />
+              {isDe ? 'Open REST API & Incoming Webhooks (Make, Zapier, n8n, Abacus, Procore, ERP)' : 'Open REST API & Incoming Webhooks'}
+            </div>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-500 border border-blue-500/20">
+              Header: x-api-key: kd_live_...
+            </span>
+          </div>
+          <p className="text-xs text-text-muted leading-relaxed">
+            {isDe
+              ? 'Verbinde jedes Drittsystem (Make.com, Zapier, n8n, Abacus, HubSpot, Microsoft Power Automate oder eigene Skripte) per HTTP GET / POST mit deinem API-Schlüssel:'
+              : 'Connect any external tool (Make.com, Zapier, n8n, Abacus, HubSpot, or custom scripts) via HTTP GET / POST using your API key:'}
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] font-mono">
+            <div className="p-2 bg-surface rounded-lg border border-border/50 flex items-center justify-between gap-2">
+              <span className="truncate text-text-primary">GET/POST https://www.kreativdesk.ch/api/v1/leads</span>
+              <button onClick={() => handleCopy('ep_leads', 'https://www.kreativdesk.ch/api/v1/leads')} className="text-text-muted hover:text-text-primary shrink-0">
+                {copiedId === 'ep_leads' ? <CheckCircle2 size={13} className="text-emerald-500" /> : <Copy size={13} />}
+              </button>
+            </div>
+            <div className="p-2 bg-surface rounded-lg border border-border/50 flex items-center justify-between gap-2">
+              <span className="truncate text-text-primary">GET/POST https://www.kreativdesk.ch/api/v1/projects</span>
+              <button onClick={() => handleCopy('ep_projects', 'https://www.kreativdesk.ch/api/v1/projects')} className="text-text-muted hover:text-text-primary shrink-0">
+                {copiedId === 'ep_projects' ? <CheckCircle2 size={13} className="text-emerald-500" /> : <Copy size={13} />}
+              </button>
+            </div>
+            <div className="p-2 bg-surface rounded-lg border border-border/50 flex items-center justify-between gap-2">
+              <span className="truncate text-text-primary">GET/POST https://www.kreativdesk.ch/api/v1/contacts</span>
+              <button onClick={() => handleCopy('ep_contacts', 'https://www.kreativdesk.ch/api/v1/contacts')} className="text-text-muted hover:text-text-primary shrink-0">
+                {copiedId === 'ep_contacts' ? <CheckCircle2 size={13} className="text-emerald-500" /> : <Copy size={13} />}
+              </button>
+            </div>
+            <div className="p-2 bg-surface rounded-lg border border-border/50 flex items-center justify-between gap-2">
+              <span className="truncate text-text-primary">GET/POST https://www.kreativdesk.ch/api/v1/transactions</span>
+              <button onClick={() => handleCopy('ep_tx', 'https://www.kreativdesk.ch/api/v1/transactions')} className="text-text-muted hover:text-text-primary shrink-0">
+                {copiedId === 'ep_tx' ? <CheckCircle2 size={13} className="text-emerald-500" /> : <Copy size={13} />}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 

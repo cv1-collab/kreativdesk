@@ -29,10 +29,22 @@ import financialLedger from './_handlers/financial-ledger.js';
 import submitPublicLead from './_handlers/submit-public-lead.js';
 import sentryTunnel from './_handlers/sentry-tunnel.js';
 import adminCleanupTestUsers from './_handlers/admin-cleanup-test-users.js';
+import externalApi from './_handlers/external-api.js';
 
 type RouteHandler = (req: VercelRequest | any, res: VercelResponse | any) => Promise<any> | any;
 
 const handlers: Record<string, RouteHandler> = {
+  'v1': externalApi,
+  'v1/projects': externalApi,
+  'v1/leads': externalApi,
+  'v1/contacts': externalApi,
+  'v1/defects': externalApi,
+  'v1/transactions': externalApi,
+  'v1/invoices': externalApi,
+  'v1/proposals': externalApi,
+  'external': externalApi,
+  'webhook/incoming': externalApi,
+  'webhook-incoming': externalApi,
   'financial-ledger': financialLedger,
   'financial/ledger': financialLedger,
   'create-checkout-session': createCheckoutSession,
@@ -125,14 +137,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Global CORS handling
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-fal-target-url');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-fal-target-url, x-api-key, X-API-Key');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
   const route = extractRoute(req);
-  const routeHandler = handlers[route];
+  const routeHandler = handlers[route] || (route.startsWith('v1/') ? externalApi : undefined);
 
   if (!routeHandler) {
     return res.status(404).json({

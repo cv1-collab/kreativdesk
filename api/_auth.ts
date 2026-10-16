@@ -11,11 +11,83 @@ export function getSupabaseAdmin() {
 
 export async function verifyAuth(req: any, _res?: any) {
   const authHeader = req.headers?.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  const apiKeyHeader = (req.headers?.['x-api-key'] || req.headers?.['X-API-Key']) as string | undefined;
+
+  let rawToken: string | null = null;
+  if (apiKeyHeader && typeof apiKeyHeader === 'string' && apiKeyHeader.trim().startsWith('kd_live_')) {
+    rawToken = apiKeyHeader.trim();
+  } else if (authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+    rawToken = authHeader.split('Bearer ')[1]?.trim() || null;
+  }
+
+  if (!rawToken) {
     return null;
   }
-  
-  const token = authHeader.split('Bearer ')[1];
+
+  // 1. Check if token is a company API key (kd_live_...)
+  if (rawToken.startsWith('kd_live_')) {
+    try {
+      const { data: keyRecord, error: keyErr } = await supabaseAdmin
+        .from('api_keys')
+        .select('*')
+        .eq('key', rawToken)
+        .maybeSingle();
+
+      if (keyErr || !keyRecord || !keyRecord.company_id) {
+        return null;
+      }
+
+      // Update last_used asynchronously
+      supabaseAdmin
+        .from('api_keys')
+        .update({ last_used: new Date().toISOString() })
+        .eq('id', keyRecord.id)
+        .then(() => {}, () => {});
+
+      const { data: comp } = await supabaseAdmin
+        .from('companies')
+        .select('id, name, plan, owner_id')
+        .eq('id', keyRecord.company_id)
+        .maybeSingle();
+
+      const ownerId = comp?.owner_id || keyRecord.company_id;
+      let ownerProfile: any = null;
+      if (comp?.owner_id) {
+        const { data: prof } = await supabaseAdmin
+          .from('profiles')
+          .select('*')
+          .eq('id', comp.owner_id)
+          .maybeSingle();
+        ownerProfile = prof;
+      }
+
+      return {
+        id: ownerId,
+        email: ownerProfile?.email || `api@${keyRecord.company_id}.kreativdesk.local`,
+        plan: comp?.plan || ownerProfile?.plan || 'Pro',
+        companyId: keyRecord.company_id,
+        role: 'admin',
+        isSuperAdmin: false,
+        isApiKey: true,
+        apiKeyName: keyRecord.name || 'API Integration',
+        hasActiveSubscription: true,
+        trialEndsAt: ownerProfile?.trial_ends_at || null,
+        profile: ownerProfile || {
+          id: ownerId,
+          company_id: keyRecord.company_id,
+          role: 'admin',
+          plan: comp?.plan || 'Pro',
+          has_active_subscription: true,
+          can_view_finance: true,
+        },
+      };
+    } catch (err) {
+      console.error('API Key verification failed:', err);
+      return null;
+    }
+  }
+
+  const token = rawToken;
 
   try {
     const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);

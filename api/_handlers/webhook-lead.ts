@@ -93,6 +93,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .maybeSingle();
         targetUrl = (comp as any)?.webhook_url;
 
+        if (!targetUrl) {
+          const { data: whDoc } = await supabaseAdmin
+            .from('documents')
+            .select('url, file_url')
+            .eq('category', 'system_config')
+            .eq('company_id', resolvedCompanyId)
+            .eq('name', `kreativdesk_webhooks_${resolvedCompanyId}`)
+            .limit(1)
+            .maybeSingle();
+          const rawWh = whDoc?.url || whDoc?.file_url;
+          if (rawWh) {
+            try {
+              const parsed = JSON.parse(rawWh);
+              if (Array.isArray(parsed)) {
+                const activeEp = parsed.find((ep: any) => ep && ep.active !== false && typeof ep.url === 'string');
+                if (activeEp?.url) targetUrl = activeEp.url;
+              }
+            } catch (_) {}
+          }
+        }
+
         // Ensure in-app notification is persisted via supabaseAdmin when client is unauthenticated and verifiedProp matched
         if (!user && verifiedProp) {
           const propTitle = verifiedProp.title || rest.proposalTitle || 'Projekt';

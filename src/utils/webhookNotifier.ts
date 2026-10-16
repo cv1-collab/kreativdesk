@@ -1,6 +1,6 @@
 export type WebhookEventType = 'defect.created' | 'invoice.created' | 'lead.created' | 'document.uploaded';
 import { safeStorage } from './safeStorage';
-import { saveSystemConfigJSON } from './configHelper';
+import { saveSystemConfigJSON, fetchSystemConfigJSON } from './configHelper';
 
 export interface WebhookEndpoint {
   id: string;
@@ -63,6 +63,23 @@ export const webhookNotifier = {
     } catch {
       return [];
     }
+  },
+
+  async loadWebhooksFromCloud(companyId?: string): Promise<WebhookEndpoint[]> {
+    if (!companyId || companyId === 'global' || companyId === 'demo-user-id') {
+      return this.getWebhooks(companyId);
+    }
+    try {
+      const cloudData = await fetchSystemConfigJSON<WebhookEndpoint[]>(
+        `kreativdesk_webhooks_${companyId}`,
+        companyId
+      );
+      if (cloudData && Array.isArray(cloudData)) {
+        safeStorage.setItem(this.getStorageKey(companyId), cloudData);
+        return cloudData;
+      }
+    } catch (_) {}
+    return this.getWebhooks(companyId);
   },
 
   saveWebhooks(webhooks: WebhookEndpoint[], companyId?: string): void {
