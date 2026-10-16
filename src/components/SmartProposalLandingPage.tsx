@@ -31,6 +31,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useAuth } from '../contexts/AuthContext';
 import { translateProposalTitle } from '../utils/proposalTranslationHelper';
 import { supabase } from '../lib/supabase';
+import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 
 const localTranslations: Record<'de' | 'en' | 'fr', Record<string, string>> = {
   de: {
@@ -5121,13 +5122,7 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
             if (!proposal.companyId) return;
             try {
               const fileName = `Vertragsbeleg_${proposal.clientName.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.pdf`;
-              const filePath = `${proposal.companyId}/proposals/${fileName}`;
-              const { error: upErr } = await supabase.storage.from('documents').upload(filePath, blob, { contentType: 'application/pdf', upsert: true });
-              let fileUrl = '';
-              if (!upErr) {
-                const { data: pubData } = supabase.storage.from('documents').getPublicUrl(filePath);
-                fileUrl = pubData.publicUrl;
-              }
+              const fileUrl = await uploadPdfBlobWithFallback(blob, fileName, proposal.companyId);
               if (fileUrl) {
                 await supabase.from('documents').insert({
                   name: fileName,

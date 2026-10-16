@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '../_auth.js';
+import { supabaseAdmin, SUPER_ADMIN_EMAILS } from '../_auth.js';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
@@ -33,7 +33,6 @@ export default async function handler(req: any, res: any) {
       return res.status(403).json({ error: 'Forbidden: Email does not match authenticated user' });
     }
 
-    const SUPER_ADMIN_EMAILS = ['cv1@gmx.ch', 'carlo@vesciodesign.ch', 'admin@kreativdesk.ch'];
     const isCallerSuperAdmin = SUPER_ADMIN_EMAILS.includes(verifiedEmail);
 
     // Check existing profile first to prevent trial reset or role escalation by existing users
@@ -208,6 +207,22 @@ export default async function handler(req: any, res: any) {
       trial_ends_at: isPaidOrInvited ? null : (existingProfile?.trial_ends_at || trialEndDate.toISOString()),
       created_at: now
     });
+
+    try {
+      await supabaseAdmin.from('audit_logs').insert({
+        action: isInvite ? 'invite.redeemed' : 'company.registered',
+        user_id: uid,
+        user_email: verifiedEmail,
+        company_id: assignedCompanyId || 'system',
+        details: {
+          role: assignedRole,
+          plan,
+          companyName: isInvite ? undefined : companyName,
+          isInvite
+        },
+        created_at: now
+      });
+    } catch {}
 
     return res.status(200).json({ success: true, companyId: assignedCompanyId, role: assignedRole });
 

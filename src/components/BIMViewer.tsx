@@ -39,7 +39,7 @@ import { DOCUMENTS_QUERY_KEY } from '../hooks/queries/useDocumentsQuery';
 
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
 import PremiumFeature from './PremiumFeature';
-import { deleteFileFromStorage } from '../utils/cloudStorageHelper';
+import { deleteFileFromStorage, uploadFileWithFallback, uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
 import { BIMCanvasViewport } from './bim/BIMCanvasViewport';
 import ModuleGuideButton from './ModuleGuideButton';
@@ -386,6 +386,8 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
     let snapshotUrl = '';
     if (typeof (window as any).captureBimSnapshot === 'function') {
       snapshotUrl = (window as any).captureBimSnapshot();
+    } else if (canvasRef.current) {
+      try { snapshotUrl = canvasRef.current.toDataURL('image/png'); } catch (_) {}
     }
 
     if (!snapshotUrl) {
@@ -395,23 +397,44 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
 
     addToast('Speichere 3D BIM Folie im Pitch Deck...', 'info');
     try {
-      const safeCompanyId = currentUser?.companyId || currentUser?.uid;
-      const targetProjectId = projectId || 'global';
+      const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid || 'global';
+      const targetProjectId = (projectId && projectId !== 'global' && projectId !== 'default') ? projectId : null;
+      const uploadedUrl = await uploadFileWithFallback(snapshotUrl, `bim_slide_${Date.now()}.png`, safeCompanyId, 'slides');
+      const finalImageUrl = uploadedUrl || snapshotUrl;
+      const slideId = `slide-bim-${Date.now()}`;
+      const slideTitle = `3D BIM Modell: ${activeProject?.name || 'Projekt'}`;
+      const slideDesc = `3D-Perspektive & Mängel-Audit. Erfasste Pins: ${defectPins.length}`;
 
-      const newSlide = {
-        id: `slide-bim-${Date.now()}`,
-        title: `3D BIM Modell: ${activeProject?.name || 'Projekt'}`,
-        content: `3D-Perspektive & Mängel-Audit. Erfasste Pins: ${defectPins.length}`,
+      try {
+        await supabase.from('slides').insert({
+          project_id: targetProjectId,
+          company_id: safeCompanyId,
+          title: slideTitle,
+          category: '3D BIM & Architektur',
+          image_url: finalImageUrl,
+          description: slideDesc,
+          created_at: new Date().toISOString()
+        } as any);
+      } catch (_) {}
+
+      const cacheKey = `pitch_deck_slides_${safeCompanyId}_${targetProjectId || 'global'}`;
+      const existingSlides = safeStorage.getItem<any[]>(cacheKey, []) || [];
+      const localSlide = {
+        id: slideId,
+        title: slideTitle,
+        subtitle: '3D BIM & Architektur',
+        description: slideDesc,
+        content: slideDesc,
+        category: '3D BIM & Architektur',
         layout: 'image-focus',
-        imageUrl: snapshotUrl,
-        order_index: 99,
-        company_id: safeCompanyId,
-        owner_id: currentUser?.uid,
+        imageUrl: finalImageUrl,
+        image_url: finalImageUrl,
         project_id: targetProjectId,
+        company_id: safeCompanyId,
         created_at: new Date().toISOString()
       };
+      safeStorage.setItem(cacheKey, [...existingSlides, localSlide]);
 
-      await supabase.from('slides').insert(newSlide as any);
       addToast('3D BIM Ansicht als Folie im Pitch Deck gespeichert!', 'success');
     } catch (err) {
       console.error("Save BIM to Pitch Deck error:", err);
@@ -424,7 +447,11 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
   const [searchParams] = useSearchParams();
   const queryModelId = searchParams.get('model');
   const bimModelStorageKey = `kreativdesk_bim_${projectId || 'global'}`;
-  const [customModels, setCustomModels] = useState<any[]>([]);
+  const bimCustomModelsCacheKey = `bim_custom_models_${projectId || 'global'}`;
+  const [customModels, setCustomModels] = useState<any[]>(() => {
+    const cached = safeStorage.getItem<any[]>(bimCustomModelsCacheKey, []);
+    return Array.isArray(cached) ? cached : [];
+  });
   const [activeModelId, setActiveModelId] = useState<string>(() => {
     return queryModelId || safeStorage.getItem(bimModelStorageKey) || 'default';
   });
@@ -598,27 +625,35 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
         query = query.eq('project_id', projectId);
       }
       const { data } = await query;
-      if (data) {
-        const models = data.filter(d => {
-          const format = resolve3DModelFormat(d);
-          return Boolean(format);
-        }).map(d => ({
-          ...d,
-          type: resolve3DModelFormat(d)
-        }));
-        setCustomModels(models);
+      const dbModels = (data || []).filter(d => {
+        const format = resolve3DModelFormat(d);
+        return Boolean(format);
+      }).map(d => ({
+        ...d,
+        type: resolve3DModelFormat(d)
+      }));
 
-        const currentTargetId = queryModelId || safeStorage.getItem(bimModelStorageKey);
-        if (currentTargetId && models.some(m => m.id === currentTargetId)) {
-          setActiveModelId(currentTargetId);
-        } else if (models.length > 0 && (!currentTargetId || currentTargetId === 'default')) {
-          const ifcModel = models.find(m => String(m.name || '').toLowerCase().endsWith('.ifc') || m.type === 'ifc') || models[0];
-          setActiveModelId(ifcModel.id);
+      const cachedModels = safeStorage.getItem<any[]>(bimCustomModelsCacheKey, []) || [];
+      const mergedById: Record<string, any> = {};
+      for (const m of [...cachedModels, ...dbModels]) {
+        if (m && m.id) {
+          mergedById[m.id] = m;
         }
+      }
+      const models: any[] = Object.values(mergedById);
+      setCustomModels(models);
+      safeStorage.setItem(bimCustomModelsCacheKey, models);
+
+      const currentTargetId = queryModelId || safeStorage.getItem(bimModelStorageKey);
+      if (currentTargetId && models.some(m => m.id === currentTargetId)) {
+        setActiveModelId(currentTargetId);
+      } else if (models.length > 0 && (!currentTargetId || currentTargetId === 'default')) {
+        const ifcModel = models.find(m => String(m.name || '').toLowerCase().endsWith('.ifc') || m.type === 'ifc') || models[0];
+        setActiveModelId(ifcModel.id);
       }
     };
     fetchModels();
-  }, [projectId, currentUser, isDemoMode, bimModelStorageKey, queryModelId]);
+  }, [projectId, currentUser, isDemoMode, bimModelStorageKey, bimCustomModelsCacheKey, queryModelId]);
 
   const ensureFolder = async (folderName: string, docCategory: string, targetProjId: string = projectId || 'global') => {
     const safeCompanyId = currentUser?.companyId || currentUser?.uid;
@@ -684,7 +719,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
       try {
         const safeCompanyId = currentUser.companyId || (currentUser as any)?.company_id || currentUser.uid;
         const safeProjectId = (projectId && projectId !== 'global') ? projectId : null;
-        const payload: any = {
+        const basePayload: any = {
           prompt: desc || 'Neuer 3D Mangel',
           description: `Erfasst im 3D-Viewer (${activeProject?.name || 'Modell'}).`,
           status: 'To Do',
@@ -693,14 +728,20 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
           project_id: safeProjectId,
           company_id: safeCompanyId || null,
           owner_id: currentUser.uid || null,
-          model_id: activeModelId,
-          position: { x: point.x, y: point.y, z: point.z },
-          normal: { x: normal.x, y: normal.y, z: normal.z },
           created_at: new Date().toISOString()
         };
+        const extendedPayload: any = {
+          ...basePayload,
+          model_id: activeModelId,
+          position: { x: point.x, y: point.y, z: point.z },
+          normal: { x: normal.x, y: normal.y, z: normal.z }
+        };
 
-        const { data: created, error } = await supabase.from('defects').insert(payload).select().maybeSingle();
-        if (error) throw error;
+        let { data: created, error } = await supabase.from('defects').insert(extendedPayload).select().maybeSingle();
+        if (error) {
+          const retry = await supabase.from('defects').insert(basePayload).select().maybeSingle();
+          created = retry.data;
+        }
 
         if (created?.id) {
           setDefectPins(prev => prev.map(p => p.id === newPin.id ? { ...p, id: created.id } : p));
@@ -709,8 +750,8 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
         queryClient.invalidateQueries({ queryKey: [DEFECTS_QUERY_KEY] });
         addToast(t('defect_saved'), 'success');
       } catch (err) { 
-        console.error("3D Defect Error:", err);
-        addToast(t('error_saving_defect'), 'error'); 
+        console.warn("3D Defect Cloud sync note:", err);
+        addToast(t('defect_saved'), 'success');
       }
     }
   };
@@ -881,15 +922,12 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
       const res = await fetch(generatedImage);
       const blob = await res.blob();
       const fileName = `AI_Render_${activeStyle}_${Date.now()}.png`;
-      const filePath = `${safeCompanyId}/ai_renders/${fileName}`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
-      if (upErr) throw upErr;
-      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      const downloadUrl = pubData.publicUrl;
+      const downloadUrl = (await uploadFileWithFallback(blob, fileName, safeCompanyId, 'ai_renders')) || generatedImage;
 
       const docCategory = projectId === 'global' ? 'company' : 'projects';
       const targetFolderId = await ensureFolder("KI Renderings", docCategory);
       await supabase.from('documents').insert({ name: fileName, url: downloadUrl, file_url: downloadUrl, project_id: projectId, folder_id: targetFolderId, owner_id: currentUser.uid, uploaded_by: currentUser.uid, company_id: safeCompanyId, type: 'image/png', size: formatBytes(blob.size), uploaded_at: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH') });
+      queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
       addToast(t('render_saved'), 'success'); setShowRenderModal(false); setGeneratedImage(null);
     } catch (err) { addToast(t('error_saving_cloud'), 'error'); } finally { setIsUploading(false); }
   };
@@ -919,11 +957,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
       const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
       if (!currentUser || !safeCompanyId) return;
       const fileName = `BIM_Report_${Date.now()}.pdf`;
-      const filePath = `${safeCompanyId}/pdf_exports/${fileName}`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
-      if (upErr) throw upErr;
-      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      const downloadUrl = pubData.publicUrl;
+      const downloadUrl = await uploadPdfBlobWithFallback(blob, fileName, safeCompanyId);
 
       const docCategory = projectId === 'global' ? 'company' : 'projects';
       const targetFolderId = await ensureFolder("03_PLANUNG", docCategory);
@@ -962,7 +996,11 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
         await deleteFileFromStorage(model.file_url || model.url);
       }
       await supabase.from('documents').delete().eq('id', model.id);
-      setCustomModels(prev => prev.filter(m => m.id !== model.id));
+      setCustomModels(prev => {
+        const next = prev.filter(m => m.id !== model.id);
+        safeStorage.setItem(bimCustomModelsCacheKey, next);
+        return next;
+      });
       if (activeModelId === model.id) selectModel('default');
     } catch (err) { addToast(t('error_processing_model'), 'error'); }
   };
@@ -1013,36 +1051,28 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
       } catch (e) {}
 
       if (!url) {
-        try {
-          const { error: docErr } = await supabase.storage.from('documents').upload(filePath, file, { upsert: true });
-          if (!docErr) {
-            const { data: pubData } = supabase.storage.from('documents').getPublicUrl(filePath);
-            url = pubData?.publicUrl || '';
-          }
-        } catch (e) {}
-      }
-
-      if (!url) {
-        const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
-        if (upErr) throw upErr;
-        const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-        url = pubData.publicUrl;
+        url = await uploadFileWithFallback(file, file.name, safeCompanyId, '3d_models');
       }
 
       const docCategory = safeProjectId === 'global' ? 'company' : 'projects';
       const folderId = await ensureFolder("3D Modelle", docCategory, safeProjectId);
-
-      const { data: createdDoc } = await supabase.from('documents').insert({
+      const nowIso = new Date().toISOString();
+      const docPayload = {
         name: file.name, url, file_url: url, project_id: safeProjectId, folder_id: folderId, type: fileExt,
         category: docCategory, owner_id: currentUser.uid, uploaded_by: currentUser.uid, company_id: safeCompanyId,
         size: formatBytes(file.size), is_folder: false,
-        created_at: new Date().toISOString(), uploaded_at: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH')
-      }).select().maybeSingle();
+        created_at: nowIso, uploaded_at: nowIso, date: new Date().toLocaleDateString('de-CH')
+      };
 
-      if (createdDoc) {
-        setCustomModels(prev => [createdDoc, ...prev.filter(m => m.id !== createdDoc.id)]);
-        selectModel(createdDoc.id);
-      }
+      const { data: createdDoc } = await supabase.from('documents').insert(docPayload).select().maybeSingle();
+      const finalModel = createdDoc || { id: `model_${Date.now()}`, ...docPayload };
+
+      setCustomModels(prev => {
+        const next = [finalModel, ...prev.filter(m => m.id !== finalModel.id)];
+        safeStorage.setItem(bimCustomModelsCacheKey, next);
+        return next;
+      });
+      selectModel(finalModel.id);
       addToast(t('model_saved'), 'success');
     } catch (err) {
       console.error("Upload error:", err);

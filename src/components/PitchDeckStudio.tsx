@@ -1726,16 +1726,7 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
         localFallbackUrl = converted.dataUrl;
       }
 
-      const fileExt = fileToUpload.name.split('.').pop() || 'jpg';
-      const filePath = `${safeCompanyId}/documents/${Date.now()}.${fileExt}`;
-      const { error: uploadErr } = await supabase.storage.from('documents').upload(filePath, fileToUpload, { upsert: true });
-      let downloadUrl = '';
-      if (!uploadErr) {
-        const { data: urlData } = supabase.storage.from('documents').getPublicUrl(filePath);
-        downloadUrl = urlData.publicUrl;
-      } else if (localFallbackUrl) {
-        downloadUrl = localFallbackUrl;
-      }
+      const downloadUrl = await uploadFileWithFallback(fileToUpload, fileToUpload.name, safeCompanyId, 'documents') || localFallbackUrl;
 
       const newDoc = {
         name: isPdf ? `${file.name.replace(/\.pdf$/i, '')} (PDF-Seite 1)` : file.name,
@@ -1773,18 +1764,7 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
     addToast('Video wird verarbeitet...', 'info');
 
     try {
-      const fileExt = file.name.split('.').pop() || 'mp4';
-      const filePath = `${safeCompanyId}/videos/${Date.now()}.${fileExt}`;
-      const { error: uploadErr } = await supabase.storage.from('documents').upload(filePath, file, { upsert: true });
-      let downloadUrl = '';
-      if (!uploadErr) {
-        const { data: urlData } = supabase.storage.from('documents').getPublicUrl(filePath);
-        downloadUrl = urlData?.publicUrl || '';
-      }
-
-      if (!downloadUrl) {
-        downloadUrl = URL.createObjectURL(file);
-      }
+      const downloadUrl = await uploadFileWithFallback(file, file.name, safeCompanyId, 'videos') || URL.createObjectURL(file);
 
       if (target === 'hero') {
         setProposalHeroVideoUrl(downloadUrl);
@@ -2065,20 +2045,8 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
     addToast(`${file.name} wird hochgeladen...`, 'info');
 
     try {
-      const fileExt = file.name.split('.').pop() || (mediaType === 'video' ? 'mp4' : mediaType === 'image' ? 'png' : mediaType === 'website' ? 'html' : 'pdf');
       const folder = mediaType === 'video' ? 'videos' : (mediaType === 'image' ? 'images' : mediaType === 'website' ? 'websites' : 'documents');
-      const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-      const filePath = `${safeCompanyId}/${folder}/${Date.now()}_${safeName}`;
-      
-      const { error: uploadErr } = await supabase.storage.from('documents').upload(filePath, file, { upsert: true });
-      let downloadUrl = '';
-      if (!uploadErr) {
-        const { data: urlData } = supabase.storage.from('documents').getPublicUrl(filePath);
-        downloadUrl = urlData?.publicUrl || '';
-      }
-      if (!downloadUrl) {
-        downloadUrl = URL.createObjectURL(file);
-      }
+      const downloadUrl = await uploadFileWithFallback(file, file.name, safeCompanyId, folder) || URL.createObjectURL(file);
 
       if (mediaType === 'video') {
         setProposalHeroVideoUrl(downloadUrl);
@@ -8848,16 +8816,7 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                                     setIsUploadingLegalDoc(true);
                                     try {
                                       const safeCompanyId = currentUser?.companyId || 'company-default';
-                                      const filePath = `legal_docs/${safeCompanyId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-                                      let uploadedUrl = '';
-                                      if (supabase) {
-                                        const { data, error } = await supabase.storage.from('documents').upload(filePath, file, { upsert: true });
-                                        if (!error && data) {
-                                          const { data: publicUrlData } = supabase.storage.from('documents').getPublicUrl(data.path);
-                                          uploadedUrl = publicUrlData.publicUrl;
-                                        }
-                                      }
-                                      if (!uploadedUrl) uploadedUrl = URL.createObjectURL(file);
+                                      const uploadedUrl = await uploadFileWithFallback(file, file.name, safeCompanyId, 'legal_docs') || URL.createObjectURL(file);
 
                                       setProposalLegalDocs(prev => prev.map((d, i) => i === dIdx ? { ...d, name: file.name, url: uploadedUrl, size: `${Math.round(file.size / 1024)} KB` } : d));
                                       addToast(`Dokument "${file.name}" hochgeladen!`, 'success');

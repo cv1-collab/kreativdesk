@@ -20,7 +20,7 @@ import { supabase } from '../lib/supabase';
 import { queryClient } from '../lib/queryClient';
 import { DOCUMENTS_QUERY_KEY } from '../hooks/queries/useDocumentsQuery';
 import { safeStorage } from '../utils/safeStorage';
-import { uploadFileWithFallback } from '../utils/cloudStorageHelper';
+import { uploadFileWithFallback, uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 import { isPdfFile, convertPdfPageToImage } from '../utils/pdfToImageHelper';
 
 fal.config({
@@ -2244,11 +2244,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
     if (!currentUser || !safeCompanyId) return;
     try {
       const fileName = `Whiteboard_${(activeProject?.name || 'Unbenannt').replace(/\.[^/.]+$/, "")}_${Date.now()}.pdf`;
-      const filePath = `${safeCompanyId}/documents/${currentUser.uid}/${fileName}`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
-      if (upErr) throw upErr;
-      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      const downloadUrl = pubData.publicUrl;
+      const downloadUrl = await uploadPdfBlobWithFallback(blob, fileName, safeCompanyId);
 
       const docCategory = !activeProject?.id || activeProject?.id === 'global' ? 'company' : 'projects';
       const targetFolderId = await ensureFolder("Whiteboards", docCategory);
@@ -2274,15 +2270,9 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
           if (!dataUrl) throw new Error("Konnte Bild nicht erstellen");
           
           const fileName = `Whiteboard_Skizze_${new Date().getTime()}.png`;
-          const filePath = `${safeCompanyId}/documents/${currentUser.uid}/${fileName}`;
-          
           const fetchRes = await fetch(dataUrl); 
           const blob = await fetchRes.blob();
-          
-          const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
-          if (upErr) throw upErr;
-          const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-          const downloadUrl = pubData.publicUrl;
+          const downloadUrl = await uploadFileWithFallback(blob, fileName, safeCompanyId, 'whiteboard_sketches') || dataUrl;
           
           let targetFolderId = '';
           const cleanProjectId = (projectId && projectId !== 'global') ? projectId : null;
@@ -2376,15 +2366,15 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
     try {
       setTimeout(async () => {
         const uri = getCanvasDataUrl(2, 'image/jpeg');
-        if (!uri) return;
+        if (!uri) {
+          setIsSending(false);
+          return;
+        }
         
         const fileName = `PitchDeck_Slide_${Date.now()}.jpg`;
-        const filePath = `${safeCompanyId}/whiteboardExports/${currentUser.uid}/${fileName}`;
         const fetchRes = await fetch(uri); 
         const blob = await fetchRes.blob();
-        await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
-        const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-        const downloadUrl = pubData.publicUrl;
+        const downloadUrl = await uploadFileWithFallback(blob, fileName, safeCompanyId, 'whiteboardExports') || uri;
 
         const id = `wb-${Date.now()}`;
         const resolvedProjectId = propProjectId || routeProjectId || activeProjectId;
@@ -2400,8 +2390,9 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
           });
         } catch (wbErr) {}
 
+        let insertedSlideId = `slide-${Date.now()}`;
         try {
-          await (supabase.from('slides') as any).insert({
+          const { data: insertedSlide } = await (supabase.from('slides') as any).insert({
             project_id: targetProjectId,
             company_id: safeCompanyId,
             title: 'Whiteboard: ' + exportTitle,
@@ -2409,8 +2400,24 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
             image_url: downloadUrl,
             description: 'Exportiert aus dem Projekt-Whiteboard',
             created_at: new Date().toISOString()
-          });
+          }).select('id').maybeSingle();
+          if (insertedSlide?.id) insertedSlideId = insertedSlide.id;
         } catch (slideErr) {}
+
+        try {
+          const slideCacheKey = `pitch_deck_slides_${safeCompanyId}_${targetProjectId || 'global'}`;
+          const existingSlides = safeStorage.getItem<any[]>(slideCacheKey, []) || [];
+          safeStorage.setItem(slideCacheKey, [
+            ...existingSlides,
+            {
+              id: insertedSlideId,
+              title: 'Whiteboard: ' + exportTitle,
+              category: 'Konzept & Ideen',
+              imageUrl: downloadUrl,
+              description: 'Exportiert aus dem Projekt-Whiteboard'
+            }
+          ]);
+        } catch (cacheErr) {}
 
         try {
           await supabase.from('documents').insert({

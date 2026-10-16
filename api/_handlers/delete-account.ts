@@ -109,6 +109,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await supabaseAdmin.from('profiles').delete().eq('id', uid);
     await supabaseAdmin.auth.admin.deleteUser(uid);
 
+    try {
+      await supabaseAdmin.from('audit_logs').insert({
+        action: 'account.deleted',
+        user_id: uid,
+        user_email: userEmail || 'deleted-user',
+        company_id: companyId || 'system',
+        details: {
+          role: role || 'employee',
+          cascadedWorkspaceDelete: Boolean((role === 'owner' || role === 'Owner') && companyId)
+        },
+        created_at: new Date().toISOString()
+      });
+    } catch {}
+
     return res.status(200).json({ success: true, message: 'Account and associated data deleted successfully.' });
 
   } catch (error: any) {
