@@ -166,11 +166,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       try {
         await supabaseAdmin.from('audit_logs').insert({
-          company_id: null,
+          company_id: 'global_master',
           user_id: requestingUser.id,
-          user_email: requestingUser.email || 'Admin',
           action: 'USER_REMOVED',
-          details: { title: `Benutzer gelöscht: ${userEmail || userId}`, targetUserId: userId, targetEmail: userEmail },
+          details: { title: `Benutzer gelöscht: ${userEmail || userId}`, targetUserId: userId, targetEmail: userEmail, userEmail: requestingUser.email || 'Admin' },
           created_at: new Date().toISOString()
         });
       } catch (_) {}
@@ -186,11 +185,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       try {
         await supabaseAdmin.from('audit_logs').insert({
-          company_id: null,
+          company_id: 'global_master',
           user_id: requestingUser.id,
-          user_email: requestingUser.email || 'Admin',
           action: 'USER_REMOVED',
-          details: { title: `${deletedCount} Benutzer gelöscht (Batch)`, deletedCount },
+          details: { title: `${deletedCount} Benutzer gelöscht (Batch)`, deletedCount, userEmail: requestingUser.email || 'Admin' },
           created_at: new Date().toISOString()
         });
       } catch (_) {}
@@ -267,11 +265,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (deletedEmails.length > 0) {
       try {
         await supabaseAdmin.from('audit_logs').insert({
-          company_id: null,
+          company_id: 'global_master',
           user_id: requestingUser.id,
-          user_email: requestingUser.email || 'Admin',
           action: 'USER_REMOVED',
-          details: { title: `${deletedEmails.length} Test-Nutzer bereinigt`, deletedEmails },
+          details: { title: `${deletedEmails.length} Test-Nutzer bereinigt`, deletedEmails, userEmail: requestingUser.email || 'Admin' },
           created_at: new Date().toISOString()
         });
       } catch (_) {}

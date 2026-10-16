@@ -158,7 +158,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
             const assignedProjectIds = new Set<string>();
             const userEmailLower = (currentUser.email || '').toLowerCase().trim();
             const [{ data: mems }, { data: crmRows }] = await Promise.all([
-              supabase.from('project_members').select('project_id, user_id, user_email').eq('company_id', safeCompanyId),
+              supabase.from('project_members').select('project_id, user_id, project_role').eq('company_id', safeCompanyId),
               userEmailLower
                 ? supabase.from('company_users').select('id, user_id, email, notes').eq('company_id', safeCompanyId).ilike('email', userEmailLower)
                 : Promise.resolve({ data: [] as any[] })
@@ -183,8 +183,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
             (mems || []).forEach((m: any) => {
               const matchesId = m.user_id && myIds.has(String(m.user_id));
-              const matchesEmail = userEmailLower && m.user_email && String(m.user_email).toLowerCase().trim() === userEmailLower;
-              if ((matchesId || matchesEmail) && m.project_id) {
+              if (matchesId && m.project_id) {
                 assignedProjectIds.add(String(m.project_id));
               }
             });

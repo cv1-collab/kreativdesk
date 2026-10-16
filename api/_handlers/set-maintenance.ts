@@ -41,12 +41,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     try {
       await supabaseAdmin.from('audit_logs').insert({
-        company_id: (user as any).companyId || null,
+        company_id: (user as any).companyId || 'global_master',
         user_id: user.id || 'admin',
-        user_email: user.email || 'Admin',
         action: isMaintenance ? 'SECURITY_ALERT' : 'SETTINGS_UPDATED',
         details: {
           title: isMaintenance ? 'Wartungsmodus (Lockdown) aktiviert' : 'Wartungsmodus deaktiviert (System Live)',
+          userEmail: user.email || 'Admin',
           is_maintenance: !!isMaintenance
         },
         created_at: new Date().toISOString()

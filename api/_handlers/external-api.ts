@@ -94,9 +94,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           await supabaseAdmin.from('audit_logs').insert({
             company_id: companyId,
             user_id: String(authUser.id || 'api'),
-            user_email: authUser.email || 'Open REST API',
             action,
-            details: { title, source: 'Open REST API', ...meta },
+            details: { title, source: 'Open REST API', userEmail: authUser.email || 'Open REST API', ...meta },
             created_at: now
           });
         } catch (_) {}

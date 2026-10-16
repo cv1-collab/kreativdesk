@@ -113,9 +113,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await supabaseAdmin.from('audit_logs').insert({
         action: 'account.deleted',
         user_id: uid,
-        user_email: userEmail || 'deleted-user',
         company_id: companyId || 'system',
         details: {
+          userEmail: userEmail || 'deleted-user',
           role: role || 'employee',
           cascadedWorkspaceDelete: Boolean((role === 'owner' || role === 'Owner') && companyId)
         },

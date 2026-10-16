@@ -363,13 +363,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 .update({ user_id: user.id })
                 .eq('user_id', existingCu.id);
             }
-            if (user.email) {
-              await supabase
-                .from('project_members')
-                .update({ user_id: user.id })
-                .eq('company_id', targetCompanyId)
-                .ilike('user_email', user.email);
-            }
             await syncCompanySeats(targetCompanyId);
           }
         } catch (cuErr) {

@@ -86,32 +86,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         resolvedCompanyId = (prop as any)?.company_id;
       }
       if (resolvedCompanyId) {
-        const { data: comp } = await supabaseAdmin
-          .from('companies')
-          .select('webhook_url')
-          .eq('id', resolvedCompanyId)
+        const { data: whDoc } = await supabaseAdmin
+          .from('documents')
+          .select('url, file_url')
+          .eq('category', 'system_config')
+          .eq('company_id', resolvedCompanyId)
+          .eq('name', `kreativdesk_webhooks_${resolvedCompanyId}`)
+          .limit(1)
           .maybeSingle();
-        targetUrl = (comp as any)?.webhook_url;
-
-        if (!targetUrl) {
-          const { data: whDoc } = await supabaseAdmin
-            .from('documents')
-            .select('url, file_url')
-            .eq('category', 'system_config')
-            .eq('company_id', resolvedCompanyId)
-            .eq('name', `kreativdesk_webhooks_${resolvedCompanyId}`)
-            .limit(1)
-            .maybeSingle();
-          const rawWh = whDoc?.url || whDoc?.file_url;
-          if (rawWh) {
-            try {
-              const parsed = JSON.parse(rawWh);
-              if (Array.isArray(parsed)) {
-                const activeEp = parsed.find((ep: any) => ep && ep.active !== false && typeof ep.url === 'string');
-                if (activeEp?.url) targetUrl = activeEp.url;
-              }
-            } catch (_) {}
-          }
+        const rawWh = whDoc?.url || whDoc?.file_url;
+        if (rawWh) {
+          try {
+            const parsed = JSON.parse(rawWh);
+            if (Array.isArray(parsed)) {
+              const activeEp = parsed.find((ep: any) => ep && ep.active !== false && typeof ep.url === 'string');
+              if (activeEp?.url) targetUrl = activeEp.url;
+            }
+          } catch (_) {}
         }
 
         // Ensure in-app notification & audit log are persisted via supabaseAdmin when client is unauthenticated and verifiedProp matched
@@ -137,10 +128,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               await supabaseAdmin.from('audit_logs').insert([{
                 company_id: resolvedCompanyId,
                 user_id: 'client-portal',
-                user_email: signerName,
                 action: 'PROPOSAL_ACCEPTED',
                 details: {
                   title: `Offerte unterzeichnet: ${propTitle}`,
+                  userEmail: signerName,
                   signer: signerName,
                   amount: totalText,
                   proposalId
@@ -164,10 +155,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               await supabaseAdmin.from('audit_logs').insert([{
                 company_id: resolvedCompanyId,
                 user_id: 'client-portal',
-                user_email: senderLabel,
                 action: 'SETTINGS_UPDATED',
                 details: {
                   title: `Kunden-Rückfrage zu "${propTitle}"`,
+                  userEmail: senderLabel,
                   message: String(rest.question || rest.message).slice(0, 500),
                   proposalId
                 },

@@ -21,7 +21,7 @@ export const offboardProject = async (projectId: string, companyId?: string) => 
     await supabase.from('documents').delete().eq('category', 'system_config').in('name', [`schedule_${projectId}`, `finance_${projectId}`]);
     try { await supabase.from('smart_proposals').delete().eq('project_id', projectId); } catch {}
     try { await supabase.from('project_schedules').delete().eq('id', projectId); } catch {}
-    try { await (supabase.from('chat_messages') as any).delete().eq('project_id', projectId); } catch {}
+    try { await supabase.from('chat_messages').delete().eq('call_id', projectId); } catch {}
     try { await supabase.from('audio_notes').delete().eq('project_id', projectId); } catch {}
     try { await supabase.from('whiteboard_exports').delete().eq('project_id', projectId); } catch {}
     try { await supabase.from('site_data').delete().eq('project_id', projectId); } catch {}

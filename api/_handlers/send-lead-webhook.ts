@@ -76,9 +76,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .eq('category', 'system_config')
         .eq('name', `kreativdesk_webhooks_${companyId}`)
         .maybeSingle();
-      if (doc?.url) {
+      const rawDocUrl = doc?.url || doc?.file_url;
+      if (rawDocUrl) {
         try {
-          const parsed = JSON.parse(doc.url);
+          const parsed = JSON.parse(rawDocUrl);
           if (Array.isArray(parsed) && parsed[0]?.url) webhookUrl = parsed[0].url;
         } catch (e) {}
       }

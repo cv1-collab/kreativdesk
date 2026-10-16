@@ -212,9 +212,9 @@ export default async function handler(req: any, res: any) {
       await supabaseAdmin.from('audit_logs').insert({
         action: isInvite ? 'invite.redeemed' : 'company.registered',
         user_id: uid,
-        user_email: verifiedEmail,
         company_id: assignedCompanyId || 'system',
         details: {
+          userEmail: verifiedEmail,
           role: assignedRole,
           plan,
           companyName: isInvite ? undefined : companyName,

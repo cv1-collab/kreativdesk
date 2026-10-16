@@ -405,20 +405,24 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
       const slideTitle = `3D BIM Modell: ${activeProject?.name || 'Projekt'}`;
       const slideDesc = `3D-Perspektive & Mängel-Audit. Erfasste Pins: ${defectPins.length}`;
 
+      const cacheKey = `pitch_deck_slides_${safeCompanyId}_${targetProjectId || 'global'}`;
+      const studioCacheKey = `pitch_deck_slides_${targetProjectId || 'default'}`;
+      const existingSlides = safeStorage.getItem<any[]>(cacheKey, []) || [];
+
       try {
         await supabase.from('slides').insert({
           project_id: targetProjectId,
           company_id: safeCompanyId,
           title: slideTitle,
-          category: '3D BIM & Architektur',
+          subtitle: '3D BIM & Architektur',
+          content: slideDesc,
+          layout: 'image-focus',
           image_url: finalImageUrl,
-          description: slideDesc,
+          order_index: existingSlides.length,
           created_at: new Date().toISOString()
-        } as any);
+        });
       } catch (_) {}
 
-      const cacheKey = `pitch_deck_slides_${safeCompanyId}_${targetProjectId || 'global'}`;
-      const existingSlides = safeStorage.getItem<any[]>(cacheKey, []) || [];
       const localSlide = {
         id: slideId,
         title: slideTitle,
@@ -429,11 +433,14 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
         layout: 'image-focus',
         imageUrl: finalImageUrl,
         image_url: finalImageUrl,
+        order_index: existingSlides.length,
         project_id: targetProjectId,
         company_id: safeCompanyId,
         created_at: new Date().toISOString()
       };
       safeStorage.setItem(cacheKey, [...existingSlides, localSlide]);
+      const studioExisting = safeStorage.getItem<any[]>(studioCacheKey, []) || [];
+      safeStorage.setItem(studioCacheKey, [...studioExisting, localSlide]);
 
       addToast('3D BIM Ansicht als Folie im Pitch Deck gespeichert!', 'success');
     } catch (err) {

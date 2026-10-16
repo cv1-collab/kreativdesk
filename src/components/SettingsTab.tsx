@@ -2157,17 +2157,10 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
         }
       }
 
-      // Update profiles if table/columns exist
-      try {
-        await (supabase.from('profiles').update({ photo_url: photoUrl, avatar: photoUrl } as any) as any).eq('id', currentUser.uid);
-      } catch (profErr) {
-        console.warn('Profiles table update warning:', profErr);
-      }
-
-      // Update company_users
+      // Update company_users (which holds photo_url in PostgreSQL schema)
       if (currentUser?.email) {
         try {
-          let cuUpd = supabase.from('company_users').update({ photo_url: photoUrl, avatar: photoUrl } as any).ilike('email', currentUser.email);
+          let cuUpd = supabase.from('company_users').update({ photo_url: photoUrl }).ilike('email', currentUser.email);
           if (safeCompanyId) cuUpd = cuUpd.eq('company_id', safeCompanyId);
           await cuUpd;
         } catch (cuErr) {
@@ -2197,15 +2190,10 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
       } catch (authErr) {
         console.warn('Auth metadata clear warning:', authErr);
       }
-      try {
-        await (supabase.from('profiles').update({ photo_url: null, avatar: null } as any) as any).eq('id', currentUser.uid);
-      } catch (profErr) {
-        console.warn('Profiles clear warning:', profErr);
-      }
       if (currentUser?.email) {
         try {
           const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
-          let cuClr = supabase.from('company_users').update({ photo_url: null, avatar: null } as any).ilike('email', currentUser.email);
+          let cuClr = supabase.from('company_users').update({ photo_url: null }).ilike('email', currentUser.email);
           if (safeCompanyId) cuClr = cuClr.eq('company_id', safeCompanyId);
           await cuClr;
         } catch (cuErr) {

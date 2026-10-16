@@ -247,14 +247,18 @@ function getDeterministicUUID(str: string): string {
             name: m.name,
             role: 'member',
             company_id: realCompanyId,
-            photo_url: m.photoURL || m.avatar || '',
             created_at: new Date().toISOString()
-          } as any);
+          });
         } else {
           await supabase.from('profiles').update({
-            photo_url: m.photoURL || m.avatar || '',
             name: m.name
-          } as any).eq('id', demoUserId);
+          }).eq('id', demoUserId);
+        }
+
+        if (m.email && (m.photoURL || m.avatar)) {
+          await supabase.from('company_users').update({
+            photo_url: m.photoURL || m.avatar || ''
+          }).eq('company_id', realCompanyId).ilike('email', m.email);
         }
 
         // Add to project_members

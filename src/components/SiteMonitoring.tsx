@@ -247,6 +247,30 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
     if (!currentProjectId) return;
     const savedLoc = safeStorage.getString(`project_location_${currentProjectId}`, '');
     setCustomLocation(savedLoc ? savedLoc : null);
+
+    // Cloud-Sync aus site_data Tabelle laden
+    if (!currentProjectId.startsWith('demo-')) {
+      supabase
+        .from('site_data')
+        .select('data')
+        .eq('id', `site_monitoring_${currentProjectId}`)
+        .maybeSingle()
+        .then(({ data: row }) => {
+          const cloudData = row?.data as Record<string, any> | null;
+          if (!cloudData) return;
+          if (cloudData.links && typeof cloudData.links === 'object') {
+            setCustomLinks((prev) => {
+              const merged = { ...prev, ...cloudData.links };
+              safeStorage.setItem(`camera_links_${currentProjectId}`, merged);
+              return merged;
+            });
+          }
+          if (typeof cloudData.siteLocation === 'string' && cloudData.siteLocation.trim()) {
+            setCustomLocation(cloudData.siteLocation.trim());
+            safeStorage.setItem(`project_location_${currentProjectId}`, cloudData.siteLocation.trim());
+          }
+        }, () => {});
+    }
   }, [currentProjectId]);
   const [weatherData, setWeatherData] = useState<{temp: number, wind: number, rain: number, name: string} | null>(null);
   const [isFetchingWeather, setIsFetchingWeather] = useState(false);
@@ -345,18 +369,16 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
       setCustomLinks(nextLinks);
       safeStorage.setItem(`camera_links_${activeProject.id}`, nextLinks);
 
-      const columnMap: Record<string, string> = {
-        cam1Url: 'cam1_url',
-        cam2Url: 'cam2_url',
-        droneUrl: 'drone_url',
-        logisticsUrl: 'logistics_url',
-        accessUrl: 'access_url'
-      };
-      const dbCol = columnMap[linkModal.type] || linkModal.type;
-
-      const { error } = await supabase.from('projects').update({
-        [dbCol]: linkModal.url
-      } as any).eq('id', activeProject.id);
+      const safeCompanyId = currentUser?.companyId || (activeProject as any)?.company_id || null;
+      const { error } = await supabase.from('site_data').upsert({
+        id: `site_monitoring_${activeProject.id}`,
+        company_id: safeCompanyId,
+        project_id: activeProject.id,
+        data: {
+          links: nextLinks,
+          siteLocation: effectiveLocation || ''
+        }
+      });
 
       if (error) {
         console.warn("Link Save Supabase fallback to local cache:", error);
@@ -422,9 +444,16 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
       setCustomLocation(trimmedLoc);
       safeStorage.setItem(`project_location_${activeProject.id}`, trimmedLoc);
 
-      const { error } = await supabase.from('projects').update({
-        site_location: trimmedLoc
-      } as any).eq('id', activeProject.id);
+      const safeCompanyId = currentUser?.companyId || (activeProject as any)?.company_id || null;
+      await supabase.from('site_data').upsert({
+        id: `site_monitoring_${activeProject.id}`,
+        company_id: safeCompanyId,
+        project_id: activeProject.id,
+        data: {
+          links: customLinks,
+          siteLocation: trimmedLoc
+        }
+      });
 
       if (typeof projectCtx?.fetchProjects === 'function') {
         projectCtx.fetchProjects();

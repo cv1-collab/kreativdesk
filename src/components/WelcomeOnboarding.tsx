@@ -74,11 +74,31 @@ export default function WelcomeOnboarding({ currentUser, onComplete }: { current
           .from('profiles')
           .update({
             name,
-            photo_url: photoURL,
-            avatar: photoURL,
-            has_completed_onboarding: true
-          } as any)
+            has_completed_onboarding: true,
+            updated_at: new Date().toISOString()
+          })
           .eq('id', userId);
+
+        try {
+          await supabase.auth.updateUser({
+            data: {
+              full_name: name,
+              name,
+              ...(photoURL ? { avatar_url: photoURL, photoURL } : {})
+            }
+          });
+        } catch (_) {}
+
+        try {
+          await supabase
+            .from('company_users')
+            .update({
+              name,
+              ...(photoURL ? { photo_url: photoURL } : {})
+            })
+            .eq('user_id', userId);
+        } catch (_) {}
+
         updateCurrentUser({ name, photoURL, hasCompletedOnboarding: true });
         safeStorage.setItem(`onboarding_completed_${userId}`, 'true');
         if (photoURL) safeStorage.setItem(`avatar_${userId}`, photoURL);

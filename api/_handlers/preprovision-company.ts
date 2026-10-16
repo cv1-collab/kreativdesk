@@ -138,10 +138,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await supabaseAdmin.from('audit_logs').insert({
         company_id: companyId,
         user_id: user.id,
-        user_email: user.email || 'Admin',
         action: 'SETTINGS_UPDATED',
         details: {
           title: `B2B Workspace provisioniert: ${companyName}`,
+          userEmail: user.email || 'Admin',
           ceoEmail,
           plan: effectivePlan,
           maxSeats: effectiveMaxSeats

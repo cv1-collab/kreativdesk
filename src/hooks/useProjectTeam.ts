@@ -223,17 +223,22 @@ export function useProjectTeam() {
   const addCompanyUser = useCallback(async (safeCompanyId: string, userData?: any) => {
     if (safeCompanyId && userData && (userData.name || userData.email)) {
       try {
+        const meta = {
+          department: userData.department || '',
+          hourlyRate: Number(userData.hourlyRate ?? userData.hourly_rate ?? 0) || 0,
+          projectRoles: userData.projectRoles || {}
+        };
+        const notesWithMeta = `${userData.notes || ''}\n__CRM_META__:${JSON.stringify(meta)}`.trim();
         await supabase.from('company_users').insert({
           company_id: safeCompanyId,
           name: userData.name || userData.email?.split('@')[0] || 'Teammitglied',
           email: (userData.email || '').toLowerCase().trim(),
           phone: userData.phone || '',
           role: userData.role || 'employee',
-          department: userData.department || '',
-          hourly_rate: Number(userData.hourlyRate ?? userData.hourly_rate ?? 0) || null,
           status: userData.status || 'team',
+          notes: notesWithMeta,
           created_at: new Date().toISOString()
-        } as any);
+        });
         await syncCompanySeats(safeCompanyId);
       } catch (e) {
         console.error('Fehler beim Hinzufügen des Benutzers:', e);

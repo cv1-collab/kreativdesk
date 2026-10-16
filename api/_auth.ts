@@ -66,15 +66,6 @@ export async function verifyAuth(req: any, _res?: any) {
       let resolvedCompanyId: string | null = (!keyErr && keyRecord?.company_id) ? keyRecord.company_id : null;
       let resolvedKeyName: string = keyRecord?.name || 'API Integration';
 
-      if (keyRecord?.id) {
-        // Update last_used asynchronously
-        supabaseAdmin
-          .from('api_keys')
-          .update({ last_used: new Date().toISOString() })
-          .eq('id', keyRecord.id)
-          .then(() => {}, () => {});
-      }
-
       if (!resolvedCompanyId) {
         const { data: fallbackDocs } = await supabaseAdmin
           .from('documents')

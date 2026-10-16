@@ -147,9 +147,9 @@ export default async function handler(req: any, res: any) {
           await supabaseAdmin.from('audit_logs').insert({
             action: 'subscription.checkout_completed',
             user_id: uid,
-            user_email: session.customer_details?.email || session.customer_email || 'stripe-customer',
             company_id: profile?.company_id || 'system',
             details: {
+              userEmail: session.customer_details?.email || session.customer_email || 'stripe-customer',
               plan: planName,
               amount: paidAmount,
               currency: txCurrency,
@@ -195,9 +195,9 @@ export default async function handler(req: any, res: any) {
           await supabaseAdmin.from('audit_logs').insert({
             action: 'subscription.canceled',
             user_id: profile.id,
-            user_email: profile.email || 'stripe-customer',
             company_id: profile.company_id || 'system',
             details: {
+              userEmail: profile.email || 'stripe-customer',
               previousPlan: profile.plan || 'Pro',
               stripeCustomerId: customerId,
               subscriptionId: subscription.id
@@ -276,9 +276,9 @@ export default async function handler(req: any, res: any) {
           await supabaseAdmin.from('audit_logs').insert({
             action: 'subscription.updated',
             user_id: profile.id,
-            user_email: profile.email || 'stripe-customer',
             company_id: profile.company_id || 'system',
             details: {
+              userEmail: profile.email || 'stripe-customer',
               plan: planName,
               status: subscription.status,
               maxSeats,
@@ -335,9 +335,9 @@ export default async function handler(req: any, res: any) {
             await supabaseAdmin.from('audit_logs').insert({
               action: 'subscription.renewed',
               user_id: profile.id,
-              user_email: profile.email || 'stripe-customer',
               company_id: profile.company_id || 'system',
               details: {
+                userEmail: profile.email || 'stripe-customer',
                 plan: planName,
                 amount: paidAmount,
                 currency: txCurrency,

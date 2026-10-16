@@ -135,10 +135,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await supabaseAdmin.from('audit_logs').insert({
         company_id: targetCompanyId,
         user_id: 'public-lead',
-        user_email: safeEmail || safePhone || 'Public Lead',
         action: 'LEAD_CREATED',
         details: {
           title: `Neue Anfrage: ${fullName}`,
+          userEmail: safeEmail || safePhone || 'Public Lead',
           company: safeCompany,
           plan: safePlan,
           source: leadSource

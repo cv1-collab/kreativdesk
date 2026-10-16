@@ -279,17 +279,17 @@ export default function Settings() {
         console.warn('Auth metadata update warning:', authErr);
       }
 
-      // Update profiles if columns exist
+      // Update profiles timestamp
       try {
-        await supabase.from('profiles').update({ photo_url: photoURL, avatar: photoURL, updated_at: new Date().toISOString() } as any).eq('id', currentUser.uid);
+        await supabase.from('profiles').update({ updated_at: new Date().toISOString() }).eq('id', currentUser.uid);
       } catch (profErr) {
         console.warn('Profiles table update warning:', profErr);
       }
 
-      // Update company_users
+      // Update company_users photo_url
       if (currentUser?.email) {
         try {
-          await supabase.from('company_users').update({ photo_url: photoURL, avatar: photoURL } as any).eq('email', currentUser.email);
+          await supabase.from('company_users').update({ photo_url: photoURL }).ilike('email', currentUser.email);
         } catch (cuErr) {
           console.warn('company_users update warning:', cuErr);
         }
@@ -318,13 +318,13 @@ export default function Settings() {
         console.warn('Auth metadata clear warning:', authErr);
       }
       try {
-        await supabase.from('profiles').update({ photo_url: null, avatar: null, updated_at: new Date().toISOString() } as any).eq('id', currentUser.uid);
+        await supabase.from('profiles').update({ updated_at: new Date().toISOString() }).eq('id', currentUser.uid);
       } catch (profErr) {
         console.warn('Profiles table clear warning:', profErr);
       }
       if (currentUser?.email) {
         try {
-          await supabase.from('company_users').update({ photo_url: null, avatar: null } as any).eq('email', currentUser.email);
+          await supabase.from('company_users').update({ photo_url: null }).ilike('email', currentUser.email);
         } catch (cuErr) {
           console.warn('company_users clear warning:', cuErr);
         }
