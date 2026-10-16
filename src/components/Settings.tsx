@@ -12,6 +12,7 @@ import { useToast } from '../contexts/ToastContext';
 import { sanitizeUrl } from '../utils';
 import { useLanguage } from '../contexts/LanguageContext';
 import { safeStorage } from '../utils/safeStorage';
+import { uploadFileWithFallback } from '../utils/cloudStorageHelper';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 
@@ -105,10 +106,35 @@ export default function Settings() {
   const [dbData, setDbData] = useState<any>(null);
   const [isLoadingDB, setIsLoadingDB] = useState(true);
   
-  const [displayName, setDisplayName] = useState(currentUser?.displayName || '');
-  const [phone, setPhone] = useState('');
-  const [street, setStreet] = useState('');
-  const [zipCity, setZipCity] = useState('');
+  const [displayName, setDisplayName] = useState(() => {
+    if (currentUser?.uid) {
+      const cachedProfile = safeStorage.getItem<any>(`user_profile_${currentUser.uid}`, null);
+      if (cachedProfile?.name) return cachedProfile.name;
+    }
+    return currentUser?.displayName || '';
+  });
+  const [phone, setPhone] = useState(() => {
+    if (!currentUser?.uid) return '';
+    const cachedContact = safeStorage.getItem<any>(`user_contact_${currentUser.uid}`, null);
+    const cachedProfile = safeStorage.getItem<any>(`user_profile_${currentUser.uid}`, null);
+    return cachedContact?.phone || cachedProfile?.phone || '';
+  });
+  const [street, setStreet] = useState(() => {
+    if (!currentUser?.uid) return '';
+    const cachedContact = safeStorage.getItem<any>(`user_contact_${currentUser.uid}`, null);
+    const cachedProfile = safeStorage.getItem<any>(`user_profile_${currentUser.uid}`, null);
+    return cachedContact?.street || cachedProfile?.street || '';
+  });
+  const [zipCity, setZipCity] = useState(() => {
+    if (!currentUser?.uid) return '';
+    const cachedContact = safeStorage.getItem<any>(`user_contact_${currentUser.uid}`, null);
+    if (cachedContact?.zipCity) return cachedContact.zipCity;
+    const cachedProfile = safeStorage.getItem<any>(`user_profile_${currentUser.uid}`, null);
+    if (cachedProfile?.zipCode || cachedProfile?.city) {
+      return `${cachedProfile.zipCode || ''} ${cachedProfile.city || ''}`.trim();
+    }
+    return '';
+  });
   
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [profileSuccess, setProfileSuccess] = useState(false);
@@ -127,6 +153,7 @@ export default function Settings() {
         const cachedProfile = safeStorage.getItem<any>(`user_profile_${currentUser.uid}`, null);
         const cachedContact = safeStorage.getItem<{ phone?: string; street?: string; zipCity?: string } | null>(`user_contact_${currentUser.uid}`, null);
         if (cachedProfile) {
+          if (cachedProfile.name) setDisplayName(cachedProfile.name);
           if (cachedProfile.phone) setPhone(cachedProfile.phone);
           if (cachedProfile.street) setStreet(cachedProfile.street);
           if (cachedProfile.zipCode || cachedProfile.city) {
@@ -243,11 +270,8 @@ export default function Settings() {
     if (!file || !currentUser) return;
     setIsUploadingPhoto(true);
     try {
-      const filePath = `avatars/${currentUser.uid}`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
-      if (upErr) throw upErr;
-      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      const photoURL = pubData.publicUrl;
+      const safeCompanyId = currentUser.companyId || currentUser.uid;
+      const photoURL = await uploadFileWithFallback(file, file.name, safeCompanyId, 'avatars');
       // Update Auth user metadata
       try {
         await supabase.auth.updateUser({ data: { avatar_url: photoURL, photoURL } });

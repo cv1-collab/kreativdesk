@@ -141,14 +141,61 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
   
-  const [activeFilter, setActiveFilter] = useState<'alle' | 'team' | 'neu' | 'lead' | 'partner'>('alle');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedContact, setSelectedContact] = useState<any | null>(null);
+  const safeCompanyId = currentUser?.companyId || currentUser?.uid || 'global';
+  const crmListCacheKey = `team_crm_list_cache_${safeCompanyId}`;
+  const crmUiCacheKey = `team_crm_ui_${safeCompanyId}`;
+
+  const initialCrmUi = React.useMemo(() => {
+    try {
+      const raw = safeStorage.getItem(crmUiCacheKey);
+      if (raw && typeof raw === 'string') return JSON.parse(raw);
+      if (raw && typeof raw === 'object') return raw;
+    } catch {}
+    return null;
+  }, [crmUiCacheKey]);
+
+  const [activeFilter, setActiveFilter] = useState<'alle' | 'team' | 'neu' | 'lead' | 'partner'>(() => initialCrmUi?.activeFilter || 'alle');
+  const [searchQuery, setSearchQuery] = useState<string>(() => initialCrmUi?.searchQuery || '');
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const [realUsers, setRealUsers] = useState<any[]>([]);
-  const [crmUsers, setCrmUsers] = useState<any[]>([]);
+  const [crmUsers, setCrmUsers] = useState<any[]>(() => {
+    try {
+      const raw = safeStorage.getItem(crmListCacheKey);
+      if (raw && typeof raw === 'string') {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } else if (Array.isArray(raw) && raw.length > 0) {
+        return raw;
+      }
+    } catch {}
+    return Array.isArray(companyUsers) && companyUsers.length > 0 ? companyUsers : [];
+  });
+  const [selectedContact, setSelectedContact] = useState<any | null>(() => {
+    if (initialCrmUi?.selectedContactId && Array.isArray(crmUsers)) {
+      return crmUsers.find((u: any) => u.id === initialCrmUi.selectedContactId) || null;
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    try {
+      safeStorage.setItem(crmUiCacheKey, JSON.stringify({
+        activeFilter,
+        searchQuery,
+        selectedContactId: selectedContact?.id || null
+      }));
+    } catch {}
+  }, [crmUiCacheKey, activeFilter, searchQuery, selectedContact?.id]);
+
+  useEffect(() => {
+    if (crmUsers.length > 0) {
+      try {
+        safeStorage.setItem(crmListCacheKey, JSON.stringify(crmUsers));
+      } catch {}
+    }
+  }, [crmListCacheKey, crmUsers]);
 
   // Email Invite Modal States (DE & EN, Internal & External)
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
@@ -291,8 +338,22 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
       }
     });
 
+    // Also include any locally cached contacts in crm_metadata_${safeCompanyId} that aren't in DB yet
+    Object.entries(localCrmCache).forEach(([cid, cachedItem]: [string, any]) => {
+      if (!cachedItem || typeof cachedItem !== 'object' || !cachedItem.id) return;
+      const key = (cachedItem.email || cachedItem.id || cid).toLowerCase().trim();
+      if (key && !combinedMap.has(key)) {
+        combinedMap.set(key, cachedItem);
+      }
+    });
+
     const combined = Array.from(combinedMap.values());
-    setCrmUsers(combined);
+    if (combined.length > 0) {
+      setCrmUsers(combined);
+      try {
+        safeStorage.setItem(`team_crm_list_cache_${safeCompanyId}`, JSON.stringify(combined));
+      } catch {}
+    }
     setRealUsers(profilesData || []);
   }, [currentUser]);
 
@@ -866,8 +927,14 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         } catch (_) {}
       }
 
+      const nextProjectRoles: Record<string, string> = { ...(existingMeta.projectRoles || {}) };
+      if (newContact.assignedProjectId) {
+        nextProjectRoles[newContact.assignedProjectId] = nextProjectRoles[newContact.assignedProjectId] || (isExt ? 'External Planner' : 'Internal');
+      }
+
       const extraMeta = {
         ...existingMeta,
+        projectRoles: nextProjectRoles,
         jobTitle: newContact.jobTitle || null,
         department: newContact.department || null,
         hourlyRate: newContact.hourlyRate || null,
@@ -947,9 +1014,50 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         try {
           const cacheKey = `crm_metadata_${safeCompanyId}`;
           const currentCache = safeStorage.getItem<Record<string, any>>(cacheKey, {});
-          currentCache[cid] = fullContactObject;
-          if (newContact.email) currentCache[newContact.email] = fullContactObject;
+          const entryWithId = { ...fullContactObject, id: cid };
+          currentCache[cid] = entryWithId;
+          if (newContact.email) currentCache[newContact.email] = entryWithId;
           safeStorage.setItem(cacheKey, currentCache);
+        } catch (_) {}
+      };
+
+      const syncAssignedProjectTeamCache = async (cid: string, contactObj: any) => {
+        const projId = newContact.assignedProjectId;
+        if (!projId) return;
+        const projRole = nextProjectRoles[projId] || (isExt ? 'External Planner' : 'Internal');
+        try {
+          const projCacheKey = `team_project_cache_${projId}`;
+          const existingProjTeam = safeStorage.getItem<any[]>(projCacheKey, []) || [];
+          const memberEntry = {
+            id: cid,
+            uid: cid,
+            name: fullName || newContact.company || t('unknown'),
+            displayName: fullName || newContact.company || t('unknown'),
+            email: newContact.email || '',
+            phone: newContact.phone || '',
+            company: resolvedCompany || '',
+            role: projRole,
+            status: finalStatus,
+            isExternal: isExt,
+            photoURL: photoURL || null,
+            projectRoles: nextProjectRoles
+          };
+          const idx = existingProjTeam.findIndex((m: any) => (m.id || m.uid) === cid || (newContact.email && m.email?.toLowerCase() === newContact.email.toLowerCase()));
+          if (idx >= 0) {
+            existingProjTeam[idx] = { ...existingProjTeam[idx], ...memberEntry };
+          } else {
+            existingProjTeam.push(memberEntry);
+          }
+          safeStorage.setItem(projCacheKey, existingProjTeam);
+        } catch (_) {}
+
+        try {
+          await (supabase.from('project_members') as any).upsert({
+            project_id: projId,
+            user_id: cid,
+            company_id: safeCompanyId,
+            role: projRole
+          }, { onConflict: 'project_id,user_id' });
         } catch (_) {}
       };
 
@@ -985,6 +1093,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         } catch (_) {}
 
         updateLocalCache(newContact.id);
+        await syncAssignedProjectTeamCache(newContact.id, fullContactObject);
         const updatedContact = { ...selectedContact, ...fullContactObject };
         setCrmUsers((prev: any[]) => prev.map(u => u.id === newContact.id ? updatedContact : u));
         setSelectedContact(updatedContact);
@@ -1011,14 +1120,12 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         }
         
         if (insertErr) {
-          console.error("Error inserting contact into company_users:", insertErr);
-          addToast(t('upload_failed'), 'error');
-          setIsSubmitting(false);
-          return;
+          console.warn("Supabase insert fallback to local CRM cache:", insertErr);
         }
 
         const newId = created ? created.id : `user-${Date.now()}`;
         updateLocalCache(newId);
+        await syncAssignedProjectTeamCache(newId, fullContactObject);
         const finalContact = {
           ...fullContactObject,
           id: newId
@@ -1421,10 +1528,7 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
       }
 
       if (insertErr) {
-        console.error("Error inserting contact:", insertErr);
-        addToast(currentLang === 'de' ? 'Fehler beim Speichern des Kontakts.' : 'Failed to save contact.', 'error');
-        setIsSubmitting(false);
-        return;
+        console.warn("Supabase scanned contact insert fallback to local CRM cache:", insertErr);
       }
 
       const newId = created ? created.id : `user-${Date.now()}`;

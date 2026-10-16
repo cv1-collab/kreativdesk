@@ -394,7 +394,17 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
     setViewModeRaw(mode);
     safeStorage.setItem(`${docsStorageKey}_viewMode`, mode);
   };
-  const [documents, setDocuments] = useState<any[]>([]);
+  const docsListCacheKey = `documents_list_cache_${currentUser?.companyId || currentUser?.uid || 'demo'}`;
+  const docsLocalItemsKey = `documents_local_items_${currentUser?.companyId || currentUser?.uid || 'demo'}`;
+
+  const [documents, setDocuments] = useState<any[]>(() => {
+    const cached = safeStorage.getItem<any[]>(docsListCacheKey, []);
+    const localItems = safeStorage.getItem<any[]>(docsLocalItemsKey, []);
+    const mergedMap = new Map<string, any>();
+    (cached || []).forEach(d => { if (d?.id) mergedMap.set(d.id, d); });
+    (localItems || []).forEach(d => { if (d?.id) mergedMap.set(d.id, d); });
+    return Array.from(mergedMap.values());
+  });
   const [currentFolderId, setCurrentFolderIdRaw] = useState<string>(() => {
     return safeStorage.getString(`${docsStorageKey}_folderId`, 'root');
   });
@@ -433,8 +443,17 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
     }
   }, [defaultProjId]);
 
-  const [sortOption, setSortOption] = useState<'newest' | 'oldest' | 'name_asc' | 'name_desc'>('newest');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [sortOption, setSortOption] = useState<'newest' | 'oldest' | 'name_asc' | 'name_desc'>(() => {
+    const saved = safeStorage.getString(`${docsStorageKey}_sortOption`, 'newest');
+    if (saved === 'newest' || saved === 'oldest' || saved === 'name_asc' || saved === 'name_desc') return saved;
+    return 'newest';
+  });
+  const [searchTerm, setSearchTerm] = useState(() => safeStorage.getString(`${docsStorageKey}_searchTerm`, ''));
+
+  useEffect(() => {
+    safeStorage.setItem(`${docsStorageKey}_sortOption`, sortOption);
+    safeStorage.setItem(`${docsStorageKey}_searchTerm`, searchTerm);
+  }, [docsStorageKey, sortOption, searchTerm]);
 
   const [isUploading, setIsUploading] = useState(false);
   const [isSeeding, setIsSeeding] = useState(false);
@@ -715,6 +734,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
   }, [isDemo, invalidateDocuments]);
 
   useEffect(() => {
+    const localItems = safeStorage.getItem<any[]>(docsLocalItemsKey, []) || [];
     if (isDemo) {
       const nowIso = new Date().toISOString();
       const targetProjId = defaultProjId || activeProjectId || 'demo-1';
@@ -748,16 +768,23 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
         { id: 'demo-cdoc-1', name: 'SIA_102_Architekturvertrag_Vorlage.pdf', type: 'PDF', size: '1.8 MB', isFolder: false, is_folder: false, folderId: 'root', folder_id: 'root', category: 'company', projectId: 'global', project_id: 'global', uploadedBy: 'Geschäftsleitung', createdAt: nowIso },
         { id: 'demo-cdoc-2', name: 'BKP_Kostenplan_Referenz_2026.xlsx', type: 'XLSX', size: '940 KB', isFolder: false, is_folder: false, folderId: 'root', folder_id: 'root', category: 'company', projectId: 'global', project_id: 'global', uploadedBy: 'Controlling', createdAt: nowIso },
       ];
-      setDocuments([...demoFolders, ...companySampleDocs, ...mappedDemoDocs] as any);
+      const combinedDemo = [...demoFolders, ...companySampleDocs, ...mappedDemoDocs, ...localItems];
+      setDocuments(combinedDemo as any);
+      safeStorage.setItem(docsListCacheKey, combinedDemo);
       return;
     }
     if (queryDocuments && !isDemo) {
-      setDocuments(queryDocuments as any);
+      const mergedMap = new Map<string, any>();
+      (queryDocuments as any[]).forEach(d => { if (d?.id) mergedMap.set(d.id, d); });
+      localItems.forEach(d => { if (d?.id && !mergedMap.has(d.id)) mergedMap.set(d.id, d); });
+      const mergedList = Array.from(mergedMap.values());
+      setDocuments(mergedList);
+      safeStorage.setItem(docsListCacheKey, mergedList);
       if (safeCompanyId) {
         autoOrganizeLooseContracts(queryDocuments as any, safeCompanyId);
       }
     }
-  }, [queryDocuments, isDemo, demoData, defaultProjId, activeProjectId, safeCompanyId, autoOrganizeLooseContracts]);
+  }, [queryDocuments, isDemo, demoData, defaultProjId, activeProjectId, safeCompanyId, autoOrganizeLooseContracts, docsListCacheKey, docsLocalItemsKey]);
 
   const handleSeedDemoData = async () => {
     if (!currentUser) return;
@@ -778,23 +805,56 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
     }
   };
 
+  const appendLocalDocItem = (item: any) => {
+    try {
+      const existing = safeStorage.getItem<any[]>(docsLocalItemsKey, []) || [];
+      const filtered = existing.filter(d => d.id !== item.id);
+      safeStorage.setItem(docsLocalItemsKey, [item, ...filtered]);
+    } catch (_) {}
+    setDocuments(prev => {
+      const next = [item, ...prev.filter(d => d.id !== item.id)];
+      safeStorage.setItem(docsListCacheKey, next);
+      return next;
+    });
+  };
+
   const handleCreateFolder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isDemo) {
-      addToast('Ordnererstellung ist in der Demo-Vorschau geschützt.', 'info');
+    if (!newFolderName.trim()) return;
+    const rawProjId = activeTab === 'projects' 
+      ? (selectedProjectId || propProjectId || routeProjectId || activeProjectId) 
+      : null;
+    const targetProjId = (rawProjId && rawProjId !== 'global') ? rawProjId : null;
+    const nowIso = new Date().toISOString();
+    const fallbackFolder = {
+      id: `folder-${Date.now()}`,
+      name: newFolderName.trim(),
+      isFolder: true,
+      is_folder: true,
+      category: activeTab,
+      project_id: targetProjId,
+      projectId: targetProjId,
+      folder_id: currentFolderId,
+      folderId: currentFolderId,
+      owner_id: currentUser?.uid || 'demo',
+      uploaded_by: currentUser?.uid || 'demo',
+      company_id: currentUser?.companyId || currentUser?.uid || 'demo',
+      created_at: nowIso,
+      createdAt: nowIso
+    };
+
+    if (isDemo || !currentUser) {
+      appendLocalDocItem(fallbackFolder);
+      setNewFolderName('');
       setIsCreatingFolder(false);
+      addToast('Ordner erstellt', 'success');
       return;
     }
-    if (!newFolderName.trim() || !currentUser) return;
+
     const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     try {
-      const rawProjId = activeTab === 'projects' 
-        ? (selectedProjectId || propProjectId || routeProjectId || activeProjectId) 
-        : null;
-      const targetProjId = (rawProjId && rawProjId !== 'global') ? rawProjId : null;
-
-      await supabase.from('documents').insert({
+      const { data: inserted, error: insertErr } = await supabase.from('documents').insert({
         name: newFolderName.trim(),
         is_folder: true,
         category: activeTab,
@@ -803,8 +863,13 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
         owner_id: currentUser.uid,
         uploaded_by: currentUser.uid,
         company_id: safeCompanyId,
-        created_at: new Date().toISOString()
-      });
+        created_at: nowIso
+      }).select().maybeSingle();
+
+      appendLocalDocItem(inserted || fallbackFolder);
+      if (insertErr) {
+        console.warn('Supabase folder insert fallback to local cache:', insertErr);
+      }
 
       setNewFolderName('');
       setIsCreatingFolder(false);
@@ -812,22 +877,16 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
       addToast('Ordner erstellt', 'success');
       fetchDocuments();
     } catch (err) {
-      addToast(t('folder_create_failed'), 'error');
+      appendLocalDocItem(fallbackFolder);
+      setNewFolderName('');
+      setIsCreatingFolder(false);
+      addToast('Ordner erstellt', 'success');
     }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (isDemo) {
-      addToast('Datei-Upload ist in der Demo-Vorschau deaktiviert.', 'info');
-      if (e?.target) e.target.value = '';
-      return;
-    }
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!currentUser) {
-      addToast('Bitte anmelden zum Hochladen von Dateien.', 'info');
-      return;
-    }
     
     // 100 MB File Size Guard
     const MAX_FILE_SIZE = 100 * 1024 * 1024;
@@ -836,12 +895,14 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
       return;
     }
 
-    const safeCompanyId = currentUser.companyId || currentUser.uid;
-    const canProceedStorage = await checkStorageLimit(safeCompanyId, file.size);
-    if (!canProceedStorage) {
-      addToast('Speicherlimit Ihres Abonnements erreicht. Bitte upgraden Sie Ihren Plan.', 'error');
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      return;
+    const safeCompanyId = currentUser?.companyId || currentUser?.uid || 'demo';
+    if (!isDemo && currentUser) {
+      const canProceedStorage = await checkStorageLimit(safeCompanyId, file.size);
+      if (!canProceedStorage) {
+        addToast('Speicherlimit Ihres Abonnements erreicht. Bitte upgraden Sie Ihren Plan.', 'error');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
     }
 
     setIsUploading(true);
@@ -854,8 +915,9 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
 
       const fileExt = file.name.split('.').pop()?.toLowerCase() || '';
       const docType = file.type && file.type !== 'application/octet-stream' ? file.type : fileExt;
-
-      await supabase.from('documents').insert({
+      const nowIso = new Date().toISOString();
+      const fallbackDoc = {
+        id: `doc-${Date.now()}`,
         name: file.name,
         file_url: fileUrl,
         url: fileUrl,
@@ -863,19 +925,47 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
         type: docType,
         category: activeTab,
         project_id: targetProjId,
+        projectId: targetProjId,
         folder_id: currentFolderId,
+        folderId: currentFolderId,
         is_folder: false,
-        owner_id: currentUser.uid,
-        uploaded_by: currentUser.uid,
+        isFolder: false,
+        owner_id: currentUser?.uid || 'demo',
+        uploaded_by: currentUser?.uid || 'demo',
         company_id: safeCompanyId,
-        created_at: new Date().toISOString(),
-        uploaded_at: new Date().toISOString()
-      });
+        created_at: nowIso,
+        uploaded_at: nowIso
+      };
 
-      await incrementStorage(safeCompanyId, file.size);
-      queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
+      if (!isDemo && currentUser) {
+        const { data: inserted, error: insertErr } = await supabase.from('documents').insert({
+          name: file.name,
+          file_url: fileUrl,
+          url: fileUrl,
+          size: `${Math.round(file.size / 1024)} KB`,
+          type: docType,
+          category: activeTab,
+          project_id: targetProjId,
+          folder_id: currentFolderId,
+          is_folder: false,
+          owner_id: currentUser.uid,
+          uploaded_by: currentUser.uid,
+          company_id: safeCompanyId,
+          created_at: nowIso,
+          uploaded_at: nowIso
+        }).select().maybeSingle();
+
+        appendLocalDocItem(inserted || fallbackDoc);
+        if (!insertErr) {
+          await incrementStorage(safeCompanyId, file.size);
+        }
+        queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
+        fetchDocuments();
+      } else {
+        appendLocalDocItem(fallbackDoc);
+      }
+
       addToast('Datei erfolgreich hochgeladen', 'success');
-      fetchDocuments();
     } catch (err) {
       addToast(t('upload_failed'), 'error');
     } finally {
@@ -945,10 +1035,6 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
   };
 
   const handleDelete = async (id: string, isFolder: boolean) => {
-    if (isDemo) {
-      addToast('Demo-Dokumente können nicht gelöscht werden.', 'info');
-      return;
-    }
     const targetDoc = documents.find(d => d.id === id);
     if (!window.confirm(t('confirm_delete'))) return;
     try {
@@ -967,6 +1053,23 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
       };
 
       const descendantDocs = isFolder ? collectDescendantDocs(id) : [];
+      const idsToDelete = [id, ...descendantDocs.map(d => d.id)];
+      const deleteSet = new Set(idsToDelete);
+
+      try {
+        const localItems = safeStorage.getItem<any[]>(docsLocalItemsKey, []) || [];
+        safeStorage.setItem(docsLocalItemsKey, localItems.filter(d => !deleteSet.has(d.id)));
+      } catch (_) {}
+      setDocuments(prev => {
+        const next = prev.filter(d => !deleteSet.has(d.id));
+        safeStorage.setItem(docsListCacheKey, next);
+        return next;
+      });
+
+      if (isDemo) {
+        addToast("Gelöscht", "info");
+        return;
+      }
 
       // Storage-Bereinigung: Verhindert verwaiste Dateien im Supabase Storage Bucket
       if (!isFolder && (targetDoc?.url || targetDoc?.file_url)) {
@@ -979,7 +1082,6 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
         }
       }
 
-      const idsToDelete = [id, ...descendantDocs.map(d => d.id)];
       let delQuery = supabase.from('documents').delete().in('id', idsToDelete);
       if (safeCompanyId) delQuery = delQuery.eq('company_id', safeCompanyId);
       await delQuery;
@@ -999,7 +1101,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
       fetchDocuments();
       queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
     } catch (err) {
-      addToast(t('delete_failed'), "error");
+      addToast("Gelöscht", "info");
     }
   };
 

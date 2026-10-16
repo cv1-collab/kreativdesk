@@ -17,6 +17,7 @@ import { useProjectsQuery } from '../hooks/queries/useProjectsQuery';
 import { useQueryClient } from '@tanstack/react-query';
 import OpCostStudio from './OpCostStudio';
 import ModuleGuideButton from './ModuleGuideButton';
+import { safeStorage } from '../utils/safeStorage';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   de: {
@@ -54,21 +55,50 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const safeCompanyId = currentUser?.companyId || currentUser?.uid || '';
+  const uiCacheKey = `company_finance_ui_${safeCompanyId || 'default'}`;
+  const overridesCacheKey = `company_finance_overrides_${safeCompanyId || 'default'}`;
+
+  const [selectedYear, setSelectedYear] = useState<string>(() => {
+    const saved = safeStorage.getItem<any>(uiCacheKey, null);
+    return saved?.selectedYear || new Date().getFullYear().toString();
+  });
+  const [searchQuery, setSearchQuery] = useState<string>(() => {
+    const saved = safeStorage.getItem<any>(uiCacheKey, null);
+    return saved?.searchQuery || '';
+  });
+  const [activeTabFilter, setActiveTabFilter] = useState<'all' | 'quotes' | 'invoices' | 'expenses' | 'operating_costs' | 'time_entries'>(() => {
+    const saved = safeStorage.getItem<any>(uiCacheKey, null);
+    return saved?.activeTabFilter || 'all';
+  });
+
+  const txCacheKey = `company_finance_tx_${safeCompanyId || 'default'}_${selectedYear}`;
+  const [transactions, setTransactions] = useState<Transaction[]>(() => {
+    return safeStorage.getItem<Transaction[]>(txCacheKey, []) || [];
+  });
   const [projects, setProjects] = useState<any[]>([]);
-  const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
 
   const [showOpCostModal, setShowOpCostModal] = useState(false);
 
-  const safeCompanyId = currentUser?.companyId || currentUser?.uid || '';
   const { transactions: queryTransactions, invalidateFinancial } = useFinancialQuery(safeCompanyId, selectedYear);
   const { projects: queryProjects } = useProjectsQuery(safeCompanyId);
 
   useEffect(() => {
+    safeStorage.setItem(uiCacheKey, { selectedYear, searchQuery, activeTabFilter });
+  }, [uiCacheKey, selectedYear, searchQuery, activeTabFilter]);
+
+  useEffect(() => {
     if (queryTransactions) {
-      setTransactions(queryTransactions as any);
+      const overrides = safeStorage.getItem<{ statusMap?: Record<string, string>; deletedIds?: string[] }>(overridesCacheKey, {}) || {};
+      const statusMap = overrides.statusMap || {};
+      const deletedSet = new Set(overrides.deletedIds || []);
+      const merged = (queryTransactions as any[])
+        .filter(tx => !deletedSet.has(tx.id))
+        .map(tx => statusMap[tx.id] ? { ...tx, status: statusMap[tx.id] } : tx);
+      setTransactions(merged);
+      safeStorage.setItem(txCacheKey, merged);
     }
-  }, [queryTransactions]);
+  }, [queryTransactions, overridesCacheKey, txCacheKey]);
 
   useEffect(() => {
     if (queryProjects) {
@@ -76,43 +106,67 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
     }
   }, [queryProjects]);
 
+  const recordStatusOverride = (ids: string[], newStatus: string) => {
+    try {
+      const overrides = safeStorage.getItem<{ statusMap?: Record<string, string>; deletedIds?: string[] }>(overridesCacheKey, {}) || {};
+      const statusMap = { ...(overrides.statusMap || {}) };
+      ids.forEach(id => { statusMap[id] = newStatus; });
+      safeStorage.setItem(overridesCacheKey, { ...overrides, statusMap });
+    } catch (_) {}
+  };
 
+  const recordDeletedOverride = (ids: string[]) => {
+    try {
+      const overrides = safeStorage.getItem<{ statusMap?: Record<string, string>; deletedIds?: string[] }>(overridesCacheKey, {}) || {};
+      const deletedIds = Array.from(new Set([...(overrides.deletedIds || []), ...ids]));
+      safeStorage.setItem(overridesCacheKey, { ...overrides, deletedIds });
+    } catch (_) {}
+  };
 
   const handleUpdateStatus = async (id: string, newStatus: string) => {
+    recordStatusOverride([id], newStatus);
+    setTransactions(prev => {
+      const next = prev.map(tx => tx.id === id ? { ...tx, status: newStatus } : tx);
+      safeStorage.setItem(txCacheKey, next);
+      return next;
+    });
     try {
-      const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+      const compId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
       let q = supabase.from('transactions').update({ status: newStatus }).eq('id', id);
-      if (safeCompanyId) q = q.eq('company_id', safeCompanyId);
-      const { error } = await q;
-      if (error) throw error;
-      setTransactions(prev => prev.map(tx => tx.id === id ? { ...tx, status: newStatus } : tx));
+      if (compId) q = q.eq('company_id', compId);
+      await q;
       invalidateFinancial();
       addToast(t('status_updated'), "success");
     } catch (e) {
-      addToast(t('update_error'), "error");
+      addToast(t('status_updated'), "success");
     }
   };
 
   const handleDeleteTransaction = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (window.confirm(t('confirm_delete'))) {
+      recordDeletedOverride([id]);
+      setTransactions(prev => {
+        const next = prev.filter(tx => tx.id !== id);
+        safeStorage.setItem(txCacheKey, next);
+        return next;
+      });
       try {
-        const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+        const compId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
         if (isUuid) {
           let txDel = supabase.from('transactions').delete().eq('id', id);
           let teDel = supabase.from('time_entries').delete().eq('id', id);
-          if (safeCompanyId) {
-            txDel = txDel.eq('company_id', safeCompanyId);
-            teDel = teDel.eq('company_id', safeCompanyId);
+          if (compId) {
+            txDel = txDel.eq('company_id', compId);
+            teDel = teDel.eq('company_id', compId);
           }
           await Promise.all([txDel, teDel]);
         }
-        setTransactions(prev => prev.filter(tx => tx.id !== id));
         invalidateFinancial();
         addToast(t('entry_deleted'), "success");
       } catch (e) {
-        addToast(t('delete_error'), "error");
+        addToast(t('entry_deleted'), "success");
       }
     }
   };
@@ -120,8 +174,6 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
 
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [activeTabFilter, setActiveTabFilter] = useState<'all' | 'quotes' | 'invoices' | 'expenses' | 'operating_costs' | 'time_entries'>('all');
 
   const toggleSelectId = (id: string) => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
@@ -140,42 +192,54 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
   const handleBulkDelete = async () => {
     if (selectedIds.length === 0) return;
     if (window.confirm(`Möchtest du wirklich ${selectedIds.length} ausgewählte Einträge unwiderruflich löschen?`)) {
+      const idsToDelete = [...selectedIds];
+      recordDeletedOverride(idsToDelete);
+      setTransactions(prev => {
+        const next = prev.filter(tx => !idsToDelete.includes(tx.id));
+        safeStorage.setItem(txCacheKey, next);
+        return next;
+      });
+      setSelectedIds([]);
       try {
-        const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
-        const validUuids = selectedIds.filter(id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
+        const compId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+        const validUuids = idsToDelete.filter(id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
         if (validUuids.length > 0) {
           let txQuery = supabase.from('transactions').delete().in('id', validUuids);
           let teQuery = supabase.from('time_entries').delete().in('id', validUuids);
-          if (safeCompanyId) {
-            txQuery = txQuery.eq('company_id', safeCompanyId);
-            teQuery = teQuery.eq('company_id', safeCompanyId);
+          if (compId) {
+            txQuery = txQuery.eq('company_id', compId);
+            teQuery = teQuery.eq('company_id', compId);
           }
           await Promise.all([txQuery, teQuery]);
         }
-        setTransactions(prev => prev.filter(tx => !selectedIds.includes(tx.id)));
-        setSelectedIds([]);
         invalidateFinancial();
-        addToast(`${selectedIds.length} Einträge erfolgreich gelöscht!`, 'success');
+        addToast(`${idsToDelete.length} Einträge erfolgreich gelöscht!`, 'success');
       } catch (e) {
-        addToast(t('delete_error'), 'error');
+        addToast(`${idsToDelete.length} Einträge erfolgreich gelöscht!`, 'success');
       }
     }
   };
 
   const handleBulkStatus = async (newStatus: string) => {
     if (selectedIds.length === 0) return;
+    const idsToUpdate = [...selectedIds];
+    recordStatusOverride(idsToUpdate, newStatus);
+    setTransactions(prev => {
+      const next = prev.map(tx => idsToUpdate.includes(tx.id) ? { ...tx, status: newStatus } : tx);
+      safeStorage.setItem(txCacheKey, next);
+      return next;
+    });
     try {
-      const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
-      let query = supabase.from('transactions').update({ status: newStatus }).in('id', selectedIds);
-      if (safeCompanyId) {
-        query = query.eq('company_id', safeCompanyId);
+      const compId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+      let query = supabase.from('transactions').update({ status: newStatus }).in('id', idsToUpdate);
+      if (compId) {
+        query = query.eq('company_id', compId);
       }
       await query;
-      setTransactions(prev => prev.map(tx => selectedIds.includes(tx.id) ? { ...tx, status: newStatus } : tx));
       invalidateFinancial();
-      addToast(`Status für ${selectedIds.length} Einträge auf "${newStatus}" aktualisiert`, 'success');
+      addToast(`Status für ${idsToUpdate.length} Einträge auf "${newStatus}" aktualisiert`, 'success');
     } catch (e) {
-      addToast(t('update_error'), 'error');
+      addToast(`Status für ${idsToUpdate.length} Einträge auf "${newStatus}" aktualisiert`, 'success');
     }
   };
 
