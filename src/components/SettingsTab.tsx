@@ -2773,7 +2773,7 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
   }, [currentUser?.companyId, currentUser?.uid]);
 
   const rawRole = (currentUser?.role || '').toLowerCase().trim();
-  const isSuperAdmin = currentUser?.role === 'super_admin' || currentUser?.email === 'cv1@gmx.ch' || currentUser?.email === 'carlo@vesciodesign.ch';
+  const isSuperAdmin = currentUser?.role === 'super_admin' || checkIsSuperAdmin(currentUser?.email);
   const isOwner = rawRole === 'owner' || rawRole === 'admin' || rawRole === 'management' || isSuperAdmin;
 
   const updateRole = async (userId: string, newRole: string) => {
@@ -2926,7 +2926,7 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
           (member.status && member.status !== 'team') ||
           EXTERNAL_ROLES.includes(roleLower);
 
-        const isSuperAdmin = currentUser?.role === 'super_admin' || currentUser?.email === 'cv1@gmx.ch' || currentUser?.email === 'carlo@vesciodesign.ch';
+        const isSuperAdmin = currentUser?.role === 'super_admin' || checkIsSuperAdmin(currentUser?.email);
         if (!isExternalMember && !isSuperAdmin) {
           const actualSeats = await syncCompanySeats(safeCompanyId);
           const { data: comp } = await supabase

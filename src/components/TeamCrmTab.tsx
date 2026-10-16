@@ -348,12 +348,10 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
     });
 
     const combined = Array.from(combinedMap.values());
-    if (combined.length > 0) {
-      setCrmUsers(combined);
-      try {
-        safeStorage.setItem(`team_crm_list_cache_${safeCompanyId}`, JSON.stringify(combined));
-      } catch {}
-    }
+    setCrmUsers(combined);
+    try {
+      safeStorage.setItem(`team_crm_list_cache_${safeCompanyId}`, JSON.stringify(combined));
+    } catch {}
     setRealUsers(profilesData || []);
   }, [currentUser]);
 
@@ -484,13 +482,19 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         setRealUsers((prev: any[]) => prev.filter(u => u.id !== contactId));
         if (selectedContact?.id === contactId) setSelectedContact(null);
 
-        // Clean up local cache
+        // Clean up local cache (both ID and email keys)
         if (safeCompanyId) {
           try {
             const cacheKey = `crm_metadata_${safeCompanyId}`;
-            const currentCache = safeStorage.getItem<Record<string, any>>(cacheKey, {});
-            if (currentCache[contactId]) {
-              delete currentCache[contactId];
+            const currentCache = safeStorage.getItem<Record<string, any>>(cacheKey, {}) || {};
+            let modified = false;
+            for (const [k, v] of Object.entries(currentCache)) {
+              if (k === contactId || v?.id === contactId || v?.crmId === contactId || v?.user_id === contactId) {
+                delete currentCache[k];
+                modified = true;
+              }
+            }
+            if (modified) {
               safeStorage.setItem(cacheKey, currentCache);
             }
           } catch (_) {}
@@ -566,18 +570,19 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         setIsSelectionMode(false);
         if (selectedContact && deletableIds.includes(selectedContact.id)) setSelectedContact(null);
 
-        // Clean up local cache
+        // Clean up local cache (both ID and email keys)
         if (safeCompanyId) {
           try {
+            const deleteSet = new Set(deletableIds);
             const cacheKey = `crm_metadata_${safeCompanyId}`;
-            const currentCache = safeStorage.getItem<Record<string, any>>(cacheKey, {});
+            const currentCache = safeStorage.getItem<Record<string, any>>(cacheKey, {}) || {};
             let modified = false;
-            deletableIds.forEach(id => {
-              if (currentCache[id]) {
-                delete currentCache[id];
+            for (const [k, v] of Object.entries(currentCache)) {
+              if (deleteSet.has(k) || deleteSet.has(v?.id) || deleteSet.has(v?.crmId) || deleteSet.has(v?.user_id)) {
+                delete currentCache[k];
                 modified = true;
               }
-            });
+            }
             if (modified) {
               safeStorage.setItem(cacheKey, currentCache);
             }

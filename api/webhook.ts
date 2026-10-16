@@ -124,9 +124,9 @@ export default async function handler(req: any, res: any) {
 
         // Log subscription payment in transactions for Super-Admin Sales Analytics
         const paidAmount = typeof session.amount_total === 'number' ? session.amount_total / 100 : 0;
+        const txCurrency = (session.currency || 'chf').toUpperCase();
         if (paidAmount > 0) {
           try {
-            const txCurrency = (session.currency || 'chf').toUpperCase();
             await supabaseAdmin.from('transactions').insert({
               company_id: profile?.company_id || null,
               owner_id: uid,
@@ -142,6 +142,22 @@ export default async function handler(req: any, res: any) {
             console.warn('Could not log subscription transaction:', txErr);
           }
         }
+
+        try {
+          await supabaseAdmin.from('audit_logs').insert({
+            action: 'subscription.checkout_completed',
+            user_id: uid,
+            user_email: session.customer_details?.email || session.customer_email || 'stripe-customer',
+            company_id: profile?.company_id || 'system',
+            details: {
+              plan: planName,
+              amount: paidAmount,
+              currency: txCurrency,
+              stripeCustomerId: session.customer
+            },
+            created_at: new Date().toISOString()
+          });
+        } catch {}
       } catch (error) {
         console.error(`Supabase Write Error:`, error);
       }
@@ -174,6 +190,21 @@ export default async function handler(req: any, res: any) {
             max_seats: 1
           }).eq('id', profile.company_id);
         }
+
+        try {
+          await supabaseAdmin.from('audit_logs').insert({
+            action: 'subscription.canceled',
+            user_id: profile.id,
+            user_email: profile.email || 'stripe-customer',
+            company_id: profile.company_id || 'system',
+            details: {
+              previousPlan: profile.plan || 'Pro',
+              stripeCustomerId: customerId,
+              subscriptionId: subscription.id
+            },
+            created_at: new Date().toISOString()
+          });
+        } catch {}
       }
     } catch (error) {
       console.error(`Supabase Write Error bei Kündigung:`, error);
@@ -240,6 +271,22 @@ export default async function handler(req: any, res: any) {
             max_seats: finalSeats
           }).eq('id', profile.company_id);
         }
+
+        try {
+          await supabaseAdmin.from('audit_logs').insert({
+            action: 'subscription.updated',
+            user_id: profile.id,
+            user_email: profile.email || 'stripe-customer',
+            company_id: profile.company_id || 'system',
+            details: {
+              plan: planName,
+              status: subscription.status,
+              maxSeats,
+              stripeCustomerId: customerId
+            },
+            created_at: new Date().toISOString()
+          });
+        } catch {}
       }
     } catch (error) {
       console.error(`Supabase Write Error bei Subscription Update:`, error);
@@ -269,8 +316,8 @@ export default async function handler(req: any, res: any) {
           }).eq('id', profile.id);
 
           const paidAmount = typeof invoice.amount_paid === 'number' ? invoice.amount_paid / 100 : 0;
+          const txCurrency = (invoice.currency || 'chf').toUpperCase();
           if (paidAmount > 0) {
-            const txCurrency = (invoice.currency || 'chf').toUpperCase();
             await supabaseAdmin.from('transactions').insert({
               company_id: profile.company_id || null,
               owner_id: profile.id,
@@ -283,6 +330,22 @@ export default async function handler(req: any, res: any) {
               created_at: new Date().toISOString()
             });
           }
+
+          try {
+            await supabaseAdmin.from('audit_logs').insert({
+              action: 'subscription.renewed',
+              user_id: profile.id,
+              user_email: profile.email || 'stripe-customer',
+              company_id: profile.company_id || 'system',
+              details: {
+                plan: planName,
+                amount: paidAmount,
+                currency: txCurrency,
+                stripeCustomerId: customerId
+              },
+              created_at: new Date().toISOString()
+            });
+          } catch {}
         }
       } catch (err) {
         console.warn('Could not process invoice.payment_succeeded:', err);

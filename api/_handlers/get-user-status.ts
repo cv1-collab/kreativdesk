@@ -1,5 +1,5 @@
 import Stripe from 'stripe';
-import { supabaseAdmin } from '../_auth.js';
+import { supabaseAdmin, SUPER_ADMIN_EMAILS } from '../_auth.js';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
@@ -31,6 +31,7 @@ export default async function handler(req: any, res: any) {
     return res.status(401).json({ error: 'Unauthorized: Token verification failed' });
   }
 
+  const isCallerSuperAdmin = SUPER_ADMIN_EMAILS.includes(verifiedUserEmail);
   const EXTERNAL_ROLES = ['guest', 'client', 'external', 'partner', 'subcontractor', 'field guest', 'external planner', 'bauherr', 'handwerker'];
 
   try {
@@ -45,7 +46,7 @@ export default async function handler(req: any, res: any) {
     // ==========================================
     if (!profile) {
       let targetCompanyId: string | null = null;
-      let targetRole = 'owner';
+      let targetRole = isCallerSuperAdmin ? 'super_admin' : 'owner';
       let isInvitedUser = false;
       let invitedCompanyPlan = 'Team Member';
 
@@ -257,8 +258,8 @@ export default async function handler(req: any, res: any) {
           'price_1TC00cRwN4c1cHbcE2f3W1aP': { name: 'Starter', seats: 1 },
           'price_1TC00uRwN4c1cHbcW0s7T2xM': { name: 'Pro', seats: 1 },
           'price_1TC01BRwN4c1cHbcX8v4K9yQ': { name: 'Pro', seats: 1 },
-          'price_1TC01SRwN4c1cHbcZ1m5N3pL': { name: 'Enterprise', seats: 1 },
-          'price_1TC01jRwN4c1cHbcB7c2D4fG': { name: 'Enterprise', seats: 1 },
+          'price_1TC01SRwN4c1cHbcZ1m5N3pL': { name: 'Enterprise', seats: 999 },
+          'price_1TC01jRwN4c1cHbcB7c2D4fG': { name: 'Enterprise', seats: 999 },
           'price_1TAMt9RwN4c1cHbc92bM5G2v': { name: 'Team Starter', seats: 3 },
           'price_1TAMtdRwN4c1cHbcK8jL3P1x': { name: 'Studio OS', seats: 10 },
           'price_1TAMtxRwN4c1cHbcQ4wE6R8t': { name: 'Agency OS', seats: 30 },
@@ -323,7 +324,7 @@ export default async function handler(req: any, res: any) {
       ...profile,
       hasActiveSubscription: hasActiveSub,
       plan: currentPlan,
-      role: profile.role || 'employee'
+      role: isCallerSuperAdmin ? 'super_admin' : (profile.role || 'employee')
     });
 
   } catch (error) {

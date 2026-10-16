@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { safeStorage } from '../utils/safeStorage';
 
 export const EXTERNAL_ROLES = new Set([
   'guest',
@@ -222,6 +223,53 @@ export const offboardCompanyUser = async (userId: string, companyId?: string | n
 
       // 3. Belegte Lizenzen (used_seats) der Firma neu berechnen und freigeben
       await syncCompanySeats(companyId);
+
+      // 4. Lokale CRM-Caches bereinigen (verhindert Wiederauftauchen gelöschter Kontakte durch E-Mail-Keys)
+      try {
+        const metaKey = `crm_metadata_${companyId}`;
+        const metaCache = safeStorage.getItem<Record<string, any>>(metaKey, {}) || {};
+        let metaChanged = false;
+        for (const [k, v] of Object.entries(metaCache)) {
+          const kLower = k.toLowerCase().trim();
+          const vId = String(v?.id || '').trim();
+          const vCrmId = String(v?.crmId || '').trim();
+          const vUserId = String(v?.user_id || v?.profileId || '').trim();
+          const vEmail = String(v?.email || '').toLowerCase().trim();
+          if (
+            targetIds.has(k) ||
+            targetIds.has(vId) ||
+            targetIds.has(vCrmId) ||
+            targetIds.has(vUserId) ||
+            targetEmails.has(kLower) ||
+            (vEmail && targetEmails.has(vEmail))
+          ) {
+            delete metaCache[k];
+            metaChanged = true;
+          }
+        }
+        if (metaChanged) {
+          safeStorage.setItem(metaKey, metaCache);
+        }
+
+        const listKey = `team_crm_list_cache_${companyId}`;
+        const rawList = safeStorage.getItem<any>(listKey, null);
+        const parsedList: any[] = typeof rawList === 'string' ? JSON.parse(rawList) : (Array.isArray(rawList) ? rawList : []);
+        if (Array.isArray(parsedList) && parsedList.length > 0) {
+          const filtered = parsedList.filter((item: any) => {
+            const itemId = String(item?.id || '').trim();
+            const itemCrmId = String(item?.crmId || '').trim();
+            const itemUserId = String(item?.user_id || item?.profileId || '').trim();
+            const itemEmail = String(item?.email || '').toLowerCase().trim();
+            return !(
+              targetIds.has(itemId) ||
+              targetIds.has(itemCrmId) ||
+              targetIds.has(itemUserId) ||
+              (itemEmail && targetEmails.has(itemEmail))
+            );
+          });
+          safeStorage.setItem(listKey, JSON.stringify(filtered));
+        }
+      } catch (_) {}
     } else {
       for (const tid of targetIds) {
         await supabase.from('profiles').update({ company_id: null, role: 'guest' }).eq('id', tid);
