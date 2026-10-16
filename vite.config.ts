@@ -44,7 +44,14 @@ export default defineConfig(({ mode }) => {
           skipWaiting: true,
           clientsClaim: true,
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,webp}'],
-          globIgnores: ['**/BIMViewer*.js'],
+          globIgnores: [
+            '**/BIMViewer*.js',
+            '**/vendor-three*.js',
+            '**/vendor-ifc*.js',
+            '**/vendor-r3f*.js',
+            '**/vendor-react-pdf*.js',
+            '**/vendor-pdf-tools*.js'
+          ],
           maximumFileSizeToCacheInBytes: 10485760, // 10 MB Limit
           navigateFallback: 'index.html',
           navigateFallbackDenylist: [/^\/api/, /^\/assets\//, /^\/media\//, /^\/wasm\//, /\.wasm$/],
@@ -65,12 +72,12 @@ export default defineConfig(({ mode }) => {
               handler: 'NetworkOnly'
             },
             {
-              urlPattern: /\/assets\/.*(BIMViewer|UniversalPDFStudio|vendor-3d).*\.js$/i,
+              urlPattern: /\/assets\/.*(BIMViewer|UniversalPDFStudio|vendor-three|vendor-ifc|vendor-r3f|vendor-react-pdf|vendor-pdf-tools).*\.js$/i,
               handler: 'StaleWhileRevalidate',
               options: {
                 cacheName: 'heavy-studios-cache',
                 expiration: {
-                  maxEntries: 10,
+                  maxEntries: 15,
                   maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days cache for heavy 3D/PDF engines
                 }
               }
@@ -128,28 +135,47 @@ export default defineConfig(({ mode }) => {
               ) {
                 return 'vendor-core';
               }
+              if (id.includes('web-ifc')) {
+                return 'vendor-ifc';
+              }
               if (
-                id.includes('/three/') ||
                 id.includes('@react-three') ||
-                id.includes('web-ifc') ||
-                id.includes('three-stdlib')
+                id.includes('three-stdlib') ||
+                id.includes('maath') ||
+                id.includes('camera-controls') ||
+                id.includes('meshline') ||
+                id.includes('troika')
               ) {
-                return 'vendor-3d';
+                return 'vendor-r3f';
+              }
+              if (id.includes('/three/')) {
+                return 'vendor-three';
               }
               if (
                 id.includes('@react-pdf') ||
+                id.includes('yoga-layout') ||
+                id.includes('fontkit') ||
+                id.includes('pdfkit')
+              ) {
+                return 'vendor-react-pdf';
+              }
+              if (
                 id.includes('jspdf') ||
                 id.includes('pdf-lib') ||
                 id.includes('html2canvas') ||
-                id.includes('html-to-image')
+                id.includes('html-to-image') ||
+                id.includes('pdfjs-dist')
               ) {
-                return 'vendor-pdf';
+                return 'vendor-pdf-tools';
               }
               if (id.includes('konva') || id.includes('react-konva')) {
                 return 'vendor-canvas';
               }
               if (id.includes('/xlsx') || id.includes('pptxgenjs')) {
                 return 'vendor-office';
+              }
+              if (id.includes('recharts') || id.includes('d3-')) {
+                return 'vendor-charts';
               }
               if (id.includes('@supabase')) {
                 return 'vendor-supabase';
@@ -161,7 +187,7 @@ export default defineConfig(({ mode }) => {
           }
         }
       },
-      chunkSizeWarningLimit: 3000
+      chunkSizeWarningLimit: 2700
     }
   };
 });
