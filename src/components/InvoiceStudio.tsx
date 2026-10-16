@@ -14,6 +14,7 @@ import { FINANCIAL_QUERY_KEY } from '../hooks/queries/useFinancialQuery';
 import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 import { notifyNewDocument } from '../utils/documentNotificationHelper';
 import { getCompanyProfileConfig } from '../utils/companySettings';
+import { safeStorage } from '../utils/safeStorage';
 
 // NATIVE PDF ENGINE IMPORTS
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
@@ -188,11 +189,21 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
-  const [currency, setCurrency] = useState<Currency>(() => propCurrency || getCurrencyPreference().currency || 'CHF');
+  const draftCacheKey = `invoice_studio_draft_${type}`;
+  const initialDraft = React.useMemo(() => {
+    try {
+      const raw = safeStorage.getItem(draftCacheKey);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return null;
+  }, [draftCacheKey]);
+
+  const [currency, setCurrency] = useState<Currency>(() => initialDraft?.currency || propCurrency || getCurrencyPreference().currency || 'CHF');
 
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => { 
     setTimeout(() => setIsMounted(true), 0);
+    if (initialDraft?.formData) return;
     const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
     if (!safeCompanyId) return;
     getCompanyProfileConfig(safeCompanyId).then(cfg => {
@@ -206,10 +217,10 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
           : `Wir freuen uns auf Ihre Auftragserteilung.\nGültigkeit der Offerte: ${cfg.paymentTermsDays || 30} Tage`
       }));
     });
-  }, [currentUser, type]);
+  }, [currentUser, type, initialDraft]);
 
-  const [activeProjectId, setActiveProjectId] = useState<string>('global');
-  const [formData, setFormData] = useState(() => ({ 
+  const [activeProjectId, setActiveProjectId] = useState<string>(() => initialDraft?.activeProjectId || 'global');
+  const [formData, setFormData] = useState(() => initialDraft?.formData || ({ 
     invoiceNumber: type === 'invoice' ? `RE-${Date.now().toString().slice(-6)}` : `OFF-${Date.now().toString().slice(-6)}`, 
     date: new Date().toISOString().split('T')[0], 
     location: 'Zürich', 
@@ -221,7 +232,7 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
       : (currentLang === 'de' ? 'Wir freuen uns auf Ihre Auftragserteilung.\nGültigkeit der Offerte: 30 Tage' : 'We look forward to working with you.\nQuote validity: 30 days'), 
     vatRate: 8.1 
   }));
-  const [positions, setPositions] = useState(() => [{ 
+  const [positions, setPositions] = useState(() => (Array.isArray(initialDraft?.positions) && initialDraft.positions.length > 0) ? initialDraft.positions : [{ 
     id: 'pos1', 
     pos: '1.0', 
     title: currentLang === 'de' ? 'Planungshonorar' : 'Planning Fee', 
@@ -235,7 +246,18 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
   const [showBudgetImport, setShowBudgetImport] = useState(false);
   const [selectedBudgetIds, setSelectedBudgetIds] = useState<string[]>([]);
 
-  const calculateSubtotal = () => positions.reduce((sum, p) => sum + ((Number(p.qty) || 0) * (Number(p.unitPrice) || 0)), 0);
+  useEffect(() => {
+    try {
+      safeStorage.setItem(draftCacheKey, JSON.stringify({
+        activeProjectId,
+        currency,
+        formData,
+        positions
+      }));
+    } catch {}
+  }, [draftCacheKey, activeProjectId, currency, formData, positions]);
+
+  const calculateSubtotal = () => positions.reduce((sum: number, p: any) => sum + ((Number(p.qty) || 0) * (Number(p.unitPrice) || 0)), 0);
   const subtotal = calculateSubtotal();
   const vatAmount = subtotal * ((Number(formData.vatRate) || 0) / 100);
   const total = subtotal + vatAmount;
@@ -247,12 +269,13 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
       unitPrice: g.items?.reduce((sum: number, item: any) => sum + (item.total || 0), 0) || 0,
       total: g.items?.reduce((sum: number, item: any) => sum + (item.total || 0), 0) || 0
     }));
-    setPositions([...positions.filter(p => p.unitPrice > 0), ...importedPositions]);
+    setPositions([...positions.filter((p: any) => p.unitPrice > 0), ...importedPositions]);
     setShowBudgetImport(false);
   };
 
   const handleSaveToCloud = async (blob: Blob) => {
     const fileName = `${type === 'invoice' ? 'RE' : 'OFF'}_${formData.invoiceNumber}_${Date.now()}.pdf`;
+    try { safeStorage.removeItem(draftCacheKey); } catch {}
     if (onSave) {
       onSave({ file: blob, fileName, total, date: formData.date, projectId: activeProjectId, clientName: formData.recipient.split('\n')[0] || 'Kunde', invoiceNumber: formData.invoiceNumber, budgetPosId: '', type });
     } else {

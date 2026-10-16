@@ -255,26 +255,47 @@ export default function TemplatesTab({
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
+  const initialAiDraft = useMemo(() => {
+    try {
+      const raw = safeStorage.getItem('templates_ai_draft');
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return null;
+  }, []);
+
   // AI Modal States
-  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiPrompt, setAiPrompt] = useState<string>(() => initialAiDraft?.aiPrompt || '');
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
-  const [generatedTemplate, setGeneratedTemplate] = useState('');
+  const [generatedTemplate, setGeneratedTemplate] = useState<string>(() => initialAiDraft?.generatedTemplate || '');
   const [isSavingDoc, setIsSavingDoc] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [saveScope, setSaveScope] = useState<'company' | 'project'>('company');
 
   // AI Modal Advanced Customization States
-  const [selectedAiCategory, setSelectedAiCategory] = useState('sia_102');
-  const [selectedAiTone, setSelectedAiTone] = useState<'legal' | 'standard' | 'advisory'>('legal');
-  const [selectedAiLang, setSelectedAiLang] = useState<'de' | 'en' | 'fr' | 'it'>('de');
+  const [selectedAiCategory, setSelectedAiCategory] = useState<string>(() => initialAiDraft?.selectedAiCategory || 'sia_102');
+  const [selectedAiTone, setSelectedAiTone] = useState<'legal' | 'standard' | 'advisory'>(() => initialAiDraft?.selectedAiTone || 'legal');
+  const [selectedAiLang, setSelectedAiLang] = useState<'de' | 'en' | 'fr' | 'it'>(() => initialAiDraft?.selectedAiLang || 'de');
   const [includeCompanyData, setIncludeCompanyData] = useState(true);
   const [includeProjectData, setIncludeProjectData] = useState(Boolean(activeProject));
   const [includeSignatures, setIncludeSignatures] = useState(true);
 
   // Document Studio Modal States
   const [isStudioModalOpen, setIsStudioModalOpen] = useState(false);
-  const [studioDocTitle, setStudioDocTitle] = useState('');
+  const [studioDocTitle, setStudioDocTitle] = useState<string>(() => initialAiDraft?.studioDocTitle || '');
+
+  React.useEffect(() => {
+    try {
+      safeStorage.setItem('templates_ai_draft', JSON.stringify({
+        aiPrompt,
+        generatedTemplate,
+        studioDocTitle,
+        selectedAiCategory,
+        selectedAiTone,
+        selectedAiLang
+      }));
+    } catch {}
+  }, [aiPrompt, generatedTemplate, studioDocTitle, selectedAiCategory, selectedAiTone, selectedAiLang]);
 
   const [templateSearch, setTemplateSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');

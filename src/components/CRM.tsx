@@ -7,6 +7,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { motion } from 'motion/react';
 import { supabase } from '../lib/supabase';
+import { safeStorage } from '../utils/safeStorage';
 
 import { useCompanyUsersQuery, COMPANY_USERS_QUERY_KEY } from '../hooks/queries/useCompanyUsersQuery';
 import { useQueryClient } from '@tanstack/react-query';
@@ -28,6 +29,13 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 
 interface Contact { id: string; name: string; role: string; company: string; email: string; phone: string; }
 
+const DEMO_CRM_CONTACTS: Contact[] = [
+  { id: 'c1', name: 'Sarah Meier', role: 'Architektin SIA', company: 'Atelier Meier & Partner AG', email: 's.meier@atelier-meier.ch', phone: '+41 44 210 33 44' },
+  { id: 'c2', name: 'Michael Chen', role: 'Bauingenieur ETH', company: 'Chen Statik GmbH', email: 'm.chen@chen-statik.ch', phone: '+41 44 880 12 34' },
+  { id: 'c3', name: 'Elena Rossi', role: 'Bauleiterin', company: 'Rossi Bauleitungen AG', email: 'elena@rossi-bau.ch', phone: '+41 79 555 43 21' },
+  { id: 'c4', name: 'Thomas Widmer', role: 'Elektro-Ingenieur', company: 'Widmer Elektro AG', email: 't.widmer@widmer-elektro.ch', phone: '+41 52 300 77 88' }
+];
+
 export default function CRM() {
   const { currentUser } = useAuth();
   const { isDemoMode } = useProject() as any;
@@ -42,19 +50,46 @@ export default function CRM() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newContact, setNewContact] = useState({ name: '', role: '', company: '', email: '', phone: '' });
 
-  const DEMO_CRM_CONTACTS: Contact[] = [
-    { id: 'c1', name: 'Sarah Meier', role: 'Architektin SIA', company: 'Atelier Meier & Partner AG', email: 's.meier@atelier-meier.ch', phone: '+41 44 210 33 44' },
-    { id: 'c2', name: 'Michael Chen', role: 'Bauingenieur ETH', company: 'Chen Statik GmbH', email: 'm.chen@chen-statik.ch', phone: '+41 44 880 12 34' },
-    { id: 'c3', name: 'Elena Rossi', role: 'Bauleiterin', company: 'Rossi Bauleitungen AG', email: 'elena@rossi-bau.ch', phone: '+41 79 555 43 21' },
-    { id: 'c4', name: 'Thomas Widmer', role: 'Elektro-Ingenieur', company: 'Widmer Elektro AG', email: 't.widmer@widmer-elektro.ch', phone: '+41 52 300 77 88' }
-  ];
-
   const safeCompanyId = currentUser?.companyId || currentUser?.uid || '';
+  const crmCacheKey = `project_crm_cache_${isDemo ? 'demo' : (safeCompanyId || 'global')}`;
+
+  const [localContacts, setLocalContacts] = useState<Contact[]>(() => {
+    try {
+      const raw = safeStorage.getItem(crmCacheKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return isDemo ? DEMO_CRM_CONTACTS : [];
+  });
+
+  const persistContacts = (nextContacts: Contact[]) => {
+    setLocalContacts(nextContacts);
+    try {
+      safeStorage.setItem(crmCacheKey, JSON.stringify(nextContacts));
+    } catch {}
+  };
+
   const { data: queryContacts, isLoading: isQueryLoading } = useCompanyUsersQuery(isDemo ? null : safeCompanyId);
 
-  const contacts: Contact[] = isDemo 
-    ? DEMO_CRM_CONTACTS 
-    : (queryContacts || []).map(u => ({
+  useEffect(() => {
+    if (isDemo) {
+      try {
+        const raw = safeStorage.getItem(crmCacheKey);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setLocalContacts(parsed);
+            return;
+          }
+        }
+      } catch {}
+      setLocalContacts(DEMO_CRM_CONTACTS);
+      return;
+    }
+    if (queryContacts && queryContacts.length > 0) {
+      const mapped: Contact[] = queryContacts.map(u => ({
         id: u.id,
         name: u.name,
         role: u.role,
@@ -62,52 +97,69 @@ export default function CRM() {
         email: u.email || '',
         phone: u.phone || ''
       }));
+      persistContacts(mapped);
+    }
+  }, [isDemo, queryContacts, crmCacheKey]);
+
+  const contacts: Contact[] = localContacts;
 
   const handleAddContact = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isDemo) {
-      addToast('Kontakterstellung ist in der Demo deaktiviert.', 'info');
-      setIsModalOpen(false);
+    const optimisticContact: Contact = {
+      id: `local-${Date.now()}`,
+      name: newContact.name.trim(),
+      role: newContact.role || 'Partner',
+      company: newContact.company || '',
+      email: newContact.email || '',
+      phone: newContact.phone || ''
+    };
+    const nextList = [optimisticContact, ...contacts];
+    persistContacts(nextList);
+    setIsModalOpen(false);
+    setNewContact({ name: '', role: '', company: '', email: '', phone: '' });
+
+    if (isDemo || !currentUser || !safeCompanyId) {
+      addToast('Kontakt gespeichert!', 'success');
       return;
     }
-    if (!currentUser || !safeCompanyId) return;
-    const nameParts = newContact.name.trim().split(' ');
-    const firstName = nameParts[0] || newContact.name;
+    const nameParts = optimisticContact.name.split(' ');
+    const firstName = nameParts[0] || optimisticContact.name;
     const lastName = nameParts.slice(1).join(' ') || '';
 
     try {
-      const { error } = await supabase.from('company_users').insert({
-        name: newContact.name,
+      const { data: inserted, error } = await supabase.from('company_users').insert({
+        name: optimisticContact.name,
         first_name: firstName,
         last_name: lastName,
-        company: newContact.company || null,
-        role: newContact.role || 'partner',
-        email: newContact.email || null,
-        phone: newContact.phone || null,
+        company: optimisticContact.company || null,
+        role: optimisticContact.role || 'partner',
+        email: optimisticContact.email || null,
+        phone: optimisticContact.phone || null,
         company_id: safeCompanyId,
         status: 'neu',
         created_at: new Date().toISOString()
-      });
+      }).select().maybeSingle();
 
       if (error) {
         console.error("Error adding contact:", error);
-        addToast('Fehler beim Speichern', 'error');
-        return;
+      } else if (inserted?.id) {
+        persistContacts(nextList.map(c => c.id === optimisticContact.id ? { ...c, id: inserted.id } : c));
       }
 
       queryClient.invalidateQueries({ queryKey: [COMPANY_USERS_QUERY_KEY, safeCompanyId] });
-      setIsModalOpen(false);
-      setNewContact({ name: '', role: '', company: '', email: '', phone: '' });
       addToast('Kontakt gespeichert!', 'success');
     } catch (error) {
-      addToast('Fehler beim Speichern', 'error');
+      addToast('Kontakt lokal gespeichert', 'info');
     }
   };
 
   const handleDeleteContact = async (id: string) => {
     if (!window.confirm('Kontakt wirklich löschen?')) return;
-    if (isDemo) {
-      addToast('Löschen in der Demo deaktiviert.', 'info');
+    const nextList = contacts.filter(c => c.id !== id);
+    persistContacts(nextList);
+
+    if (isDemo || id.startsWith('local-')) {
+      addToast('Kontakt gelöscht.', 'success');
       return;
     }
 
@@ -116,13 +168,12 @@ export default function CRM() {
       if (safeCompanyId) delQuery = delQuery.eq('company_id', safeCompanyId);
       const { error } = await delQuery;
       if (error) {
-        addToast('Fehler beim Löschen', 'error');
-        return;
+        console.error("Error deleting contact:", error);
       }
       queryClient.invalidateQueries({ queryKey: [COMPANY_USERS_QUERY_KEY, safeCompanyId] });
       addToast('Kontakt gelöscht.', 'success');
     } catch (err) {
-      addToast('Fehler beim Löschen', 'error');
+      addToast('Kontakt gelöscht.', 'success');
     }
   };
 

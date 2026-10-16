@@ -21,6 +21,7 @@ import { cn, sanitizeUrl } from '../utils';
 import { uploadPdfBlobWithFallback, uploadFileWithFallback } from '../utils/cloudStorageHelper';
 import { notifyNewDocument } from '../utils/documentNotificationHelper';
 import { isPdfFile, convertPdfPageToImage } from '../utils/pdfToImageHelper';
+import { safeStorage } from '../utils/safeStorage';
 
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
 
@@ -215,6 +216,8 @@ const swissVatRates = [
   { rate: '0.0', label: '0.0% (Befreit)' }
 ];
 
+const OPCOST_DRAFT_KEY = 'opcost_studio_draft';
+
 export default function OpCostStudio({ onClose }: { onClose: () => void }) {
   const { currentUser } = useAuth();
   const queryClient = useQueryClient();
@@ -222,8 +225,16 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
   const { language } = useLanguage();
   const { projects = [] } = useProject() as any;
 
+  const initialDraft = useMemo(() => {
+    try {
+      const raw = safeStorage.getItem(OPCOST_DRAFT_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return null;
+  }, []);
+
   // Form State
-  const [opCostData, setOpCostData] = useState({
+  const [opCostData, setOpCostData] = useState(() => initialDraft?.opCostData || ({
     category: 'Fremdleistungen & Subunternehmer',
     description: '',
     invoiceNumber: '',
@@ -238,14 +249,20 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
     qrReference: '',
     paymentTerms: '30 Tage netto',
     notes: ''
-  });
+  }));
 
   const [activeTab, setActiveTab] = useState<'quick' | 'details'>('quick');
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [opCostReceipts, setOpCostReceipts] = useState<string[]>([]);
+  const [opCostReceipts, setOpCostReceipts] = useState<string[]>(() => Array.isArray(initialDraft?.opCostReceipts) ? initialDraft.opCostReceipts : []);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAnalyzingAI, setIsAnalyzingAI] = useState(false);
   const [isPdfStudioOpen, setIsPdfStudioOpen] = useState(false);
+
+  useEffect(() => {
+    try {
+      safeStorage.setItem(OPCOST_DRAFT_KEY, JSON.stringify({ opCostData, opCostReceipts }));
+    } catch {}
+  }, [opCostData, opCostReceipts]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mobileCameraRef = useRef<HTMLInputElement>(null);
@@ -574,6 +591,7 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
       queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [FINANCIAL_QUERY_KEY] });
 
+      try { safeStorage.removeItem(OPCOST_DRAFT_KEY); } catch {}
       addToast('Rechnung & Kreditorenposten erfolgreich verbucht!', "success"); 
       onClose();
     } catch (error) { 

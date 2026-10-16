@@ -23,6 +23,9 @@ import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@reac
 
 import { Currency, getCurrencyPreference, formatCurrency } from '../utils/currencyManager';
 import { isPdfFile, convertPdfPageToImage } from '../utils/pdfToImageHelper';
+import { safeStorage } from '../utils/safeStorage';
+
+const EXPENSE_DRAFT_KEY = 'expense_report_draft';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: { expense_studio: 'Expense Studio', employee: 'Employee', date: 'Date', project_assignment: 'Project Assignment', global_expenses: 'Global Expenses (No Project)', category: 'Category', purpose_merchant: 'Purpose / Merchant', amount: 'Amount', add_position: 'Add Position', receipts_photos: 'Receipts / Photos', attached: 'attached', upload_document: 'Upload Document', live_scan: 'Live Scan', total: 'Total', save_book: 'Save & Book', cancel: 'Cancel', analyzing_ai: 'AI is analyzing...', take_photo: 'Take Photo', select: 'Select...', description: 'Description', generate_pdf: 'Generate PDF & Book', save_error: 'Error saving', ai_failed: 'AI receipt analysis failed', ext_costs_booked: 'Expenses successfully booked' },
@@ -104,13 +107,27 @@ export default function ExpenseReport({ onClose, onSave, initialCurrency }: Expe
   const { language, t: globalT } = useLanguage();
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
+
+  const initialDraft = React.useMemo(() => {
+    try {
+      const raw = safeStorage.getItem(EXPENSE_DRAFT_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return null;
+  }, []);
   
-  const [currency, setCurrency] = useState<Currency>(() => initialCurrency || getCurrencyPreference().currency || 'CHF');
+  const [currency, setCurrency] = useState<Currency>(() => initialDraft?.currency || initialCurrency || getCurrencyPreference().currency || 'CHF');
   const [showLiveScanModal, setShowLiveScanModal] = useState(false);
-  const [headerData, setHeaderData] = useState({ userId: currentUser?.uid || '', date: new Date().toISOString().split('T')[0], projectId: '' });
-  const [positions, setPositions] = useState<any[]>([{ id: '1', category: 'Verpflegung', description: '', amount: '' }]);
-  const [receipts, setReceipts] = useState<string[]>([]);
+  const [headerData, setHeaderData] = useState(() => initialDraft?.headerData || ({ userId: currentUser?.uid || '', date: new Date().toISOString().split('T')[0], projectId: '' }));
+  const [positions, setPositions] = useState<any[]>(() => (Array.isArray(initialDraft?.positions) && initialDraft.positions.length > 0) ? initialDraft.positions : [{ id: '1', category: 'Verpflegung', description: '', amount: '' }]);
+  const [receipts, setReceipts] = useState<string[]>(() => Array.isArray(initialDraft?.receipts) ? initialDraft.receipts : []);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    try {
+      safeStorage.setItem(EXPENSE_DRAFT_KEY, JSON.stringify({ currency, headerData, positions, receipts }));
+    } catch {}
+  }, [currency, headerData, positions, receipts]);
 
   const allEmployees = React.useMemo(() => {
     const list = Array.isArray(companyUsers) ? [...companyUsers] : [];
@@ -402,6 +419,7 @@ export default function ExpenseReport({ onClose, onSave, initialCurrency }: Expe
       queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [FINANCIAL_QUERY_KEY] });
 
+      try { safeStorage.removeItem(EXPENSE_DRAFT_KEY); } catch {}
       addToast(t('ext_costs_booked'), "success"); 
       setIsPdfStudioOpen(false);
       if (onSave) onSave();

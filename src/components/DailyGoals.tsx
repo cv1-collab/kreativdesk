@@ -7,6 +7,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useProject } from '../contexts/ProjectContext';
 import { cn } from '../utils';
 import { callGeminiAPI } from '../utils/geminiClient';
+import { safeStorage } from '../utils/safeStorage';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -47,15 +48,42 @@ interface Goal {
 }
 
 export default function DailyGoals({ projectId }: { projectId: string }) {
-  const [goals, setGoals] = useState<Goal[]>([]);
+  const { currentUser } = useAuth();
+  const { isDemoMode } = useProject() as any;
+  const { language, t: globalT } = useLanguage();
+  const t = useCallback((key: string) => localTranslations[language as 'en' | 'de']?.[key] || globalT(key) || key, [language, globalT]);
+
+  const cacheKey = `daily_goals_cache_${projectId || 'global'}`;
+
+  const getInitialGoals = useCallback((): Goal[] => {
+    try {
+      const raw = safeStorage.getItem(cacheKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    if (isDemoMode) {
+      return [
+        { id: '1', title: t('demo_goal_1'), completed: true, priority: 'High', projectId },
+        { id: '2', title: t('demo_goal_2'), completed: false, priority: 'Medium', projectId },
+        { id: '3', title: t('demo_goal_3'), completed: false, priority: 'Low', projectId }
+      ];
+    }
+    return [];
+  }, [cacheKey, isDemoMode, projectId, t]);
+
+  const [goals, setGoals] = useState<Goal[]>(() => getInitialGoals());
   const [newGoal, setNewGoal] = useState('');
   const [priority, setPriority] = useState<'Low' | 'Medium' | 'High'>('Medium');
   const [isAdding, setIsAdding] = useState(false);
-  const { currentUser } = useAuth();
-  const { isDemoMode, demoData } = useProject() as any;
-  
-  const { language, t: globalT } = useLanguage();
-  const t = useCallback((key: string) => localTranslations[language as 'en' | 'de']?.[key] || globalT(key) || key, [language, globalT]);
+
+  const persistGoals = useCallback((nextGoals: Goal[]) => {
+    setGoals(nextGoals);
+    try {
+      safeStorage.setItem(cacheKey, JSON.stringify(nextGoals));
+    } catch {}
+  }, [cacheKey]);
 
   const fetchGoals = useCallback(async () => {
     if (!currentUser) return;
@@ -68,7 +96,7 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
         .eq('company_id', safeCompanyId)
         .order('created_at', { ascending: false });
 
-      if (data) {
+      if (data && data.length > 0) {
         const parsed = data.map(d => {
           let priorityVal: 'Low' | 'Medium' | 'High' = 'Medium';
           let displayTitle = d.title || '';
@@ -103,82 +131,79 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
         const scoped = (projectId && projectId !== 'global')
           ? parsed.filter(g => g.projectId === projectId || g.projectId === 'global')
           : parsed;
-        setGoals(scoped);
+        if (scoped.length > 0) {
+          persistGoals(scoped);
+        }
       }
     } catch (err) {
       console.error("Error fetching goals:", err);
     }
-  }, [currentUser, projectId]);
+  }, [currentUser, projectId, persistGoals]);
 
   useEffect(() => {
-    if (isDemoMode) {
-      setGoals([
-        { id: '1', title: t('demo_goal_1'), completed: true, priority: 'High', projectId },
-        { id: '2', title: t('demo_goal_2'), completed: false, priority: 'Medium', projectId },
-        { id: '3', title: t('demo_goal_3'), completed: false, priority: 'Low', projectId }
-      ]);
-      return;
+    const cached = getInitialGoals();
+    setGoals(cached);
+    if (!isDemoMode) {
+      fetchGoals();
     }
-
-    fetchGoals();
-  }, [isDemoMode, projectId, t, fetchGoals]); 
+  }, [isDemoMode, projectId, getInitialGoals, fetchGoals]); 
 
   const handleAddGoal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newGoal.trim()) return;
-    if (isDemoMode) {
-      setGoals(prev => [
-        { id: `demo-${Date.now()}`, title: newGoal.trim(), completed: false, priority, projectId },
-        ...prev
-      ]);
-      setNewGoal('');
-      setIsAdding(false);
-      return;
-    }
-    if (!currentUser) return;
+    const optimisticGoal: Goal = {
+      id: `local-${Date.now()}`,
+      title: newGoal.trim(),
+      completed: false,
+      priority,
+      projectId: projectId || 'global',
+      createdAt: new Date().toISOString()
+    };
+    const updatedGoals = [optimisticGoal, ...goals];
+    persistGoals(updatedGoals);
+    setNewGoal('');
+    setIsAdding(false);
+
+    if (isDemoMode || !currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     try {
       const projPrefix = (projectId && projectId !== 'global') ? `[Proj:${projectId}] ` : '';
       const prioPrefix = priority !== 'Medium' ? `[${priority}] ` : '';
-      const fullTitle = `${projPrefix}${prioPrefix}${newGoal.trim()}`;
-      await supabase.from('goals').insert({
+      const fullTitle = `${projPrefix}${prioPrefix}${optimisticGoal.title}`;
+      const { data: inserted } = await supabase.from('goals').insert({
         title: fullTitle,
         company_id: safeCompanyId,
         target_value: 1,
         current_value: 0,
-        created_at: new Date().toISOString()
-      });
+        created_at: optimisticGoal.createdAt
+      }).select().maybeSingle();
 
-      setNewGoal('');
-      setIsAdding(false);
-      fetchGoals();
+      if (inserted?.id) {
+        persistGoals(updatedGoals.map(g => g.id === optimisticGoal.id ? { ...g, id: inserted.id } : g));
+      }
     } catch (err) {
       console.error("Error adding goal:", err);
     }
   };
 
   const handleToggleGoal = async (goalId: string, currentCompleted: boolean) => {
-    if (isDemoMode) {
-      setGoals(prev => prev.map(g => g.id === goalId ? { ...g, completed: !currentCompleted } : g));
-      return;
-    }
+    const nextGoals = goals.map(g => g.id === goalId ? { ...g, completed: !currentCompleted } : g);
+    persistGoals(nextGoals);
+    if (isDemoMode || goalId.startsWith('local-') || goalId.startsWith('demo-')) return;
     try {
       await supabase.from('goals').update({ current_value: !currentCompleted ? 1 : 0 }).eq('id', goalId);
-      setGoals(prev => prev.map(g => g.id === goalId ? { ...g, completed: !currentCompleted } : g));
     } catch (err) {
       console.error("Error toggling goal:", err);
     }
   };
 
   const handleDeleteGoal = async (goalId: string) => {
-    if (isDemoMode) {
-      setGoals(prev => prev.filter(g => g.id !== goalId));
-      return;
-    }
+    const nextGoals = goals.filter(g => g.id !== goalId);
+    persistGoals(nextGoals);
+    if (isDemoMode || goalId.startsWith('local-') || goalId.startsWith('demo-')) return;
     try {
       await supabase.from('goals').delete().eq('id', goalId);
-      setGoals(prev => prev.filter(g => g.id !== goalId));
     } catch (err) {
       console.error("Error deleting goal:", err);
     }
@@ -202,9 +227,20 @@ Antworte als reines JSON-Array von Strings, z.B. ["Bewehrung EG prüfen", "Elekt
         console.warn("Failed to parse DailyGoals AI response", e);
       }
 
-      if (Array.isArray(suggestions)) {
+      if (Array.isArray(suggestions) && suggestions.length > 0) {
+        const aiGoals: Goal[] = suggestions.map((title, idx) => ({
+          id: `local-ai-${Date.now()}-${idx}`,
+          title: String(title),
+          completed: false,
+          priority: 'High',
+          projectId: projectId || 'global',
+          createdAt: new Date().toISOString()
+        }));
+        const nextGoals = [...aiGoals, ...goals];
+        persistGoals(nextGoals);
+
         const safeCompanyId = currentUser?.companyId || currentUser?.uid;
-        if (safeCompanyId) {
+        if (!isDemoMode && safeCompanyId) {
           const projPrefix = (projectId && projectId !== 'global') ? `[Proj:${projectId}] ` : '';
           for (const title of suggestions) {
             await supabase.from('goals').insert({
