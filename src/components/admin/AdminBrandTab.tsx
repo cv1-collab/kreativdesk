@@ -4,9 +4,11 @@ import { applyBrandColor, resetBrandColor, DEFAULT_BRAND_COLOR, calculateBrandSh
 import { Palette, Upload, Loader2, Image as ImageIcon, Building2, PaintBucket, Globe, Mail, Phone, MapPin, CreditCard, Hash, CheckCircle2, Megaphone, Lock, Sparkles, Link as LinkIcon, AlertTriangle, Info, ShieldAlert, RotateCcw, Eye, Trash2 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { cn } from '../../utils';
 import { safeStorage } from '../../utils/safeStorage';
+import { logAuditAction } from '../../utils/auditLogger';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -56,22 +58,27 @@ const COLOR_PRESETS = [
 
 export default function AdminBrandTab() {
   const { language, t: globalT } = useLanguage();
+  const { currentUser } = useAuth();
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
   const { addToast } = useToast();
 
-  const [config, setConfig] = useState({
-    masterLogo: '', accentColor: '#3b82f6',
-    companyName: 'Kreativ-Desk OS', uid: '', address: '', zipCode: '', city: '', phone: '', website: '', email: '', iban: '',
-    screensaverActive: false,
-    screensaverImage: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2000&auto=format&fit=crop',
-    screensaverTimeout: 5,
-    announcementActive: false,
-    announcementText: '',
-    announcementType: 'info',
-    announcementLink: '',
-    loginBgImage: ''
+  const [config, setConfig] = useState(() => {
+    const defaults = {
+      masterLogo: '', accentColor: '#3b82f6',
+      companyName: 'Kreativ-Desk OS', uid: '', address: '', zipCode: '', city: '', phone: '', website: '', email: '', iban: '',
+      screensaverActive: false,
+      screensaverImage: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2000&auto=format&fit=crop',
+      screensaverTimeout: 5,
+      announcementActive: false,
+      announcementText: '',
+      announcementType: 'info',
+      announcementLink: '',
+      loginBgImage: ''
+    };
+    const cached = safeStorage.getItem<any>('sys_config_global_master', null);
+    return cached ? { ...defaults, ...cached } : defaults;
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -179,11 +186,25 @@ export default function AdminBrandTab() {
     try {
       applyBrandColor(config.accentColor || DEFAULT_BRAND_COLOR, true);
       await saveSystemConfigJSON('global_master', config);
-      await supabase.from('system_config').upsert({
-        id: 'global_master',
-        brand_logo: config.masterLogo || '',
-        updated_at: new Date().toISOString()
+      try {
+        await supabase.from('system_config').upsert({
+          id: 'global_master',
+          brand_logo: config.masterLogo || '',
+          updated_at: new Date().toISOString()
+        });
+      } catch (_) {}
+
+      await logAuditAction({
+        companyId: currentUser?.companyId || 'global_master',
+        userId: currentUser?.uid || 'admin',
+        userEmail: currentUser?.email || 'Admin',
+        action: 'SETTINGS_UPDATED',
+        details: {
+          title: 'Globales Master-Branding gespeichert',
+          message: `Firma: ${config.companyName}, Akzentfarbe: ${config.accentColor}, Banner: ${config.announcementActive ? 'Aktiv' : 'Inaktiv'}`
+        }
       });
+
       addToast(t('branding_saved'), 'success');
     } catch (e) {
       console.error("Save config error:", e);

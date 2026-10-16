@@ -89,17 +89,37 @@ export const sendNotification = async ({
       try {
         const { data: authData } = await supabase.auth.getUser();
         const rawActorId = authData?.user?.id || (notifObj as any).userId || null;
-        const actorId = rawActorId && isUUID(rawActorId) ? rawActorId : null;
-        await supabase.from('audit_logs').insert({
-          company_id: companyId,
-          user_id: actorId,
-          action: 'NOTIFICATION',
-          details: JSON.stringify(notifObj),
-          created_at: notifObj.created_at || new Date().toISOString()
+        const actorId = rawActorId && isUUID(rawActorId) ? rawActorId : 'system';
+        const actorEmail = authData?.user?.email || 'System';
+        const { logAuditAction } = await import('../utils/auditLogger');
+        const mappedAction =
+          type === 'plan' ? 'PLAN_SAVED' :
+          type === 'document' ? 'DOCUMENT_UPLOADED' :
+          type === 'finance' ? 'INVOICE_CREATED' :
+          'NOTIFICATION';
+        await logAuditAction({
+          companyId,
+          userId: actorId,
+          userEmail: actorEmail,
+          action: mappedAction,
+          details: notifObj,
+          timestamp: notifObj.created_at
         });
       } catch (e) {
-        console.warn("Audit logs table insert failed:", e);
+        console.warn("Audit logs fallback handled:", e);
       }
+    } else {
+      try {
+        const { logAuditAction } = await import('../utils/auditLogger');
+        await logAuditAction({
+          companyId,
+          userId: 'system',
+          userEmail: 'System',
+          action: 'NOTIFICATION',
+          details: notifObj,
+          timestamp: notifObj.created_at
+        });
+      } catch (_) {}
     }
   } catch (err) {
     console.warn("sendNotification fallback:", err);

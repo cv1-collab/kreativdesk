@@ -235,6 +235,27 @@ export const webhookNotifier = {
   },
 
   async triggerWebhook(payload: WebhookEventPayload, companyId?: string): Promise<void> {
+    try {
+      const { logAuditAction } = await import('./auditLogger');
+      const actionMap: Record<WebhookEventType, string> = {
+        'defect.created': 'DEFECT_CREATED',
+        'invoice.created': 'INVOICE_CREATED',
+        'lead.created': 'LEAD_UPDATED',
+        'document.uploaded': 'DOCUMENT_UPLOADED'
+      };
+      await logAuditAction({
+        companyId: companyId || payload.company_id || 'global_master',
+        userId: 'system',
+        action: actionMap[payload.event] || 'NOTIFICATION',
+        details: {
+          title: payload.title,
+          message: payload.description || '',
+          ...(payload.details || {})
+        },
+        timestamp: payload.timestamp
+      });
+    } catch (_) {}
+
     const endpoints = this.getWebhooks(companyId);
     const activeEndpoints = endpoints.filter(ep => ep.active && ep.events.includes(payload.event));
     if (activeEndpoints.length === 0) return;

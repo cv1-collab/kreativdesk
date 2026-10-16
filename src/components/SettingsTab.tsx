@@ -720,6 +720,20 @@ export default function SettingsTab() {
         }
       }
 
+      try {
+        const { logAuditAction } = await import('../utils/auditLogger');
+        await logAuditAction({
+          companyId: compId,
+          userId: currentUser?.uid || 'user',
+          userEmail: currentUser?.email || 'System',
+          action: 'SETTINGS_UPDATED',
+          details: {
+            title: 'Firmeneinstellungen gespeichert',
+            message: `Firma: ${agencyName.trim() || 'Workspace'}, Akzentfarbe: ${primaryColor}`
+          }
+        });
+      } catch (_) {}
+
       setWebsite(formattedWebsite);
       addToast('Einstellungen erfolgreich in Supabase gespeichert!', 'success');
     } catch (error: any) {

@@ -4,6 +4,8 @@ import { Mail, Building, Phone, Calendar, Trash2, Megaphone, CheckCircle } from 
 import { cn } from '../../utils';
 import { useToast } from '../../contexts/ToastContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { logAuditAction } from '../../utils/auditLogger';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -28,12 +30,20 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 
 export default function AdminLeadsTab() {
   const { addToast } = useToast();
+  const { currentUser } = useAuth();
   const { language, t: globalT } = useLanguage();
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
-  const [leads, setLeads] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [leads, setLeads] = useState<any[]>(() => {
+    try {
+      const raw = localStorage.getItem('admin_leads_cache');
+      return raw ? JSON.parse(raw) : [];
+    } catch (_) {
+      return [];
+    }
+  });
+  const [isLoading, setIsLoading] = useState(() => leads.length === 0);
 
   const fetchLeads = async () => {
     try {
@@ -43,7 +53,12 @@ export default function AdminLeadsTab() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      if (data) setLeads(data);
+      if (data) {
+        setLeads(data);
+        try {
+          localStorage.setItem('admin_leads_cache', JSON.stringify(data));
+        } catch (_) {}
+      }
     } catch (err) {
       console.error("Error fetching admin leads:", err);
     } finally {
@@ -65,11 +80,29 @@ export default function AdminLeadsTab() {
   }, []);
 
   const handleUpdateStatus = async (id: string, newStatus: string) => {
+    const targetLead = leads.find(l => l.id === id);
+    const updated = leads.map(l => l.id === id ? { ...l, status: newStatus } : l);
+    setLeads(updated);
+    try {
+      localStorage.setItem('admin_leads_cache', JSON.stringify(updated));
+    } catch (_) {}
+
     try {
       await supabase
         .from('leads')
         .update({ status: newStatus })
         .eq('id', id);
+      await logAuditAction({
+        companyId: currentUser?.companyId || 'global_master',
+        userId: currentUser?.uid || 'admin',
+        userEmail: currentUser?.email || 'Admin',
+        action: 'LEAD_UPDATED',
+        details: {
+          title: `B2B-Anfrage: ${targetLead?.name || targetLead?.company || id}`,
+          message: `Status auf "${newStatus}" gesetzt (${targetLead?.email || ''})`
+        }
+      });
+      addToast('Lead-Status aktualisiert', 'success');
       fetchLeads();
     } catch (e) {
       console.error(e);
@@ -78,11 +111,28 @@ export default function AdminLeadsTab() {
 
   const handleDelete = async (id: string) => {
     if (!window.confirm(t('delete_confirm'))) return;
+    const targetLead = leads.find(l => l.id === id);
+    const updated = leads.filter(l => l.id !== id);
+    setLeads(updated);
+    try {
+      localStorage.setItem('admin_leads_cache', JSON.stringify(updated));
+    } catch (_) {}
+
     try {
       await supabase
         .from('leads')
         .delete()
         .eq('id', id);
+      await logAuditAction({
+        companyId: currentUser?.companyId || 'global_master',
+        userId: currentUser?.uid || 'admin',
+        userEmail: currentUser?.email || 'Admin',
+        action: 'LEAD_UPDATED',
+        details: {
+          title: `B2B-Anfrage gelöscht`,
+          message: `Lead "${targetLead?.name || targetLead?.company || id}" (${targetLead?.email || ''}) entfernt.`
+        }
+      });
       fetchLeads();
     } catch (e) {
       console.error(e);

@@ -5,6 +5,8 @@ import { cn } from '../../utils';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../../contexts/ToastContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { logAuditAction } from '../../utils/auditLogger';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -27,11 +29,19 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 
 export default function AdminSalesTab() {
   const { addToast } = useToast();
+  const { currentUser } = useAuth();
   const { language, t: globalT } = useLanguage();
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
-  const [transactions, setTransactions] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<any[]>(() => {
+    try {
+      const raw = localStorage.getItem('admin_sales_cache');
+      return raw ? JSON.parse(raw) : [];
+    } catch (_) {
+      return [];
+    }
+  });
   const [filter, setFilter] = useState('All');
   
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -71,12 +81,17 @@ export default function AdminSalesTab() {
           })
           .filter(t => t.userEmail !== null && t.userEmail !== undefined && t.userEmail !== 'Unbekannt');
         setTransactions(enriched);
+        try {
+          localStorage.setItem('admin_sales_cache', JSON.stringify(enriched));
+        } catch (_) {}
       } else {
         setTransactions([]);
+        try {
+          localStorage.setItem('admin_sales_cache', JSON.stringify([]));
+        } catch (_) {}
       }
     } catch (e) {
       console.error(e);
-      setTransactions([]);
     }
   };
 
@@ -90,6 +105,16 @@ export default function AdminSalesTab() {
     setIsSubmitting(true);
     try {
       await supabase.from('transactions').update({ status: selectedTrx.status }).eq('id', selectedTrx.id);
+      await logAuditAction({
+        companyId: selectedTrx.company_id || currentUser?.companyId || 'global_master',
+        userId: currentUser?.uid || 'admin',
+        userEmail: currentUser?.email || 'Admin',
+        action: 'SUBSCRIPTION_CHANGED',
+        details: {
+          title: `Abo-Transaktion aktualisiert (${selectedTrx.userEmail || 'Kunde'})`,
+          message: `Transaktionsstatus für ${selectedTrx.plan || 'Subscription'} (CHF ${Number(selectedTrx.amount || 0).toFixed(2)}) auf "${selectedTrx.status}" gesetzt.`
+        }
+      });
       addToast(t('status_updated'), 'success');
       setIsModalOpen(false);
       fetchTransactions();
@@ -105,6 +130,16 @@ export default function AdminSalesTab() {
     setIsSubmitting(true);
     try {
       await supabase.from('transactions').delete().eq('id', trxId);
+      await logAuditAction({
+        companyId: selectedTrx?.company_id || currentUser?.companyId || 'global_master',
+        userId: currentUser?.uid || 'admin',
+        userEmail: currentUser?.email || 'Admin',
+        action: 'SUBSCRIPTION_CHANGED',
+        details: {
+          title: 'Abo-Transaktion gelöscht',
+          message: `Transaktion ${trxId} (${selectedTrx?.userEmail || ''}) wurde gelöscht.`
+        }
+      });
       addToast('Transaktion gelöscht', 'success');
       setIsModalOpen(false);
       fetchTransactions();
@@ -124,6 +159,16 @@ export default function AdminSalesTab() {
         .delete()
         .eq('type', 'subscription')
         .or('description.ilike.%dummy%,description.ilike.%test%,client.ilike.%dummy%,client.ilike.%test%');
+      await logAuditAction({
+        companyId: currentUser?.companyId || 'global_master',
+        userId: currentUser?.uid || 'admin',
+        userEmail: currentUser?.email || 'Admin',
+        action: 'SUBSCRIPTION_CHANGED',
+        details: {
+          title: 'Dummy-Zahlungen bereinigt',
+          message: 'Test- und Dummy-Transaktionen wurden aus der Abrechnungstabelle entfernt.'
+        }
+      });
       addToast('Dummy-Zahlungen wurden erfolgreich gelöscht!', 'success');
       fetchTransactions();
     } catch (err) {

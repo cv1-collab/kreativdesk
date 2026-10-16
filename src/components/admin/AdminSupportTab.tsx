@@ -1,46 +1,128 @@
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, CheckCircle, Clock, AlertTriangle, Loader2 } from 'lucide-react';
+import { MessageSquare, CheckCircle, Clock, AlertTriangle, Loader2, Trash2 } from 'lucide-react';
 import { cn } from '../../utils';
 import { supabase } from '../../lib/supabase';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
+import { logAuditAction } from '../../utils/auditLogger';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
     tickets_open: 'Open Tickets', tickets_closed: 'Resolved', tickets_urgent: 'Critical', id: 'ID',
     subject: 'Subject', priority: 'Priority', status: 'Status', no_subject: 'No Subject',
-    normal: 'Normal', no_support_tickets: 'No support tickets found.', status_done: 'Resolved', status_open: 'Open'
+    normal: 'Normal', no_support_tickets: 'No support tickets found.', status_done: 'Resolved', status_open: 'Open',
+    mark_resolved: 'Mark Resolved', reopen: 'Reopen', delete_confirm: 'Delete this support ticket?'
   },
   de: {
     tickets_open: 'Offene Tickets', tickets_closed: 'Gelöst', tickets_urgent: 'Kritisch', id: 'ID',
     subject: 'Betreff', priority: 'Priorität', status: 'Status', no_subject: 'Kein Betreff',
-    normal: 'Normal', no_support_tickets: 'Keine Support-Tickets gefunden.', status_done: 'Gelöst', status_open: 'Offen'
+    normal: 'Normal', no_support_tickets: 'Keine Support-Tickets gefunden.', status_done: 'Gelöst', status_open: 'Offen',
+    mark_resolved: 'Als gelöst markieren', reopen: 'Wieder öffnen', delete_confirm: 'Support-Ticket wirklich löschen?'
   }
 };
 
 export default function AdminSupportTab() {
   const { language, t: globalT } = useLanguage();
+  const { currentUser } = useAuth();
+  const { addToast } = useToast();
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
-  const [tickets, setTickets] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [tickets, setTickets] = useState<any[]>(() => {
+    try {
+      const raw = localStorage.getItem('admin_support_cache');
+      return raw ? JSON.parse(raw) : [];
+    } catch (_) {
+      return [];
+    }
+  });
+  const [isLoading, setIsLoading] = useState(() => tickets.length === 0);
+
+  const fetchTickets = async () => {
+    try {
+      const { data } = await supabase.from('support_tickets').select('*').order('created_at', { ascending: false });
+      if (data) {
+        setTickets(data);
+        try {
+          localStorage.setItem('admin_support_cache', JSON.stringify(data));
+        } catch (_) {}
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchTickets = async () => {
-      try {
-        const { data } = await supabase.from('support_tickets').select('*').order('created_at', { ascending: false });
-        if (data) setTickets(data);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setIsLoading(false);
-      }
-    };
     fetchTickets();
+
+    const channel = supabase
+      .channel('admin-support-tickets')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'support_tickets' }, fetchTickets)
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel).catch(() => {});
+    };
   }, []);
 
-  const openTickets = tickets.filter(t => t.status !== 'Done').length;
-  const closedTickets = tickets.filter(t => t.status === 'Done').length;
+  const handleToggleTicketStatus = async (ticket: any) => {
+    const isDone = ticket.status === 'Done' || ticket.status === 'Gelöst';
+    const nextStatus = isDone ? 'Open' : 'Done';
+    const updated = tickets.map(tk => tk.id === ticket.id ? { ...tk, status: nextStatus } : tk);
+    setTickets(updated);
+    try {
+      localStorage.setItem('admin_support_cache', JSON.stringify(updated));
+    } catch (_) {}
+
+    try {
+      await supabase.from('support_tickets').update({ status: nextStatus }).eq('id', ticket.id);
+      await logAuditAction({
+        companyId: currentUser?.companyId || 'global_master',
+        userId: currentUser?.uid || 'admin',
+        userEmail: currentUser?.email || 'Admin',
+        action: 'SUPPORT_TICKET_UPDATED',
+        details: {
+          title: `Support-Ticket: ${ticket.subject || 'Anfrage'}`,
+          message: `Status geändert auf: ${nextStatus === 'Done' ? 'Gelöst' : 'Offen'} (${ticket.user_email || ticket.email || ''})`
+        }
+      });
+      addToast(nextStatus === 'Done' ? 'Ticket als gelöst markiert' : 'Ticket wieder geöffnet', 'success');
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleDeleteTicket = async (ticket: any) => {
+    if (!window.confirm(t('delete_confirm'))) return;
+    const updated = tickets.filter(tk => tk.id !== ticket.id);
+    setTickets(updated);
+    try {
+      localStorage.setItem('admin_support_cache', JSON.stringify(updated));
+    } catch (_) {}
+
+    try {
+      await supabase.from('support_tickets').delete().eq('id', ticket.id);
+      await logAuditAction({
+        companyId: currentUser?.companyId || 'global_master',
+        userId: currentUser?.uid || 'admin',
+        userEmail: currentUser?.email || 'Admin',
+        action: 'SUPPORT_TICKET_UPDATED',
+        details: {
+          title: `Support-Ticket gelöscht`,
+          message: `Betreff: "${ticket.subject || 'Anfrage'}" (${ticket.user_email || ticket.email || ''})`
+        }
+      });
+      addToast('Support-Ticket gelöscht', 'info');
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const openTickets = tickets.filter(t => t.status !== 'Done' && t.status !== 'Gelöst').length;
+  const closedTickets = tickets.filter(t => t.status === 'Done' || t.status === 'Gelöst').length;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -76,17 +158,38 @@ export default function AdminSupportTab() {
           ) : tickets.length === 0 ? (
             <div className="p-8 text-center text-text-muted">{t('no_support_tickets')}</div>
           ) : (
-            tickets.map((ticket) => (
-              <div key={ticket.id} className="p-4 flex items-center justify-between hover:bg-surface-hover/50 transition-colors">
-                <div>
-                  <div className="font-semibold text-sm text-text-primary">{ticket.subject || t('no_subject')}</div>
-                  <div className="text-xs text-text-muted">{ticket.user_email || ticket.email}</div>
+            tickets.map((ticket) => {
+              const isDone = ticket.status === 'Done' || ticket.status === 'Gelöst';
+              return (
+                <div key={ticket.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-surface-hover/50 transition-colors">
+                  <div className="space-y-1">
+                    <div className="font-semibold text-sm text-text-primary">{ticket.subject || t('no_subject')}</div>
+                    <div className="text-xs text-text-muted">{ticket.user_email || ticket.email}</div>
+                    {ticket.message && <p className="text-xs text-text-muted/90 mt-1">{ticket.message}</p>}
+                  </div>
+                  <div className="flex items-center gap-2 self-end sm:self-center">
+                    <button
+                      onClick={() => handleToggleTicketStatus(ticket)}
+                      className={cn(
+                        "px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider border cursor-pointer transition-colors",
+                        isDone
+                          ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/20"
+                          : "bg-blue-500/10 text-blue-500 border-blue-500/20 hover:bg-blue-500/20"
+                      )}
+                      title={isDone ? t('reopen') : t('mark_resolved')}
+                    >
+                      {isDone ? t('status_done') : (ticket.status || t('status_open'))}
+                    </button>
+                    <button
+                      onClick={() => handleDeleteTicket(ticket)}
+                      className="p-1.5 text-text-muted hover:text-red-500 rounded-lg hover:bg-red-500/10 transition-colors cursor-pointer"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
                 </div>
-                <span className="px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider border bg-blue-500/10 text-blue-500 border-blue-500/20">
-                  {ticket.status || 'Offen'}
-                </span>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>

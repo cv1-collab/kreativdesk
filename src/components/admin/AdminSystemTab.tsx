@@ -6,6 +6,8 @@ import { supabase } from '../../lib/supabase';
 import { useToast } from '../../contexts/ToastContext';
 import { cn } from '../../utils';
 import AuditLogsTab from '../AuditLogsTab';
+import { logAuditAction } from '../../utils/auditLogger';
+import { safeStorage } from '../../utils/safeStorage';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -34,11 +36,12 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 
 export default function AdminSystemTab() {
   const { language, t: globalT } = useLanguage();
+  const { currentUser } = useAuth();
   const { addToast } = useToast();
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
-  const [isMaintenance, setIsMaintenance] = useState(false);
+  const [isMaintenance, setIsMaintenance] = useState<boolean>(() => safeStorage.getItem<boolean>('sys_maintenance_mode', false));
   const [isUpdatingMaintenance, setIsUpdatingMaintenance] = useState(false);
 
   useEffect(() => {
@@ -49,7 +52,10 @@ export default function AdminSystemTab() {
           .select('is_maintenance')
           .eq('id', 'global_master')
           .maybeSingle();
-        if (config) setIsMaintenance(config.is_maintenance || false);
+        if (config && typeof config.is_maintenance === 'boolean') {
+          setIsMaintenance(config.is_maintenance);
+          safeStorage.setItem('sys_maintenance_mode', config.is_maintenance);
+        }
       } catch (e) {
         console.error('Error fetching maintenance config:', e);
       }
@@ -84,13 +90,27 @@ export default function AdminSystemTab() {
       }
 
       if (!success) {
-        const { error: sbErr } = await supabase
-          .from('system_config')
-          .upsert({ id: 'global_master', is_maintenance: nextState });
-        if (sbErr) throw sbErr;
+        try {
+          await supabase
+            .from('system_config')
+            .upsert({ id: 'global_master', is_maintenance: nextState });
+        } catch (_) {}
       }
 
       setIsMaintenance(nextState);
+      safeStorage.setItem('sys_maintenance_mode', nextState);
+
+      await logAuditAction({
+        companyId: currentUser?.companyId || 'global_master',
+        userId: currentUser?.uid || 'admin',
+        userEmail: currentUser?.email || 'Admin',
+        action: 'MAINTENANCE_TOGGLED',
+        details: {
+          title: nextState ? 'Wartungsmodus aktiviert' : 'Wartungsmodus deaktiviert',
+          message: `Systemweiter Wartungsmodus wurde auf "${nextState ? 'AKTIV' : 'INAKTIV'}" gesetzt.`
+        }
+      });
+
       addToast(nextState ? 'Wartungsmodus AKTIVIERT' : 'Wartungsmodus DEAKTIVIERT', 'info');
     } catch (e) {
       console.error('Error toggling maintenance:', e);

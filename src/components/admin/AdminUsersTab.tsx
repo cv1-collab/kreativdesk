@@ -9,6 +9,7 @@ import { checkIsSuperAdmin } from '../../config/admins';
 import { offboardCompanyUser } from '../../services/userService';
 import { useAuth } from '../../contexts/AuthContext';
 import { safeStorage } from '../../utils/safeStorage';
+import { logAuditAction } from '../../utils/auditLogger';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -65,8 +66,15 @@ export default function AdminUsersTab() {
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
   const [search, setSearch] = useState('');
-  const [users, setUsers] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [users, setUsers] = useState<any[]>(() => {
+    try {
+      const raw = localStorage.getItem('admin_users_cache');
+      return raw ? JSON.parse(raw) : [];
+    } catch (_) {
+      return [];
+    }
+  });
+  const [isLoading, setIsLoading] = useState(() => users.length === 0);
 
   // Edit Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -129,6 +137,16 @@ export default function AdminUsersTab() {
       if (!response.ok) throw new Error(resData.error || 'Fehler beim Erstellen');
 
       setCreatedVipLink(resData.vipLink);
+      await logAuditAction({
+        companyId: resData.companyId || currentUser?.companyId || 'global_master',
+        userId: currentUser?.uid || 'admin',
+        userEmail: currentUser?.email || 'Admin',
+        action: 'VIP_PROVISIONED',
+        details: {
+          title: `VIP Kunden-Workspace eingerichtet: ${companyName}`,
+          message: `CEO: ${ceoName || ceoEmail} (${ceoEmail}), Plan: ${plan}, Lizenzen: ${maxSeats}`
+        }
+      });
       addToast('VIP Kunden-Workspace & Link erfolgreich erstellt!', 'success');
       await fetchUsers();
     } catch (err: any) {
@@ -213,7 +231,11 @@ export default function AdminUsersTab() {
           }
         });
 
-        setUsers([...activeList, ...pendingList]);
+        const combined = [...activeList, ...pendingList];
+        setUsers(combined);
+        try {
+          localStorage.setItem('admin_users_cache', JSON.stringify(combined));
+        } catch (_) {}
       }
     } catch (err) {
       console.error("Error fetching users for admin:", err);
@@ -253,6 +275,16 @@ export default function AdminUsersTab() {
             body: JSON.stringify({ userId: user.id, userEmail: user.email })
           });
           if (res.ok) {
+            await logAuditAction({
+              companyId: user.company_id || currentUser?.companyId || 'global_master',
+              userId: currentUser?.uid || 'admin',
+              userEmail: currentUser?.email || 'Admin',
+              action: 'USER_REMOVED',
+              details: {
+                title: `Benutzer entfernt: ${user.name || user.email}`,
+                message: `Konto (${user.email}) wurde durch Super-Admin gelöscht.`
+              }
+            });
             addToast('Benutzer erfolgreich gelöscht', 'success');
             await fetchUsers();
             return;
@@ -265,6 +297,16 @@ export default function AdminUsersTab() {
       if (user.email) {
         await supabase.from('invites').delete().ilike('email', user.email);
       }
+      await logAuditAction({
+        companyId: companyId || currentUser?.companyId || 'global_master',
+        userId: currentUser?.uid || 'admin',
+        userEmail: currentUser?.email || 'Admin',
+        action: 'USER_REMOVED',
+        details: {
+          title: `Benutzer entfernt: ${user.name || user.email}`,
+          message: `Konto (${user.email}) wurde aus dem System entfernt.`
+        }
+      });
       addToast(t('user_saved'), 'success');
       await fetchUsers();
     } catch (error) { 
@@ -432,6 +474,17 @@ export default function AdminUsersTab() {
         }
       }
 
+      await logAuditAction({
+        companyId: editingUser.company_id || currentUser?.companyId || 'global_master',
+        userId: currentUser?.uid || 'admin',
+        userEmail: currentUser?.email || 'Admin',
+        action: 'USER_ROLE_CHANGED',
+        details: {
+          title: `Benutzer aktualisiert: ${editingUser.name || editingUser.email}`,
+          message: `Rolle: ${editingUser.role}, Plan: ${editingUser.plan || editingUser.companyPlan || 'Enterprise'}, Lizenzen: ${editingUser.maxSeats || 1}`
+        }
+      });
+
       if (currentUser?.id === editingUser.id || (currentUser?.email && editingUser?.email && currentUser.email.toLowerCase() === editingUser.email.toLowerCase())) {
         await refreshUserProfile().catch(() => {});
       }
@@ -471,6 +524,17 @@ export default function AdminUsersTab() {
       if (!res.ok) {
         throw new Error(result.error || 'Fehler beim Bereinigen');
       }
+
+      await logAuditAction({
+        companyId: currentUser?.companyId || 'global_master',
+        userId: currentUser?.uid || 'admin',
+        userEmail: currentUser?.email || 'Admin',
+        action: 'USER_REMOVED',
+        details: {
+          title: 'Test-Nutzer bereinigt',
+          message: `${result.deletedCount || 0} Demo-/Test-Konten wurden gelöscht.`
+        }
+      });
 
       addToast(result.deletedCount > 0 ? `${result.deletedCount} Test-Nutzer erfolgreich gelöscht!` : 'Keine weiteren Test-Nutzer gefunden.', 'success');
       await fetchUsers();

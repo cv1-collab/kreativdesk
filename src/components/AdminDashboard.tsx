@@ -61,7 +61,7 @@ export default function AdminDashboard() {
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [newLeadsCount, setNewLeadsCount] = useState(0); 
-  const [kdCompany, setKdCompany] = useState<any>(null);
+  const [kdCompany, setKdCompany] = useState<any>(() => safeStorage.getItem<any>('admin_kd_company_cache', null));
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -83,6 +83,24 @@ export default function AdminDashboard() {
         if (data) setNewLeadsCount(data.length);
       }
       if (safeCompanyId) {
+        try {
+          const { data: comp } = await supabase
+            .from('companies')
+            .select('used_seats, max_seats, name, plan')
+            .eq('id', safeCompanyId)
+            .maybeSingle();
+          if (comp) {
+            const mapped = {
+              usedSeats: comp.used_seats || 1,
+              maxSeats: comp.max_seats || 10,
+              name: comp.name,
+              plan: comp.plan
+            };
+            setKdCompany(mapped);
+            safeStorage.setItem('admin_kd_company_cache', mapped);
+          }
+        } catch (_) {}
+
         const { fetchNotifications } = await import('../lib/notifications');
         const notifs = await fetchNotifications(safeCompanyId);
         setUnreadNotifsCount(notifs.filter(n => !n.is_read).length);
@@ -95,6 +113,7 @@ export default function AdminDashboard() {
       .channel('admin-realtime-notifs')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, loadAdminNotifications)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, loadAdminNotifications)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'companies' }, loadAdminNotifications)
       .subscribe();
 
     window.addEventListener('notif_updated', loadAdminNotifications);

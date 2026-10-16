@@ -92,7 +92,11 @@ const ACTION_TRANSLATIONS_DE: Record<string, string> = {
   'PLAN_SAVED': 'CAD-Plan gespeichert',
   'DEFECT_CREATED': 'Mangel erfasst',
   'DEFECT_RESOLVED': 'Mangel behoben',
-  'MAINTENANCE_TOGGLED': 'Wartungsmodus geändert'
+  'MAINTENANCE_TOGGLED': 'Wartungsmodus geändert',
+  'SUBSCRIPTION_CHANGED': 'Abo / Lizenz angepasst',
+  'LEAD_UPDATED': 'B2B-Anfrage bearbeitet',
+  'SUPPORT_TICKET_UPDATED': 'Support-Ticket bearbeitet',
+  'VIP_PROVISIONED': 'VIP Kunden-Workspace eingerichtet'
 };
 
 function getReadableAction(action: string, lang: string): string {
@@ -120,21 +124,41 @@ export default function AuditLogsTab({
 }: AuditLogsTabProps = {}) {
   const { currentUser } = useAuth();
   const { language } = useLanguage();
-  const [logs, setLogs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+  const cacheKey = isGlobalAdmin ? 'audit_logs_cache_global' : `audit_logs_cache_${safeCompanyId || 'default'}`;
+
+  const [logs, setLogs] = useState<any[]>(() => {
+    try {
+      const raw = localStorage.getItem(cacheKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (_) {}
+    return [];
+  });
+  const [loading, setLoading] = useState(() => logs.length === 0);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<'all' | 'projects' | 'team' | 'notifications' | 'finance'>('all');
   const [expandedJsonIds, setExpandedJsonIds] = useState<string[]>([]);
 
   useEffect(() => {
     let isMounted = true;
-    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
     if (!isGlobalAdmin && !safeCompanyId) {
       setLoading(false);
       return;
     }
     
     const fetchLogs = async () => {
+      let localCached: any[] = [];
+      try {
+        const raw = localStorage.getItem(cacheKey);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) localCached = parsed;
+        }
+      } catch (_) {}
+
       try {
         let query = supabase
           .from('audit_logs')
@@ -150,8 +174,31 @@ export default function AuditLogsTab({
 
         if (error) {
           console.warn('Error fetching audit logs:', error);
-        } else if (data && isMounted) {
-          setLogs(data);
+          if (isMounted && localCached.length > 0) setLogs(localCached);
+        } else if (isMounted) {
+          const dbLogs = data || [];
+          const mergedMap = new Map<string, any>();
+          const seenSig = new Set<string>();
+
+          dbLogs.forEach((l: any) => {
+            mergedMap.set(l.id, l);
+            seenSig.add(`${l.action}_${(l.created_at || '').slice(0, 19)}`);
+          });
+
+          localCached.forEach((l: any) => {
+            const sig = `${l.action}_${(l.created_at || '').slice(0, 19)}`;
+            if (!mergedMap.has(l.id) && !seenSig.has(sig)) {
+              mergedMap.set(l.id, l);
+            }
+          });
+
+          const merged = Array.from(mergedMap.values()).sort(
+            (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+          );
+          setLogs(merged);
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify(merged.slice(0, 250)));
+          } catch (_) {}
         }
       } catch (error) {
         console.error("Error fetching audit logs:", error);
@@ -161,6 +208,16 @@ export default function AuditLogsTab({
     };
 
     fetchLogs();
+
+    const handleLocalAuditEvent = (e: Event) => {
+      const customEv = e as CustomEvent;
+      const newLog = customEv.detail;
+      if (!newLog || !isMounted) return;
+      if (!isGlobalAdmin && newLog.company_id && newLog.company_id !== safeCompanyId) return;
+      setLogs(prev => [newLog, ...prev.filter(l => l.id !== newLog.id)]);
+    };
+
+    window.addEventListener('audit_log_added', handleLocalAuditEvent);
 
     // Supabase Realtime live updates
     const channelName = isGlobalAdmin 
@@ -187,9 +244,10 @@ export default function AuditLogsTab({
 
     return () => {
       isMounted = false;
+      window.removeEventListener('audit_log_added', handleLocalAuditEvent);
       supabase.removeChannel(channel);
     };
-  }, [currentUser, isGlobalAdmin]);
+  }, [currentUser, isGlobalAdmin, safeCompanyId, cacheKey]);
 
   const formatDate = (dateString: string) => {
     try {
