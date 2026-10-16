@@ -278,6 +278,19 @@ export interface Database {
           can_view_finance: boolean | null;
           can_approve_budget: boolean | null;
           user_id: string | null;
+          department?: string | null;
+          hourly_rate?: number | null;
+          trade?: string | null;
+          job_title?: string | null;
+          workload?: string | null;
+          initials?: string | null;
+          partner_category?: string | null;
+          contact_person_role?: string | null;
+          payment_terms?: string | null;
+          project_id?: string | null;
+          project_roles?: any | null;
+          assigned_projects?: any | null;
+          documents?: any | null;
         };
         Insert: {
           id?: string;
@@ -302,6 +315,19 @@ export interface Database {
           can_view_finance?: boolean | null;
           can_approve_budget?: boolean | null;
           user_id?: string | null;
+          department?: string | null;
+          hourly_rate?: number | null;
+          trade?: string | null;
+          job_title?: string | null;
+          workload?: string | null;
+          initials?: string | null;
+          partner_category?: string | null;
+          contact_person_role?: string | null;
+          payment_terms?: string | null;
+          project_id?: string | null;
+          project_roles?: any | null;
+          assigned_projects?: any | null;
+          documents?: any | null;
         };
         Update: {
           id?: string;
@@ -326,7 +352,19 @@ export interface Database {
           can_view_finance?: boolean | null;
           can_approve_budget?: boolean | null;
           user_id?: string | null;
-
+          department?: string | null;
+          hourly_rate?: number | null;
+          trade?: string | null;
+          job_title?: string | null;
+          workload?: string | null;
+          initials?: string | null;
+          partner_category?: string | null;
+          contact_person_role?: string | null;
+          payment_terms?: string | null;
+          project_id?: string | null;
+          project_roles?: any | null;
+          assigned_projects?: any | null;
+          documents?: any | null;
         };
         Relationships: [];
       };

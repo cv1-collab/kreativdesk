@@ -27,6 +27,7 @@ import { offboardCompanyUser, syncCompanySeats } from '../services/userService';
 import { uploadFileWithFallback, uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 import { callGeminiAPI } from '../utils/geminiClient';
 import { safeStorage } from '../utils/safeStorage';
+import { parseCrmMeta, serializeCrmNotes, buildNativeCrmColumns } from '../utils/crmMetaHelper';
 import ModuleGuideButton from './ModuleGuideButton';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
@@ -236,15 +237,8 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
             ? fallback.isExternal
             : (u.role === 'partner' || u.role === 'client' || u.role === 'guest' || u.role === 'external' || (u.status && u.status !== 'team')));
 
-      let extraMeta: any = {};
-      let cleanNotes = u.notes || u.description || fallback.description || '';
-      if (cleanNotes && cleanNotes.includes('__CRM_META__:')) {
-        try {
-          const parts = cleanNotes.split('__CRM_META__:');
-          extraMeta = JSON.parse(parts[1]);
-          cleanNotes = parts[0].trim();
-        } catch (_) {}
-      }
+      const { cleanNotes: parsedCleanNotes, meta: extraMeta } = parseCrmMeta(u);
+      const cleanNotes = parsedCleanNotes || fallback.description || '';
 
       return {
         id: u.id,
@@ -919,15 +913,12 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         try {
           const { data: existingRow } = await supabase
             .from('company_users')
-            .select('notes')
+            .select('*')
             .eq('id', newContact.id)
             .maybeSingle();
-          if (existingRow?.notes && existingRow.notes.includes('__CRM_META__:')) {
-            const parts = existingRow.notes.split('__CRM_META__:');
-            if (parts[1]) {
-              const parsed = JSON.parse(parts[1]);
-              existingMeta = { ...parsed, ...existingMeta, projectRoles: { ...(parsed.projectRoles || {}), ...(existingMeta.projectRoles || {}) } };
-            }
+          if (existingRow) {
+            const { meta: parsed } = parseCrmMeta(existingRow);
+            existingMeta = { ...parsed, ...existingMeta, projectRoles: { ...(parsed.projectRoles || {}), ...(existingMeta.projectRoles || {}) } };
           }
         } catch (_) {}
       }
@@ -952,9 +943,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         assignedProjectId: newContact.assignedProjectId || null
       };
 
-      const serializedNotes = newContact.description 
-        ? `${newContact.description}\n\n__CRM_META__:${JSON.stringify(extraMeta)}`
-        : `__CRM_META__:${JSON.stringify(extraMeta)}`;
+      const serializedNotes = serializeCrmNotes(newContact.description, extraMeta);
 
       const companyProfileCache = safeStorage.getItem<any>(`company_profile_${safeCompanyId}`, null);
       const defaultWorkspaceCompany = companyProfileCache?.agencyName || (currentUser as any)?.companyName || (currentUser as any)?.company || 'Workspace';
@@ -979,6 +968,11 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         is_external: isExt,
         role: finalRole,
         status: finalStatus
+      };
+
+      const extendedDbPayload: any = {
+        ...fullDbPayload,
+        ...buildNativeCrmColumns(extraMeta)
       };
 
       // Base payload in case Postgres columns are not migrated yet
@@ -1082,13 +1076,19 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
 
       if (newContact.id) {
         const targetCrmId = selectedContact?.crmId || newContact.id;
-        let updateRes = await supabase.from('company_users').update(fullDbPayload).eq('id', targetCrmId).eq('company_id', safeCompanyId);
+        let updateRes = await supabase.from('company_users').update(extendedDbPayload).eq('id', targetCrmId).eq('company_id', safeCompanyId);
+        if (updateRes.error) {
+          updateRes = await supabase.from('company_users').update(fullDbPayload).eq('id', targetCrmId).eq('company_id', safeCompanyId);
+        }
         if (updateRes.error) {
           console.warn("Full update failed, trying base update:", updateRes.error);
           updateRes = await supabase.from('company_users').update(baseDbPayload).eq('id', targetCrmId).eq('company_id', safeCompanyId);
         }
         if (newContact.email) {
-          await supabase.from('company_users').update(fullDbPayload).ilike('email', newContact.email.trim()).eq('company_id', safeCompanyId);
+          const emailRes = await supabase.from('company_users').update(extendedDbPayload).ilike('email', newContact.email.trim()).eq('company_id', safeCompanyId);
+          if (emailRes.error) {
+            await supabase.from('company_users').update(fullDbPayload).ilike('email', newContact.email.trim()).eq('company_id', safeCompanyId);
+          }
         }
 
         const targetProfileId = selectedContact?.profileId || (selectedContact?.isAppUser ? newContact.id : null);
@@ -1124,10 +1124,16 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
 
         addToast(t('save') + ' ' + t('completed'), 'success');
       } else {
-        fullDbPayload.created_at = new Date().toISOString();
-        baseDbPayload.created_at = fullDbPayload.created_at;
+        extendedDbPayload.created_at = new Date().toISOString();
+        fullDbPayload.created_at = extendedDbPayload.created_at;
+        baseDbPayload.created_at = extendedDbPayload.created_at;
         
-        let { data: created, error: insertErr } = await supabase.from('company_users').insert(fullDbPayload).select().maybeSingle();
+        let { data: created, error: insertErr } = await supabase.from('company_users').insert(extendedDbPayload).select().maybeSingle();
+        if (insertErr) {
+          const fullRes = await supabase.from('company_users').insert(fullDbPayload).select().maybeSingle();
+          created = fullRes.data;
+          insertErr = fullRes.error;
+        }
         if (insertErr) {
           console.warn("Full insert failed, trying base insert:", insertErr);
           const baseRes = await supabase.from('company_users').insert(baseDbPayload).select().maybeSingle();

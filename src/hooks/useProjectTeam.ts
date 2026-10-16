@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { offboardCompanyUser, syncCompanySeats, isExternalRole } from '../services/userService';
+import { parseCrmMeta, serializeCrmNotes, mergeCrmNotes, buildNativeCrmColumns, type CompanyUserUpdate } from '../utils/crmMetaHelper';
 
 export interface CompanyUser {
   id: string;
@@ -73,17 +74,22 @@ export function useProjectTeam() {
         };
       });
 
-      const mappedCrm: CompanyUser[] = (crmData || []).map((u: any) => ({
-        id: u.id,
-        userId: u.user_id || u.id,
-        crmId: u.id,
-        name: u.name || [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email || 'Kontakt',
-        email: u.email || '',
-        role: (u.role as any) || 'Internal',
-        avatar: '',
-        ownerId: u.user_id || u.id,
-        companyId: safeCompanyId
-      }));
+      const mappedCrm: CompanyUser[] = (crmData || []).map((u: any) => {
+        const { meta } = parseCrmMeta(u);
+        return {
+          id: u.id,
+          userId: u.user_id || u.id,
+          crmId: u.id,
+          name: u.name || [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email || 'Kontakt',
+          email: u.email || '',
+          role: (u.role as any) || 'Internal',
+          department: meta.department || undefined,
+          hourlyRate: meta.hourlyRate !== undefined && meta.hourlyRate !== null ? Number(meta.hourlyRate) : undefined,
+          avatar: u.photo_url || '',
+          ownerId: u.user_id || u.id,
+          companyId: safeCompanyId
+        };
+      });
 
       const userMap = new Map<string, CompanyUser>();
       mappedProfiles.forEach(p => { 
@@ -103,6 +109,8 @@ export function useProjectTeam() {
               crmId: c.id,
               name: existing.name || c.name,
               role: existing.role === 'Admin' ? 'Admin' : (c.role || existing.role),
+              department: c.department || existing.department,
+              hourlyRate: c.hourlyRate ?? existing.hourlyRate,
               avatar: existing.avatar || c.avatar
             } as any);
           } else {
@@ -125,7 +133,7 @@ export function useProjectTeam() {
     try {
       const [{ data: mems }, { data: crmUsers }, { data: profs }] = await Promise.all([
         supabase.from('project_members').select('*').eq('company_id', safeCompanyId),
-        supabase.from('company_users').select('id, user_id, name, first_name, last_name, email, notes, role').eq('company_id', safeCompanyId),
+        supabase.from('company_users').select('*').eq('company_id', safeCompanyId),
         supabase.from('profiles').select('id, email, name, role').eq('company_id', safeCompanyId)
       ]);
 
@@ -142,14 +150,9 @@ export function useProjectTeam() {
           (resolvedEmail && p.email && p.email.toLowerCase() === resolvedEmail.toLowerCase())
         );
         if (!role && matchedUser) {
-          if (matchedUser.notes && matchedUser.notes.includes('__CRM_META__:')) {
-            try {
-              const parts = matchedUser.notes.split('__CRM_META__:');
-              const meta = JSON.parse(parts[1]);
-              if (meta.projectRoles && meta.projectRoles[m.project_id]) {
-                role = meta.projectRoles[m.project_id];
-              }
-            } catch (e) {}
+          const { meta } = parseCrmMeta(matchedUser);
+          if (meta.projectRoles && meta.projectRoles[m.project_id]) {
+            role = meta.projectRoles[m.project_id];
           }
         }
         const resolvedName =
@@ -173,43 +176,39 @@ export function useProjectTeam() {
         };
       });
 
-      // Fallback-Synchronisation: Auch externe Partner/Gäste aus company_users (__CRM_META__.projectRoles) einbeziehen,
+      // Fallback-Synchronisation: Auch externe Partner/Gäste aus company_users (project_roles / __CRM_META__.projectRoles) einbeziehen,
       // falls project_members wegen einer Foreign-Key-Restriktion (noch kein auth.users Eintrag) den Insert abgelehnt hat.
       (crmUsers || []).forEach((cu: any) => {
-        if (!cu.notes || typeof cu.notes !== 'string' || !cu.notes.includes('__CRM_META__:')) return;
-        try {
-          const parts = cu.notes.split('__CRM_META__:');
-          const meta = JSON.parse(parts[1]);
-          const projectRolesMap: Record<string, string> = { ...(meta?.projectRoles || {}) };
-          if (meta?.assignedProjectId && !projectRolesMap[meta.assignedProjectId]) {
-            projectRolesMap[meta.assignedProjectId] = 'Editor';
+        const { meta } = parseCrmMeta(cu);
+        const projectRolesMap: Record<string, string> = { ...(meta?.projectRoles || {}) };
+        if (meta?.assignedProjectId && !projectRolesMap[meta.assignedProjectId]) {
+          projectRolesMap[meta.assignedProjectId] = 'Editor';
+        }
+        Object.entries(projectRolesMap).forEach(([pid, pRole]) => {
+          if (!pid) return;
+          const cuEmail = (cu.email || '').toLowerCase().trim();
+          const alreadyExists = mapped.some(existing =>
+            existing.projectId === pid &&
+            (existing.userId === cu.id ||
+             (cu.user_id && existing.userId === cu.user_id) ||
+             (cuEmail && existing.userEmail && existing.userEmail.toLowerCase().trim() === cuEmail))
+          );
+          if (!alreadyExists) {
+            const cuName = cu.name || [cu.first_name, cu.last_name].filter(Boolean).join(' ') || cu.email || 'Kontakt';
+            mapped.push({
+              id: `crm-pm-${cu.id}-${pid}`,
+              projectId: pid,
+              userId: cu.user_id || cu.id,
+              userEmail: cu.email || '',
+              email: cu.email || '',
+              name: cuName,
+              role: cu.role || 'External Partner',
+              companyRole: cu.role || 'External Partner',
+              companyId: safeCompanyId,
+              projectRole: pRole || 'Editor'
+            });
           }
-          Object.entries(projectRolesMap).forEach(([pid, pRole]) => {
-            if (!pid) return;
-            const cuEmail = (cu.email || '').toLowerCase().trim();
-            const alreadyExists = mapped.some(existing =>
-              existing.projectId === pid &&
-              (existing.userId === cu.id ||
-               (cu.user_id && existing.userId === cu.user_id) ||
-               (cuEmail && existing.userEmail && existing.userEmail.toLowerCase().trim() === cuEmail))
-            );
-            if (!alreadyExists) {
-              const cuName = cu.name || [cu.first_name, cu.last_name].filter(Boolean).join(' ') || cu.email || 'Kontakt';
-              mapped.push({
-                id: `crm-pm-${cu.id}-${pid}`,
-                projectId: pid,
-                userId: cu.user_id || cu.id,
-                userEmail: cu.email || '',
-                email: cu.email || '',
-                name: cuName,
-                role: cu.role || 'External Partner',
-                companyRole: cu.role || 'External Partner',
-                companyId: safeCompanyId,
-                projectRole: pRole || 'Editor'
-              });
-            }
-          });
-        } catch (_) {}
+        });
       });
 
       setProjectMembers(mapped);
@@ -228,8 +227,8 @@ export function useProjectTeam() {
           hourlyRate: Number(userData.hourlyRate ?? userData.hourly_rate ?? 0) || 0,
           projectRoles: userData.projectRoles || {}
         };
-        const notesWithMeta = `${userData.notes || ''}\n__CRM_META__:${JSON.stringify(meta)}`.trim();
-        await supabase.from('company_users').insert({
+        const notesWithMeta = serializeCrmNotes(userData.notes, meta);
+        const baseInsert = {
           company_id: safeCompanyId,
           name: userData.name || userData.email?.split('@')[0] || 'Teammitglied',
           email: (userData.email || '').toLowerCase().trim(),
@@ -238,7 +237,14 @@ export function useProjectTeam() {
           status: userData.status || 'team',
           notes: notesWithMeta,
           created_at: new Date().toISOString()
+        };
+        const { error: extErr } = await supabase.from('company_users').insert({
+          ...baseInsert,
+          ...buildNativeCrmColumns(meta)
         });
+        if (extErr) {
+          await supabase.from('company_users').insert(baseInsert);
+        }
         await syncCompanySeats(safeCompanyId);
       } catch (e) {
         console.error('Fehler beim Hinzufügen des Benutzers:', e);
@@ -250,26 +256,35 @@ export function useProjectTeam() {
   const updateCompanyUser = useCallback(async (safeCompanyId: string, id?: string, userData?: any) => {
     if (safeCompanyId && id && userData) {
       try {
-        const updatePayload: { name?: string; email?: string; phone?: string; role?: string; status?: string; notes?: string } = {};
+        const updatePayload: CompanyUserUpdate = {};
         if (userData.name !== undefined) updatePayload.name = userData.name;
         if (userData.email !== undefined) updatePayload.email = userData.email.toLowerCase().trim();
         if (userData.phone !== undefined) updatePayload.phone = userData.phone;
         if (userData.role !== undefined) updatePayload.role = userData.role;
         if (userData.status !== undefined) updatePayload.status = userData.status;
+        let nativeCrmCols: CompanyUserUpdate = {};
         if (userData.department !== undefined || userData.hourlyRate !== undefined || userData.hourly_rate !== undefined) {
           const existing = companyUsers.find(u => u.id === id);
           const meta = {
             department: userData.department ?? existing?.department ?? 'Architektur',
             hourlyRate: Number(userData.hourlyRate ?? userData.hourly_rate ?? existing?.hourlyRate ?? 0)
           };
-          updatePayload.notes = `${userData.notes || ''}\n__CRM_META__:${JSON.stringify(meta)}`.trim();
+          updatePayload.notes = serializeCrmNotes(userData.notes, meta);
+          nativeCrmCols = buildNativeCrmColumns(meta);
         }
         if (Object.keys(updatePayload).length > 0) {
-          await supabase
+          const { error: extErr } = await supabase
             .from('company_users')
-            .update(updatePayload)
+            .update({ ...updatePayload, ...nativeCrmCols })
             .eq('company_id', safeCompanyId)
             .or(`id.eq.${id},user_id.eq.${id}`);
+          if (extErr) {
+            await supabase
+              .from('company_users')
+              .update(updatePayload)
+              .eq('company_id', safeCompanyId)
+              .or(`id.eq.${id},user_id.eq.${id}`);
+          }
           await syncCompanySeats(safeCompanyId);
         }
       } catch (e) {
@@ -349,18 +364,7 @@ export function useProjectTeam() {
       }
 
       if (u) {
-        const rawNotes = u.notes || '';
-        const parts = rawNotes.split('__CRM_META__:');
-        const cleanText = (parts[0] || '').trim();
-        let meta: any = {};
-        if (parts[1]) {
-          try {
-            meta = JSON.parse(parts[1]);
-          } catch (e) {}
-        }
-        if (!meta.projectRoles) meta.projectRoles = {};
-        meta.projectRoles[projectId] = initialRole;
-        const updatedNotes = (cleanText ? `${cleanText}\n\n` : '') + `__CRM_META__:${JSON.stringify(meta)}`;
+        const updatedNotes = mergeCrmNotes(u, { projectRoles: { [projectId]: initialRole } });
         await supabase.from('company_users')
           .update({ notes: updatedNotes })
           .eq('id', u.id)
@@ -433,18 +437,7 @@ export function useProjectTeam() {
       }
 
       if (u) {
-        const rawNotes = u.notes || '';
-        const parts = rawNotes.split('__CRM_META__:');
-        const cleanText = (parts[0] || '').trim();
-        let meta: any = {};
-        if (parts[1]) {
-          try {
-            meta = JSON.parse(parts[1]);
-          } catch (e) {}
-        }
-        if (!meta.projectRoles) meta.projectRoles = {};
-        meta.projectRoles[projectId] = newRole;
-        const updatedNotes = (cleanText ? `${cleanText}\n\n` : '') + `__CRM_META__:${JSON.stringify(meta)}`;
+        const updatedNotes = mergeCrmNotes(u, { projectRoles: { [projectId]: newRole } });
         await supabase.from('company_users')
           .update({ notes: updatedNotes })
           .eq('id', u.id)
@@ -474,28 +467,24 @@ export function useProjectTeam() {
       await supabase.from('project_members').delete().eq('project_id', projectId).eq('id', userId);
 
       // Auch aus company_users.__CRM_META__.projectRoles entfernen, damit externe Zugriffe vollständig entzogen werden
-      if (cuMatch && cuMatch.notes && typeof cuMatch.notes === 'string' && cuMatch.notes.includes('__CRM_META__:')) {
-        try {
-          const parts = cuMatch.notes.split('__CRM_META__:');
-          const cleanText = (parts[0] || '').trim();
-          const meta = JSON.parse(parts[1] || '{}');
-          let changed = false;
-          if (meta.projectRoles && meta.projectRoles[projectId]) {
-            delete meta.projectRoles[projectId];
-            changed = true;
-          }
-          if (meta.assignedProjectId === projectId) {
-            delete meta.assignedProjectId;
-            changed = true;
-          }
-          if (changed) {
-            const updatedNotes = (cleanText ? `${cleanText}\n\n` : '') + `__CRM_META__:${JSON.stringify(meta)}`;
-            await supabase.from('company_users')
-              .update({ notes: updatedNotes })
-              .eq('id', cuMatch.id)
-              .eq('company_id', safeCompanyId);
-          }
-        } catch (_) {}
+      if (cuMatch) {
+        const { cleanNotes, meta } = parseCrmMeta(cuMatch);
+        let changed = false;
+        if (meta.projectRoles && meta.projectRoles[projectId]) {
+          delete meta.projectRoles[projectId];
+          changed = true;
+        }
+        if (meta.assignedProjectId === projectId) {
+          delete meta.assignedProjectId;
+          changed = true;
+        }
+        if (changed) {
+          const updatedNotes = serializeCrmNotes(cleanNotes, meta);
+          await supabase.from('company_users')
+            .update({ notes: updatedNotes })
+            .eq('id', cuMatch.id)
+            .eq('company_id', safeCompanyId);
+        }
       }
     } catch (err) {
       console.warn('removeProjectMember error:', err);
