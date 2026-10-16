@@ -208,13 +208,20 @@ export default function Dashboard() {
   // === MULTI-TENANT FILTERUNG IN DASHBOARD ===
   useEffect(() => {
     if (isDemoMode && demoData) {
+      const demoProjId = activeProject?.id || projectId || 'demo-1';
+      const cachedDemoFinance = safeStorage.getJSON<any>(`finance_cache_${demoProjId}`, null);
       const docs = demoData.documents ? demoData.documents.map((d:any) => ({ id: d.id, type: 'document', title: d.name, date: new Date().toISOString() })) : [];
       const times = demoData.timeEntries ? demoData.timeEntries.map((d:any) => ({ id: d.id, type: 'time', title: `${d.hours}h: ${d.description}`, date: d.date || new Date().toISOString() })) : [];
       
       setTimeout(() => {
         setDocumentsCount(docs.length);
         setRecentActivities([...docs, ...times].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 8));
-        setVersions([{ id: 'v1', status: 'approved', groups: demoData.financeGroups || [] }]);
+        if (cachedDemoFinance && Array.isArray(cachedDemoFinance.versions) && cachedDemoFinance.versions.length > 0) {
+          setVersions(cachedDemoFinance.versions);
+          setActiveVersionId(cachedDemoFinance.activeVersionId || cachedDemoFinance.versions[0]?.id || 'v1');
+        } else {
+          setVersions([{ id: 'v1', status: 'approved', groups: demoData.financeGroups || [] }]);
+        }
         setTransactions(demoData.transactions || []);
       }, 0);
       return;
@@ -270,7 +277,11 @@ export default function Dashboard() {
           finConfig = await fetchSystemConfigJSON(`finance_${activeProject.id}`, safeCompanyId);
         } catch (e) {}
 
-        const configData = finConfig || cachedData;
+        const localIsNewer = Boolean(
+          cachedData?.updatedAt &&
+          (!finConfig?.updatedAt || new Date(cachedData.updatedAt).getTime() >= new Date(finConfig.updatedAt).getTime())
+        );
+        const configData = localIsNewer ? (cachedData || finConfig) : (finConfig || cachedData);
         const hasValidVersions = Array.isArray(configData?.versions) && configData.versions.length > 0;
 
         if (hasValidVersions) {
