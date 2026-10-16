@@ -23,7 +23,7 @@ export default defineConfig(({ mode }) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+        includeAssets: ['pwa-192x192.png', 'pwa-512x512.png'],
         manifest: {
           name: 'Kreativ Desk OS',
           short_name: 'Kreativ Desk',
@@ -54,7 +54,7 @@ export default defineConfig(({ mode }) => {
           ],
           maximumFileSizeToCacheInBytes: 10485760, // 10 MB Limit
           navigateFallback: 'index.html',
-          navigateFallbackDenylist: [/^\/api/, /^\/assets\//, /^\/media\//, /^\/wasm\//, /\.wasm$/],
+          navigateFallbackDenylist: [/^\/api/, /^\/assets\//, /^\/media\//, /^\/demo-assets\//, /^\/wasm\//, /\.wasm$/],
           runtimeCaching: [
             {
               urlPattern: /\/media\/.*\.(?:png|jpg|jpeg|svg|webp|gif)$/i,

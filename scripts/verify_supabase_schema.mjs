@@ -9,10 +9,13 @@ const supabaseAdmin = createClient(supabaseUrl, serviceKey);
 async function verifySchema() {
   console.log("\n=== VERIFYING SUPABASE DATABASE TABLES & RLS ===");
   const tables = [
-    'profiles', 'companies', 'projects', 'documents', 'leads', 
-    'transactions', 'support_tickets', 'company_users', 'invites', 
-    'audit_logs', 'time_entries', 'project_tasks', 'goals', 
-    'site_data', 'knowledge_docs', 'embeddings'
+    'api_keys', 'audio_notes', 'audit_logs', 'cad_plans', 'calendar_events',
+    'chat_messages', 'companies', 'company_settings', 'company_users', 'defects',
+    'documents', 'embeddings', 'goals', 'invites', 'knowledge_docs',
+    'leads', 'notifications', 'profiles', 'project_members', 'project_schedules',
+    'project_tasks', 'projects', 'site_data', 'slides', 'smart_proposals',
+    'support_tickets', 'system_config', 'tasks', 'time_entries', 'transactions',
+    'video_calls', 'whiteboard_exports'
   ];
 
   for (const t of tables) {

@@ -57,17 +57,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 2. Cascading delete if user is owner, otherwise safely unlink non-owner
     if ((role === 'owner' || role === 'Owner') && companyId) {
-      const tables = [
+      const tables: Array<keyof import('../../src/types/database.types.js').Database['public']['Tables']> = [
         'projects', 'time_entries', 'defects', 'documents', 'leads', 
         'company_users', 'invites', 'notifications', 'smart_proposals',
         'cad_plans', 'slides', 'transactions', 'calendar_events', 
-        'chat_messages', 'company_settings', 'audio_notes', 'whiteboard_exports',
+        'company_settings', 'audio_notes', 'whiteboard_exports',
         'project_tasks', 'project_members', 'project_schedules', 'audit_logs',
-        'knowledge_docs', 'embeddings', 'goals'
+        'knowledge_docs', 'embeddings', 'goals', 'api_keys', 'site_data',
+        'support_tickets', 'tasks'
       ];
       for (const table of tables) {
         try {
-          await supabaseAdmin.from(table).delete().eq('company_id', companyId);
+          await (supabaseAdmin.from(table) as any).delete().eq('company_id', companyId);
         } catch (e) {}
       }
       try {

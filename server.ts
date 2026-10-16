@@ -7,6 +7,7 @@ import crypto from 'crypto';
 import { GoogleGenAI } from '@google/genai';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
+import type { Database } from './src/types/database.types.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,7 +20,7 @@ if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
   console.warn('⚠️ SUPABASE_SERVICE_ROLE_KEY fehlt in der .env Datei. Admin-Funktionen könnten fehlschlagen.');
 }
 
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false
@@ -500,17 +501,6 @@ async function startServer() {
       return handler(req as any, res as any);
     } catch (err: any) {
       console.error('submit-public-lead route error:', err);
-      return res.status(500).json({ error: err.message });
-    }
-  });
-
-  // --- SET MAINTENANCE ---
-  app.post('/api/set-maintenance', async (req, res) => {
-    try {
-      const handler = (await import('./api/_handlers/set-maintenance.js')).default;
-      return handler(req as any, res as any);
-    } catch (err: any) {
-      console.error('set-maintenance route error:', err);
       return res.status(500).json({ error: err.message });
     }
   });

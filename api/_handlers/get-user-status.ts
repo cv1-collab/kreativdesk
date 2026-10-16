@@ -68,7 +68,7 @@ export default async function handler(req: any, res: any) {
 
         const isPlaceholder = inviteData?.email?.startsWith('invite_') || inviteData?.email?.endsWith('@workspace.local');
         if (inviteData && inviteData.status === 'pending' && (isPlaceholder || inviteData.email?.toLowerCase().trim() === verifiedUserEmail)) {
-          targetCompanyId = inviteData.company_id || inviteData.companyId;
+          targetCompanyId = inviteData.company_id || (inviteData as any).companyId;
           targetRole = inviteData.role === 'super_admin' ? 'admin' : (inviteData.role || 'employee');
           const isExternalRole = EXTERNAL_ROLES.includes(targetRole.toLowerCase());
 
@@ -297,7 +297,7 @@ export default async function handler(req: any, res: any) {
         }
 
         if (needsDbUpdate && profile.company_id && hasActiveSub) {
-          const companyUpdate: Record<string, any> = { plan: currentPlan };
+          const companyUpdate: { plan?: string; max_seats?: number } = { plan: currentPlan };
           if (syncedSeats && syncedSeats > 0) {
             const { data: comp } = await supabaseAdmin
               .from('companies')

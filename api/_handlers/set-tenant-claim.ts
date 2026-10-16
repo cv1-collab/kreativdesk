@@ -26,7 +26,7 @@ export default async function handler(req: any, res: any) {
 
     const isSuperAdmin = await verifySuperAdmin(user);
 
-    let profileUpdate: Record<string, any> = { company_id: companyId };
+    let profileUpdate: { company_id?: string; role?: string; has_active_subscription?: boolean; trial_ends_at?: string | null } = { company_id: companyId };
 
     if (!isSuperAdmin) {
       if (user.id !== uid) {

@@ -9,7 +9,10 @@ CRITICAL RULES:
 4. Apply the user's styling.
 5. Output ONLY the raw visual description, no meta-text.`;
 
-let code = fs.readFileSync('api/generate-image.ts', 'utf8');
+const targetPath = fs.existsSync('api/_handlers/generate-image.ts')
+  ? 'api/_handlers/generate-image.ts'
+  : 'api/generate-image.ts';
+let code = fs.readFileSync(targetPath, 'utf8');
 const newPrompt = '`' + promptText.replace(/\n/g, '\\n') + '`';
 code = code.replace(/const visionPrompt = `[^`]+`;/, 'const visionPrompt = ' + newPrompt + ';');
-fs.writeFileSync('api/generate-image.ts', code);
+fs.writeFileSync(targetPath, code);

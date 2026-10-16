@@ -23,6 +23,6 @@
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "include": ["src", "vite.config.ts", "server.ts", "api"],
-  "exclude": ["node_modules", "dist", "Kreativ Desk V2_0"]
+  "include": ["src", "vite.config.ts", "vitest.config.ts", "server.ts", "api", "e2e", "tests"],
+  "exclude": ["node_modules", "dist", "functions", "Kreativ Desk V2_0"]
 }

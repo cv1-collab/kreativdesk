@@ -85,6 +85,7 @@ const handlers: Record<string, RouteHandler> = {
   'public/lead': submitPublicLead,
   'public-lead': submitPublicLead,
   'submit-lead': submitPublicLead,
+  'submit-public-lead': submitPublicLead,
   'sentry-tunnel': sentryTunnel,
   'sentry/tunnel': sentryTunnel,
   'admin/cleanup-test-users': adminCleanupTestUsers,

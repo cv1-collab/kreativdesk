@@ -44,7 +44,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
 
-      const tableMap: Record<string, string> = {
+      type ExternalApiTable = 'projects' | 'leads' | 'company_users' | 'defects' | 'transactions' | 'smart_proposals';
+      const tableMap: Record<string, ExternalApiTable> = {
         projects: 'projects',
         project: 'projects',
         leads: 'leads',
@@ -102,16 +103,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       };
 
       if (resource === 'leads' || resource === 'lead' || payload.event === 'lead.create') {
+        const typeTag = payload.project_type || payload.category ? `[${payload.project_type || payload.category}] ` : '';
         const record = {
           company_id: companyId,
           name: payload.name || payload.contact_name || 'Externe Anfrage',
           company: payload.company || payload.company_name || '',
           email: payload.email || '',
           phone: payload.phone || '',
-          project_type: payload.project_type || payload.category || 'Allgemein',
-          budget: Number(payload.budget || payload.value || 0),
+          value: Number(payload.budget || payload.value || 0),
           status: payload.status || 'Neu',
-          notes: payload.notes || payload.description || payload.message || '',
+          notes: `${typeTag}${payload.notes || payload.description || payload.message || ''}`.trim(),
           source: payload.source || 'Open API / Webhook',
           created_at: now
         };
@@ -146,17 +147,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const record = {
           company_id: companyId,
           project_id: payload.project_id || payload.projectId || null,
-          title: payload.title || 'Externe Mängelmeldung',
+          prompt: payload.title || payload.prompt || 'Externe Mängelmeldung',
           description: payload.description || '',
           status: payload.status || 'Open',
-          priority: payload.priority || 'Medium',
+          severity: payload.priority || payload.severity || 'Medium',
           location: payload.location || '',
-          assignee: payload.assignee || '',
+          trade: payload.assignee || payload.trade || '',
           created_at: now
         };
         const { data, error } = await supabaseAdmin.from('defects').insert([record]).select().single();
         if (error) return res.status(500).json({ error: error.message });
-        await logApiAudit('DEFECT_CREATED', `API Mangel erstellt: ${record.title}`, { priority: record.priority });
+        await logApiAudit('DEFECT_CREATED', `API Mangel erstellt: ${record.prompt}`, { severity: record.severity });
         return res.status(201).json({ success: true, resource: 'defects', data });
       }
 
@@ -180,15 +181,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       if (resource === 'projects' || resource === 'project' || payload.event === 'project.create') {
+        const extraMeta = [
+          payload.client || payload.client_name ? `Kunde: ${payload.client || payload.client_name}` : '',
+          payload.location ? `Standort: ${payload.location}` : ''
+        ].filter(Boolean).join(' | ');
         const record = {
           company_id: companyId,
           owner_id: authUser.id,
           name: payload.name || payload.title || 'Neues API-Projekt',
-          description: payload.description || '',
+          description: [payload.description || '', extraMeta].filter(Boolean).join(' — '),
           status: payload.status || 'Planung',
           budget: Number(payload.budget || 0),
-          client: payload.client || payload.client_name || '',
-          location: payload.location || '',
           created_at: now
         };
         const { data, error } = await supabaseAdmin.from('projects').insert([record]).select().single();

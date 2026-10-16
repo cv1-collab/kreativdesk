@@ -67,7 +67,7 @@ export default async function handler(req: any, res: any) {
       const EXTERNAL_ROLES = ['guest', 'client', 'external', 'partner', 'subcontractor', 'field guest', 'external planner', 'bauherr', 'handwerker'];
       const isPlaceholder = inviteData?.email?.startsWith('invite_') || inviteData?.email?.endsWith('@workspace.local');
       if (inviteData && inviteData.status === 'pending' && (isPlaceholder || inviteData.email.toLowerCase() === verifiedEmail)) {
-        assignedCompanyId = inviteData.company_id || inviteData.companyId;
+        assignedCompanyId = inviteData.company_id || (inviteData as any).companyId;
         assignedRole = inviteData.role === 'super_admin' && !isCallerSuperAdmin ? 'admin' : (inviteData.role || 'employee');
         const isExternalRole = EXTERNAL_ROLES.includes(String(assignedRole).toLowerCase());
 

@@ -75,13 +75,14 @@ async function deleteSingleUserCascade(uid: string, email?: string | null) {
     try {
       const { data: ownedCompanies } = await supabaseAdmin.from('companies').select('id, name').eq('owner_id', uid);
       if (ownedCompanies && ownedCompanies.length > 0) {
-        const tables = [
+        const tables: Array<keyof import('../../src/types/database.types.js').Database['public']['Tables']> = [
           'projects', 'time_entries', 'defects', 'documents', 'leads', 
           'company_users', 'invites', 'notifications', 'smart_proposals',
           'cad_plans', 'slides', 'transactions', 'calendar_events', 
-          'chat_messages', 'company_settings', 'audio_notes', 'whiteboard_exports',
+          'company_settings', 'audio_notes', 'whiteboard_exports',
           'project_tasks', 'project_members', 'project_schedules', 'audit_logs',
-          'knowledge_docs', 'embeddings', 'goals'
+          'knowledge_docs', 'embeddings', 'goals', 'api_keys', 'site_data',
+          'support_tickets', 'tasks'
         ];
         for (const comp of ownedCompanies) {
           if (PROTECTED_COMPANY_IDS.has(comp.id)) {
@@ -89,7 +90,7 @@ async function deleteSingleUserCascade(uid: string, email?: string | null) {
             continue;
           }
           for (const table of tables) {
-            try { await supabaseAdmin.from(table).delete().eq('company_id', comp.id); } catch (_) {}
+            try { await (supabaseAdmin.from(table) as any).delete().eq('company_id', comp.id); } catch (_) {}
           }
           await supabaseAdmin.from('profiles').update({ company_id: null }).eq('company_id', comp.id);
           await supabaseAdmin.from('companies').delete().eq('id', comp.id);
