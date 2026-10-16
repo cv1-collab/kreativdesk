@@ -18,10 +18,11 @@ import {
 } from 'lucide-react';
 import { cn, sanitizeUrl } from '../utils';
 import { ensureDefaultCompanyFolders, seedDemoProjectToSupabase } from '../services/seedService';
-import DocumentStudioModal from './DocumentStudioModal';
 import ProposalManagerDashboard from './ProposalManagerDashboard';
-import PitchDeckStudio from './PitchDeckStudio';
 import { uploadFileWithFallback, deleteFileFromStorage } from '../utils/cloudStorageHelper';
+
+const DocumentStudioModal = React.lazy(() => import('./DocumentStudioModal'));
+const PitchDeckStudio = React.lazy(() => import('./PitchDeckStudio'));
 import { sendNotification } from '../lib/notifications';
 import { safeStorage } from '../utils/safeStorage';
 import ModuleGuideButton from './ModuleGuideButton';
@@ -2273,31 +2274,37 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
 
       {/* Pitch Deck Studio Modal zum Erstellen neuer Kunden-Offerten & Landingpages */}
       {showPitchModal && typeof document !== 'undefined' && createPortal(
-        <PitchDeckStudio 
-          initialOpenPublishModal={pitchModalInitialPublish}
-          onClose={() => {
-            setShowPitchModal(false);
-            setPitchModalInitialPublish(false);
-          }} 
-          projectId={selectedProjectId || defaultProjId || undefined} 
-        />,
+        <React.Suspense fallback={null}>
+          <PitchDeckStudio 
+            initialOpenPublishModal={pitchModalInitialPublish}
+            onClose={() => {
+              setShowPitchModal(false);
+              setPitchModalInitialPublish(false);
+            }} 
+            projectId={selectedProjectId || defaultProjId || undefined} 
+          />
+        </React.Suspense>,
         document.body
       )}
 
       {/* KI Brief- & Dokumenten-Studio Modal */}
-      <DocumentStudioModal
-        isOpen={isStudioOpen}
-        onClose={() => {
-          setIsStudioOpen(false);
-          setTimeout(() => {
-            setStudioEditingDocId(null);
-            studioEditingDocIdRef.current = null;
-          }, 500);
-          fetchDocuments();
-        }}
-        initialTitle={studioDocTitle}
-        initialContent={studioDocContent}
-      />
+      {isStudioOpen && (
+        <React.Suspense fallback={null}>
+          <DocumentStudioModal
+            isOpen={isStudioOpen}
+            onClose={() => {
+              setIsStudioOpen(false);
+              setTimeout(() => {
+                setStudioEditingDocId(null);
+                studioEditingDocIdRef.current = null;
+              }, 500);
+              fetchDocuments();
+            }}
+            initialTitle={studioDocTitle}
+            initialContent={studioDocContent}
+          />
+        </React.Suspense>
+      )}
     </div>
   );
 }

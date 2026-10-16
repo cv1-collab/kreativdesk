@@ -9,11 +9,12 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import PitchDeckStudio from './PitchDeckStudio';
 import NotificationCenter from './NotificationCenter';
 import { useTour } from '../contexts/TourContext';
 import { hasFeature } from '../utils/planFeatures';
 import { Lock } from 'lucide-react';
+
+const PitchDeckStudio = React.lazy(() => import('./PitchDeckStudio'));
 
 import { usePermissions } from '../hooks/usePermissions';
 
@@ -814,7 +815,9 @@ export default function Layout() {
       </main>
 
       {showPitchModal && (
-        <PitchDeckStudio onClose={() => setShowPitchModal(false)} projectId={projectId} />
+        <Suspense fallback={null}>
+          <PitchDeckStudio onClose={() => setShowPitchModal(false)} projectId={projectId} />
+        </Suspense>
       )}
 
       {/* QUICK RENAME PROJECT MODAL */}

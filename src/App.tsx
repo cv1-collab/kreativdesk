@@ -24,7 +24,6 @@ import { ToastProvider } from './contexts/ToastContext';
 import { AIProvider } from './contexts/AIContext';
 
 import { TourProvider } from './contexts/TourContext';
-import ProductTour from './components/ProductTour';
 import { GlobalVideoPlayer } from './components/GlobalVideoPlayer';
 import { safeSessionStorage } from './utils/safeStorage';
 
@@ -68,7 +67,8 @@ function lazyWithRetry<T extends React.ComponentType<any>>(
   });
 }
 
-// +++ NEU: Globales Cookie Banner +++
+// +++ NEU: Globales Cookie Banner & Tour +++
+const ProductTour = lazyWithRetry(() => import('./components/ProductTour'));
 const CookieBanner = lazyWithRetry(() => import('./components/CookieBanner'));
 const ResetPassword = lazyWithRetry(() => import('./components/ResetPassword'));
 const GlobalSystemHandbookModal = lazyWithRetry(() => import('./components/GlobalSystemHandbookModal'));
