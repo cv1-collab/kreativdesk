@@ -1122,20 +1122,32 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         console.warn('Canvas snapshot fallback:', captureErr);
       }
 
+      const dbProjectId = targetProjectId && targetProjectId !== 'global' ? targetProjectId : null;
+      const slideUuid = (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : undefined;
       const newSlide = {
-        id: `slide-cad-${Date.now()}`,
+        ...(slideUuid ? { id: slideUuid } : {}),
         title: `CAD Plan: ${planName}`,
+        subtitle: `TrueScale™ 1:${planScale}`,
         content: `TrueScale™ 1:${planScale} (${paperFormat} ${paperOrientation})`,
         layout: 'image-focus',
         image_url: snapshotImageUrl,
         order_index: 99,
         company_id: safeCompanyId,
-        project_id: targetProjectId,
+        project_id: dbProjectId,
         created_at: new Date().toISOString()
       };
 
-      const { error } = await supabase.from('slides').insert(newSlide as any);
+      const { error } = await supabase.from('slides').insert(newSlide);
       if (error) throw error;
+
+      const localKey = `pitch_deck_${safeCompanyId}_${targetProjectId}`;
+      const existingSlides = safeStorage.getItem<any[]>(localKey, []) || [];
+      const updatedSlides = [...existingSlides, { ...newSlide, id: slideUuid || `slide-cad-${Date.now()}`, imageUrl: snapshotImageUrl }];
+      safeStorage.setItem(localKey, updatedSlides);
+      safeStorage.setItem(`kreativ_pitch_slides_${targetProjectId}`, updatedSlides);
+
       addToast('CAD-Plan als Folie im Pitch Deck gespeichert!', 'success');
     } catch (err) {
       console.error("Save snapshot to Pitch Deck error:", err);

@@ -171,33 +171,19 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
       const roleLower = (newUserCompanyRole || '').trim().toLowerCase();
       const isInternalRole = roleLower === 'internal' || roleLower === 'employee' || roleLower === 'management' || roleLower === 'project_lead' || roleLower === 'owner';
       
-      const { error: insertErr } = await (supabase.from('company_users') as any).insert({ 
+      const tradeNotes = newUserTrade 
+        ? `Gewerk: ${newUserTrade}\n\n__CRM_META__:${JSON.stringify({ trade: newUserTrade })}` 
+        : null;
+      await supabase.from('company_users').insert({ 
         id: newUserId, 
         name: newUserName, 
         email: newUserEmail, 
         role: newUserCompanyRole,
         is_external: !isInternalRole,
         status: isInternalRole ? 'team' : 'external',
-        trade: newUserTrade || null,
+        notes: tradeNotes,
         company_id: safeCompanyId 
       });
-
-      if (insertErr) {
-        // Fallback: If trade column does not exist yet in SQL, insert without it and store in notes
-        const fallbackNotes = newUserTrade 
-          ? `Gewerk: ${newUserTrade}\n\n__CRM_META__:${JSON.stringify({ trade: newUserTrade })}` 
-          : null;
-        await (supabase.from('company_users') as any).insert({ 
-          id: newUserId, 
-          name: newUserName, 
-          email: newUserEmail, 
-          role: newUserCompanyRole,
-          is_external: !isInternalRole,
-          status: isInternalRole ? 'team' : 'external',
-          notes: fallbackNotes,
-          company_id: safeCompanyId 
-        });
-      }
       
       await addProjectMember(currentProjectId, {
         userId: newUserId,
