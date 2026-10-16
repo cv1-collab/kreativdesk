@@ -114,7 +114,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }
         }
 
-        // Ensure in-app notification is persisted via supabaseAdmin when client is unauthenticated and verifiedProp matched
+        // Ensure in-app notification & audit log are persisted via supabaseAdmin when client is unauthenticated and verifiedProp matched
         if (!user && verifiedProp) {
           const propTitle = verifiedProp.title || rest.proposalTitle || 'Projekt';
           if ((event === 'PROPOSAL_ACCEPTED' || action === 'accept') && (acceptanceData?.acceptedByName || rest.acceptedByName)) {
@@ -124,6 +124,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               const totalText = totalVal
                 ? `CHF ${Number(totalVal).toLocaleString('de-CH')}`
                 : 'Angenommen';
+              const ts = acceptedAt || new Date().toISOString();
               await supabaseAdmin.from('notifications').insert([{
                 id: crypto.randomUUID(),
                 company_id: resolvedCompanyId,
@@ -131,12 +132,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 message: `${signerName} hat das Angebot "${propTitle}" digital signiert (${totalText}).\n__LINK__:/proposals`,
                 type: 'success',
                 read: false,
-                created_at: acceptedAt || new Date().toISOString()
+                created_at: ts
+              }]);
+              await supabaseAdmin.from('audit_logs').insert([{
+                company_id: resolvedCompanyId,
+                user_id: 'client-portal',
+                user_email: signerName,
+                action: 'PROPOSAL_ACCEPTED',
+                details: {
+                  title: `Offerte unterzeichnet: ${propTitle}`,
+                  signer: signerName,
+                  amount: totalText,
+                  proposalId
+                },
+                created_at: ts
               }]);
             } catch (_) {}
           } else if ((event === 'PROPOSAL_QUESTION' || action === 'question') && (rest.question || rest.message)) {
             try {
               const senderLabel = rest.senderName || rest.clientName || 'Kunde';
+              const ts = new Date().toISOString();
               await supabaseAdmin.from('notifications').insert([{
                 id: crypto.randomUUID(),
                 company_id: resolvedCompanyId,
@@ -144,7 +159,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 message: `${senderLabel}: ${String(rest.question || rest.message).slice(0, 500)}\n__LINK__:/proposals`,
                 type: 'info',
                 read: false,
-                created_at: new Date().toISOString()
+                created_at: ts
+              }]);
+              await supabaseAdmin.from('audit_logs').insert([{
+                company_id: resolvedCompanyId,
+                user_id: 'client-portal',
+                user_email: senderLabel,
+                action: 'SETTINGS_UPDATED',
+                details: {
+                  title: `Kunden-Rückfrage zu "${propTitle}"`,
+                  message: String(rest.question || rest.message).slice(0, 500),
+                  proposalId
+                },
+                created_at: ts
               }]);
             } catch (_) {}
           }

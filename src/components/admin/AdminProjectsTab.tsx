@@ -1,11 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { Search, FolderOpen, Trash2, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { safeStorage } from '../../utils/safeStorage';
+import { logAuditAction } from '../../utils/auditLogger';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function AdminProjectsTab() {
+  const { currentUser } = useAuth();
   const [search, setSearch] = useState('');
-  const [projects, setProjects] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [projects, setProjects] = useState<any[]>(() => {
+    const cached = safeStorage.getItem<any[]>('admin_projects_cache', []);
+    return Array.isArray(cached) ? cached : [];
+  });
+  const [isLoading, setIsLoading] = useState(() => {
+    const cached = safeStorage.getItem<any[]>('admin_projects_cache', []);
+    return !(Array.isArray(cached) && cached.length > 0);
+  });
 
   const fetchProjects = async () => {
     try {
@@ -18,6 +28,7 @@ export default function AdminProjectsTab() {
 
       if (data) {
         setProjects(data);
+        safeStorage.setItem('admin_projects_cache', data);
       }
     } catch (err) {
       console.error("Error fetching projects for admin:", err);
@@ -43,8 +54,20 @@ export default function AdminProjectsTab() {
 
   const handleDeleteProject = async (projectId: string) => {
     if (!window.confirm("Achtung: Soll dieses Projekt wirklich gelöscht werden?")) return;
-    try { 
+    try {
+      const target = projects.find(p => p.id === projectId);
+      const updated = projects.filter(p => p.id !== projectId);
+      setProjects(updated);
+      safeStorage.setItem('admin_projects_cache', updated);
+
       await supabase.from('projects').delete().eq('id', projectId);
+      await logAuditAction({
+        companyId: target?.company_id || currentUser?.companyId || 'global_master',
+        userId: currentUser?.uid || 'admin',
+        userEmail: currentUser?.email || 'Admin',
+        action: 'PROJECT_DELETED',
+        details: { title: `Projekt im Admin-Cockpit gelöscht: ${target?.name || projectId}` }
+      });
       await fetchProjects();
     } catch (error) { 
       console.error("Fehler beim Löschen", error); 

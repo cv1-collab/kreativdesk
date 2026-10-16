@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '../_auth.js';
+import { supabaseAdmin, verifySuperAdmin } from '../_auth.js';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
@@ -24,12 +24,7 @@ export default async function handler(req: any, res: any) {
       return res.status(401).json({ error: 'Unauthorized: Token verification failed' });
     }
 
-    const SUPER_ADMIN_EMAILS = [
-      'cv1@gmx.ch',
-      'carlo@vesciodesign.ch'
-    ];
-
-    const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(user.email?.toLowerCase() || '');
+    const isSuperAdmin = await verifySuperAdmin(user);
 
     let profileUpdate: Record<string, any> = { company_id: companyId };
 

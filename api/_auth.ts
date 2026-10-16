@@ -9,6 +9,36 @@ export function getSupabaseAdmin() {
   return supabaseAdmin;
 }
 
+export const SUPER_ADMIN_EMAILS = [
+  'cv1@gmx.ch',
+  'carlo@vesciodesign.ch',
+  'admin@kreativdesk.ch',
+  'info@kreativdesk.ch',
+  'interactv@gmx.ch'
+];
+
+export async function verifySuperAdmin(user: { id?: string; email?: string | null; isSuperAdmin?: boolean; role?: string } | null | undefined): Promise<boolean> {
+  if (!user) return false;
+  if (user.isSuperAdmin || user.role === 'super_admin') return true;
+  const email = (user.email || '').toLowerCase().trim();
+  if (email && SUPER_ADMIN_EMAILS.includes(email)) {
+    return true;
+  }
+  if (user.id && !String(user.id).startsWith('apikey:')) {
+    try {
+      const { data: profile } = await supabaseAdmin
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (profile?.role === 'super_admin') {
+        return true;
+      }
+    } catch (_) {}
+  }
+  return false;
+}
+
 export async function verifyAuth(req: any, _res?: any) {
   const authHeader = req.headers?.authorization;
   const apiKeyHeader = (req.headers?.['x-api-key'] || req.headers?.['X-API-Key']) as string | undefined;
@@ -33,24 +63,54 @@ export async function verifyAuth(req: any, _res?: any) {
         .eq('key', rawToken)
         .maybeSingle();
 
-      if (keyErr || !keyRecord || !keyRecord.company_id) {
-        return null;
+      let resolvedCompanyId: string | null = (!keyErr && keyRecord?.company_id) ? keyRecord.company_id : null;
+      let resolvedKeyName: string = keyRecord?.name || 'API Integration';
+
+      if (keyRecord?.id) {
+        // Update last_used asynchronously
+        supabaseAdmin
+          .from('api_keys')
+          .update({ last_used: new Date().toISOString() })
+          .eq('id', keyRecord.id)
+          .then(() => {}, () => {});
       }
 
-      // Update last_used asynchronously
-      supabaseAdmin
-        .from('api_keys')
-        .update({ last_used: new Date().toISOString() })
-        .eq('id', keyRecord.id)
-        .then(() => {}, () => {});
+      if (!resolvedCompanyId) {
+        const { data: fallbackDocs } = await supabaseAdmin
+          .from('documents')
+          .select('company_id, url, file_url')
+          .eq('category', 'system_config')
+          .like('name', 'kreativdesk_api_keys_%')
+          .limit(50);
+
+        for (const doc of (fallbackDocs || [])) {
+          const raw = doc.url || doc.file_url;
+          if (!raw) continue;
+          try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+              const match = parsed.find((k: any) => k && k.key === rawToken);
+              if (match) {
+                resolvedCompanyId = match.company_id || doc.company_id;
+                resolvedKeyName = match.name || resolvedKeyName;
+                break;
+              }
+            }
+          } catch (_) {}
+        }
+      }
+
+      if (!resolvedCompanyId) {
+        return null;
+      }
 
       const { data: comp } = await supabaseAdmin
         .from('companies')
         .select('id, name, plan, owner_id')
-        .eq('id', keyRecord.company_id)
+        .eq('id', resolvedCompanyId)
         .maybeSingle();
 
-      const ownerId = comp?.owner_id || keyRecord.company_id;
+      const ownerId = comp?.owner_id || resolvedCompanyId;
       let ownerProfile: any = null;
       if (comp?.owner_id) {
         const { data: prof } = await supabaseAdmin
@@ -63,18 +123,18 @@ export async function verifyAuth(req: any, _res?: any) {
 
       return {
         id: ownerId,
-        email: ownerProfile?.email || `api@${keyRecord.company_id}.kreativdesk.local`,
+        email: ownerProfile?.email || `api@${resolvedCompanyId}.kreativdesk.local`,
         plan: comp?.plan || ownerProfile?.plan || 'Pro',
-        companyId: keyRecord.company_id,
+        companyId: resolvedCompanyId,
         role: 'admin',
         isSuperAdmin: false,
         isApiKey: true,
-        apiKeyName: keyRecord.name || 'API Integration',
+        apiKeyName: resolvedKeyName,
         hasActiveSubscription: true,
         trialEndsAt: ownerProfile?.trial_ends_at || null,
         profile: ownerProfile || {
           id: ownerId,
-          company_id: keyRecord.company_id,
+          company_id: resolvedCompanyId,
           role: 'admin',
           plan: comp?.plan || 'Pro',
           has_active_subscription: true,
@@ -93,8 +153,7 @@ export async function verifyAuth(req: any, _res?: any) {
     const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
     if (error || !user) return null;
     
-    const SUPER_ADMINS = ['cv1@gmx.ch', 'carlo@vesciodesign.ch'];
-    const isSuperAdmin = SUPER_ADMINS.includes(user.email?.toLowerCase() || '');
+    const isSuperAdmin = SUPER_ADMIN_EMAILS.includes((user.email || '').toLowerCase().trim());
 
     const { data: profile } = await supabaseAdmin
       .from('profiles')

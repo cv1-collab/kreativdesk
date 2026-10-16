@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import crypto from 'crypto';
-import { supabaseAdmin } from '../_auth.js';
+import { supabaseAdmin, verifySuperAdmin } from '../_auth.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -13,8 +13,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const token = authHeader.split('Bearer ')[1];
     const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
-    const SUPER_ADMINS = ['cv1@gmx.ch', 'carlo@vesciodesign.ch', 'admin@kreativdesk.ch'];
-    if (authErr || !user || !SUPER_ADMINS.includes(user.email?.toLowerCase() || '')) {
+    if (authErr || !user || !(await verifySuperAdmin(user))) {
       return res.status(403).json({ error: 'Forbidden: Super Admin access required' });
     }
 
@@ -134,6 +133,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const inviteIdentifier = ceoInvite.token || ceoInvite.id;
     const vipLink = `https://www.kreativdesk.ch/signup?invite=${inviteIdentifier}&companyId=${companyId}&email=${encodeURIComponent(ceoEmail)}`;
+
+    try {
+      await supabaseAdmin.from('audit_logs').insert({
+        company_id: companyId,
+        user_id: user.id,
+        user_email: user.email || 'Admin',
+        action: 'SETTINGS_UPDATED',
+        details: {
+          title: `B2B Workspace provisioniert: ${companyName}`,
+          ceoEmail,
+          plan: effectivePlan,
+          maxSeats: effectiveMaxSeats
+        },
+        created_at: now
+      });
+    } catch (_) {}
 
     return res.status(200).json({
       success: true,

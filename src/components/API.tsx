@@ -7,6 +7,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { useProject } from '../contexts/ProjectContext';
 import { webhookNotifier, WebhookEndpoint, WebhookEventType, WebhookTestResult } from '../utils/webhookNotifier';
+import { safeStorage } from '../utils/safeStorage';
+import { fetchSystemConfigJSON, saveSystemConfigJSON } from '../utils/configHelper';
+import { logAuditAction } from '../utils/auditLogger';
 
 export default function API() {
   const { language } = useLanguage();
@@ -15,13 +18,26 @@ export default function API() {
   const { isDemoMode } = useProject() as any;
   const isDemo = isDemoMode || currentUser?.uid === 'demo-user-id';
   const isDe = language === 'de';
+  const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid || 'global_master';
+  const keysCacheKey = `api_keys_cache_${safeCompanyId}`;
+  const keysConfigId = `kreativdesk_api_keys_${safeCompanyId}`;
 
-  const [keys, setKeys] = useState<{ id: string; name: string; key: string; created: string; lastUsed: string }[]>([]);
+  const [keys, setKeys] = useState<{ id: string; name: string; key: string; created: string; lastUsed: string; created_at?: string }[]>(() => {
+    if (isDemo) return [];
+    const cached = safeStorage.getItem<any[]>(keysCacheKey, []);
+    return Array.isArray(cached) ? cached : [];
+  });
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Webhooks State
-  const [endpoints, setEndpoints] = useState<WebhookEndpoint[]>([]);
-  const [secretKey, setSecretKey] = useState<string>('');
+  const [endpoints, setEndpoints] = useState<WebhookEndpoint[]>(() => {
+    if (isDemo) return [];
+    return webhookNotifier.getWebhooks(safeCompanyId);
+  });
+  const [secretKey, setSecretKey] = useState<string>(() => {
+    if (isDemo) return 'whsec_demo_9847291048123abcdef';
+    return webhookNotifier.getSecretKey(safeCompanyId);
+  });
   const [isSecretCopied, setIsSecretCopied] = useState(false);
 
   // Test Webhook Modal/State
@@ -49,7 +65,6 @@ export default function API() {
       ]);
       return;
     }
-    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
     if (!safeCompanyId) return;
     try {
       const { data } = await supabase
@@ -58,19 +73,44 @@ export default function API() {
         .eq('company_id', safeCompanyId)
         .order('created_at', { ascending: false });
 
-      if (data) {
-        setKeys(data.map((d: any) => ({
-          id: d.id,
-          name: d.name || 'API Integration',
-          key: d.key,
-          created: d.created_at ? new Date(d.created_at).toLocaleDateString(isDe ? 'de-CH' : 'en-US') : new Date().toLocaleDateString(),
-          lastUsed: d.last_used ? new Date(d.last_used).toLocaleDateString(isDe ? 'de-CH' : 'en-US') : (isDe ? 'Noch nie' : 'Never')
-        })));
+      const dbMapped = (data || []).map((d: any) => ({
+        id: d.id,
+        name: d.name || 'API Integration',
+        key: d.key,
+        company_id: safeCompanyId,
+        created_at: d.created_at,
+        created: d.created_at ? new Date(d.created_at).toLocaleDateString(isDe ? 'de-CH' : 'en-US') : new Date().toLocaleDateString(),
+        lastUsed: d.last_used ? new Date(d.last_used).toLocaleDateString(isDe ? 'de-CH' : 'en-US') : (isDe ? 'Noch nie' : 'Never')
+      }));
+
+      let cloudKeys: any[] = [];
+      try {
+        const cloudData = await fetchSystemConfigJSON<any[]>(keysConfigId, safeCompanyId);
+        if (Array.isArray(cloudData)) cloudKeys = cloudData;
+      } catch (_) {}
+
+      const localKeys = safeStorage.getItem<any[]>(keysCacheKey, []) || [];
+      const mergedMap = new Map<string, any>();
+      for (const item of [...localKeys, ...cloudKeys, ...dbMapped]) {
+        if (item && item.key) {
+          mergedMap.set(item.key, {
+            id: item.id || `key_${item.key.slice(0, 12)}`,
+            name: item.name || 'API Integration',
+            key: item.key,
+            company_id: safeCompanyId,
+            created_at: item.created_at || new Date().toISOString(),
+            created: item.created || (item.created_at ? new Date(item.created_at).toLocaleDateString(isDe ? 'de-CH' : 'en-US') : new Date().toLocaleDateString()),
+            lastUsed: item.lastUsed || (isDe ? 'Noch nie' : 'Never')
+          });
+        }
       }
+      const mergedList = Array.from(mergedMap.values());
+      setKeys(mergedList);
+      safeStorage.setItem(keysCacheKey, mergedList);
     } catch (err) {
       console.error("Error fetching API keys:", err);
     }
-  }, [currentUser, isDe, isDemo]);
+  }, [safeCompanyId, keysCacheKey, keysConfigId, isDe, isDemo]);
 
   const loadWebhooks = useCallback(async () => {
     if (isDemo) {
@@ -87,14 +127,13 @@ export default function API() {
       setSecretKey('whsec_demo_9847291048123abcdef');
       return;
     }
-    const companyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
-    const epList = webhookNotifier.getWebhooks(companyId);
+    const epList = webhookNotifier.getWebhooks(safeCompanyId);
     setEndpoints(epList);
-    const sec = webhookNotifier.getSecretKey(companyId);
+    const sec = webhookNotifier.getSecretKey(safeCompanyId);
     setSecretKey(sec);
-    const syncedList = await webhookNotifier.loadWebhooksFromCloud(companyId);
+    const syncedList = await webhookNotifier.loadWebhooksFromCloud(safeCompanyId);
     setEndpoints(syncedList);
-  }, [currentUser, isDemo]);
+  }, [safeCompanyId, isDemo]);
 
   useEffect(() => {
     fetchKeys();
@@ -113,18 +152,46 @@ export default function API() {
       addToast(isDe ? 'API-Key Erstellung ist in der Demo deaktiviert.' : 'API Key creation is disabled in demo.', 'info');
       return;
     }
-    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
     if (!safeCompanyId) return;
     try {
+      const nowIso = new Date().toISOString();
       const newKey = `kd_live_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
-      await supabase.from('api_keys').insert({
-        name: `API Key ${keys.length + 1}`,
+      const keyName = `API Key ${keys.length + 1}`;
+      const newRecord = {
+        id: `key_${Date.now()}`,
+        name: keyName,
         key: newKey,
         company_id: safeCompanyId,
-        created_at: new Date().toISOString()
+        created_at: nowIso,
+        created: new Date(nowIso).toLocaleDateString(isDe ? 'de-CH' : 'en-US'),
+        lastUsed: isDe ? 'Noch nie' : 'Never'
+      };
+
+      const { data: inserted } = await supabase.from('api_keys').insert({
+        name: keyName,
+        key: newKey,
+        company_id: safeCompanyId,
+        created_at: nowIso
+      }).select().maybeSingle();
+
+      if (inserted?.id) {
+        newRecord.id = inserted.id;
+      }
+
+      const updatedKeys = [newRecord, ...keys];
+      setKeys(updatedKeys);
+      safeStorage.setItem(keysCacheKey, updatedKeys);
+      await saveSystemConfigJSON(keysConfigId, updatedKeys, safeCompanyId);
+
+      await logAuditAction({
+        companyId: safeCompanyId,
+        userId: currentUser?.uid || 'admin',
+        userEmail: currentUser?.email || 'Admin',
+        action: 'SETTINGS_UPDATED',
+        details: { title: `Neuer API-Key erstellt: ${keyName}`, keyPrefix: `${newKey.substring(0, 14)}...` }
       });
+
       addToast(isDe ? 'Neuer API Key erstellt!' : 'New API Key generated!', 'success');
-      fetchKeys();
     } catch (err) {
       addToast('Fehler beim Erstellen', 'error');
     }
@@ -135,13 +202,29 @@ export default function API() {
       addToast(isDe ? 'Demo API-Keys können nicht gelöscht werden.' : 'Demo API keys cannot be deleted.', 'info');
       return;
     }
-    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
     try {
+      const targetKey = keys.find(k => k.id === id);
+      const updatedKeys = keys.filter(k => k.id !== id);
+      setKeys(updatedKeys);
+      safeStorage.setItem(keysCacheKey, updatedKeys);
+      await saveSystemConfigJSON(keysConfigId, updatedKeys, safeCompanyId);
+
       let query = supabase.from('api_keys').delete().eq('id', id);
       if (safeCompanyId) query = query.eq('company_id', safeCompanyId);
       await query;
+      if (targetKey?.key) {
+        await supabase.from('api_keys').delete().eq('key', targetKey.key);
+      }
+
+      await logAuditAction({
+        companyId: safeCompanyId,
+        userId: currentUser?.uid || 'admin',
+        userEmail: currentUser?.email || 'Admin',
+        action: 'SECURITY_ALERT',
+        details: { title: `API-Key widerrufen: ${targetKey?.name || id}` }
+      });
+
       addToast(isDe ? 'API Key gelöscht.' : 'API Key deleted.', 'info');
-      fetchKeys();
     } catch (err) {
       addToast('Fehler beim Löschen', 'error');
     }
@@ -152,9 +235,15 @@ export default function API() {
       addToast(isDe ? 'In der Demo-Vorschau geschützt.' : 'Protected in demo.', 'info');
       return;
     }
-    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
     const newSec = webhookNotifier.regenerateSecretKey(safeCompanyId);
     setSecretKey(newSec);
+    logAuditAction({
+      companyId: safeCompanyId,
+      userId: currentUser?.uid || 'admin',
+      userEmail: currentUser?.email || 'Admin',
+      action: 'SECURITY_ALERT',
+      details: { title: 'Webhook Signing Secret Key neu generiert' }
+    }).catch(() => {});
     addToast(isDe ? 'Neuer Webhook Secret Key generiert!' : 'New Webhook Secret Key generated!', 'success');
   };
 
@@ -163,10 +252,17 @@ export default function API() {
       addToast(isDe ? 'In der Demo-Vorschau geschützt.' : 'Protected in demo.', 'info');
       return;
     }
-    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    const target = endpoints.find(ep => ep.id === id);
     const updated = endpoints.map(ep => ep.id === id ? { ...ep, active: !ep.active } : ep);
     setEndpoints(updated);
     webhookNotifier.saveWebhooks(updated, safeCompanyId);
+    logAuditAction({
+      companyId: safeCompanyId,
+      userId: currentUser?.uid || 'admin',
+      userEmail: currentUser?.email || 'Admin',
+      action: 'SETTINGS_UPDATED',
+      details: { title: `Webhook ${target?.active ? 'deaktiviert' : 'aktiviert'}: ${target?.name || id}` }
+    }).catch(() => {});
     addToast(isDe ? 'Webhook-Status aktualisiert' : 'Webhook status updated', 'success');
   };
 
@@ -175,10 +271,17 @@ export default function API() {
       addToast(isDe ? 'Demo-Webhooks können nicht gelöscht werden.' : 'Demo webhooks cannot be deleted.', 'info');
       return;
     }
-    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    const target = endpoints.find(ep => ep.id === id);
     const updated = endpoints.filter(ep => ep.id !== id);
     setEndpoints(updated);
     webhookNotifier.saveWebhooks(updated, safeCompanyId);
+    logAuditAction({
+      companyId: safeCompanyId,
+      userId: currentUser?.uid || 'admin',
+      userEmail: currentUser?.email || 'Admin',
+      action: 'SETTINGS_UPDATED',
+      details: { title: `Webhook gelöscht: ${target?.name || id}` }
+    }).catch(() => {});
     addToast(isDe ? 'Webhook gelöscht' : 'Webhook deleted', 'info');
   };
 
@@ -217,10 +320,17 @@ export default function API() {
       created_at: new Date().toISOString()
     };
 
-    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
     const updated = [...endpoints, newEp];
     setEndpoints(updated);
     webhookNotifier.saveWebhooks(updated, safeCompanyId);
+
+    logAuditAction({
+      companyId: safeCompanyId,
+      userId: currentUser?.uid || 'admin',
+      userEmail: currentUser?.email || 'Admin',
+      action: 'SETTINGS_UPDATED',
+      details: { title: `Neuer Webhook angelegt: ${newEp.name}`, url: newEp.url, events: newEp.events }
+    }).catch(() => {});
 
     setNewEndpointName('');
     setNewEndpointUrl('');

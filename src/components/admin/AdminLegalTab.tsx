@@ -2,11 +2,17 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Scale, FileText, Upload, CheckCircle2, Loader2, Shield, Activity, AlertTriangle, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../../contexts/ToastContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { fetchSystemConfigJSON, saveSystemConfigJSON } from '../../utils/configHelper';
+import { safeStorage } from '../../utils/safeStorage';
+import { logAuditAction } from '../../utils/auditLogger';
 
 export default function AdminLegalTab() {
   const { addToast } = useToast();
-  const [legalDocs, setLegalDocs] = useState<any>({});
+  const { currentUser } = useAuth();
+  const [legalDocs, setLegalDocs] = useState<any>(() => {
+    return safeStorage.getItem<any>('sys_config_legal_documents', {}) || {};
+  });
   const [uploading, setUploading] = useState<string | null>(null);
   
   const agbRef = useRef<HTMLInputElement>(null);
@@ -58,8 +64,16 @@ export default function AdminLegalTab() {
       };
 
       await saveSystemConfigJSON('legal_documents', newDocs);
-
       setLegalDocs(newDocs);
+
+      await logAuditAction({
+        companyId: currentUser?.companyId || 'global_master',
+        userId: currentUser?.uid || 'admin',
+        userEmail: currentUser?.email || 'Admin',
+        action: 'SETTINGS_UPDATED',
+        details: { title: `Rechtsdokument aktualisiert (${docType.toUpperCase()})`, fileName: file.name }
+      });
+
       addToast('Rechtsdokument erfolgreich aktualisiert!', 'success');
     } catch (error) {
       console.error("Upload-Fehler:", error);
@@ -75,6 +89,15 @@ export default function AdminLegalTab() {
       delete newDocs[docType];
       await saveSystemConfigJSON('legal_documents', newDocs);
       setLegalDocs(newDocs);
+
+      await logAuditAction({
+        companyId: currentUser?.companyId || 'global_master',
+        userId: currentUser?.uid || 'admin',
+        userEmail: currentUser?.email || 'Admin',
+        action: 'SETTINGS_UPDATED',
+        details: { title: `Rechtsdokument entfernt (${docType.toUpperCase()})` }
+      });
+
       addToast('Rechtsdokument erfolgreich entfernt.', 'info');
     } catch (error) {
       console.error("Remove-Fehler:", error);

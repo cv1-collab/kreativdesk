@@ -116,7 +116,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ error: leadErr.message || 'Database insert failed' });
     }
 
-    // 2. Create in-app notification for the target company
+    // 2. Create in-app notification & audit log for the target company
     try {
       await supabaseAdmin.from('notifications').insert({
         id: crypto.randomUUID(),
@@ -130,6 +130,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } catch (notifErr) {
       console.warn('In-app notification note:', notifErr);
     }
+
+    try {
+      await supabaseAdmin.from('audit_logs').insert({
+        company_id: targetCompanyId,
+        user_id: 'public-lead',
+        user_email: safeEmail || safePhone || 'Public Lead',
+        action: 'LEAD_CREATED',
+        details: {
+          title: `Neue Anfrage: ${fullName}`,
+          company: safeCompany,
+          plan: safePlan,
+          source: leadSource
+        },
+        created_at: new Date().toISOString()
+      });
+    } catch (_) {}
 
     // 3. Fire outbound webhook (Make.com, n8n, Slack)
     try {

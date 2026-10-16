@@ -494,12 +494,34 @@ async function startServer() {
   });
 
   // --- SUBMIT PUBLIC LEAD ---
-  app.post(['/api/public/lead', '/api/public-lead', '/api/submit-lead'], async (req, res) => {
+  app.post(['/api/public/lead', '/api/public-lead', '/api/submit-lead', '/api/submit-public-lead'], async (req, res) => {
     try {
       const handler = (await import('./api/_handlers/submit-public-lead.js')).default;
       return handler(req as any, res as any);
     } catch (err: any) {
       console.error('submit-public-lead route error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // --- SET MAINTENANCE ---
+  app.post('/api/set-maintenance', async (req, res) => {
+    try {
+      const handler = (await import('./api/_handlers/set-maintenance.js')).default;
+      return handler(req as any, res as any);
+    } catch (err: any) {
+      console.error('set-maintenance route error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // --- OPEN REST API & INCOMING WEBHOOKS ---
+  app.all(['/api/v1', '/api/v1/:resource', '/api/external', '/api/webhook/incoming', '/api/webhook-incoming'], async (req, res) => {
+    try {
+      const handler = (await import('./api/_handlers/external-api.js')).default;
+      return handler(req as any, res as any);
+    } catch (err: any) {
+      console.error('external-api route error:', err);
       return res.status(500).json({ error: err.message });
     }
   });

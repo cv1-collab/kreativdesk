@@ -89,6 +89,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'POST') {
       const payload = req.body?.data || req.body || {};
       const now = new Date().toISOString();
+      const logApiAudit = async (action: string, title: string, meta?: Record<string, any>) => {
+        try {
+          await supabaseAdmin.from('audit_logs').insert({
+            company_id: companyId,
+            user_id: String(authUser.id || 'api'),
+            user_email: authUser.email || 'Open REST API',
+            action,
+            details: { title, source: 'Open REST API', ...meta },
+            created_at: now
+          });
+        } catch (_) {}
+      };
 
       if (resource === 'leads' || resource === 'lead' || payload.event === 'lead.create') {
         const record = {
@@ -106,6 +118,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         };
         const { data, error } = await supabaseAdmin.from('leads').insert([record]).select().single();
         if (error) return res.status(500).json({ error: error.message });
+        await logApiAudit('LEAD_CREATED', `API Lead erstellt: ${record.name}`, { email: record.email });
         return res.status(201).json({ success: true, resource: 'leads', data });
       }
 
@@ -124,6 +137,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         };
         const { data, error } = await supabaseAdmin.from('contacts').insert([record]).select().single();
         if (error) return res.status(500).json({ error: error.message });
+        await logApiAudit('CONTACT_CREATED', `API Kontakt erstellt: ${record.name}`, { email: record.email });
         return res.status(201).json({ success: true, resource: 'contacts', data });
       }
 
@@ -141,6 +155,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         };
         const { data, error } = await supabaseAdmin.from('defects').insert([record]).select().single();
         if (error) return res.status(500).json({ error: error.message });
+        await logApiAudit('DEFECT_CREATED', `API Mangel erstellt: ${record.title}`, { priority: record.priority });
         return res.status(201).json({ success: true, resource: 'defects', data });
       }
 
@@ -159,6 +174,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         };
         const { data, error } = await supabaseAdmin.from('transactions').insert([record]).select().single();
         if (error) return res.status(500).json({ error: error.message });
+        await logApiAudit('INVOICE_CREATED', `API Transaktion gebucht: ${record.description}`, { amount: record.amount, type: record.type });
         return res.status(201).json({ success: true, resource: 'transactions', data });
       }
 
@@ -176,6 +192,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         };
         const { data, error } = await supabaseAdmin.from('projects').insert([record]).select().single();
         if (error) return res.status(500).json({ error: error.message });
+        await logApiAudit('PROJECT_CREATED', `API Projekt erstellt: ${record.name}`, { budget: record.budget });
         return res.status(201).json({ success: true, resource: 'projects', data });
       }
 

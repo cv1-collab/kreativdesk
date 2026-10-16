@@ -3,12 +3,18 @@ import { ArrowLeft, Download, ShieldCheck, Building2, Mail, Globe } from 'lucide
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { fetchSystemConfigJSON } from '../utils/configHelper';
+import { safeStorage } from '../utils/safeStorage';
 
 export default function LegalPage() {
   const { language } = useLanguage();
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   
-  const [legalDocs, setLegalDocs] = useState<any>({});
+  const [legalDocs, setLegalDocs] = useState<any>(() => {
+    return safeStorage.getItem<any>('sys_config_legal_documents', {}) || {};
+  });
+  const [masterInfo, setMasterInfo] = useState<any>(() => {
+    return safeStorage.getItem<any>('sys_config_global_master', {}) || {};
+  });
 
   useEffect(() => {
     const fetchLegalDocs = async () => {
@@ -16,6 +22,10 @@ export default function LegalPage() {
         const config = await fetchSystemConfigJSON<any>('legal_documents');
         if (config) {
           setLegalDocs(config);
+        }
+        const master = await fetchSystemConfigJSON<any>('global_master');
+        if (master) {
+          setMasterInfo(master);
         }
       } catch (e) {}
     };
@@ -37,7 +47,9 @@ export default function LegalPage() {
       title: 'Impressum & Rechtliche Informationen',
       desc: 'Angaben gemäss Art. 3 Abs. 1 lit. s UWG sowie dem Schweizer Datenschutzgesetz (revDSG / DSGVO).',
       agb: 'AGB herunterladen',
+      avv: 'AVV herunterladen',
       privacy: 'Datenschutzerklärung herunterladen',
+      beta: 'Beta-Bedingungen herunterladen',
       operatorTitle: 'Betreiberin & Vertragspartnerin',
       hostingTitle: 'Datenhaltung & Sicherheit (Swiss Cloud)',
       hostingDesc: 'Sämtliche Projekt-, CAD-, BIM- und Finanzdaten werden verschlüsselt nach ISO-27001 Standard verarbeitet. Es gilt ausschliesslich Schweizerisches Recht (Gerichtsstand Zürich).'
@@ -45,8 +57,10 @@ export default function LegalPage() {
     en: {
       title: 'Legal Notice & Statutory Information',
       desc: 'Information in accordance with Art. 3 Para. 1 lit. s UCA and the Swiss Federal Act on Data Protection (FADP / GDPR).',
-      agb: 'Download Terms of Service',
+      agb: 'Download Terms of Service (AGB)',
+      avv: 'Download Data Processing Agreement (AVV)',
       privacy: 'Download Privacy Policy',
+      beta: 'Download Beta Terms',
       operatorTitle: 'Operator & Contracting Entity',
       hostingTitle: 'Data Hosting & Security (Swiss Cloud)',
       hostingDesc: 'All project, CAD, BIM, and financial data is processed and encrypted in accordance with ISO-27001 standards. Governed exclusively by Swiss law (Place of jurisdiction: Zurich).'
@@ -74,11 +88,14 @@ export default function LegalPage() {
                 <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
                   <Building2 size={16} className="text-blue-500" /> {t.operatorTitle}
                 </h2>
-                <p className="text-sm text-zinc-300 font-semibold">Kreativ Desk OS — Vescio Design</p>
+                <p className="text-sm text-zinc-300 font-semibold">{masterInfo?.companyName || 'Kreativ Desk OS — Vescio Design'}</p>
                 <p className="text-xs text-text-muted leading-relaxed">
+                  {masterInfo?.address ? <>{masterInfo.address}<br /></> : null}
+                  {(masterInfo?.zipCode || masterInfo?.city) ? <>{[masterInfo.zipCode, masterInfo.city].filter(Boolean).join(' ')}<br /></> : null}
                   Schweiz / Switzerland<br />
-                  <span className="inline-flex items-center gap-1.5 mt-1"><Mail size={12} /> info@kreativdesk.ch</span><br />
-                  <span className="inline-flex items-center gap-1.5 mt-0.5"><Globe size={12} /> www.kreativdesk.ch</span>
+                  {masterInfo?.uid ? <span className="block mt-0.5">UID: {masterInfo.uid}</span> : null}
+                  <span className="inline-flex items-center gap-1.5 mt-1"><Mail size={12} /> {masterInfo?.email || 'info@kreativdesk.ch'}</span><br />
+                  <span className="inline-flex items-center gap-1.5 mt-0.5"><Globe size={12} /> {masterInfo?.website || 'www.kreativdesk.ch'}</span>
                 </p>
               </div>
 
@@ -94,7 +111,9 @@ export default function LegalPage() {
 
             <div className="flex flex-wrap items-center pt-2">
               {renderDownloadButton('agb', t.agb)}
+              {renderDownloadButton('avv', t.avv)}
               {renderDownloadButton('privacy', t.privacy)}
+              {renderDownloadButton('beta', t.beta)}
             </div>
           </section>
         </div>

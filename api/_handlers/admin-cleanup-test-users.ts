@@ -1,13 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabaseAdmin } from '../_auth.js';
-
-const SUPER_ADMIN_EMAILS = [
-  'cv1@gmx.ch',
-  'carlo@vesciodesign.ch',
-  'admin@kreativdesk.ch',
-  'info@kreativdesk.ch',
-  'interactv@gmx.ch'
-];
+import { supabaseAdmin, SUPER_ADMIN_EMAILS, verifySuperAdmin } from '../_auth.js';
 
 const PROTECTED_COMPANY_IDS = new Set([
   'dce2daae-e8d5-4596-a264-a3fcdb326a6c'
@@ -160,8 +152,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(401).json({ error: 'Invalid token' });
     }
 
-    const callerEmail = requestingUser.email?.toLowerCase().trim() || '';
-    if (!SUPER_ADMIN_EMAILS.includes(callerEmail)) {
+    if (!(await verifySuperAdmin(requestingUser))) {
       return res.status(403).json({ error: 'Forbidden: Nur Super-Admins dürfen Testnutzer bereinigen.' });
     }
 
@@ -173,6 +164,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!success) {
         return res.status(400).json({ error: 'Benutzer konnte nicht gelöscht werden (evtl. geschützter Super-Admin).' });
       }
+      try {
+        await supabaseAdmin.from('audit_logs').insert({
+          company_id: null,
+          user_id: requestingUser.id,
+          user_email: requestingUser.email || 'Admin',
+          action: 'USER_REMOVED',
+          details: { title: `Benutzer gelöscht: ${userEmail || userId}`, targetUserId: userId, targetEmail: userEmail },
+          created_at: new Date().toISOString()
+        });
+      } catch (_) {}
       return res.status(200).json({ success: true, message: 'Benutzer erfolgreich gelöscht.', deletedCount: 1 });
     }
 
@@ -183,6 +184,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const ok = await deleteSingleUserCascade(id);
         if (ok) deletedCount++;
       }
+      try {
+        await supabaseAdmin.from('audit_logs').insert({
+          company_id: null,
+          user_id: requestingUser.id,
+          user_email: requestingUser.email || 'Admin',
+          action: 'USER_REMOVED',
+          details: { title: `${deletedCount} Benutzer gelöscht (Batch)`, deletedCount },
+          created_at: new Date().toISOString()
+        });
+      } catch (_) {}
       return res.status(200).json({ success: true, deletedCount });
     }
 
@@ -251,6 +262,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         (p: any) => !EXTERNAL_ROLES.includes(String(p.role || '').trim().toLowerCase())
       ).length;
       await supabaseAdmin.from('companies').update({ used_seats: Math.max(1, internalCount) }).eq('id', comp.id);
+    }
+
+    if (deletedEmails.length > 0) {
+      try {
+        await supabaseAdmin.from('audit_logs').insert({
+          company_id: null,
+          user_id: requestingUser.id,
+          user_email: requestingUser.email || 'Admin',
+          action: 'USER_REMOVED',
+          details: { title: `${deletedEmails.length} Test-Nutzer bereinigt`, deletedEmails },
+          created_at: new Date().toISOString()
+        });
+      } catch (_) {}
     }
 
     return res.status(200).json({

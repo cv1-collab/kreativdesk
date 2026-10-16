@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { verifyAuth, supabaseAdmin } from '../_auth.js';
+import { verifyAuth, verifySuperAdmin, supabaseAdmin } from '../_auth.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -20,22 +20,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(401).json({ error: 'Unauthorized: Authentication required' });
     }
 
-    const SUPER_ADMINS = ['cv1@gmx.ch', 'carlo@vesciodesign.ch'];
-    const userEmail = (user.email || '').toLowerCase();
-
-    let isSuperAdmin = SUPER_ADMINS.includes(userEmail);
-    if (!isSuperAdmin) {
-      const { data: profile } = await supabaseAdmin
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      if (profile?.role === 'super_admin') {
-        isSuperAdmin = true;
-      }
-    }
-
+    const isSuperAdmin = await verifySuperAdmin(user);
     if (!isSuperAdmin) {
       return res.status(403).json({ error: 'Forbidden: Super Admin access required' });
     }
@@ -53,6 +38,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.error("Set Maintenance Error:", error);
       return res.status(500).json({ error: error.message });
     }
+
+    try {
+      await supabaseAdmin.from('audit_logs').insert({
+        company_id: (user as any).companyId || null,
+        user_id: user.id || 'admin',
+        user_email: user.email || 'Admin',
+        action: isMaintenance ? 'SECURITY_ALERT' : 'SETTINGS_UPDATED',
+        details: {
+          title: isMaintenance ? 'Wartungsmodus (Lockdown) aktiviert' : 'Wartungsmodus deaktiviert (System Live)',
+          is_maintenance: !!isMaintenance
+        },
+        created_at: new Date().toISOString()
+      });
+    } catch (_) {}
 
     return res.status(200).json({ success: true, is_maintenance: !!isMaintenance });
   } catch (error: any) {

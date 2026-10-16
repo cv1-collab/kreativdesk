@@ -9,6 +9,7 @@ import { supabase } from '../../lib/supabase';
 import { cn } from '../../utils';
 import { safeStorage } from '../../utils/safeStorage';
 import { logAuditAction } from '../../utils/auditLogger';
+import AdminLegalTab from './AdminLegalTab';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -792,6 +793,9 @@ export default function AdminBrandTab() {
         </div>
 
       </form>
+
+      {/* Rechtliches & Compliance (AGB / AVV / Datenschutz / Beta) */}
+      <AdminLegalTab />
     </div>
   );
 }

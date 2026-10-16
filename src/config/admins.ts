@@ -1,9 +1,13 @@
 export const SUPER_ADMIN_EMAILS = [
   'cv1@gmx.ch',
-  'carlo@vesciodesign.ch'
+  'carlo@vesciodesign.ch',
+  'admin@kreativdesk.ch',
+  'info@kreativdesk.ch',
+  'interactv@gmx.ch'
 ];
 
 export const checkIsSuperAdmin = (email: string | null | undefined): boolean => {
   if (!email) return false;
-  return SUPER_ADMIN_EMAILS.includes(email.toLowerCase());
+  return SUPER_ADMIN_EMAILS.includes(email.toLowerCase().trim());
 };
+
