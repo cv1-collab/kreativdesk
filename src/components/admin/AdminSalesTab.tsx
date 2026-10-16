@@ -7,6 +7,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { logAuditAction } from '../../utils/auditLogger';
+import { safeStorage } from '../../utils/safeStorage';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -34,14 +35,7 @@ export default function AdminSalesTab() {
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
-  const [transactions, setTransactions] = useState<any[]>(() => {
-    try {
-      const raw = localStorage.getItem('admin_sales_cache');
-      return raw ? JSON.parse(raw) : [];
-    } catch (_) {
-      return [];
-    }
-  });
+  const [transactions, setTransactions] = useState<any[]>(() => safeStorage.getItem<any[]>('admin_sales_cache', []) || []);
   const [filter, setFilter] = useState('All');
   
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -81,14 +75,10 @@ export default function AdminSalesTab() {
           })
           .filter(t => t.userEmail !== null && t.userEmail !== undefined && t.userEmail !== 'Unbekannt');
         setTransactions(enriched);
-        try {
-          localStorage.setItem('admin_sales_cache', JSON.stringify(enriched));
-        } catch (_) {}
+        safeStorage.setItem('admin_sales_cache', enriched);
       } else {
         setTransactions([]);
-        try {
-          localStorage.setItem('admin_sales_cache', JSON.stringify([]));
-        } catch (_) {}
+        safeStorage.setItem('admin_sales_cache', []);
       }
     } catch (e) {
       console.error(e);

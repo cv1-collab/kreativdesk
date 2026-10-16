@@ -49,8 +49,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         project: 'projects',
         leads: 'leads',
         lead: 'leads',
-        contacts: 'contacts',
-        contact: 'contacts',
+        contacts: 'company_users',
+        contact: 'company_users',
         defects: 'defects',
         defect: 'defects',
         transactions: 'transactions',
@@ -125,17 +125,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (resource === 'contacts' || resource === 'contact' || payload.event === 'contact.create') {
         const record = {
           company_id: companyId,
-          user_id: authUser.id,
           name: payload.name || 'Neuer Kontakt',
           company: payload.company || null,
-          role: payload.role || 'Kunde',
+          role: payload.role || 'client',
           email: payload.email || '',
           phone: payload.phone || '',
-          location: payload.location || payload.city || '',
-          category: payload.category || 'Bauherren',
+          street: payload.street || '',
+          zip_city: payload.location || payload.city || payload.zip_city || '',
+          notes: payload.notes || payload.description || '',
+          is_external: payload.is_external !== false,
+          status: payload.is_external === false ? 'team' : 'external',
           created_at: now
         };
-        const { data, error } = await supabaseAdmin.from('contacts').insert([record]).select().single();
+        const { data, error } = await supabaseAdmin.from('company_users').insert([record]).select().single();
         if (error) return res.status(500).json({ error: error.message });
         await logApiAudit('CONTACT_CREATED', `API Kontakt erstellt: ${record.name}`, { email: record.email });
         return res.status(201).json({ success: true, resource: 'contacts', data });

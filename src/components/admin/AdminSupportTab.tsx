@@ -6,6 +6,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { logAuditAction } from '../../utils/auditLogger';
+import { safeStorage } from '../../utils/safeStorage';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -29,14 +30,7 @@ export default function AdminSupportTab() {
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
-  const [tickets, setTickets] = useState<any[]>(() => {
-    try {
-      const raw = localStorage.getItem('admin_support_cache');
-      return raw ? JSON.parse(raw) : [];
-    } catch (_) {
-      return [];
-    }
-  });
+  const [tickets, setTickets] = useState<any[]>(() => safeStorage.getItem<any[]>('admin_support_cache', []) || []);
   const [isLoading, setIsLoading] = useState(() => tickets.length === 0);
 
   const fetchTickets = async () => {
@@ -44,9 +38,7 @@ export default function AdminSupportTab() {
       const { data } = await supabase.from('support_tickets').select('*').order('created_at', { ascending: false });
       if (data) {
         setTickets(data);
-        try {
-          localStorage.setItem('admin_support_cache', JSON.stringify(data));
-        } catch (_) {}
+        safeStorage.setItem('admin_support_cache', data);
       }
     } catch (e) {
       console.error(e);
@@ -73,9 +65,7 @@ export default function AdminSupportTab() {
     const nextStatus = isDone ? 'Open' : 'Done';
     const updated = tickets.map(tk => tk.id === ticket.id ? { ...tk, status: nextStatus } : tk);
     setTickets(updated);
-    try {
-      localStorage.setItem('admin_support_cache', JSON.stringify(updated));
-    } catch (_) {}
+    safeStorage.setItem('admin_support_cache', updated);
 
     try {
       await supabase.from('support_tickets').update({ status: nextStatus }).eq('id', ticket.id);
@@ -99,9 +89,7 @@ export default function AdminSupportTab() {
     if (!window.confirm(t('delete_confirm'))) return;
     const updated = tickets.filter(tk => tk.id !== ticket.id);
     setTickets(updated);
-    try {
-      localStorage.setItem('admin_support_cache', JSON.stringify(updated));
-    } catch (_) {}
+    safeStorage.setItem('admin_support_cache', updated);
 
     try {
       await supabase.from('support_tickets').delete().eq('id', ticket.id);

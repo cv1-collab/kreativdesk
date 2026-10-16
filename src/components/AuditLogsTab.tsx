@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../utils';
 import ModuleGuideButton from './ModuleGuideButton';
+import { safeStorage } from '../utils/safeStorage';
 
 interface ParsedDetails {
   title: string | null;
@@ -127,16 +128,7 @@ export default function AuditLogsTab({
   const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
   const cacheKey = isGlobalAdmin ? 'audit_logs_cache_global' : `audit_logs_cache_${safeCompanyId || 'default'}`;
 
-  const [logs, setLogs] = useState<any[]>(() => {
-    try {
-      const raw = localStorage.getItem(cacheKey);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) return parsed;
-      }
-    } catch (_) {}
-    return [];
-  });
+  const [logs, setLogs] = useState<any[]>(() => safeStorage.getItem<any[]>(cacheKey, []) || []);
   const [loading, setLoading] = useState(() => logs.length === 0);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<'all' | 'projects' | 'team' | 'notifications' | 'finance'>('all');
@@ -150,14 +142,7 @@ export default function AuditLogsTab({
     }
     
     const fetchLogs = async () => {
-      let localCached: any[] = [];
-      try {
-        const raw = localStorage.getItem(cacheKey);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) localCached = parsed;
-        }
-      } catch (_) {}
+      const localCached: any[] = safeStorage.getItem<any[]>(cacheKey, []) || [];
 
       try {
         let query = supabase
@@ -196,9 +181,7 @@ export default function AuditLogsTab({
             (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
           );
           setLogs(merged);
-          try {
-            localStorage.setItem(cacheKey, JSON.stringify(merged.slice(0, 250)));
-          } catch (_) {}
+          safeStorage.setItem(cacheKey, merged.slice(0, 250));
         }
       } catch (error) {
         console.error("Error fetching audit logs:", error);

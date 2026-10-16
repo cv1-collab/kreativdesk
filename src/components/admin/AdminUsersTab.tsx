@@ -66,14 +66,7 @@ export default function AdminUsersTab() {
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
   const [search, setSearch] = useState('');
-  const [users, setUsers] = useState<any[]>(() => {
-    try {
-      const raw = localStorage.getItem('admin_users_cache');
-      return raw ? JSON.parse(raw) : [];
-    } catch (_) {
-      return [];
-    }
-  });
+  const [users, setUsers] = useState<any[]>(() => safeStorage.getItem<any[]>('admin_users_cache', []) || []);
   const [isLoading, setIsLoading] = useState(() => users.length === 0);
 
   // Edit Modal States
@@ -233,9 +226,7 @@ export default function AdminUsersTab() {
 
         const combined = [...activeList, ...pendingList];
         setUsers(combined);
-        try {
-          localStorage.setItem('admin_users_cache', JSON.stringify(combined));
-        } catch (_) {}
+        safeStorage.setItem('admin_users_cache', combined);
       }
     } catch (err) {
       console.error("Error fetching users for admin:", err);

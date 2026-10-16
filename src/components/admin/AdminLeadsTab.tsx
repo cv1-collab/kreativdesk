@@ -6,6 +6,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { logAuditAction } from '../../utils/auditLogger';
+import { safeStorage } from '../../utils/safeStorage';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -35,14 +36,7 @@ export default function AdminLeadsTab() {
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
-  const [leads, setLeads] = useState<any[]>(() => {
-    try {
-      const raw = localStorage.getItem('admin_leads_cache');
-      return raw ? JSON.parse(raw) : [];
-    } catch (_) {
-      return [];
-    }
-  });
+  const [leads, setLeads] = useState<any[]>(() => safeStorage.getItem<any[]>('admin_leads_cache', []) || []);
   const [isLoading, setIsLoading] = useState(() => leads.length === 0);
 
   const fetchLeads = async () => {
@@ -55,9 +49,7 @@ export default function AdminLeadsTab() {
       if (error) throw error;
       if (data) {
         setLeads(data);
-        try {
-          localStorage.setItem('admin_leads_cache', JSON.stringify(data));
-        } catch (_) {}
+        safeStorage.setItem('admin_leads_cache', data);
       }
     } catch (err) {
       console.error("Error fetching admin leads:", err);
@@ -83,9 +75,7 @@ export default function AdminLeadsTab() {
     const targetLead = leads.find(l => l.id === id);
     const updated = leads.map(l => l.id === id ? { ...l, status: newStatus } : l);
     setLeads(updated);
-    try {
-      localStorage.setItem('admin_leads_cache', JSON.stringify(updated));
-    } catch (_) {}
+    safeStorage.setItem('admin_leads_cache', updated);
 
     try {
       await supabase
@@ -114,9 +104,7 @@ export default function AdminLeadsTab() {
     const targetLead = leads.find(l => l.id === id);
     const updated = leads.filter(l => l.id !== id);
     setLeads(updated);
-    try {
-      localStorage.setItem('admin_leads_cache', JSON.stringify(updated));
-    } catch (_) {}
+    safeStorage.setItem('admin_leads_cache', updated);
 
     try {
       await supabase

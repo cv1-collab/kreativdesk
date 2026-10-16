@@ -9,6 +9,7 @@ import {
 import { useLanguage } from '../../contexts/LanguageContext'; 
 import { supabase } from '../../lib/supabase';
 import { cn } from '../../utils';
+import { safeStorage } from '../../utils/safeStorage';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -28,14 +29,7 @@ export default function AdminOverviewTab({ stats }: { stats?: any }) {
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
-  const cachedOverview = (() => {
-    try {
-      const raw = localStorage.getItem('admin_overview_cache');
-      return raw ? JSON.parse(raw) : null;
-    } catch (_) {
-      return null;
-    }
-  })();
+  const cachedOverview = safeStorage.getItem<any>('admin_overview_cache', null);
 
   const [transactions, setTransactions] = useState<any[]>(() => cachedOverview?.transactions || []);
   const [usersCount, setUsersCount] = useState<number>(() => cachedOverview?.usersCount ?? stats?.users ?? 0);
@@ -118,17 +112,15 @@ export default function AdminOverviewTab({ stats }: { stats?: any }) {
           setRevChartData([{ n: 'Start', v: 0 }]);
         }
 
-        try {
-          localStorage.setItem('admin_overview_cache', JSON.stringify({
-            usersCount: nextUsersCount,
-            projectsCount: nextProjectsCount,
-            projectStats: nextProjectStats,
-            transactions: nextTxs.slice(0, 30),
-            stripeRevenue: nextStripeRev,
-            manualRevenue: 0,
-            revChartData: nextRevChart
-          }));
-        } catch (_) {}
+        safeStorage.setItem('admin_overview_cache', {
+          usersCount: nextUsersCount,
+          projectsCount: nextProjectsCount,
+          projectStats: nextProjectStats,
+          transactions: nextTxs.slice(0, 30),
+          stripeRevenue: nextStripeRev,
+          manualRevenue: 0,
+          revChartData: nextRevChart
+        });
       } catch (err) {
         console.error("Admin overview fetch error:", err);
       }
