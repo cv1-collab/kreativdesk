@@ -732,11 +732,11 @@ CREATE POLICY "Strict company isolation invites" ON public.invites
     OR used_by = auth.uid()
   );
 
-CREATE OR REPLACE FUNCTION public.get_invite_details(p_token text)
+CREATE OR REPLACE FUNCTION app_security.get_invite_details(p_token text)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = public, app_security, pg_temp
 AS $$
 DECLARE
   v_inv record;
@@ -773,13 +773,26 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.get_invite_details(p_token text)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, app_security, pg_temp
+AS $$
+BEGIN
+  RETURN app_security.get_invite_details(p_token);
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION app_security.get_invite_details(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION app_security.get_invite_details(text) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.get_invite_details(text) TO anon, authenticated;
 
-CREATE OR REPLACE FUNCTION public.accept_invite_by_token(p_token text, p_user_id uuid)
+CREATE OR REPLACE FUNCTION app_security.accept_invite_by_token(p_token text, p_user_id uuid)
 RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = public, app_security, pg_temp
 AS $$
 DECLARE
   v_inv record;
@@ -821,6 +834,19 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.accept_invite_by_token(p_token text, p_user_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, app_security, pg_temp
+AS $$
+BEGIN
+  RETURN app_security.accept_invite_by_token(p_token, p_user_id);
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION app_security.accept_invite_by_token(text, uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION app_security.accept_invite_by_token(text, uuid) TO authenticated, service_role;
 REVOKE EXECUTE ON FUNCTION public.accept_invite_by_token(text, uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.accept_invite_by_token(text, uuid) TO authenticated, service_role;
 
@@ -849,12 +875,12 @@ CREATE POLICY "Company users can manage own company proposals" ON public.smart_p
   );
 
 DROP FUNCTION IF EXISTS public.get_proposal_by_share_token(text);
-CREATE OR REPLACE FUNCTION public.get_proposal_by_share_token(p_token text, p_pin text DEFAULT NULL)
+CREATE OR REPLACE FUNCTION app_security.get_proposal_by_share_token(p_token text, p_pin text DEFAULT NULL)
 RETURNS SETOF public.smart_proposals
 LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = public, app_security, pg_temp
 AS $$
 DECLARE
   v_prop public.smart_proposals%ROWTYPE;
@@ -890,13 +916,27 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.get_proposal_by_share_token(p_token text, p_pin text DEFAULT NULL)
+RETURNS SETOF public.smart_proposals
+LANGUAGE plpgsql
+STABLE
+SECURITY INVOKER
+SET search_path = public, app_security, pg_temp
+AS $$
+BEGIN
+  RETURN QUERY SELECT * FROM app_security.get_proposal_by_share_token(p_token, p_pin);
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION app_security.get_proposal_by_share_token(text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION app_security.get_proposal_by_share_token(text, text) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.get_proposal_by_share_token(text, text) TO anon, authenticated;
 
-CREATE OR REPLACE FUNCTION public.increment_proposal_views(p_share_token text)
+CREATE OR REPLACE FUNCTION app_security.increment_proposal_views(p_share_token text)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = public, app_security, pg_temp
 AS $$
 BEGIN
   IF p_share_token IS NULL OR trim(p_share_token) = '' THEN
@@ -910,13 +950,26 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.increment_proposal_views(p_share_token text)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, app_security, pg_temp
+AS $$
+BEGIN
+  PERFORM app_security.increment_proposal_views(p_share_token);
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION app_security.increment_proposal_views(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION app_security.increment_proposal_views(text) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.increment_proposal_views(text) TO anon, authenticated;
 
-CREATE OR REPLACE FUNCTION public.sign_accept_proposal(p_share_token text, p_acceptance_data jsonb)
+CREATE OR REPLACE FUNCTION app_security.sign_accept_proposal(p_share_token text, p_acceptance_data jsonb)
 RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = public, app_security, pg_temp
 AS $$
 DECLARE
   v_id text;
@@ -947,6 +1000,19 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.sign_accept_proposal(p_share_token text, p_acceptance_data jsonb)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, app_security, pg_temp
+AS $$
+BEGIN
+  RETURN app_security.sign_accept_proposal(p_share_token, p_acceptance_data);
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION app_security.sign_accept_proposal(text, jsonb) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION app_security.sign_accept_proposal(text, jsonb) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.sign_accept_proposal(text, jsonb) TO anon, authenticated;
 
 -- ----------------------------------------------------------------------------
@@ -993,25 +1059,39 @@ CREATE POLICY "Allow authenticated chat insert" ON public.chat_messages
   FOR INSERT TO authenticated
   WITH CHECK (auth.uid() IS NOT NULL);
 
-CREATE OR REPLACE FUNCTION public.get_guest_video_call(p_call_id text)
+CREATE OR REPLACE FUNCTION app_security.get_guest_video_call(p_call_id text)
 RETURNS SETOF public.video_calls
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = public, app_security, pg_temp
 AS $$
   SELECT * FROM public.video_calls
   WHERE id = p_call_id AND status != 'ended'
   LIMIT 1;
 $$;
 
+CREATE OR REPLACE FUNCTION public.get_guest_video_call(p_call_id text)
+RETURNS SETOF public.video_calls
+LANGUAGE plpgsql
+STABLE
+SECURITY INVOKER
+SET search_path = public, app_security, pg_temp
+AS $$
+BEGIN
+  RETURN QUERY SELECT * FROM app_security.get_guest_video_call(p_call_id);
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION app_security.get_guest_video_call(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION app_security.get_guest_video_call(text) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.get_guest_video_call(text) TO anon, authenticated;
 
-CREATE OR REPLACE FUNCTION public.join_or_create_guest_room(p_call_id text)
+CREATE OR REPLACE FUNCTION app_security.join_or_create_guest_room(p_call_id text)
 RETURNS SETOF public.video_calls
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = public, app_security, pg_temp
 AS $$
 DECLARE
   v_rec public.video_calls%ROWTYPE;
@@ -1034,14 +1114,27 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.join_or_create_guest_room(p_call_id text)
+RETURNS SETOF public.video_calls
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, app_security, pg_temp
+AS $$
+BEGIN
+  RETURN QUERY SELECT * FROM app_security.join_or_create_guest_room(p_call_id);
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION app_security.join_or_create_guest_room(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION app_security.join_or_create_guest_room(text) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.join_or_create_guest_room(text) TO anon, authenticated;
 
-CREATE OR REPLACE FUNCTION public.get_call_chat_messages(p_call_id text)
+CREATE OR REPLACE FUNCTION app_security.get_call_chat_messages(p_call_id text)
 RETURNS SETOF public.chat_messages
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = public, app_security, pg_temp
 AS $$
   SELECT * FROM public.chat_messages
   WHERE p_call_id IS NOT NULL AND length(trim(p_call_id)) >= 3 AND call_id = p_call_id
@@ -1049,13 +1142,27 @@ AS $$
   LIMIT 200;
 $$;
 
+CREATE OR REPLACE FUNCTION public.get_call_chat_messages(p_call_id text)
+RETURNS SETOF public.chat_messages
+LANGUAGE plpgsql
+STABLE
+SECURITY INVOKER
+SET search_path = public, app_security, pg_temp
+AS $$
+BEGIN
+  RETURN QUERY SELECT * FROM app_security.get_call_chat_messages(p_call_id);
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION app_security.get_call_chat_messages(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION app_security.get_call_chat_messages(text) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.get_call_chat_messages(text) TO anon, authenticated;
 
-CREATE OR REPLACE FUNCTION public.send_guest_chat_message(p_call_id text, p_sender_name text, p_message text)
+CREATE OR REPLACE FUNCTION app_security.send_guest_chat_message(p_call_id text, p_sender_name text, p_message text)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = public, app_security, pg_temp
 AS $$
 DECLARE
   v_msg public.chat_messages%ROWTYPE;
@@ -1080,6 +1187,19 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.send_guest_chat_message(p_call_id text, p_sender_name text, p_message text)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, app_security, pg_temp
+AS $$
+BEGIN
+  RETURN app_security.send_guest_chat_message(p_call_id, p_sender_name, p_message);
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION app_security.send_guest_chat_message(text, text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION app_security.send_guest_chat_message(text, text, text) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.send_guest_chat_message(text, text, text) TO anon, authenticated;
 
 -- ----------------------------------------------------------------------------
