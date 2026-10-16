@@ -250,20 +250,24 @@ export function useProjectTeam() {
   const updateCompanyUser = useCallback(async (safeCompanyId: string, id?: string, userData?: any) => {
     if (safeCompanyId && id && userData) {
       try {
-        const updatePayload: Record<string, any> = {};
+        const updatePayload: { name?: string; email?: string; phone?: string; role?: string; status?: string; notes?: string } = {};
         if (userData.name !== undefined) updatePayload.name = userData.name;
         if (userData.email !== undefined) updatePayload.email = userData.email.toLowerCase().trim();
         if (userData.phone !== undefined) updatePayload.phone = userData.phone;
         if (userData.role !== undefined) updatePayload.role = userData.role;
-        if (userData.department !== undefined) updatePayload.department = userData.department;
         if (userData.status !== undefined) updatePayload.status = userData.status;
-        if (userData.hourlyRate !== undefined || userData.hourly_rate !== undefined) {
-          updatePayload.hourly_rate = Number(userData.hourlyRate ?? userData.hourly_rate ?? 0);
+        if (userData.department !== undefined || userData.hourlyRate !== undefined || userData.hourly_rate !== undefined) {
+          const existing = companyUsers.find(u => u.id === id);
+          const meta = {
+            department: userData.department ?? existing?.department ?? 'Architektur',
+            hourlyRate: Number(userData.hourlyRate ?? userData.hourly_rate ?? existing?.hourlyRate ?? 0)
+          };
+          updatePayload.notes = `${userData.notes || ''}\n__CRM_META__:${JSON.stringify(meta)}`.trim();
         }
         if (Object.keys(updatePayload).length > 0) {
           await supabase
             .from('company_users')
-            .update(updatePayload as any)
+            .update(updatePayload)
             .eq('company_id', safeCompanyId)
             .or(`id.eq.${id},user_id.eq.${id}`);
           await syncCompanySeats(safeCompanyId);
@@ -273,7 +277,7 @@ export function useProjectTeam() {
       }
     }
     await fetchCompanyUsers(safeCompanyId);
-  }, [fetchCompanyUsers]);
+  }, [fetchCompanyUsers, companyUsers]);
 
   const removeCompanyUser = useCallback(async (id: string, safeCompanyId: string) => {
     if (!id) return;

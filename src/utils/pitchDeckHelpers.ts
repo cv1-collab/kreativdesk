@@ -37,7 +37,8 @@ export const serializeSlideForDb = (slide: Partial<Slide> & { [key: string]: any
     dbRecord.company_id = slide.companyId !== undefined ? slide.companyId : slide.company_id;
   }
   if (slide.projectId !== undefined || slide.project_id !== undefined) {
-    dbRecord.project_id = slide.projectId !== undefined ? slide.projectId : slide.project_id;
+    const rawProj = slide.projectId !== undefined ? slide.projectId : slide.project_id;
+    dbRecord.project_id = (rawProj && rawProj !== 'global') ? rawProj : null;
   }
   dbRecord.created_at = slide.created_at || new Date().toISOString();
 

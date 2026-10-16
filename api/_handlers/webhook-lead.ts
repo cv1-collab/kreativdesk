@@ -53,6 +53,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const isAllowedUnauthAction =
         event === 'PROPOSAL_ACCEPTED' ||
         event === 'PROPOSAL_QUESTION' ||
+        event === 'PROPOSAL_INQUIRY' ||
         action === 'accept' ||
         action === 'question';
       if (!isAllowedUnauthAction || !proposalId || typeof proposalId !== 'string') {
@@ -139,7 +140,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 created_at: ts
               }]);
             } catch (_) {}
-          } else if ((event === 'PROPOSAL_QUESTION' || action === 'question') && (rest.question || rest.message)) {
+          } else if ((event === 'PROPOSAL_QUESTION' || event === 'PROPOSAL_INQUIRY' || action === 'question') && (rest.question || rest.message)) {
             try {
               const senderLabel = rest.senderName || rest.clientName || 'Kunde';
               const ts = new Date().toISOString();

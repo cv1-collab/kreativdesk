@@ -1057,12 +1057,26 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         } catch (_) {}
 
         try {
-          await (supabase.from('project_members') as any).upsert({
-            project_id: projId,
-            user_id: cid,
-            company_id: safeCompanyId,
-            role: projRole
-          }, { onConflict: 'project_id,user_id' });
+          const { data: existingPm } = await supabase
+            .from('project_members')
+            .select('id')
+            .eq('project_id', projId)
+            .eq('user_id', cid)
+            .maybeSingle();
+
+          if (existingPm?.id) {
+            await supabase
+              .from('project_members')
+              .update({ project_role: projRole })
+              .eq('id', existingPm.id);
+          } else {
+            await supabase.from('project_members').insert({
+              project_id: projId,
+              user_id: cid,
+              company_id: safeCompanyId,
+              project_role: projRole
+            });
+          }
         } catch (_) {}
       };
 
@@ -1079,21 +1093,18 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
 
         const targetProfileId = selectedContact?.profileId || (selectedContact?.isAppUser ? newContact.id : null);
         const isSelfEdit = newContact.id === currentUser?.uid || targetProfileId === currentUser?.uid || newContact.email?.toLowerCase() === currentUser?.email?.toLowerCase();
-        const profileUpdatePayload: Record<string, any> = {
+        const profileUpdatePayload: { name?: string; updated_at?: string; role?: string } = {
           name: fullName,
-          phone: newContact.phone || undefined
+          updated_at: new Date().toISOString()
         };
         if (!isSelfEdit && finalRole) {
           profileUpdatePayload.role = finalRole;
         }
-        if (isSelfEdit) {
-          profileUpdatePayload.company_name = newContact.company || defaultWorkspaceCompany;
-        }
         try {
           if (targetProfileId) {
-            await (supabase.from('profiles').update(profileUpdatePayload as any) as any).eq('id', targetProfileId).eq('company_id', safeCompanyId);
+            await supabase.from('profiles').update(profileUpdatePayload).eq('id', targetProfileId).eq('company_id', safeCompanyId);
           } else if (newContact.email) {
-            await (supabase.from('profiles').update(profileUpdatePayload as any) as any).ilike('email', newContact.email.trim()).eq('company_id', safeCompanyId);
+            await supabase.from('profiles').update(profileUpdatePayload).ilike('email', newContact.email.trim()).eq('company_id', safeCompanyId);
           }
         } catch (_) {}
 

@@ -2391,32 +2391,40 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
         } catch (wbErr) {}
 
         let insertedSlideId = `slide-${Date.now()}`;
+        const slideCacheKey = `pitch_deck_slides_${safeCompanyId}_${targetProjectId || 'global'}`;
+        const existingSlides = safeStorage.getItem<any[]>(slideCacheKey, []) || [];
         try {
-          const { data: insertedSlide } = await (supabase.from('slides') as any).insert({
+          const { data: insertedSlide } = await supabase.from('slides').insert({
             project_id: targetProjectId,
             company_id: safeCompanyId,
             title: 'Whiteboard: ' + exportTitle,
-            category: 'Konzept & Ideen',
+            subtitle: 'Konzept & Ideen',
+            content: 'Exportiert aus dem Projekt-Whiteboard',
+            layout: 'image-focus',
             image_url: downloadUrl,
-            description: 'Exportiert aus dem Projekt-Whiteboard',
+            order_index: existingSlides.length,
             created_at: new Date().toISOString()
           }).select('id').maybeSingle();
           if (insertedSlide?.id) insertedSlideId = insertedSlide.id;
         } catch (slideErr) {}
 
         try {
-          const slideCacheKey = `pitch_deck_slides_${safeCompanyId}_${targetProjectId || 'global'}`;
-          const existingSlides = safeStorage.getItem<any[]>(slideCacheKey, []) || [];
-          safeStorage.setItem(slideCacheKey, [
-            ...existingSlides,
-            {
-              id: insertedSlideId,
-              title: 'Whiteboard: ' + exportTitle,
-              category: 'Konzept & Ideen',
-              imageUrl: downloadUrl,
-              description: 'Exportiert aus dem Projekt-Whiteboard'
-            }
-          ]);
+          const newSlideCacheEntry = {
+            id: insertedSlideId,
+            title: 'Whiteboard: ' + exportTitle,
+            subtitle: 'Konzept & Ideen',
+            category: 'Konzept & Ideen',
+            content: 'Exportiert aus dem Projekt-Whiteboard',
+            description: 'Exportiert aus dem Projekt-Whiteboard',
+            layout: 'image-focus',
+            imageUrl: downloadUrl,
+            image_url: downloadUrl,
+            order_index: existingSlides.length
+          };
+          safeStorage.setItem(slideCacheKey, [...existingSlides, newSlideCacheEntry]);
+          const studioCacheKey = `pitch_deck_slides_${targetProjectId || 'global'}`;
+          const existingStudioSlides = safeStorage.getItem<any[]>(studioCacheKey, []) || [];
+          safeStorage.setItem(studioCacheKey, [...existingStudioSlides, newSlideCacheEntry]);
         } catch (cacheErr) {}
 
         try {

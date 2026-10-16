@@ -2568,6 +2568,7 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
                   body: JSON.stringify({
                     event: 'PROPOSAL_INQUIRY',
                     proposalId: proposal.id,
+                    shareToken: proposal.shareToken || shareToken,
                     proposalTitle: proposal.title,
                     clientName: inquiryName || '',
                     clientEmail: inquiryEmail || '',

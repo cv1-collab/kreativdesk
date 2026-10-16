@@ -257,6 +257,7 @@ export default function App() {
                                   </PrivateRoute>
                                 }>
                                   <Route index element={<Dashboard />} />
+                                  <Route path="overview" element={<Dashboard />} />
                                   <Route path="team" element={<ProjectTeam />} />
                                   <Route path="calendar" element={<Calendar />} />
                                   <Route path="finance" element={<Finance />} />

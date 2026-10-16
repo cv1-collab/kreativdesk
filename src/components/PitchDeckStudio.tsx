@@ -1457,6 +1457,7 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
 
       const downloadUrl = await uploadFileWithFallback(fileToUpload, fileToUpload.name, safeCompanyId, 'documents') || localFallbackUrl;
 
+      const dbTargetProjectId = (targetId && targetId !== 'global') ? targetId : null;
       const newDoc = {
         name: isPdf ? `${file.name.replace(/\.pdf$/i, '')} (PDF-Seite 1)` : file.name,
         url: downloadUrl || localFallbackUrl,
@@ -1465,8 +1466,8 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
         type: fileToUpload.type,
         owner_id: currentUser.uid,
         company_id: safeCompanyId,
-        project_id: targetId,
-        category: 'projects',
+        project_id: dbTargetProjectId,
+        category: dbTargetProjectId ? 'projects' : 'company',
         is_folder: false,
         created_at: new Date().toISOString()
       };
@@ -1853,23 +1854,30 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
   const handleSaveToCloud = async () => {
     if (!pdfBlob || !currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
+    const dbTargetProjectId = (targetId && targetId !== 'global') ? targetId : null;
+    const docCategory = dbTargetProjectId ? 'projects' : 'company';
     setIsSavingToCloud(true);
     try {
-      const { data: existingFolder } = await supabase
+      let folderQuery = supabase
         .from('documents')
         .select('id')
         .eq('company_id', safeCompanyId)
-        .eq('project_id', targetId)
         .eq('is_folder', true)
         .eq('name', 'Pitch Decks');
+      if (dbTargetProjectId) {
+        folderQuery = folderQuery.eq('project_id', dbTargetProjectId);
+      } else {
+        folderQuery = folderQuery.is('project_id', null);
+      }
+      const { data: existingFolder } = await folderQuery;
       const folderArr = existingFolder || [];
       
       let targetFolderId = 'root';
       if (folderArr.length > 0) { targetFolderId = folderArr[0].id; } 
       else {
          const { data: newF } = await supabase.from('documents').insert({
-            name: 'Pitch Decks', is_folder: true, project_id: targetId, folder_id: 'root', 
-            owner_id: currentUser.uid, company_id: safeCompanyId, category: 'projects', created_at: new Date().toISOString()
+            name: 'Pitch Decks', is_folder: true, project_id: dbTargetProjectId, folder_id: 'root', 
+            owner_id: currentUser.uid, company_id: safeCompanyId, category: docCategory, created_at: new Date().toISOString()
          }).select();
          if (newF && newF[0]) targetFolderId = newF[0].id;
       }
@@ -1883,9 +1891,9 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
         type: 'application/pdf', 
         url: downloadUrl, 
         file_url: downloadUrl, 
-        project_id: targetId, 
+        project_id: dbTargetProjectId, 
         folder_id: targetFolderId, 
-        category: 'projects', 
+        category: docCategory, 
         is_folder: false, 
         owner_id: currentUser.uid, 
         company_id: safeCompanyId,
@@ -1893,7 +1901,7 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
         uploaded_at: new Date().toISOString()
       });
 
-      await notifyNewDocument(safeCompanyId, fileName, 'Pitch Deck', targetId);
+      await notifyNewDocument(safeCompanyId, fileName, 'Pitch Deck', dbTargetProjectId || undefined);
 
       addToast(t('upload_success'), 'success'); 
       setIsPdfModalOpen(false);

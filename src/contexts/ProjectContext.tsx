@@ -330,7 +330,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
           title: 'Neues Projekt erstellt 🚀',
           message: `Das Projekt "${createdProj.name}" wurde erfolgreich angelegt.`,
           type: 'info',
-          link: `/project/${createdProj.id}/overview`
+          link: `/project/${createdProj.id}`
         });
       } catch (e) {}
 
@@ -405,30 +405,23 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     // 1. Optimistic local state update
     setProjects(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
 
-    // 2. Prepare database payload
-    const dbUpdates: Record<string, any> = {
+    // 2. Prepare database payload (only valid projects schema columns)
+    const dbUpdates: { updated_at?: string; name?: string; description?: string; status?: string } = {
       updated_at: new Date().toISOString()
     };
     if (updates.name !== undefined) dbUpdates.name = updates.name.trim();
     if (updates.description !== undefined) dbUpdates.description = updates.description;
     if (updates.status !== undefined) dbUpdates.status = updates.status;
-    if ((updates as any).siteLocation !== undefined) dbUpdates.site_location = (updates as any).siteLocation;
-    if ((updates as any).site_location !== undefined) dbUpdates.site_location = (updates as any).site_location;
-    if ((updates as any).droneUrl !== undefined) dbUpdates.drone_url = (updates as any).droneUrl;
-    if ((updates as any).drone_url !== undefined) dbUpdates.drone_url = (updates as any).drone_url;
 
     try {
-      let updateQuery = (supabase.from('projects') as any).update(dbUpdates).eq('id', id);
+      let updateQuery = supabase.from('projects').update(dbUpdates).eq('id', id);
       if (safeCompanyId) updateQuery = updateQuery.eq('company_id', safeCompanyId);
       const { error } = await updateQuery;
       if (error) {
-        // Fallback: If extended columns don't exist in schema cache, retry with core columns only
         if (error.code === 'PGRST204' || error.message?.includes('updated_at') || error.message?.includes('column')) {
           delete dbUpdates.updated_at;
-          delete dbUpdates.site_location;
-          delete dbUpdates.drone_url;
           if (Object.keys(dbUpdates).length > 0) {
-            let retryQuery = (supabase.from('projects') as any).update(dbUpdates).eq('id', id);
+            let retryQuery = supabase.from('projects').update(dbUpdates).eq('id', id);
             if (safeCompanyId) retryQuery = retryQuery.eq('company_id', safeCompanyId);
             const retry = await retryQuery;
             if (retry.error) throw retry.error;
@@ -450,7 +443,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
           title: 'Projekt umbenannt ✏️',
           message: `Das Projekt "${targetProj.name}" wurde in "${updates.name}" umbenannt.`,
           type: 'info',
-          link: `/project/${id}/overview`
+          link: `/project/${id}`
         });
       } catch (e) {}
     }

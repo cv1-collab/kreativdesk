@@ -665,18 +665,23 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
   const ensureFolder = async (folderName: string, docCategory: string, targetProjId: string = projectId || 'global') => {
     const safeCompanyId = currentUser?.companyId || currentUser?.uid;
     if (!safeCompanyId) return '';
-    const { data: existing } = await supabase.from('documents')
+    const dbProjId = (targetProjId && targetProjId !== 'global') ? targetProjId : null;
+    let folderQuery = supabase.from('documents')
       .select('id')
       .eq('name', folderName)
       .eq('is_folder', true)
-      .eq('project_id', targetProjId)
-      .eq('company_id', safeCompanyId)
-      .maybeSingle();
+      .eq('company_id', safeCompanyId);
+    if (dbProjId) {
+      folderQuery = folderQuery.eq('project_id', dbProjId);
+    } else {
+      folderQuery = folderQuery.is('project_id', null);
+    }
+    const { data: existing } = await folderQuery.maybeSingle();
     if (existing) return existing.id;
     const { data: newF } = await supabase.from('documents').insert({ 
       name: folderName, is_folder: true, category: docCategory, 
       owner_id: currentUser?.uid, company_id: safeCompanyId,
-      project_id: targetProjId, created_at: new Date().toISOString() 
+      project_id: dbProjId, created_at: new Date().toISOString() 
     }).select().maybeSingle();
     return newF ? newF.id : '';
   };
@@ -931,9 +936,10 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
       const fileName = `AI_Render_${activeStyle}_${Date.now()}.png`;
       const downloadUrl = (await uploadFileWithFallback(blob, fileName, safeCompanyId, 'ai_renders')) || generatedImage;
 
-      const docCategory = projectId === 'global' ? 'company' : 'projects';
+      const dbProjectId = (projectId && projectId !== 'global') ? projectId : null;
+      const docCategory = dbProjectId ? 'projects' : 'company';
       const targetFolderId = await ensureFolder("KI Renderings", docCategory);
-      await supabase.from('documents').insert({ name: fileName, url: downloadUrl, file_url: downloadUrl, project_id: projectId, folder_id: targetFolderId, owner_id: currentUser.uid, uploaded_by: currentUser.uid, company_id: safeCompanyId, type: 'image/png', size: formatBytes(blob.size), uploaded_at: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH') });
+      await supabase.from('documents').insert({ name: fileName, url: downloadUrl, file_url: downloadUrl, project_id: dbProjectId, category: docCategory, is_folder: false, folder_id: targetFolderId, owner_id: currentUser.uid, uploaded_by: currentUser.uid, company_id: safeCompanyId, type: 'image/png', size: formatBytes(blob.size), uploaded_at: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH') });
       queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
       addToast(t('render_saved'), 'success'); setShowRenderModal(false); setGeneratedImage(null);
     } catch (err) { addToast(t('error_saving_cloud'), 'error'); } finally { setIsUploading(false); }
@@ -966,14 +972,15 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
       const fileName = `BIM_Report_${Date.now()}.pdf`;
       const downloadUrl = await uploadPdfBlobWithFallback(blob, fileName, safeCompanyId);
 
-      const docCategory = projectId === 'global' ? 'company' : 'projects';
+      const dbProjectId = (projectId && projectId !== 'global') ? projectId : null;
+      const docCategory = dbProjectId ? 'projects' : 'company';
       const targetFolderId = await ensureFolder("03_PLANUNG", docCategory);
 
       await supabase.from('documents').insert({
         name: fileName,
         url: downloadUrl,
         file_url: downloadUrl,
-        project_id: projectId,
+        project_id: dbProjectId,
         folder_id: targetFolderId, 
         category: docCategory, 
         owner_id: currentUser.uid,
@@ -1046,6 +1053,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
 
     try {
       const safeProjectId = projectId || 'global';
+      const dbProjectId = (projectId && projectId !== 'global') ? projectId : null;
       const filePath = `${safeCompanyId}/documents/${safeProjectId}/3d_models_${Date.now()}_${file.name}`;
       
       let url = '';
@@ -1061,11 +1069,11 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
         url = await uploadFileWithFallback(file, file.name, safeCompanyId, '3d_models');
       }
 
-      const docCategory = safeProjectId === 'global' ? 'company' : 'projects';
+      const docCategory = dbProjectId ? 'projects' : 'company';
       const folderId = await ensureFolder("3D Modelle", docCategory, safeProjectId);
       const nowIso = new Date().toISOString();
       const docPayload = {
-        name: file.name, url, file_url: url, project_id: safeProjectId, folder_id: folderId, type: fileExt,
+        name: file.name, url, file_url: url, project_id: dbProjectId, folder_id: folderId, type: fileExt,
         category: docCategory, owner_id: currentUser.uid, uploaded_by: currentUser.uid, company_id: safeCompanyId,
         size: formatBytes(file.size), is_folder: false,
         created_at: nowIso, uploaded_at: nowIso, date: new Date().toLocaleDateString('de-CH')

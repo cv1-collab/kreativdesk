@@ -918,11 +918,11 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
           const sysMsgText = currentLang === 'de'
             ? `Ein neuer Video-Call "${newEvent.title}" wurde für den ${newEvent.date} um ${newEvent.time} Uhr in der Agenda geplant.`
             : `A new video call "${newEvent.title}" has been scheduled for ${newEvent.date} at ${newEvent.time} in Agenda.`;
-          await (supabase.from('chat_messages') as any).insert({
+          await supabase.from('chat_messages').insert({
             sender_id: currentUser.uid,
             sender_name: 'System',
             message: sysMsgText,
-            project_id: cleanCalendarProjectId || safeCompanyId,
+            call_id: cleanCalendarProjectId || safeCompanyId,
             created_at: new Date().toISOString()
           });
         } catch (chatErr) {
