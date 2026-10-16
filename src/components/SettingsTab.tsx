@@ -17,6 +17,7 @@ import { initiateSubscriptionCheckout, openCustomerPortal } from '../services/st
 import { hasFeature } from '../utils/planFeatures';
 import { webhookNotifier } from '../utils/webhookNotifier';
 import { safeStorage } from '../utils/safeStorage';
+import { uploadFileWithFallback } from '../utils/cloudStorageHelper';
 import { usePermissions } from '../hooks/usePermissions';
 import { checkIsSuperAdmin } from '../config/admins';
 import { syncCompanySeats } from '../services/userService';
@@ -265,25 +266,28 @@ export default function SettingsTab() {
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
-  // Form States (Erweitert)
-  const [agencyName, setAgencyName] = useState('');
-  const [contactPerson, setContactPerson] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [website, setWebsite] = useState('');
-  const [uidNumber, setUidNumber] = useState('');
-  const [vatNumber, setVatNumber] = useState('');
-  const [address, setAddress] = useState('');
-  const [zipCode, setZipCode] = useState('');
-  const [city, setCity] = useState('');
-  const [iban, setIban] = useState('');
-  const [webhookUrl, setWebhookUrl] = useState('');
-  const [logoUrl, setLogoUrl] = useState('');
+  const initialCompId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid || '';
+  const initialCachedConfig = initialCompId ? (safeStorage.getItem<any>(`company_profile_${initialCompId}`, null) || {}) : {};
+
+  // Form States (Erweitert & synchron aus safeStorage initialisiert)
+  const [agencyName, setAgencyName] = useState<string>(() => initialCachedConfig.agencyName || currentUser?.companyName || '');
+  const [contactPerson, setContactPerson] = useState<string>(() => initialCachedConfig.contactPerson || '');
+  const [email, setEmail] = useState<string>(() => initialCachedConfig.email || '');
+  const [phone, setPhone] = useState<string>(() => initialCachedConfig.phone || '');
+  const [website, setWebsite] = useState<string>(() => initialCachedConfig.website || '');
+  const [uidNumber, setUidNumber] = useState<string>(() => initialCachedConfig.uidNumber || '');
+  const [vatNumber, setVatNumber] = useState<string>(() => initialCachedConfig.vatNumber || '');
+  const [address, setAddress] = useState<string>(() => initialCachedConfig.address || '');
+  const [zipCode, setZipCode] = useState<string>(() => initialCachedConfig.zipCode || '');
+  const [city, setCity] = useState<string>(() => initialCachedConfig.city || '');
+  const [iban, setIban] = useState<string>(() => initialCachedConfig.iban || '');
+  const [webhookUrl, setWebhookUrl] = useState<string>(() => initialCachedConfig.webhookUrl || '');
+  const [logoUrl, setLogoUrl] = useState<string>(() => initialCachedConfig.logoUrl || '');
 
   // Neue States für Features
-  const [primaryColor, setPrimaryColor] = useState<string>(() => safeStorage.getItem<string>('custom_accent_color', DEFAULT_BRAND_COLOR));
-  const [termsPdfUrl, setTermsPdfUrl] = useState('');
-  const [privacyPdfUrl, setPrivacyPdfUrl] = useState('');
+  const [primaryColor, setPrimaryColor] = useState<string>(() => initialCachedConfig.primaryColor || safeStorage.getItem<string>('custom_accent_color', DEFAULT_BRAND_COLOR));
+  const [termsPdfUrl, setTermsPdfUrl] = useState<string>(() => initialCachedConfig.termsPdfUrl || '');
+  const [privacyPdfUrl, setPrivacyPdfUrl] = useState<string>(() => initialCachedConfig.privacyPdfUrl || '');
   const [slackIntegration, setSlackIntegration] = useState(false);
   const [bexioIntegration, setBexioIntegration] = useState(false);
   const [isUploadingTerms, setIsUploadingTerms] = useState(false);
@@ -297,11 +301,11 @@ export default function SettingsTab() {
   const [isTestingBexio, setIsTestingBexio] = useState(false);
 
   // Finanz- & Sicherheits-Präferenzen
-  const [currency, setCurrency] = useState('CHF');
-  const [vatRate, setVatRate] = useState<number>(8.1);
-  const [paymentTermsDays, setPaymentTermsDays] = useState<number>(30);
-  const [require2FA, setRequire2FA] = useState<boolean>(false);
-  const [sessionTimeout, setSessionTimeout] = useState<number>(30);
+  const [currency, setCurrency] = useState<string>(() => initialCachedConfig.currency || 'CHF');
+  const [vatRate, setVatRate] = useState<number>(() => initialCachedConfig.vatRate !== undefined ? initialCachedConfig.vatRate : 8.1);
+  const [paymentTermsDays, setPaymentTermsDays] = useState<number>(() => initialCachedConfig.paymentTermsDays || 30);
+  const [require2FA, setRequire2FA] = useState<boolean>(() => initialCachedConfig.require2FA === true);
+  const [sessionTimeout, setSessionTimeout] = useState<number>(() => initialCachedConfig.sessionTimeout !== undefined ? initialCachedConfig.sessionTimeout : 30);
 
   // Abo States (Dynamisch)
   const [companyPlan, setCompanyPlan] = useState(() => currentUser?.companyPlan || currentUser?.plan || 'Free Trial');
@@ -465,13 +469,21 @@ export default function SettingsTab() {
         }
       }
 
-      // Fallback cache key
+      // Fallback cache key & merge with local cache
       const cacheKey = `company_profile_${compId}`;
-      if (!loadedConfig) {
-        loadedConfig = safeStorage.getItem<any>(cacheKey, null);
+      const localCachedConfig = safeStorage.getItem<any>(cacheKey, null);
+      if (loadedConfig && localCachedConfig) {
+        const dbTime = loadedConfig.updatedAt ? new Date(loadedConfig.updatedAt).getTime() : 0;
+        const localTime = localCachedConfig.updatedAt ? new Date(localCachedConfig.updatedAt).getTime() : 0;
+        loadedConfig = localTime > dbTime
+          ? { ...loadedConfig, ...localCachedConfig }
+          : { ...localCachedConfig, ...loadedConfig };
+      } else if (!loadedConfig) {
+        loadedConfig = localCachedConfig;
       }
 
       if (loadedConfig) {
+        safeStorage.setItem(cacheKey, loadedConfig);
         if (loadedConfig.agencyName) setAgencyName(loadedConfig.agencyName);
         setContactPerson(loadedConfig.contactPerson || '');
         setEmail(loadedConfig.email || '');
@@ -566,6 +578,7 @@ export default function SettingsTab() {
     const ownerId = currentUser?.uid;
     if (!compId || !ownerId) return;
 
+    const cachedConfig = safeStorage.getItem<any>(`company_profile_${compId}`, {}) || {};
     const { data: existingDoc } = await supabase
       .from('documents')
       .select('id, file_url, url')
@@ -574,15 +587,18 @@ export default function SettingsTab() {
       .eq('name', 'company_profile_config')
       .maybeSingle();
 
-    let currentConfig: any = {};
+    let currentConfig: any = { ...cachedConfig };
     if (existingDoc?.file_url || existingDoc?.url) {
-      try { currentConfig = JSON.parse(existingDoc.file_url || existingDoc.url); } catch (e) {}
+      try {
+        const dbParsed = JSON.parse(existingDoc.file_url || existingDoc.url);
+        currentConfig = { ...dbParsed, ...cachedConfig };
+      } catch (e) {}
     }
 
     const updatedConfig = { ...currentConfig, ...updates, updatedAt: new Date().toISOString() };
     const payloadStr = JSON.stringify(updatedConfig);
 
-    safeStorage.setItem(`company_profile_${compId}`, payloadStr);
+    safeStorage.setItem(`company_profile_${compId}`, updatedConfig);
 
     if (existingDoc?.id) {
       await supabase.from('documents').update({
@@ -721,12 +737,7 @@ export default function SettingsTab() {
     if (!file || !safeCompanyId) return;
     setIsUploadingLogo(true);
     try {
-      const filePath = `${safeCompanyId}/company_assets/logo_${Date.now()}`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
-      if (upErr) throw upErr;
-      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      const downloadUrl = pubData.publicUrl;
-      
+      const downloadUrl = await uploadFileWithFallback(file, file.name, safeCompanyId, 'company_assets');
       setLogoUrl(downloadUrl);
       await updateCompanyProfileConfig({ logoUrl: downloadUrl });
       addToast('Logo erfolgreich hochgeladen und in Supabase gespeichert!', 'success');
@@ -758,12 +769,7 @@ export default function SettingsTab() {
     if (!file || !safeCompanyId) return;
     setIsUploadingTerms(true);
     try {
-      const filePath = `${safeCompanyId}/company_assets/terms_${Date.now()}.pdf`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
-      if (upErr) throw upErr;
-      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      const downloadUrl = pubData.publicUrl;
-
+      const downloadUrl = await uploadFileWithFallback(file, file.name, safeCompanyId, 'company_assets');
       setTermsPdfUrl(downloadUrl);
       await updateCompanyProfileConfig({ termsPdfUrl: downloadUrl });
       addToast('AGB erfolgreich hochgeladen und in Supabase gespeichert!', 'success');
@@ -782,12 +788,7 @@ export default function SettingsTab() {
     if (!file || !safeCompanyId) return;
     setIsUploadingPrivacy(true);
     try {
-      const filePath = `${safeCompanyId}/privacy_policies/${Date.now()}_${file.name}`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
-      if (upErr) throw upErr;
-      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      const downloadUrl = pubData.publicUrl;
-
+      const downloadUrl = await uploadFileWithFallback(file, file.name, safeCompanyId, 'privacy_policies');
       setPrivacyPdfUrl(downloadUrl);
       await updateCompanyProfileConfig({ privacyPdfUrl: downloadUrl });
       addToast('Datenschutzrichtlinie erfolgreich hochgeladen und in Supabase gespeichert!', 'success');
@@ -1738,16 +1739,14 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
     if (!file || !safeCompanyId) return;
     setIsUploading(true);
     try {
-      const filePath = `screensaver/${safeCompanyId}_${Date.now()}`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
-      if (upErr) throw upErr;
-      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      const url = pubData.publicUrl;
+      const url = await uploadFileWithFallback(file, file.name, safeCompanyId, 'screensaver');
       setImage(url);
       safeStorage.setItem('ws_screensaver_bg', url);
       window.dispatchEvent(new Event('ws_screensaver_bg_changed'));
       window.dispatchEvent(new CustomEvent('screensaver_settings_changed', { detail: { active, timeout: Number(timeout), image: url } }));
-      await supabase.from('company_settings').upsert({ company_id: safeCompanyId, screensaver_image: url });
+      try {
+        await supabase.from('company_settings').upsert({ company_id: safeCompanyId, screensaver_image: url });
+      } catch (_) {}
       addToast(currentLang === 'de' ? 'Hintergrundbild erfolgreich hochgeladen!' : 'Background image uploaded!', 'success');
     } catch (err) { addToast('Upload failed', 'error'); } 
     finally { setIsUploading(false); }
@@ -1852,15 +1851,16 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
-  // Profil-Felder
-  const [name, setName] = useState(currentUser?.name || currentUser?.displayName || '');
-  const [phone, setPhone] = useState('');
-  const [street, setStreet] = useState('');
-  const [zipCode, setZipCode] = useState('');
-  const [city, setCity] = useState('');
-  const [jobTitle, setJobTitle] = useState('');
-  const [department, setDepartment] = useState('');
-  const [personalBio, setPersonalBio] = useState('');
+  // Profil-Felder (synchron aus lokalem Zwischenspeicher initialisiert, damit beim Tab-Wechsel nichts flackert)
+  const cachedUserProfile = safeStorage.getItem<any>(`user_profile_${currentUser?.uid}`, null) || {};
+  const [name, setName] = useState(cachedUserProfile.name || currentUser?.name || currentUser?.displayName || '');
+  const [phone, setPhone] = useState(cachedUserProfile.phone || '');
+  const [street, setStreet] = useState(cachedUserProfile.street || '');
+  const [zipCode, setZipCode] = useState(cachedUserProfile.zipCode || '');
+  const [city, setCity] = useState(cachedUserProfile.city || '');
+  const [jobTitle, setJobTitle] = useState(cachedUserProfile.jobTitle || '');
+  const [department, setDepartment] = useState(cachedUserProfile.department || '');
+  const [personalBio, setPersonalBio] = useState(cachedUserProfile.personalBio || '');
   const [preferredLang, setPreferredLang] = useState(currentLang);
   const [soundEnabled, setSoundEnabled] = useState(() => safeStorage.getItem<string>('kreativ_desk_sound_enabled', 'true') !== 'false');
 
@@ -1980,6 +1980,17 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
 
         const localCache = safeStorage.getItem<any>(`user_profile_${currentUser.uid}`, null);
 
+        if (localCache) {
+          if (localCache.name) setName(localCache.name);
+          if (localCache.phone) setPhone(localCache.phone);
+          if (localCache.street) setStreet(localCache.street);
+          if (localCache.zipCode) setZipCode(localCache.zipCode);
+          if (localCache.city) setCity(localCache.city);
+          if (localCache.jobTitle) setJobTitle(localCache.jobTitle);
+          if (localCache.department) setDepartment(localCache.department);
+          if (localCache.personalBio) setPersonalBio(localCache.personalBio);
+        }
+
         if (loadedCu) {
           if (loadedCu.phone) setPhone(loadedCu.phone);
           if (loadedCu.street) setStreet(loadedCu.street);
@@ -1997,14 +2008,6 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
               if (meta.personalBio) setPersonalBio(meta.personalBio);
             } catch (_) {}
           }
-        } else if (localCache) {
-          if (localCache.phone) setPhone(localCache.phone);
-          if (localCache.street) setStreet(localCache.street);
-          if (localCache.zipCode) setZipCode(localCache.zipCode);
-          if (localCache.city) setCity(localCache.city);
-          if (localCache.jobTitle) setJobTitle(localCache.jobTitle);
-          if (localCache.department) setDepartment(localCache.department);
-          if (localCache.personalBio) setPersonalBio(localCache.personalBio);
         }
       } catch (e) {
         console.warn('Fehler beim Laden der persönlichen Daten:', e);
@@ -2128,17 +2131,16 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
     if (!file || !currentUser?.uid) return;
     setIsUploadingAvatar(true);
     try {
-      const filePath = `avatars/${currentUser.uid}_${Date.now()}`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
-      if (upErr) throw upErr;
-      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      const photoUrl = pubData.publicUrl;
+      const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+      const photoUrl = await uploadFileWithFallback(file, file.name, safeCompanyId, 'avatars');
 
-      // Update Auth user metadata
-      try {
-        await supabase.auth.updateUser({ data: { avatar_url: photoUrl, photoURL: photoUrl } });
-      } catch (authErr) {
-        console.warn('Auth metadata update warning:', authErr);
+      // Update Auth user metadata (only if HTTP URL to avoid oversized JWT tokens)
+      if (!photoUrl.startsWith('data:')) {
+        try {
+          await supabase.auth.updateUser({ data: { avatar_url: photoUrl, photoURL: photoUrl } });
+        } catch (authErr) {
+          console.warn('Auth metadata update warning:', authErr);
+        }
       }
 
       // Update profiles if table/columns exist
@@ -2151,7 +2153,6 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
       // Update company_users
       if (currentUser?.email) {
         try {
-          const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
           let cuUpd = supabase.from('company_users').update({ photo_url: photoUrl, avatar: photoUrl } as any).ilike('email', currentUser.email);
           if (safeCompanyId) cuUpd = cuUpd.eq('company_id', safeCompanyId);
           await cuUpd;

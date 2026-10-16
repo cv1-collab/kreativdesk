@@ -29,7 +29,12 @@ export function useProjectTimeEntries() {
 
     try {
       const localCacheKey = `time_entries_cache_${safeCompanyId}`;
-      const localTimes = safeStorage.getItem<TimeEntry[]>(localCacheKey, []);
+      const deletedSet = new Set<string>(
+        safeStorage.getItem<string[]>(`deleted_time_entries_${safeCompanyId}`, []) || []
+      );
+      const localTimes = (safeStorage.getItem<TimeEntry[]>(localCacheKey, []) || []).filter(
+        t => t && !deletedSet.has(t.id)
+      );
       if (localTimes.length > 0) {
         setTimeEntries(localTimes);
       }
@@ -39,24 +44,23 @@ export function useProjectTimeEntries() {
         .select('*')
         .eq('company_id', safeCompanyId);
 
-      const timeMap = new Map();
-      // If SQL query succeeded, use SQL as authoritative source so deleted entries do not resurrect from localStorage
-      let sourceEntries: any[] = [];
-      if (!timesErr && Array.isArray(times)) {
-        sourceEntries = times;
-        if (sourceEntries.length === 0) {
-          try {
-            const configTime = await fetchSystemConfigJSON<{ entries?: any[] }>(`time_entries_${safeCompanyId}`, safeCompanyId);
-            sourceEntries = (configTime as any)?.data?.entries || configTime?.entries || [];
-          } catch (_) {}
-        }
-      } else {
-        sourceEntries = localTimes;
-      }
+      let configEntries: any[] = [];
+      try {
+        const configTime = await fetchSystemConfigJSON<{ entries?: any[] }>(`time_entries_${safeCompanyId}`, safeCompanyId);
+        configEntries = (configTime as any)?.data?.entries || configTime?.entries || [];
+      } catch (_) {}
+
+      const timeMap = new Map<string, TimeEntry>();
+      const sourceEntries: any[] = [
+        ...localTimes,
+        ...configEntries,
+        ...(!timesErr && Array.isArray(times) ? times : [])
+      ];
 
       sourceEntries.forEach((t: any) => {
         if (t && (t.id || t.description || t.hours)) {
           const tId = t.id || `time-${t.date}-${t.hours}`;
+          if (deletedSet.has(tId)) return;
           timeMap.set(tId, {
             id: tId,
             userId: t.userId || t.user_id || currentUserId,

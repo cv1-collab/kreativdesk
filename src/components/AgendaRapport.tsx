@@ -12,6 +12,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { supabase } from '../lib/supabase';
+import { safeStorage } from '../utils/safeStorage';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -58,26 +59,34 @@ export default function AgendaRapport() {
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || key;
 
-  const [timeEntries, setTimeEntries] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid || '';
+  const [timeEntries, setTimeEntries] = useState<any[]>(() => {
+    return safeCompanyId ? (safeStorage.getItem<any[]>(`time_entries_cache_${safeCompanyId}`, []) || []) : [];
+  });
+  const [loading, setLoading] = useState(() => timeEntries.length === 0);
 
   // === MULTI-TENANT FILTERUNG ===
   useEffect(() => {
-    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
     if (!safeCompanyId) return;
 
     const fetchEntries = async () => {
+      const localCached = safeStorage.getItem<any[]>(`time_entries_cache_${safeCompanyId}`, []) || [];
+      const deletedSet = new Set<string>(safeStorage.getItem<string[]>(`deleted_time_entries_${safeCompanyId}`, []) || []);
       const { data } = await supabase
         .from('time_entries')
         .select('*')
         .eq('company_id', safeCompanyId)
         .order('date', { ascending: false });
-      if (data) setTimeEntries(data);
+      const mergedMap = new Map<string, any>();
+      [...localCached, ...(data || [])].forEach(e => {
+        if (e?.id && !deletedSet.has(e.id)) mergedMap.set(e.id, e);
+      });
+      setTimeEntries(Array.from(mergedMap.values()));
       setLoading(false);
     };
 
     fetchEntries();
-  }, [currentUser]);
+  }, [safeCompanyId]);
 
   if (loading) return <div className="flex items-center justify-center p-12"><Loader2 className="animate-spin text-accent-ai" /></div>;
 

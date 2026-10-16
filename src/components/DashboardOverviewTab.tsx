@@ -46,10 +46,11 @@ export default function DashboardOverviewTab({
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
-  const [dbProjects, setDbProjects] = useState<any[]>([]);
-  const [leads, setLeads] = useState<any[]>([]);
-  const [team, setTeam] = useState<any[]>([]);
-  const [transactions, setTransactions] = useState<any[]>([]);
+  const safeCompanyId = currentUser?.companyId || currentUser?.uid || 'default';
+  const [dbProjects, setDbProjects] = useState<any[]>(() => safeStorage.getItem<any[]>(`projects_cache_${safeCompanyId}`, []) || []);
+  const [leads, setLeads] = useState<any[]>(() => safeStorage.getItem<any[]>(`leads_cache_${safeCompanyId}`, []) || []);
+  const [team, setTeam] = useState<any[]>(() => safeStorage.getItem<any[]>(`team_crm_list_cache_${safeCompanyId}`, []) || []);
+  const [transactions, setTransactions] = useState<any[]>(() => safeStorage.getItem<any[]>(`finance_tx_cache_${safeCompanyId}`, []) || []);
   const [isCompassDismissed, setIsCompassDismissed] = useState<boolean>(() => safeStorage.getString('hide_onboarding_compass') === 'true');
 
   const projects = (contextProjects && contextProjects.length > 0) ? contextProjects : dbProjects;
@@ -79,34 +80,51 @@ export default function DashboardOverviewTab({
 
   useEffect(() => {
     if (!currentUser || !currentUser.uid) return;
-    const safeCompanyId = currentUser.companyId || currentUser.uid;
+    const compId = currentUser.companyId || currentUser.uid;
 
     const loadData = async () => {
       try {
         const { data: projs } = await supabase
           .from('projects')
           .select('*')
-          .eq('company_id', safeCompanyId);
-        if (projs) setDbProjects(projs);
+          .eq('company_id', compId);
+        if (projs && projs.length > 0) {
+          setDbProjects(projs);
+        }
 
         const { data: lds } = await supabase
           .from('leads')
           .select('*')
-          .eq('company_id', safeCompanyId)
+          .eq('company_id', compId)
           .order('created_at', { ascending: false });
-        if (lds) setLeads(lds);
+        const localLeads = safeStorage.getItem<any[]>(`leads_cache_${compId}`, []) || [];
+        const leadMap = new Map<string, any>();
+        [...localLeads, ...(lds || [])].forEach(l => { if (l?.id) leadMap.set(l.id, l); });
+        if (leadMap.size > 0 || lds) {
+          setLeads(Array.from(leadMap.values()));
+        }
 
         const { data: profs } = await supabase
           .from('profiles')
           .select('*')
-          .eq('company_id', safeCompanyId);
-        if (profs) setTeam(profs);
+          .eq('company_id', compId);
+        const localTeam = safeStorage.getItem<any[]>(`team_crm_list_cache_${compId}`, []) || [];
+        const teamMap = new Map<string, any>();
+        [...localTeam, ...(profs || [])].forEach(m => { if (m?.id) teamMap.set(m.id, m); });
+        if (teamMap.size > 0 || profs) {
+          setTeam(Array.from(teamMap.values()));
+        }
 
         const { data: txs } = await supabase
           .from('transactions')
           .select('*')
-          .eq('company_id', safeCompanyId);
-        if (txs) setTransactions(txs);
+          .eq('company_id', compId);
+        const localTxs = safeStorage.getItem<any[]>(`finance_tx_cache_${compId}`, []) || [];
+        const txMap = new Map<string, any>();
+        [...localTxs, ...(txs || [])].forEach(t => { if (t?.id) txMap.set(t.id, t); });
+        if (txMap.size > 0 || txs) {
+          setTransactions(Array.from(txMap.values()));
+        }
       } catch (err) {
         console.error("Dashboard overview fetch error:", err);
       }

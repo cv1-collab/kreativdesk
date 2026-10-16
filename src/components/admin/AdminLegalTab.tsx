@@ -34,11 +34,19 @@ export default function AdminLegalTab() {
     setUploading(docType);
     try {
       const path = `legal/${docType}_${Date.now()}.pdf`;
+      let url = '';
       const { error: uploadErr } = await supabase.storage.from('avatars').upload(path, file);
-      if (uploadErr) throw uploadErr;
-
-      const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(path);
-      const url = publicUrlData.publicUrl;
+      if (!uploadErr) {
+        const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(path);
+        url = publicUrlData.publicUrl;
+      } else {
+        url = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
       
       const newDocs = {
         ...legalDocs,

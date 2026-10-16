@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
+import { safeStorage } from '../../utils/safeStorage';
 import {
   TransactionItem,
   RawTimeEntry,
@@ -27,7 +28,15 @@ export function useFinancialQuery(companyId?: string | null, selectedYear = 'all
         };
       }
 
-      // 1. Fetch transactions
+      const deletedTxIds = new Set<string>([
+        ...(safeStorage.getItem<string[]>(`deleted_finance_tx_${companyId}`, []) || []),
+        ...((safeStorage.getItem<{ deletedIds?: string[] }>(`company_finance_overrides_${companyId}`, {}) || {}).deletedIds || []),
+      ]);
+      const deletedTimeIds = new Set<string>(
+        safeStorage.getItem<string[]>(`deleted_time_entries_${companyId}`, []) || []
+      );
+
+      // 1. Fetch transactions (SQL + local cache fallback)
       const { data: txData, error: txErr } = await supabase
         .from('transactions')
         .select('*')
@@ -35,37 +44,51 @@ export function useFinancialQuery(companyId?: string | null, selectedYear = 'all
         .order('created_at', { ascending: false });
 
       if (txErr) {
-        console.error('[useFinancialQuery] Error fetching transactions:', txErr);
-        throw txErr;
+        console.warn('[useFinancialQuery] Fallback to local cache for transactions:', txErr);
       }
 
-      const baseTxs: TransactionItem[] = (txData || []).map((t: any) => ({
-        id: t.id,
-        type: t.type || 'expense',
-        amount: Number(t.amount || 0),
-        client: t.client || '',
-        description: t.description || '',
-        date: t.date || (t.created_at ? t.created_at.split('T')[0] : new Date().toISOString().split('T')[0]),
-        status: t.status || 'Gebucht',
-        category: t.category || 'Allgemein',
-        createdAt: t.created_at,
-        projectId: t.project_id || t.projectId,
-        companyId: t.company_id,
-        receiptUrls: t.receipt_urls || t.receiptUrls || [],
-        url: t.url || '',
-      }));
+      const localTxCache = safeStorage.getItem< any[] >(`finance_tx_cache_${companyId}`, []) || [];
+      const txMap = new Map<string, TransactionItem>();
 
-      // 2. Fetch time entries (Rapporte)
+      [...localTxCache, ...(txData || [])].forEach((t: any) => {
+        if (!t || !t.id || deletedTxIds.has(t.id)) return;
+        txMap.set(t.id, {
+          id: t.id,
+          type: t.type || 'expense',
+          amount: Number(t.amount || 0),
+          client: t.client || '',
+          description: t.description || '',
+          date: t.date || (t.created_at ? t.created_at.split('T')[0] : new Date().toISOString().split('T')[0]),
+          status: t.status || 'Gebucht',
+          category: t.category || 'Allgemein',
+          createdAt: t.created_at || t.createdAt,
+          projectId: t.project_id || t.projectId,
+          companyId: t.company_id || t.companyId || companyId,
+          receiptUrls: t.receipt_urls || t.receiptUrls || [],
+          url: t.url || '',
+        });
+      });
+
+      const baseTxs: TransactionItem[] = Array.from(txMap.values());
+
+      // 2. Fetch time entries (Rapporte: SQL + local cache fallback)
       const { data: timesData, error: timeError } = await supabase
         .from('time_entries')
         .select('*')
         .eq('company_id', companyId);
 
       if (timeError) {
-        console.error('[useFinancialQuery] Error fetching time_entries:', timeError);
+        console.warn('[useFinancialQuery] Fallback to local cache for time_entries:', timeError);
       }
 
-      const timeTxs = convertTimeEntriesToTransactions((timesData || []) as RawTimeEntry[]);
+      const localTimesCache = safeStorage.getItem<any[]>(`time_entries_cache_${companyId}`, []) || [];
+      const rawTimesMap = new Map<string, RawTimeEntry>();
+      [...localTimesCache, ...(timesData || [])].forEach((te: any) => {
+        if (!te || !te.id || deletedTimeIds.has(te.id) || deletedTxIds.has(te.id)) return;
+        rawTimesMap.set(te.id, te as RawTimeEntry);
+      });
+
+      const timeTxs = convertTimeEntriesToTransactions(Array.from(rawTimesMap.values()));
 
       const allTransactions = [...baseTxs, ...timeTxs];
 

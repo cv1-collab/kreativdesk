@@ -152,10 +152,18 @@ export default function AdminBrandTab() {
     try {
       const filePath = `branding/master_logo_${Date.now()}_${file.name}`;
       const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
-      if (upErr) throw upErr;
-
-      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      setConfig(prev => ({ ...prev, masterLogo: pubData.publicUrl }));
+      if (!upErr) {
+        const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+        setConfig(prev => ({ ...prev, masterLogo: pubData.publicUrl }));
+      } else {
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        setConfig(prev => ({ ...prev, masterLogo: dataUrl }));
+      }
       addToast(t('upload_success'), 'success');
     } catch (e) {
       console.error("Logo upload error:", e);
