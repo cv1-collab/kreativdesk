@@ -73,9 +73,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const safePlan = plan ? String(plan).slice(0, 100) : null;
     const safeSource = String(source || 'Landingpage B2B Request').slice(0, 150);
 
-    const KREATIV_DESK_PLATFORM_COMPANY = 'dce2daae-e8d5-4596-a264-a3fcdb326a6c';
-    let targetCompanyId = companyId;
-    if (!targetCompanyId || targetCompanyId === 'kreativ-desk-website' || targetCompanyId === 'undefined') {
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const KREATIV_DESK_PLATFORM_COMPANY = '11111111-1111-4111-8111-111111111111';
+    let targetCompanyId = typeof companyId === 'string' ? companyId.trim() : '';
+    if (!targetCompanyId || !UUID_REGEX.test(targetCompanyId)) {
       targetCompanyId = KREATIV_DESK_PLATFORM_COMPANY;
     }
 

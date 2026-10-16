@@ -128,6 +128,9 @@ export const offlineSyncManager = {
     }
 
     // Sync Documents
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const isValidUuid = (v?: string | null): boolean => Boolean(v && UUID_REGEX.test(v));
+
     const docs = this.getOfflineDocuments();
     if (docs.length > 0) {
       if (onStatusChange) onStatusChange(`Synchronisiere ${docs.length} Offline-Dokumente...`, 'info');
@@ -135,11 +138,16 @@ export const offlineSyncManager = {
 
       for (const doc of docs) {
         try {
-          const cleanDoc = {
-            ...doc,
-            project_id: (doc.project_id && doc.project_id !== 'global') ? doc.project_id : null
+          const { id, ...docWithoutId } = doc;
+          const cleanDoc: Record<string, any> = {
+            ...docWithoutId,
+            ...(isValidUuid(id) ? { id } : {}),
+            project_id: (doc.project_id && doc.project_id !== 'global' && isValidUuid(doc.project_id)) ? doc.project_id : null,
+            company_id: (doc.company_id && isValidUuid(doc.company_id)) ? doc.company_id : null,
+            owner_id: (doc.owner_id && isValidUuid(doc.owner_id)) ? doc.owner_id : null,
+            uploaded_by: (doc.uploaded_by && isValidUuid(doc.uploaded_by)) ? doc.uploaded_by : null,
           };
-          const { error } = await supabase.from('documents').insert(cleanDoc);
+          const { error } = await supabase.from('documents').insert(cleanDoc as any);
           if (error) {
             remainingDocs.push(doc);
           } else {

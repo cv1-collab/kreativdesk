@@ -56,10 +56,14 @@ export function useFinancialQuery(companyId?: string | null, selectedYear = 'all
       }));
 
       // 2. Fetch time entries (Rapporte)
-      const { data: timesData } = await supabase
+      const { data: timesData, error: timeError } = await supabase
         .from('time_entries')
         .select('*')
         .eq('company_id', companyId);
+
+      if (timeError) {
+        console.error('[useFinancialQuery] Error fetching time_entries:', timeError);
+      }
 
       const timeTxs = convertTimeEntriesToTransactions((timesData || []) as RawTimeEntry[]);
 
@@ -82,14 +86,24 @@ export function useFinancialQuery(companyId?: string | null, selectedYear = 'all
       .channel(`financial_realtime_${companyId}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'transactions' },
+        {
+          event: '*',
+          schema: 'public',
+          table: 'transactions',
+          filter: companyId ? `company_id=eq.${companyId}` : undefined,
+        },
         () => {
           queryClient.invalidateQueries({ queryKey: [FINANCIAL_QUERY_KEY] });
         }
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'time_entries' },
+        {
+          event: '*',
+          schema: 'public',
+          table: 'time_entries',
+          filter: companyId ? `company_id=eq.${companyId}` : undefined,
+        },
         () => {
           queryClient.invalidateQueries({ queryKey: [FINANCIAL_QUERY_KEY] });
         }

@@ -9,8 +9,8 @@ export function getSupabaseAdmin() {
   return supabaseAdmin;
 }
 
-export async function verifyAuth(req: any) {
-  const authHeader = req.headers.authorization;
+export async function verifyAuth(req: any, _res?: any) {
+  const authHeader = req.headers?.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return null;
   }
@@ -36,9 +36,48 @@ export async function verifyAuth(req: any) {
       companyId: profile?.company_id,
       role: isSuperAdmin ? 'super_admin' : profile?.role,
       isSuperAdmin: isSuperAdmin || profile?.role === 'super_admin',
+      hasActiveSubscription: profile?.has_active_subscription,
+      trialEndsAt: profile?.trial_ends_at,
+      profile,
     };
   } catch (error) {
     console.error('Auth verification failed:', error);
     return null;
   }
 }
+
+export async function verifySubscriptionAuth(req: any, res?: any) {
+  const user = await verifyAuth(req, res);
+  if (!user) return null;
+
+  if (user.isSuperAdmin) {
+    return user;
+  }
+
+  const profile = user.profile;
+  const hasActiveSub =
+    profile?.has_active_subscription === true ||
+    (profile?.has_active_subscription !== false && (!profile?.trial_ends_at || new Date(profile.trial_ends_at) > new Date()));
+  const hasValidTrial = Boolean(profile?.trial_ends_at && new Date(profile.trial_ends_at) > new Date());
+
+  if (hasActiveSub || hasValidTrial) {
+    return user;
+  }
+
+  if (profile?.company_id) {
+    const { data: comp } = await supabaseAdmin
+      .from('companies')
+      .select('plan')
+      .eq('id', profile.company_id)
+      .maybeSingle();
+    if (comp?.plan && !String(comp.plan).toLowerCase().includes('trial')) {
+      return user;
+    }
+  }
+
+  if (res && typeof res.status === 'function') {
+    res.status(403).json({ error: 'Forbidden: Active subscription required.' });
+  }
+  return null;
+}
+

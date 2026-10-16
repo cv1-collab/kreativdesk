@@ -64,7 +64,12 @@ export default async function handler(req: any, res: any) {
         }
 
         const safeRole = invite.role === 'super_admin' || invite.role === 'owner' ? 'admin' : (invite.role || 'employee');
-        profileUpdate = { company_id: companyId, role: safeRole };
+        profileUpdate = {
+          company_id: companyId,
+          role: safeRole,
+          has_active_subscription: true,
+          trial_ends_at: null
+        };
 
         await supabaseAdmin
           .from('invites')
@@ -74,6 +79,16 @@ export default async function handler(req: any, res: any) {
             used_at: new Date().toISOString()
           })
           .eq('id', invite.id);
+
+        if (user.email) {
+          try {
+            await supabaseAdmin
+              .from('company_users')
+              .update({ user_id: user.id, status: 'team' })
+              .eq('company_id', companyId)
+              .ilike('email', user.email.toLowerCase());
+          } catch (_) {}
+        }
       }
     }
 

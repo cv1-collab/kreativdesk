@@ -52,31 +52,52 @@ export interface BexioSyncLog {
 
 const BEXIO_LOGS_STORAGE_KEY = 'interactv_bexio_sync_logs';
 
+function resolveActiveCompanyId(companyId?: string): string {
+  if (companyId && companyId !== 'global') return companyId;
+  if (typeof window !== 'undefined') {
+    const active = safeStorage.getString('kd_active_company_id', '');
+    if (active && active !== 'global') return active;
+  }
+  return '';
+}
+
 /**
  * Holt gespeicherte Bexio-Konfiguration aus dem LocalStorage oder Environment
  */
-export function getBexioConfig(): { apiToken: string; autoSync: boolean; qrIban: string; enabled: boolean } {
+export function getBexioConfig(companyId?: string): { apiToken: string; autoSync: boolean; qrIban: string; enabled: boolean } {
   if (typeof window === 'undefined') {
-    return { apiToken: '', autoSync: true, qrIban: 'CH44 3199 9123 0008 8901 2', enabled: false };
+    return { apiToken: '', autoSync: true, qrIban: '', enabled: false };
+  }
+
+  const compId = resolveActiveCompanyId(companyId);
+  if (compId) {
+    const scopedToken = safeStorage.getString(`bexio_api_token_${compId}`, '');
+    const scopedAutoSync = safeStorage.getString(`bexio_auto_sync_${compId}`, 'true') !== 'false';
+    const scopedQrIban = safeStorage.getString(`bexio_qr_iban_${compId}`, '');
+    const scopedEnabled = safeStorage.getString(`bexio_integration_active_${compId}`, '') === 'true' || Boolean(scopedToken);
+    return {
+      apiToken: scopedToken,
+      autoSync: scopedAutoSync,
+      qrIban: scopedQrIban,
+      enabled: scopedEnabled
+    };
   }
 
   const token = safeStorage.getString('bexio_api_token', '') || safeStorage.getString('interactv_bexio_api_token', '');
   const autoSync = safeStorage.getString('bexio_auto_sync', 'true') !== 'false';
-  const qrIban = safeStorage.getString('bexio_qr_iban', 'CH44 3199 9123 0008 8901 2');
+  const qrIban = safeStorage.getString('bexio_qr_iban', '');
   const enabled = safeStorage.getString('bexio_integration_active', '') === 'true' || Boolean(token);
 
   return { apiToken: token, autoSync, qrIban, enabled };
 }
 
 /**
- * Lädt die Bexio-Konfiguration aus Supabase documents (system_config), falls lokal kein Token vorhanden ist
+ * Lädt die Bexio-Konfiguration zuerst aus Supabase documents (system_config) für die jeweilige Company
  */
 export async function loadBexioConfigFromCloud(companyId?: string): Promise<{ apiToken: string; autoSync: boolean; qrIban: string; enabled: boolean }> {
-  const local = getBexioConfig();
-  if (local.apiToken) return local;
+  let compId = resolveActiveCompanyId(companyId);
 
   try {
-    let compId = companyId;
     if (!compId && supabase) {
       const { data } = await supabase.auth.getUser();
       const uid = data?.user?.id;
@@ -86,53 +107,67 @@ export async function loadBexioConfigFromCloud(companyId?: string): Promise<{ ap
       }
     }
     if (compId) {
+      const localScoped = getBexioConfig(compId);
       const cloudCfg = await fetchSystemConfigJSON<any>(`bexio_config_${compId}`, compId);
       if (cloudCfg && typeof cloudCfg === 'object') {
         if (cloudCfg.apiToken) {
-          safeStorage.setItem('bexio_api_token', cloudCfg.apiToken);
-          safeStorage.setItem('interactv_bexio_api_token', cloudCfg.apiToken);
+          safeStorage.setItem(`bexio_api_token_${compId}`, cloudCfg.apiToken);
         }
-        if (cloudCfg.autoSync !== undefined) safeStorage.setItem('bexio_auto_sync', String(cloudCfg.autoSync));
-        if (cloudCfg.qrIban) safeStorage.setItem('bexio_qr_iban', cloudCfg.qrIban);
-        if (cloudCfg.enabled !== undefined) safeStorage.setItem('bexio_integration_active', String(cloudCfg.enabled));
+        if (cloudCfg.autoSync !== undefined) safeStorage.setItem(`bexio_auto_sync_${compId}`, String(cloudCfg.autoSync));
+        if (cloudCfg.qrIban) safeStorage.setItem(`bexio_qr_iban_${compId}`, cloudCfg.qrIban);
+        if (cloudCfg.enabled !== undefined) safeStorage.setItem(`bexio_integration_active_${compId}`, String(cloudCfg.enabled));
         return {
-          apiToken: cloudCfg.apiToken || local.apiToken,
-          autoSync: cloudCfg.autoSync !== undefined ? Boolean(cloudCfg.autoSync) : local.autoSync,
-          qrIban: cloudCfg.qrIban || local.qrIban,
-          enabled: cloudCfg.enabled !== undefined ? Boolean(cloudCfg.enabled) : Boolean(cloudCfg.apiToken)
+          apiToken: cloudCfg.apiToken || localScoped.apiToken,
+          autoSync: cloudCfg.autoSync !== undefined ? Boolean(cloudCfg.autoSync) : localScoped.autoSync,
+          qrIban: cloudCfg.qrIban || localScoped.qrIban,
+          enabled: cloudCfg.enabled !== undefined ? Boolean(cloudCfg.enabled) : Boolean(cloudCfg.apiToken || localScoped.apiToken)
         };
       }
+      return localScoped;
     }
   } catch (_) {}
 
-  return local;
+  return getBexioConfig(compId);
 }
 
 /**
- * Speichert Bexio Konfiguration im LocalStorage
+ * Speichert Bexio Konfiguration im LocalStorage (mandantenspezifisch) und in Supabase
  */
 export function saveBexioConfig(config: { apiToken?: string; autoSync?: boolean; qrIban?: string; enabled?: boolean; companyId?: string }, companyIdParam?: string) {
   if (typeof window === 'undefined') return;
 
-  if (config.apiToken !== undefined) {
-    safeStorage.setItem('bexio_api_token', config.apiToken);
-    safeStorage.setItem('interactv_bexio_api_token', config.apiToken);
+  const syncCompId = resolveActiveCompanyId(companyIdParam || config.companyId);
+  if (syncCompId) {
+    if (config.apiToken !== undefined) safeStorage.setItem(`bexio_api_token_${syncCompId}`, config.apiToken);
+    if (config.autoSync !== undefined) safeStorage.setItem(`bexio_auto_sync_${syncCompId}`, String(config.autoSync));
+    if (config.qrIban !== undefined) safeStorage.setItem(`bexio_qr_iban_${syncCompId}`, config.qrIban);
+    if (config.enabled !== undefined) safeStorage.setItem(`bexio_integration_active_${syncCompId}`, String(config.enabled));
+  } else {
+    if (config.apiToken !== undefined) {
+      safeStorage.setItem('bexio_api_token', config.apiToken);
+      safeStorage.setItem('interactv_bexio_api_token', config.apiToken);
+    }
+    if (config.autoSync !== undefined) safeStorage.setItem('bexio_auto_sync', String(config.autoSync));
+    if (config.qrIban !== undefined) safeStorage.setItem('bexio_qr_iban', config.qrIban);
+    if (config.enabled !== undefined) safeStorage.setItem('bexio_integration_active', String(config.enabled));
   }
-  if (config.autoSync !== undefined) safeStorage.setItem('bexio_auto_sync', String(config.autoSync));
-  if (config.qrIban !== undefined) safeStorage.setItem('bexio_qr_iban', config.qrIban);
-  if (config.enabled !== undefined) safeStorage.setItem('bexio_integration_active', String(config.enabled));
 
   // Persist server-readable config for external client proposal acceptance
   supabase.auth.getUser().then(async ({ data }) => {
     const uid = data?.user?.id;
     if (!uid) return;
-    let compId = companyIdParam || config.companyId;
+    let compId = syncCompId;
     if (!compId) {
       const { data: prof } = await supabase.from('profiles').select('company_id').eq('id', uid).maybeSingle();
       compId = (prof as any)?.company_id || uid;
     }
     if (compId) {
-      const merged = getBexioConfig();
+      if (config.apiToken !== undefined) safeStorage.setItem(`bexio_api_token_${compId}`, config.apiToken);
+      if (config.autoSync !== undefined) safeStorage.setItem(`bexio_auto_sync_${compId}`, String(config.autoSync));
+      if (config.qrIban !== undefined) safeStorage.setItem(`bexio_qr_iban_${compId}`, config.qrIban);
+      if (config.enabled !== undefined) safeStorage.setItem(`bexio_integration_active_${compId}`, String(config.enabled));
+
+      const merged = getBexioConfig(compId);
       const payloadStr = JSON.stringify(merged);
       const cfgName = `bexio_config_${compId}`;
       const { data: existing } = await supabase
@@ -140,6 +175,7 @@ export function saveBexioConfig(config: { apiToken?: string; autoSync?: boolean;
         .select('id')
         .eq('category', 'system_config')
         .eq('name', cfgName)
+        .eq('company_id', compId)
         .limit(1);
       if (existing && existing.length > 0) {
         await supabase.from('documents').update({ url: payloadStr, file_url: payloadStr, uploaded_at: new Date().toISOString() }).eq('id', existing[0].id);
@@ -154,7 +190,8 @@ export function saveBexioConfig(config: { apiToken?: string; autoSync?: boolean;
           is_folder: false,
           url: payloadStr,
           file_url: payloadStr,
-          type: 'application/json'
+          type: 'application/json',
+          uploaded_at: new Date().toISOString()
         });
       }
     }
@@ -271,8 +308,9 @@ export async function syncProposalToBexio(
 /**
  * Synchronisiert Messe-Leads als Kontakte zu Bexio
  */
-export async function syncLeadsToBexio(leads: any[]): Promise<{ success: boolean; syncedCount: number; errors: string[] }> {
-  const config = getBexioConfig();
+export async function syncLeadsToBexio(leads: any[], companyId?: string): Promise<{ success: boolean; syncedCount: number; errors: string[] }> {
+  const compId = resolveActiveCompanyId(companyId || leads?.[0]?.company_id || leads?.[0]?.companyId);
+  const config = await loadBexioConfigFromCloud(compId);
 
   if (!config.apiToken) {
     return {
@@ -294,7 +332,8 @@ export async function syncLeadsToBexio(leads: any[]): Promise<{ success: boolean
       headers,
       body: JSON.stringify({
         leads,
-        apiToken: config.apiToken
+        apiToken: config.apiToken,
+        companyId: compId || undefined
       })
     });
 

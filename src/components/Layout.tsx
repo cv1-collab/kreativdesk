@@ -110,17 +110,35 @@ export default function Layout() {
       setAdminPreviewCompany({ id: pId, name: pName || 'Workspace' });
     }
 
-    // Fetch Global Announcement from system_config
+    // Fetch Global Announcement from system_config or documents (global_master)
     const fetchAnnouncement = async () => {
       try {
-        const { data } = await supabase
-          .from('system_config')
-          .select('*')
-          .eq('id', 'global_master')
+        let config: any = null;
+        const { data: docData } = await supabase
+          .from('documents')
+          .select('url, file_url')
+          .eq('category', 'system_config')
+          .eq('name', 'global_master')
+          .order('created_at', { ascending: false })
+          .limit(1)
           .maybeSingle();
 
-        const config = (data as any)?.data || data || {};
-        if (config.announcementActive && config.announcementText) {
+        if (docData?.url || docData?.file_url) {
+          try {
+            config = JSON.parse(docData.url || docData.file_url);
+          } catch (_) {}
+        }
+
+        if (!config) {
+          const { data } = await supabase
+            .from('system_config')
+            .select('*')
+            .eq('id', 'global_master')
+            .maybeSingle();
+          config = (data as any)?.data || data || {};
+        }
+
+        if (config?.announcementActive && config?.announcementText) {
           setAnnouncement({
             text: config.announcementText,
             type: config.announcementType || 'info',

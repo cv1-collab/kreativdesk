@@ -186,7 +186,15 @@ export default function NotificationCenter({ isOpen, onClose }: NotificationCent
                     if (!notif.is_read) handleMarkAsRead(notif.id);
                     if (notif.link) {
                       onClose();
-                      navigate(notif.link);
+                      if (notif.link.startsWith('http://') || notif.link.startsWith('https://')) {
+                        if (notif.link.startsWith(window.location.origin)) {
+                          navigate(notif.link.slice(window.location.origin.length) || '/');
+                        } else {
+                          window.open(notif.link, '_blank', 'noopener,noreferrer');
+                        }
+                      } else {
+                        navigate(notif.link);
+                      }
                     }
                   }}
                   className={`p-4 rounded-2xl border transition-all cursor-pointer flex justify-between items-start gap-3 ${

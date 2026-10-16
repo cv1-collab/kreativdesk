@@ -27,21 +27,21 @@ export interface CompanySettings {
 const STORAGE_KEY = 'kreativdesk_company_settings';
 
 export const DEFAULT_COMPANY_SETTINGS: CompanySettings = {
-  companyName: 'interacTV AG • Kreativ Desk Swiss',
-  legalForm: 'Aktiengesellschaft (AG)',
-  street: 'Gotthardstrasse',
-  buildingNumber: '26',
-  postalCode: '8002',
-  city: 'Zürich',
+  companyName: 'Kreativ Desk Workspace',
+  legalForm: '',
+  street: '',
+  buildingNumber: '',
+  postalCode: '',
+  city: '',
   country: 'CH',
-  uid: 'CHE-389.412.901 MWST',
-  iban: 'CH44 3199 9123 0008 8901 2',
-  qrIban: 'CH44 3199 9123 0008 8901 2',
-  bankName: 'Zürcher Kantonalbank (ZKB)',
-  clearingNumber: '700',
-  contactEmail: 'contact@interactv.ch',
-  contactPhone: '+41 44 280 40 80',
-  website: 'https://interactv.ch',
+  uid: '',
+  iban: '',
+  qrIban: '',
+  bankName: '',
+  clearingNumber: '',
+  contactEmail: '',
+  contactPhone: '',
+  website: '',
   logoUrl: '',
   defaultPaymentTermDays: 30,
   vatRate: 8.1
@@ -50,10 +50,21 @@ export const DEFAULT_COMPANY_SETTINGS: CompanySettings = {
 import { safeStorage } from '../utils/safeStorage';
 import { supabase } from '../lib/supabase';
 
-export function getCompanySettings(): CompanySettings {
+function getSettingsStorageKey(companyId?: string): string {
+  const activeCompanyId =
+    companyId ||
+    (typeof window !== 'undefined' ? safeStorage.getString('kd_active_company_id') : '') ||
+    '';
+  return activeCompanyId && activeCompanyId !== 'global'
+    ? `${STORAGE_KEY}_${activeCompanyId}`
+    : STORAGE_KEY;
+}
+
+export function getCompanySettings(companyId?: string): CompanySettings {
   if (typeof window === 'undefined') return DEFAULT_COMPANY_SETTINGS;
   try {
-    const saved = safeStorage.getItem<CompanySettings | null>(STORAGE_KEY, null);
+    const key = getSettingsStorageKey(companyId);
+    const saved = safeStorage.getItem<CompanySettings | null>(key, null);
     if (saved) {
       return { ...DEFAULT_COMPANY_SETTINGS, ...saved };
     }
@@ -64,16 +75,16 @@ export function getCompanySettings(): CompanySettings {
 }
 
 export function saveCompanySettings(settings: Partial<CompanySettings>, companyId?: string): CompanySettings {
-  const current = getCompanySettings();
+  const activeCompanyId = companyId || (typeof window !== 'undefined' ? safeStorage.getString('kd_active_company_id') : '') || 'global';
+  const current = getCompanySettings(activeCompanyId);
   const updated = { ...current, ...settings };
   if (typeof window !== 'undefined') {
-    safeStorage.setItem(STORAGE_KEY, updated);
+    safeStorage.setItem(getSettingsStorageKey(activeCompanyId), updated);
   }
 
   // Asynchronous backup / sync to Supabase company_profile_config
-  if (supabase) {
+  if (supabase && activeCompanyId && activeCompanyId !== 'global') {
     try {
-      const safeId = companyId || safeStorage.getString('kd_active_company_id') || 'global';
       const profileData = {
         agencyName: updated.companyName,
         address: `${updated.street} ${updated.buildingNumber}`.trim(),
@@ -91,20 +102,19 @@ export function saveCompanySettings(settings: Partial<CompanySettings>, companyI
         updatedAt: new Date().toISOString()
       };
 
-      // Upsert into documents table under company_settings category
-      let docQuery = supabase
+      // Upsert into documents table under company_settings category scoped by company_id
+      supabase
         .from('documents')
         .select('id, url, file_url')
         .eq('category', 'company_settings')
-        .eq('name', 'company_profile_config');
-      if (safeId && safeId !== 'global') {
-        docQuery = docQuery.eq('company_id', safeId);
-      }
-      docQuery
-        .maybeSingle()
-        .then(({ data: existing }) => {
+        .eq('name', 'company_profile_config')
+        .eq('company_id', activeCompanyId)
+        .order('uploaded_at', { ascending: false })
+        .limit(1)
+        .then(({ data: rows }) => {
+          const existing = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
           let existingConfig: Record<string, any> = {};
-          const cachedProfile = safeStorage.getItem<any>(`company_profile_${safeId}`, null);
+          const cachedProfile = safeStorage.getItem<any>(`company_profile_${activeCompanyId}`, null);
           if (cachedProfile && typeof cachedProfile === 'object') {
             existingConfig = { ...cachedProfile };
           } else if (typeof cachedProfile === 'string') {
@@ -126,23 +136,21 @@ export function saveCompanySettings(settings: Partial<CompanySettings>, companyI
           }
           const mergedJson = JSON.stringify(mergedConfig);
 
-          if (typeof window !== 'undefined' && safeId && safeId !== 'global') {
-            safeStorage.setItem(`company_profile_${safeId}`, mergedConfig);
+          if (typeof window !== 'undefined') {
+            safeStorage.setItem(`company_profile_${activeCompanyId}`, mergedConfig);
           }
 
           if (existing?.id) {
-            let upd = supabase
+            supabase
               .from('documents')
               .update({
                 url: mergedJson,
                 file_url: mergedJson,
                 uploaded_at: new Date().toISOString()
               })
-              .eq('id', existing.id);
-            if (safeId && safeId !== 'global') {
-              upd = upd.eq('company_id', safeId);
-            }
-            upd.then(() => {});
+              .eq('id', existing.id)
+              .eq('company_id', activeCompanyId)
+              .then(() => {});
           } else {
             supabase
               .from('documents')
@@ -150,10 +158,11 @@ export function saveCompanySettings(settings: Partial<CompanySettings>, companyI
                 name: 'company_profile_config',
                 category: 'company_settings',
                 type: 'application/json',
-                company_id: safeId !== 'global' ? safeId : null,
+                company_id: activeCompanyId,
                 url: mergedJson,
                 file_url: mergedJson,
-                is_folder: false
+                is_folder: false,
+                uploaded_at: new Date().toISOString()
               })
               .then(() => {});
           }
@@ -167,7 +176,11 @@ export function saveCompanySettings(settings: Partial<CompanySettings>, companyI
 }
 
 export async function loadAndSyncCompanySettings(companyId?: string): Promise<CompanySettings> {
-  const local = getCompanySettings();
+  const activeCompanyId =
+    companyId ||
+    (typeof window !== 'undefined' ? safeStorage.getString('kd_active_company_id') : '') ||
+    '';
+  const local = getCompanySettings(activeCompanyId);
   if (!supabase) return local;
 
   try {
@@ -177,11 +190,12 @@ export async function loadAndSyncCompanySettings(companyId?: string): Promise<Co
       .eq('category', 'company_settings')
       .eq('name', 'company_profile_config');
 
-    if (companyId && companyId !== 'global') {
-      query = query.eq('company_id', companyId);
+    if (activeCompanyId && activeCompanyId !== 'global') {
+      query = query.eq('company_id', activeCompanyId);
     }
 
-    const { data: configDoc } = await query.maybeSingle();
+    const { data: rows } = await query.order('uploaded_at', { ascending: false }).limit(1);
+    const configDoc = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
 
     if (configDoc?.file_url || configDoc?.url) {
       const parsed = JSON.parse(configDoc.file_url || configDoc.url);
@@ -203,9 +217,24 @@ export async function loadAndSyncCompanySettings(companyId?: string): Promise<Co
       };
 
       if (typeof window !== 'undefined') {
-        safeStorage.setItem(STORAGE_KEY, merged);
+        safeStorage.setItem(getSettingsStorageKey(activeCompanyId), merged);
       }
       return merged;
+    }
+
+    // Fallback for unauthenticated public viewers or freshly created workspaces: query companies.name
+    if (activeCompanyId && activeCompanyId !== 'global') {
+      const { data: compRow } = await supabase
+        .from('companies')
+        .select('name')
+        .eq('id', activeCompanyId)
+        .maybeSingle();
+      if (compRow?.name) {
+        return {
+          ...local,
+          companyName: compRow.name
+        };
+      }
     }
   } catch (err) {
     console.warn('Could not sync company settings from Supabase:', err);
@@ -213,3 +242,4 @@ export async function loadAndSyncCompanySettings(companyId?: string): Promise<Co
 
   return local;
 }
+

@@ -38,14 +38,21 @@ export async function fetchSystemConfigJSON<T = any>(configKey: string, companyI
 
     if (doc?.file_url || doc?.url) {
       try {
-        return JSON.parse(doc.file_url || doc.url) as T;
+        const parsed = JSON.parse(doc.file_url || doc.url) as T;
+        safeStorage.setItem(`sys_cfg_${companyId || 'global'}_${configKey}`, doc.file_url || doc.url);
+        return parsed;
       } catch (parseErr) {
         console.warn(`[configHelper] Failed to parse document JSON for ${configKey}:`, parseErr);
       }
     }
 
-    // Fallback check localStorage
-    return safeStorage.getItem<T | null>(`sys_cfg_${configKey}`, null);
+    // Fallback check localStorage (scoped by companyId)
+    const scopedCached = safeStorage.getItem<T | null>(`sys_cfg_${companyId || 'global'}_${configKey}`, null);
+    if (scopedCached !== null) return scopedCached;
+    if (!companyId || companyId === 'global' || configKey.includes(companyId)) {
+      return safeStorage.getItem<T | null>(`sys_cfg_${configKey}`, null);
+    }
+    return null;
   } catch (e) {
     console.warn(`[configHelper] Error reading config ${configKey}:`, e);
     return null;
@@ -54,8 +61,13 @@ export async function fetchSystemConfigJSON<T = any>(configKey: string, companyI
 
 export async function saveSystemConfigJSON(configKey: string, payload: any, companyId: string = 'global', ownerId: string = 'global'): Promise<void> {
   try {
-    const payloadStr = JSON.stringify(payload);
-    safeStorage.setItem(`sys_cfg_${configKey}`, payloadStr);
+    const nowIso = new Date().toISOString();
+    const enrichedPayload =
+      payload && typeof payload === 'object' && !Array.isArray(payload)
+        ? { ...payload, uploaded_at: nowIso }
+        : payload;
+    const payloadStr = JSON.stringify(enrichedPayload);
+    safeStorage.setItem(`sys_cfg_${companyId || 'global'}_${configKey}`, payloadStr);
 
     const validCompanyId = isUuid(companyId) ? companyId : null;
     const validOwnerId = isUuid(ownerId) ? ownerId : null;
@@ -85,7 +97,7 @@ export async function saveSystemConfigJSON(configKey: string, payload: any, comp
         company_id: validCompanyId,
         url: payloadStr,
         file_url: payloadStr,
-        uploaded_at: new Date().toISOString()
+        uploaded_at: nowIso
       }).eq('id', existingDoc.id);
     } else {
       await supabase.from('documents').insert({
@@ -99,10 +111,13 @@ export async function saveSystemConfigJSON(configKey: string, payload: any, comp
         is_folder: false,
         url: payloadStr,
         file_url: payloadStr,
-        type: 'application/json'
+        type: 'application/json',
+        created_at: nowIso,
+        uploaded_at: nowIso
       });
     }
   } catch (e) {
     console.warn(`[configHelper] Error saving config ${configKey}:`, e);
   }
 }
+

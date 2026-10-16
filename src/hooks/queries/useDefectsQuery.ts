@@ -105,7 +105,12 @@ export function useDefectsQuery(companyId?: string | null, projectId?: string | 
       .channel(`defects_realtime_${companyId}_${projectId || 'all'}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'defects' },
+        {
+          event: '*',
+          schema: 'public',
+          table: 'defects',
+          filter: companyId ? `company_id=eq.${companyId}` : undefined,
+        },
         () => {
           queryClient.invalidateQueries({ queryKey: [DEFECTS_QUERY_KEY] });
         }

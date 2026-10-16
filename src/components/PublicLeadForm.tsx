@@ -96,7 +96,8 @@ export default function PublicLeadForm() {
   // Cross-Device Session Logic
   const [sessionId] = useState(() => Math.random().toString(36).substring(2, 15));
   const [showQR, setShowQR] = useState(false);
-  const mobileUploadUrl = `${window.location.origin}/mobile-upload/vcard/${sessionId}${companyId ? `?companyId=${encodeURIComponent(companyId)}` : ''}`;
+  const effectiveLeadCompanyId = companyId || '11111111-1111-4111-8111-111111111111';
+  const mobileUploadUrl = `${window.location.origin}/mobile-upload/vcard/${sessionId}?companyId=${encodeURIComponent(effectiveLeadCompanyId)}`;
 
   const [formData, setFormData] = useState({
     firstName: '',

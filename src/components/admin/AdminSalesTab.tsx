@@ -122,7 +122,8 @@ export default function AdminSalesTab() {
       await supabase
         .from('transactions')
         .delete()
-        .or('type.is.null,type.neq.subscription');
+        .eq('type', 'subscription')
+        .or('description.ilike.%dummy%,description.ilike.%test%,client.ilike.%dummy%,client.ilike.%test%');
       addToast('Dummy-Zahlungen wurden erfolgreich gelöscht!', 'success');
       fetchTransactions();
     } catch (err) {

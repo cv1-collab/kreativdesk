@@ -49,28 +49,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Missing or invalid recipientEmail or quoteData' });
     }
 
-    // Verify caller is either authenticated or referencing an existing proposal
+    // Verify caller is either authenticated or referencing an existing proposal with valid shareToken
     const user = await verifyAuth(req);
     let verifiedProp: any = null;
+    const isDemo = typeof proposalId === 'string' && proposalId.startsWith('demo');
+    if (isDemo && !user) {
+      return res.status(401).json({ error: 'Unauthorized: Authentication required for demo proposals' });
+    }
     if (!user) {
-      const isDemo = typeof proposalId === 'string' && proposalId.startsWith('demo');
-      if (!isDemo) {
-        if (!proposalId || typeof proposalId !== 'string') {
-          return res.status(401).json({ error: 'Unauthorized: Missing proposal reference' });
-        }
-        const { data: prop } = await supabaseAdmin
-          .from('smart_proposals')
-          .select('id, title, base_price, accepted_by, status, share_token')
-          .eq('id', proposalId)
-          .maybeSingle();
-        if (!prop) {
-          return res.status(403).json({ error: 'Forbidden: Invalid proposal reference' });
-        }
-        if (shareToken && prop.share_token && prop.share_token !== shareToken) {
-          return res.status(403).json({ error: 'Forbidden: Invalid share token' });
-        }
-        verifiedProp = prop;
+      if (!proposalId || typeof proposalId !== 'string') {
+        return res.status(401).json({ error: 'Unauthorized: Missing proposal reference' });
       }
+      const { data: prop } = await supabaseAdmin
+        .from('smart_proposals')
+        .select('id, title, base_price, accepted_by, status, share_token')
+        .eq('id', proposalId)
+        .maybeSingle();
+      if (!prop) {
+        return res.status(403).json({ error: 'Forbidden: Invalid proposal reference' });
+      }
+      if (!prop.share_token || !shareToken || prop.share_token !== shareToken) {
+        return res.status(403).json({ error: 'Invalid or missing share token for proposal.' });
+      }
+      verifiedProp = prop;
     }
 
     const cleanRecipientEmail = recipientEmail.trim();

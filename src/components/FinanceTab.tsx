@@ -80,8 +80,13 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
 
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     try {
-      await supabase.from('transactions').update({ status: newStatus }).eq('id', id);
+      const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+      let q = supabase.from('transactions').update({ status: newStatus }).eq('id', id);
+      if (safeCompanyId) q = q.eq('company_id', safeCompanyId);
+      const { error } = await q;
+      if (error) throw error;
       setTransactions(prev => prev.map(tx => tx.id === id ? { ...tx, status: newStatus } : tx));
+      invalidateFinancial();
       addToast(t('status_updated'), "success");
     } catch (e) {
       addToast(t('update_error'), "error");
@@ -92,12 +97,19 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
     e.stopPropagation();
     if (window.confirm(t('confirm_delete'))) {
       try {
+        const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
         if (isUuid) {
-          await supabase.from('transactions').delete().eq('id', id);
-          await supabase.from('time_entries').delete().eq('id', id);
+          let txDel = supabase.from('transactions').delete().eq('id', id);
+          let teDel = supabase.from('time_entries').delete().eq('id', id);
+          if (safeCompanyId) {
+            txDel = txDel.eq('company_id', safeCompanyId);
+            teDel = teDel.eq('company_id', safeCompanyId);
+          }
+          await Promise.all([txDel, teDel]);
         }
         setTransactions(prev => prev.filter(tx => tx.id !== id));
+        invalidateFinancial();
         addToast(t('entry_deleted'), "success");
       } catch (e) {
         addToast(t('delete_error'), "error");
@@ -132,14 +144,17 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
         const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
         const validUuids = selectedIds.filter(id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
         if (validUuids.length > 0) {
-          let query = supabase.from('transactions').delete().in('id', validUuids);
+          let txQuery = supabase.from('transactions').delete().in('id', validUuids);
+          let teQuery = supabase.from('time_entries').delete().in('id', validUuids);
           if (safeCompanyId) {
-            query = query.eq('company_id', safeCompanyId);
+            txQuery = txQuery.eq('company_id', safeCompanyId);
+            teQuery = teQuery.eq('company_id', safeCompanyId);
           }
-          await query;
+          await Promise.all([txQuery, teQuery]);
         }
         setTransactions(prev => prev.filter(tx => !selectedIds.includes(tx.id)));
         setSelectedIds([]);
+        invalidateFinancial();
         addToast(`${selectedIds.length} Einträge erfolgreich gelöscht!`, 'success');
       } catch (e) {
         addToast(t('delete_error'), 'error');
@@ -157,6 +172,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
       }
       await query;
       setTransactions(prev => prev.map(tx => selectedIds.includes(tx.id) ? { ...tx, status: newStatus } : tx));
+      invalidateFinancial();
       addToast(`Status für ${selectedIds.length} Einträge auf "${newStatus}" aktualisiert`, 'success');
     } catch (e) {
       addToast(t('update_error'), 'error');
@@ -283,6 +299,9 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
                       });
                     }
                   });
+                }
+                if (!pBudget && (proj as any).budget) {
+                  pBudget = Number((proj as any).budget) || 0;
                 }
                 return (
                   <tr key={proj.id} className="hover:bg-white/[0.02]">

@@ -80,6 +80,7 @@ export default function CRM() {
         name: newContact.name,
         first_name: firstName,
         last_name: lastName,
+        company: newContact.company || null,
         role: newContact.role || 'partner',
         email: newContact.email || null,
         phone: newContact.phone || null,
@@ -111,7 +112,9 @@ export default function CRM() {
     }
 
     try {
-      const { error } = await supabase.from('company_users').delete().eq('id', id);
+      let delQuery = supabase.from('company_users').delete().eq('id', id);
+      if (safeCompanyId) delQuery = delQuery.eq('company_id', safeCompanyId);
+      const { error } = await delQuery;
       if (error) {
         addToast('Fehler beim Löschen', 'error');
         return;

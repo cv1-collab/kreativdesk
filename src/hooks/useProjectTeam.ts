@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { offboardCompanyUser } from '../services/userService';
+import { offboardCompanyUser, syncCompanySeats, isExternalRole } from '../services/userService';
 
 export interface CompanyUser {
   id: string;
@@ -45,11 +45,25 @@ export function useProjectTeam() {
       const mappedProfiles: CompanyUser[] = (profs || []).map((p: any) => {
         const normRole = String(p.role || '').toLowerCase().trim();
         const isAdminRole = normRole === 'owner' || normRole === 'admin' || normRole === 'super_admin';
+        const isClientRole =
+          normRole === 'client' ||
+          normRole === 'kunde' ||
+          normRole === 'auftraggeber' ||
+          normRole === 'bauherr' ||
+          normRole.includes('client');
+        const isExtRole = isExternalRole(normRole);
+        const mappedRole: CompanyUser['role'] = isAdminRole
+          ? 'Admin'
+          : isClientRole
+          ? 'Client'
+          : isExtRole
+          ? 'External Planner'
+          : 'Internal';
         return {
           id: p.id,
           name: p.name || p.email,
           email: p.email,
-          role: isAdminRole ? 'Admin' : 'Internal',
+          role: mappedRole,
           avatar: p.photo_url || p.avatar || '',
           ownerId: p.id,
           companyId: p.company_id || safeCompanyId
@@ -168,6 +182,7 @@ export function useProjectTeam() {
           status: userData.status || 'team',
           created_at: new Date().toISOString()
         } as any);
+        await syncCompanySeats(safeCompanyId);
       } catch (e) {
         console.error('Fehler beim Hinzufügen des Benutzers:', e);
       }
@@ -194,6 +209,7 @@ export function useProjectTeam() {
             .update(updatePayload as any)
             .eq('company_id', safeCompanyId)
             .or(`id.eq.${id},user_id.eq.${id}`);
+          await syncCompanySeats(safeCompanyId);
         }
       } catch (e) {
         console.error('Fehler beim Aktualisieren des Benutzers:', e);
@@ -247,19 +263,20 @@ export function useProjectTeam() {
 
     try {
       let u: any = null;
-      const { data: byId } = await supabase.from('company_users')
+      const { data: byIdRows } = await supabase.from('company_users')
         .select('id, notes')
+        .eq('company_id', safeCompanyId)
         .or(`id.eq.${memberData.userId},user_id.eq.${memberData.userId}`)
-        .maybeSingle();
-      u = byId;
+        .limit(1);
+      u = Array.isArray(byIdRows) && byIdRows.length > 0 ? byIdRows[0] : null;
 
       if (!u && cleanEmail) {
-        const { data: byEmail } = await supabase.from('company_users')
+        const { data: byEmailRows } = await supabase.from('company_users')
           .select('id, notes')
           .eq('company_id', safeCompanyId)
           .ilike('email', cleanEmail)
-          .maybeSingle();
-        u = byEmail;
+          .limit(1);
+        u = Array.isArray(byEmailRows) && byEmailRows.length > 0 ? byEmailRows[0] : null;
       }
 
       if (u) {
@@ -277,7 +294,8 @@ export function useProjectTeam() {
         const updatedNotes = (cleanText ? `${cleanText}\n\n` : '') + `__CRM_META__:${JSON.stringify(meta)}`;
         await supabase.from('company_users')
           .update({ notes: updatedNotes })
-          .eq('id', u.id);
+          .eq('id', u.id)
+          .eq('company_id', safeCompanyId);
       }
     } catch (e) {}
 
@@ -297,11 +315,12 @@ export function useProjectTeam() {
 
     // 2. Native database column update in project_members (match user_id, id, or linked company_users id)
     try {
-      const { data: cuMatch } = await supabase.from('company_users')
+      const { data: cuMatchRows } = await supabase.from('company_users')
         .select('id, user_id')
         .eq('company_id', safeCompanyId)
         .or(`id.eq.${userId},user_id.eq.${userId}`)
-        .maybeSingle();
+        .limit(1);
+      const cuMatch = Array.isArray(cuMatchRows) && cuMatchRows.length > 0 ? cuMatchRows[0] : null;
 
       const candidateIds = Array.from(new Set([userId, cuMatch?.id, cuMatch?.user_id].filter(Boolean)));
       for (const cid of candidateIds) {
@@ -321,22 +340,23 @@ export function useProjectTeam() {
     // 3. Persist in company_users CRM_META (matching by ID or email)
     try {
       let u: any = null;
-      const { data: byId } = await supabase.from('company_users')
+      const { data: byIdRows } = await supabase.from('company_users')
         .select('id, notes')
+        .eq('company_id', safeCompanyId)
         .or(`id.eq.${userId},user_id.eq.${userId}`)
-        .maybeSingle();
-      u = byId;
+        .limit(1);
+      u = Array.isArray(byIdRows) && byIdRows.length > 0 ? byIdRows[0] : null;
 
       if (!u) {
         // Look up by profile or email
         const { data: prof } = await supabase.from('profiles').select('email').eq('id', userId).maybeSingle();
         if (prof?.email) {
-          const { data: byEmail } = await supabase.from('company_users')
+          const { data: byEmailRows } = await supabase.from('company_users')
             .select('id, notes')
             .eq('company_id', safeCompanyId)
             .ilike('email', prof.email)
-            .maybeSingle();
-          u = byEmail;
+            .limit(1);
+          u = Array.isArray(byEmailRows) && byEmailRows.length > 0 ? byEmailRows[0] : null;
         }
       }
 
@@ -355,7 +375,8 @@ export function useProjectTeam() {
         const updatedNotes = (cleanText ? `${cleanText}\n\n` : '') + `__CRM_META__:${JSON.stringify(meta)}`;
         await supabase.from('company_users')
           .update({ notes: updatedNotes })
-          .eq('id', u.id);
+          .eq('id', u.id)
+          .eq('company_id', safeCompanyId);
       }
     } catch (e) {
       console.error('Error persisting project role in company_users:', e);
@@ -368,11 +389,12 @@ export function useProjectTeam() {
     setProjectMembers(prev => prev.filter(m => !(m.projectId === projectId && (m.userId === userId || m.id === userId))));
 
     try {
-      const { data: cuMatch } = await supabase.from('company_users')
+      const { data: cuMatchRows } = await supabase.from('company_users')
         .select('id, user_id')
         .eq('company_id', safeCompanyId)
         .or(`id.eq.${userId},user_id.eq.${userId}`)
-        .maybeSingle();
+        .limit(1);
+      const cuMatch = Array.isArray(cuMatchRows) && cuMatchRows.length > 0 ? cuMatchRows[0] : null;
       const candidateIds = Array.from(new Set([userId, cuMatch?.id, cuMatch?.user_id].filter(Boolean)));
       for (const cid of candidateIds) {
         await supabase.from('project_members').delete().eq('project_id', projectId).eq('user_id', cid);

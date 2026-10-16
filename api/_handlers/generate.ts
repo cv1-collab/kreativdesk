@@ -1,5 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
-import { verifyAuth } from '../_auth.js';
+import { verifySubscriptionAuth } from '../_auth.js';
 
 const publicRateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
@@ -41,8 +41,9 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const user = await verifyAuth(req);
     const { model, contents, config, isPublic } = req.body || {};
+    const user = await verifySubscriptionAuth(req, isPublic ? undefined : res);
+    if (res.writableEnded || res.headersSent) return;
     if (!user && !isPublic) {
       return res.status(401).json({ error: 'Unauthorized: Authentication required' });
     }

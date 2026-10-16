@@ -316,16 +316,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Add or update company_users record and migrate pre-assigned project_members
         try {
-          const { data: existingCu } = await supabase
+          const { data: existingCuRows } = await supabase
             .from('company_users')
             .select('*')
             .eq('company_id', targetCompanyId)
             .ilike('email', user.email)
-            .maybeSingle();
+            .limit(1);
+          const existingCu = existingCuRows?.[0] || null;
 
           if (!existingCu) {
+            const { data: idTaken } = await supabase
+              .from('company_users')
+              .select('id')
+              .eq('id', user.id)
+              .limit(1);
+            const rowId = (idTaken && idTaken.length > 0) ? crypto.randomUUID() : user.id;
+
             await supabase.from('company_users').insert({
-              id: user.id,
+              id: rowId,
               user_id: user.id,
               company_id: targetCompanyId,
               name: userName,
@@ -462,6 +470,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const isExternalRoleEffective = effectiveRole === 'guest' || effectiveRole === 'client';
         const isLeadershipRole = effectiveRole === 'owner' || effectiveRole === 'management' || isSuperUser;
 
+        const resolvedTenantId = effectiveCompanyId || user.id;
+        safeStorage.setItem('kd_active_company_id', resolvedTenantId);
+
         const appUser: AppUser = {
           id: user.id,
           uid: user.id,
@@ -476,8 +487,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           plan: userPlan,
           companyPlan: resolvedCompanyPlan,
           companyName: resolvedCompanyName,
-          companyId: effectiveCompanyId || user.id,
-          company_id: effectiveCompanyId || user.id,
+          companyId: resolvedTenantId,
+          company_id: resolvedTenantId,
           trialEndsAt: (effectiveRole === 'owner' && !isSuperUser && !companyHasPaidPlan) ? profile.trial_ends_at : undefined,
           canViewFinance: isExternalRoleEffective ? false : (profile.can_view_finance ?? true),
           canApproveBudget: isExternalRoleEffective ? false : (profile.can_approve_budget ?? isLeadershipRole),
@@ -771,6 +782,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (_) {}
     }
     const tenantCacheKeys = [
+      'kd_active_company_id',
       'bexio_api_token',
       'interactv_bexio_api_token',
       'bexio_qr_iban',
@@ -778,14 +790,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       'bexio_integration_active',
       'interactv_bexio_sync_logs',
       'interactv_email_config',
+      'interactv_webhook_url',
       'kreativdesk_company_settings',
       'kreativdesk_webhook_urls',
       'kreativdesk_smart_proposals_v1',
-      'custom_accent_color'
+      'kreativdesk_offline_defects',
+      'kreativdesk_offline_documents',
+      'custom_accent_color',
+      'whiteboard_draft',
+      'lastSeenNotifs',
+      'has_new_document',
+      'last_created_doc_title'
     ];
     tenantCacheKeys.forEach(key => safeStorage.removeItem(key));
     try {
       const prefixesToPurge = [
+        'kreativdesk_',
+        'bexio_',
+        'interactv_',
+        'company_profile_',
+        'crm_metadata_',
+        'fin_state_',
         'kreativdesk_cad_cache_',
         'cad_state_',
         'pitch_deck_slides_',

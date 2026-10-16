@@ -419,7 +419,7 @@ const parseStyledTokens = (
 ): React.ReactNode[] => {
   if (!text) return [];
 
-  const tagRegex = /(<mark[^>]*>[\s\S]*?<\/mark>|<strong[^>]*>[\s\S]*?<\/strong>|<b[^>]*>[\s\S]*?<\/b>|<span[^>]*>[\s\S]*?<\/span>|<font[^>]*>[\s\S]*?<\/font>|\*\*[\s\S]*?\*\*|\[(?:bold|b)\][\s\S]*?\[\/(?:bold|b)\]|\[(?:semibold|sb)\][\s\S]*?\[\/(?:semibold|sb)\]|\[(?:light|l)\][\s\S]*?\[\/(?:light|l)\]|\[(?:book|regular)\][\s\S]*?\[\/(?:book|regular)\]|\[color:(#[0-9a-fA-F]{3,8}|[a-zA-Z]+)\][\s\S]*?\[\/color\])/gi;
+  const tagRegex = /(<mark[^>]*>[\s\S]*?<\/mark>|<strong[^>]*>[\s\S]*?<\/strong>|<b[^>]*>[\s\S]*?<\/b>|<span[^>]*>[\s\S]*?<\/span>|<font[^>]*>[\s\S]*?<\/font>|\*\*[\s\S]*?\*\*|\[(?:bold|b)\][\s\S]*?\[\/(?:bold|b)\]|\[(?:semibold|sb)\][\s\S]*?\[\/(?:semibold|sb)\]|\[(?:light|l)\][\s\S]*?\[\/(?:light|l)\]|\[(?:book|regular)\][\s\S]*?\[\/(?:book|regular)\]|\[color:(?:#[0-9a-fA-F]{3,8}|[a-zA-Z]+)\][\s\S]*?\[\/color\])/gi;
 
   const parts = text.split(tagRegex);
   const nodes: React.ReactNode[] = [];
@@ -1668,7 +1668,7 @@ ${footerText}
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto shrink-0 pb-1 md:pb-0 justify-end">
           <button
             onClick={() => setIsPdfStudioOpen(true)}
-            className="hidden md:flex px-3 md:px-4 py-2 bg-gradient-to-r from-sky-500 via-blue-600 to-sky-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-xs rounded-xl shadow-md items-center gap-1.5 cursor-pointer transition-all uppercase tracking-wider whitespace-nowrap shrink-0"
+            className="flex px-3 md:px-4 py-2 bg-gradient-to-r from-sky-500 via-blue-600 to-sky-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-xs rounded-xl shadow-md items-center gap-1.5 cursor-pointer transition-all uppercase tracking-wider whitespace-nowrap shrink-0"
           >
             <Sparkles size={15} /> {t('open_pdf_studio')}
           </button>
@@ -2472,21 +2472,21 @@ ${footerText}
                       <input
                         type="text"
                         value={recipientName}
-                        onChange={e => setRecipientName(e.target.value)}
+                        onChange={e => handleUpdateRecipientName(e.target.value)}
                         className="font-bold text-slate-900 text-xs sm:text-sm w-full bg-transparent outline-none border-b border-transparent focus:border-sky-500"
                         placeholder={t('recipient_name')}
                       />
                       <input
                         type="text"
                         value={recipientStreet}
-                        onChange={e => setRecipientStreet(e.target.value)}
+                        onChange={e => handleUpdateRecipientStreet(e.target.value)}
                         className="text-slate-700 w-full bg-transparent outline-none border-b border-transparent focus:border-sky-500"
                         placeholder={t('street')}
                       />
                       <input
                         type="text"
                         value={recipientZipCity}
-                        onChange={e => setRecipientZipCity(e.target.value)}
+                        onChange={e => handleUpdateRecipientZipCity(e.target.value)}
                         className="text-slate-700 font-medium w-full bg-transparent outline-none border-b border-transparent focus:border-sky-500"
                         placeholder={t('zip_city')}
                       />

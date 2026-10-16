@@ -157,36 +157,31 @@ export function applyBrandColor(hex: string, persist: boolean = true): ColorShad
  * 1. Synchronously reads cached color from safeStorage for zero layout flash.
  * 2. Asynchronously fetches latest master branding from Supabase system_config.
  */
-export async function initBrandColor(): Promise<string> {
-  // Step 1: Immediate cache read
+export async function initBrandColor(companyId?: string): Promise<string> {
+  const activeCompanyId =
+    companyId ||
+    (typeof window !== 'undefined' ? safeStorage.getString('kd_active_company_id') : '') ||
+    '';
+
+  // Step 1: Immediate cache read (prioritize active company profile)
+  if (activeCompanyId && activeCompanyId !== 'global') {
+    const compProfile = safeStorage.getItem<any>(`company_profile_${activeCompanyId}`, null);
+    if (compProfile?.primaryColor) {
+      applyBrandColor(compProfile.primaryColor, true);
+      return compProfile.primaryColor;
+    }
+  }
+
   const cachedColor = safeStorage.getItem<string>(STORAGE_KEY, '');
   if (cachedColor) {
     applyBrandColor(cachedColor, false);
   } else {
-    // Check if company profile has a saved brand color
-    try {
-      if (typeof localStorage !== 'undefined') {
-        const allKeys = Object.keys(localStorage);
-        for (const k of allKeys) {
-          if (k.startsWith('company_profile_')) {
-            const raw = localStorage.getItem(k);
-            if (raw) {
-              const parsed = JSON.parse(raw);
-              if (parsed?.primaryColor) {
-                applyBrandColor(parsed.primaryColor, true);
-                return parsed.primaryColor;
-              }
-            }
-          }
-        }
-      }
-    } catch (_) {}
     applyBrandColor(DEFAULT_BRAND_COLOR, false);
   }
 
   // Step 2: Remote sync
   try {
-    const docConfig = await fetchSystemConfigJSON<{ accentColor?: string }>('global_master');
+    const docConfig = await fetchSystemConfigJSON<{ accentColor?: string }>('global_master', activeCompanyId || 'global');
     if (docConfig?.accentColor) {
       applyBrandColor(docConfig.accentColor, true);
       return docConfig.accentColor;

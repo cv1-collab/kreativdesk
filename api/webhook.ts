@@ -64,8 +64,8 @@ export default async function handler(req: any, res: any) {
     'price_1TC00cRwN4c1cHbcE2f3W1aP': { name: 'Starter', seats: 1 },
     'price_1TC00uRwN4c1cHbcW0s7T2xM': { name: 'Pro', seats: 1 },
     'price_1TC01BRwN4c1cHbcX8v4K9yQ': { name: 'Pro', seats: 1 },
-    'price_1TC01SRwN4c1cHbcZ1m5N3pL': { name: 'Enterprise', seats: 1 },
-    'price_1TC01jRwN4c1cHbcB7c2D4fG': { name: 'Enterprise', seats: 1 },
+    'price_1TC01SRwN4c1cHbcZ1m5N3pL': { name: 'Enterprise', seats: 999 },
+    'price_1TC01jRwN4c1cHbcB7c2D4fG': { name: 'Enterprise', seats: 999 },
     'price_1TAMt9RwN4c1cHbc92bM5G2v': { name: 'Team Starter', seats: 3 },
     'price_1TAMtdRwN4c1cHbcK8jL3P1x': { name: 'Studio OS', seats: 10 },
     'price_1TAMtxRwN4c1cHbcQ4wE6R8t': { name: 'Agency OS', seats: 30 },
@@ -87,6 +87,7 @@ export default async function handler(req: any, res: any) {
           has_active_subscription: true,
           stripe_customer_id: session.customer as string,
           plan: planName,
+          trial_ends_at: null,
           updated_at: new Date().toISOString()
         }).eq('id', uid);
 
@@ -97,12 +98,15 @@ export default async function handler(req: any, res: any) {
           .maybeSingle();
 
         if (profile?.company_id) {
-          let newMaxSeats = resolvedFromPrice?.seats || Number(session.metadata?.maxSeats || session.metadata?.seats || 1);
+          let newMaxSeats = Math.max(
+            resolvedFromPrice?.seats || 1,
+            Number(session.metadata?.maxSeats || session.metadata?.seats || 1)
+          );
           const planLower = planName.toLowerCase();
-          if (planLower.includes('team') || planLower.includes('expert')) newMaxSeats = 3;
-          else if (planLower.includes('studio')) newMaxSeats = 10;
-          else if (planLower.includes('agency')) newMaxSeats = 30;
-          else if (planLower.includes('enterprise')) newMaxSeats = 999;
+          if (planLower.includes('team') || planLower.includes('expert')) newMaxSeats = Math.max(newMaxSeats, 3);
+          else if (planLower.includes('studio')) newMaxSeats = Math.max(newMaxSeats, 10);
+          else if (planLower.includes('agency')) newMaxSeats = Math.max(newMaxSeats, 30);
+          else if (planLower.includes('enterprise')) newMaxSeats = Math.max(newMaxSeats, 999);
 
           const { data: existingComp } = await supabaseAdmin
             .from('companies')

@@ -33,6 +33,20 @@ export const parseSizeToBytes = (sizeStr: string | number): number => {
   }
 };
 
+export const getPlanStorageLimitBytes = (plan?: string | null): number => {
+  const raw = String(plan || 'Free Trial').trim();
+  if (raw in STORAGE_LIMITS) {
+    return STORAGE_LIMITS[raw as keyof typeof STORAGE_LIMITS];
+  }
+  const lower = raw.toLowerCase();
+  if (lower.includes('enterprise')) return 5000 * 1024 * 1024 * 1024;
+  if (lower.includes('agency')) return 2000 * 1024 * 1024 * 1024;
+  if (lower.includes('studio')) return 500 * 1024 * 1024 * 1024;
+  if (lower.includes('expert') || lower.includes('team')) return 250 * 1024 * 1024 * 1024;
+  if (lower.includes('pro')) return 100 * 1024 * 1024 * 1024;
+  return 15 * 1024 * 1024 * 1024;
+};
+
 export const checkStorageLimit = async (companyId: string, fileSize: number): Promise<boolean> => {
   try {
     if (!companyId || companyId === 'global' || companyId === 'default-company') {
@@ -44,8 +58,7 @@ export const checkStorageLimit = async (companyId: string, fileSize: number): Pr
       .eq('id', companyId)
       .maybeSingle();
 
-    const plan = comp?.plan || 'Free Trial';
-    const limit = STORAGE_LIMITS[plan as keyof typeof STORAGE_LIMITS] || STORAGE_LIMITS['Starter'];
+    const limit = getPlanStorageLimitBytes(comp?.plan);
 
     const { data: docs } = await supabase
       .from('documents')

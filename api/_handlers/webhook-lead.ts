@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import crypto from 'crypto';
 import { verifyAuth, supabaseAdmin } from '../_auth.js';
 
 function isSafeExternalUrl(urlStr: string): boolean {
@@ -44,12 +45,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { event = 'PROPOSAL_ACCEPTED', proposalId, shareToken, companyId, acceptanceData, acceptedAt, webhookUrl, rawPayload, customHeaders, ...rest } = req.body || {};
+    const { event = 'PROPOSAL_ACCEPTED', action, proposalId, shareToken, companyId, acceptanceData, acceptedAt, webhookUrl, rawPayload, customHeaders, ...rest } = req.body || {};
     const user = await verifyAuth(req);
 
     let verifiedProp: any = null;
     if (!user) {
-      if (event !== 'PROPOSAL_ACCEPTED' || !proposalId || typeof proposalId !== 'string') {
+      const isAllowedUnauthAction =
+        event === 'PROPOSAL_ACCEPTED' ||
+        event === 'PROPOSAL_QUESTION' ||
+        action === 'accept' ||
+        action === 'question';
+      if (!isAllowedUnauthAction || !proposalId || typeof proposalId !== 'string') {
         return res.status(401).json({ error: 'Unauthorized: Valid proposal reference required' });
       }
       const { data: prop } = await supabaseAdmin
@@ -60,8 +66,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!prop) {
         return res.status(403).json({ error: 'Forbidden: Invalid proposal reference' });
       }
-      if (shareToken && prop.share_token && prop.share_token !== shareToken) {
-        return res.status(403).json({ error: 'Forbidden: Invalid share token' });
+      if (!prop.share_token || !shareToken || prop.share_token !== shareToken) {
+        return res.status(403).json({ error: 'Invalid or missing share token for proposal.' });
       }
       verifiedProp = prop;
     }
@@ -88,22 +94,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         targetUrl = (comp as any)?.webhook_url;
 
         // Ensure in-app notification is persisted via supabaseAdmin when client is unauthenticated and verifiedProp matched
-        if (!user && verifiedProp && event === 'PROPOSAL_ACCEPTED' && acceptanceData?.acceptedByName) {
-          try {
-            const propTitle = verifiedProp.title || rest.proposalTitle || 'Projekt';
-            const totalText = acceptanceData.finalTotalCHF
-              ? `CHF ${Number(acceptanceData.finalTotalCHF).toLocaleString('de-CH')}`
-              : 'Angenommen';
-            await supabaseAdmin.from('notifications').insert([{
-              id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-              company_id: resolvedCompanyId,
-              title: '🎉 Offerte rechtsgültig unterzeichnet!',
-              message: `${acceptanceData.acceptedByName} hat das Angebot "${propTitle}" digital signiert (${totalText}).\n__LINK__:/proposals`,
-              type: 'success',
-              read: false,
-              created_at: acceptedAt || new Date().toISOString()
-            }]);
-          } catch (_) {}
+        if (!user && verifiedProp) {
+          const propTitle = verifiedProp.title || rest.proposalTitle || 'Projekt';
+          if ((event === 'PROPOSAL_ACCEPTED' || action === 'accept') && (acceptanceData?.acceptedByName || rest.acceptedByName)) {
+            try {
+              const signerName = acceptanceData?.acceptedByName || rest.acceptedByName;
+              const totalVal = acceptanceData?.finalTotalCHF ?? rest.finalTotalCHF;
+              const totalText = totalVal
+                ? `CHF ${Number(totalVal).toLocaleString('de-CH')}`
+                : 'Angenommen';
+              await supabaseAdmin.from('notifications').insert([{
+                id: crypto.randomUUID(),
+                company_id: resolvedCompanyId,
+                title: '🎉 Offerte rechtsgültig unterzeichnet!',
+                message: `${signerName} hat das Angebot "${propTitle}" digital signiert (${totalText}).\n__LINK__:/proposals`,
+                type: 'success',
+                read: false,
+                created_at: acceptedAt || new Date().toISOString()
+              }]);
+            } catch (_) {}
+          } else if ((event === 'PROPOSAL_QUESTION' || action === 'question') && (rest.question || rest.message)) {
+            try {
+              const senderLabel = rest.senderName || rest.clientName || 'Kunde';
+              await supabaseAdmin.from('notifications').insert([{
+                id: crypto.randomUUID(),
+                company_id: resolvedCompanyId,
+                title: `💬 Rückfrage zu "${propTitle}"`,
+                message: `${senderLabel}: ${String(rest.question || rest.message).slice(0, 500)}\n__LINK__:/proposals`,
+                type: 'info',
+                read: false,
+                created_at: new Date().toISOString()
+              }]);
+            } catch (_) {}
+          }
         }
       }
     }

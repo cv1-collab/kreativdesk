@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { verifyAuth } from '../_auth.js';
+import { verifySubscriptionAuth } from '../_auth.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -15,7 +15,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const user = await verifyAuth(req);
+    const user = await verifySubscriptionAuth(req, res);
+    if (res.writableEnded || res.headersSent) return;
     if (!user) {
       return res.status(401).json({ error: 'Unauthorized: Authentication required' });
     }

@@ -1,5 +1,6 @@
 export type WebhookEventType = 'defect.created' | 'invoice.created' | 'lead.created' | 'document.uploaded';
 import { safeStorage } from './safeStorage';
+import { saveSystemConfigJSON } from './configHelper';
 
 export interface WebhookEndpoint {
   id: string;
@@ -44,17 +45,19 @@ export const webhookNotifier = {
         return data;
       }
 
-      // Legacy fallback
-      const oldData = safeStorage.getItem<string[] | null>('kreativdesk_webhook_urls', null);
-      if (oldData && Array.isArray(oldData)) {
-        return oldData.map((url, i) => ({
-          id: `wh_${Date.now()}_${i}`,
-          name: url.includes('slack.com') ? 'Slack Channel' : `Webhook ${i + 1}`,
-          url,
-          events: ['defect.created', 'invoice.created', 'lead.created', 'document.uploaded'],
-          active: true,
-          created_at: new Date().toISOString()
-        }));
+      // Legacy fallback only when no companyId is specified
+      if (!companyId) {
+        const oldData = safeStorage.getItem<string[] | null>('kreativdesk_webhook_urls', null);
+        if (oldData && Array.isArray(oldData)) {
+          return oldData.map((url, i) => ({
+            id: `wh_${Date.now()}_${i}`,
+            name: url.includes('slack.com') ? 'Slack Channel' : `Webhook ${i + 1}`,
+            url,
+            events: ['defect.created', 'invoice.created', 'lead.created', 'document.uploaded'],
+            active: true,
+            created_at: new Date().toISOString()
+          }));
+        }
       }
       return [];
     } catch {
@@ -65,10 +68,13 @@ export const webhookNotifier = {
   saveWebhooks(webhooks: WebhookEndpoint[], companyId?: string): void {
     const key = this.getStorageKey(companyId);
     safeStorage.setItem(key, webhooks);
-    
-    // Maintain legacy compatibility
-    const urls = webhooks.filter(w => w.active).map(w => w.url);
-    safeStorage.setItem('kreativdesk_webhook_urls', urls);
+
+    if (companyId && companyId !== 'global') {
+      saveSystemConfigJSON(`kreativdesk_webhooks_${companyId}`, webhooks, companyId).catch(() => {});
+    } else {
+      const urls = webhooks.filter(w => w.active).map(w => w.url);
+      safeStorage.setItem('kreativdesk_webhook_urls', urls);
+    }
   },
 
   getSecretKey(companyId?: string): string {

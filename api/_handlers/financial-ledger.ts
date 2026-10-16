@@ -29,44 +29,55 @@ export default async function handler(req: any, res: any) {
     // Multi-tenant authorization check:
     const isSuperAdmin = (authUser as any).isSuperAdmin || (authUser as any).role === 'super_admin';
     if (!isSuperAdmin) {
-      // ZERO LEAKAGE: External contractors and guests are strictly blocked from financial ledger records
-      const roleStr = String((authUser as any).role || '').toLowerCase();
-      const isExternalOrGuest = 
-        roleStr.includes('guest') || 
-        roleStr.includes('extern') || 
-        roleStr.includes('partner') || 
-        roleStr.includes('contractor') || 
-        roleStr.includes('handwerker') || 
-        roleStr === 'client';
+      const profile = (authUser as any).profile;
+      const { data: cuRows } = await supabase
+        .from('company_users')
+        .select('id, role, is_external, status, can_view_finance')
+        .eq('company_id', companyId)
+        .or(`user_id.eq.${authUser.id},email.ilike.${authUser.email}`)
+        .limit(1);
+      const cuMembership = Array.isArray(cuRows) && cuRows.length > 0 ? cuRows[0] : null;
 
-      if (isExternalOrGuest) {
+      const userCompanyId = (authUser as any).companyId;
+      const belongsToCompany = (userCompanyId && String(userCompanyId) === String(companyId)) || Boolean(cuMembership);
+      if (!belongsToCompany) {
         return res.status(403).json({ error: 'Forbidden: Access denied to company financial records' });
       }
 
-      const userCompanyId = (authUser as any).companyId;
-      if (!userCompanyId || String(userCompanyId) !== String(companyId)) {
-        // Double check membership in company_users as fallback
-        const { data: cuMembership } = await supabase
-          .from('company_users')
-          .select('id, role, is_external, status')
-          .eq('company_id', companyId)
-          .or(`user_id.eq.${authUser.id},email.ilike.${authUser.email}`)
-          .maybeSingle();
+      const isExternalRoleStr = (r: string) => {
+        const s = String(r || '').toLowerCase().trim();
+        return (
+          s.includes('guest') ||
+          s.includes('extern') ||
+          s.includes('partner') ||
+          s.includes('contractor') ||
+          s.includes('subcontractor') ||
+          s.includes('subunternehmer') ||
+          s.includes('handwerker') ||
+          s.includes('kunde') ||
+          s.includes('auftraggeber') ||
+          s.includes('bauherr') ||
+          s === 'client' ||
+          s === 'external'
+        );
+      };
 
-        const cuRoleStr = String(cuMembership?.role || '').toLowerCase();
-        const cuStatusStr = String((cuMembership as any)?.status || '').toLowerCase();
-        const isCuExternal = Boolean((cuMembership as any)?.is_external) || cuStatusStr === 'external';
-        if (
-          !cuMembership ||
-          isCuExternal ||
-          cuRoleStr.includes('guest') ||
-          cuRoleStr.includes('extern') ||
-          cuRoleStr.includes('partner') ||
-          cuRoleStr.includes('contractor') ||
-          cuRoleStr.includes('handwerker') ||
-          cuRoleStr === 'client'
-        ) {
-          return res.status(403).json({ error: 'Forbidden: Access denied to company financial records' });
+      const roleStr = String((authUser as any).role || profile?.role || '').toLowerCase().trim();
+      const cuRoleStr = String(cuMembership?.role || '').toLowerCase().trim();
+      const cuStatusStr = String((cuMembership as any)?.status || '').toLowerCase().trim();
+      const isCuExternal = Boolean((cuMembership as any)?.is_external) || cuStatusStr === 'external' || cuStatusStr === 'partner';
+
+      if (isExternalRoleStr(roleStr) || isExternalRoleStr(cuRoleStr) || isCuExternal) {
+        return res.status(403).json({ error: 'Forbidden: Access denied to company financial records' });
+      }
+
+      const ELEVATED_ROLES = new Set([
+        'owner', 'admin', 'management', 'project_lead', 'projektleiter', 'bauleiter', 'super_admin', 'geschäftsführung'
+      ]);
+      const effectiveRole = cuRoleStr || roleStr || 'employee';
+      if (!ELEVATED_ROLES.has(roleStr) && !ELEVATED_ROLES.has(effectiveRole)) {
+        if (profile?.can_view_finance === false || (cuMembership as any)?.can_view_finance === false) {
+          return res.status(403).json({ error: 'Forbidden: Insufficient permissions to view financial ledger' });
         }
       }
     }

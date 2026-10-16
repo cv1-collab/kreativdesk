@@ -30,6 +30,7 @@ import { safeStorage } from '../utils/safeStorage';
 import { useToast } from '../contexts/ToastContext';
 import { useAuth } from '../contexts/AuthContext';
 import { translateProposalTitle } from '../utils/proposalTranslationHelper';
+import { supabase } from '../lib/supabase';
 
 const localTranslations: Record<'de' | 'en' | 'fr', Record<string, string>> = {
   de: {
@@ -1917,7 +1918,16 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
   const handleDownloadQRBill = () => {
     if (!proposal) return;
     const total = calculateTotal();
-    const depositAmount = Math.round(total * 0.5);
+    const depositRatio = 0.3;
+    const depositPercent = Math.round(depositRatio * 100);
+    const depositAmount = Math.round(total * depositRatio);
+
+    const issuerName = companySettings.companyName || (proposal as any).companyName || 'Kreativ Desk Workspace';
+    const issuerAddress = [
+      [companySettings.street, companySettings.buildingNumber].filter(Boolean).join(' '),
+      [companySettings.postalCode, companySettings.city].filter(Boolean).join(' ')
+    ].filter(Boolean).join(' • ') || 'Schweiz';
+    const issuerIban = companySettings.qrIban || companySettings.iban || 'Gemäss Vertrag / Offerte';
 
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
@@ -1928,10 +1938,10 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('SCHWEIZER QR-RECHNUNG (50% ANZAHLUNG)', 15, 16);
+    doc.text(`SCHWEIZER QR-RECHNUNG (${depositPercent}% ANZAHLUNG)`, 15, 16);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text('interacTV Interactive Systems AG • Technoparkstrasse 1 • 8005 Zürich', 15, 24);
+    doc.text(`${issuerName} • ${issuerAddress}`, 15, 24);
 
     // Invoice Info
     doc.setTextColor(30, 41, 59);
@@ -1944,7 +1954,7 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
     doc.text(`Empfänger: ${acceptName || proposal.clientName} ${acceptCompany ? `(${acceptCompany})` : ''}`, 15, 52);
     doc.text(`Datum: ${new Date().toLocaleDateString('de-CH')} | Zahlungsfrist: 10 Tage netto`, 15, 58);
     doc.text(`Gesamtbetrag Offerte: CHF ${total.toLocaleString('de-CH', { minimumFractionDigits: 2 })}`, 15, 64);
-    doc.text(`Fällige Anzahlung (50%): CHF ${depositAmount.toLocaleString('de-CH', { minimumFractionDigits: 2 })}`, 15, 70);
+    doc.text(`Fällige Anzahlung (${depositPercent}%): CHF ${depositAmount.toLocaleString('de-CH', { minimumFractionDigits: 2 })}`, 15, 70);
 
     // QR Bill Payment Section
     doc.setLineWidth(0.5);
@@ -1957,9 +1967,9 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
 
     doc.setFontSize(8.5);
     doc.setFont('helvetica', 'normal');
-    doc.text('Konto / Account: CH93 0070 0110 0005 8000 4 (interacTV AG)', 15, 92);
+    doc.text(`Konto / Account: ${issuerIban} (${issuerName})`, 15, 92);
     doc.text(`Referenz: QRR-2026-${Math.floor(100000 + Math.random() * 900000)}`, 15, 97);
-    doc.text(`Zahlbar durch: ${acceptName || proposal.clientName}, ${acceptCompany || 'Aussteller AG'}`, 15, 102);
+    doc.text(`Zahlbar durch: ${acceptName || proposal.clientName}, ${acceptCompany || proposal.clientCompany || ''}`, 15, 102);
 
     doc.setFillColor(241, 245, 249);
     doc.rect(15, 110, 180, 25, 'F');
@@ -4933,7 +4943,7 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
-                  const saved = saveCompanySettings(tempCompanySettings);
+                  const saved = saveCompanySettings(tempCompanySettings, proposal?.companyId);
                   setCompanySettings(saved);
                   audioFeedback.playSuccessChime();
                   setIsCompanySettingsModalOpen(false);
@@ -5106,26 +5116,53 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
           isOpen={isPdfStudioOpen}
           onClose={() => setIsPdfStudioOpen(false)}
           title={`Offerte & QR-Rechnung: ${proposal.title}`}
-          fileName={`interacTV_Vertragsbeleg_${proposal.clientName.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`}
+          fileName={`Vertragsbeleg_${proposal.clientName.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`}
           onSaveCloud={async (blob) => {
-            console.log('Proposal PDF saved to cloud:', blob.size);
+            if (!proposal.companyId) return;
+            try {
+              const fileName = `Vertragsbeleg_${proposal.clientName.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.pdf`;
+              const filePath = `${proposal.companyId}/proposals/${fileName}`;
+              const { error: upErr } = await supabase.storage.from('documents').upload(filePath, blob, { contentType: 'application/pdf', upsert: true });
+              let fileUrl = '';
+              if (!upErr) {
+                const { data: pubData } = supabase.storage.from('documents').getPublicUrl(filePath);
+                fileUrl = pubData.publicUrl;
+              }
+              if (fileUrl) {
+                await supabase.from('documents').insert({
+                  name: fileName,
+                  url: fileUrl,
+                  file_url: fileUrl,
+                  size: `${Math.round(blob.size / 1024)} KB`,
+                  type: 'application/pdf',
+                  company_id: proposal.companyId,
+                  project_id: (proposal as any).projectId || null,
+                  category: (proposal as any).projectId ? 'projects' : 'company',
+                  is_folder: false,
+                  created_at: new Date().toISOString(),
+                  uploaded_at: new Date().toISOString()
+                });
+              }
+            } catch (e) {
+              console.warn('Proposal PDF cloud save note:', e);
+            }
           }}
           defaultOrientation="portrait"
           defaultAccentColor="#059669"
-          defaultFooterText={`${companySettings.companyName || 'interacTV Interactive Systems AG'} • ${companySettings.street || 'Gotthardstrasse'} ${companySettings.buildingNumber || '26'} • ${companySettings.postalCode || '8002'} ${companySettings.city || 'Zürich'} • ${companySettings.website || 'www.kreativdesk.ch'}`}
+          defaultFooterText={`${companySettings.companyName || (proposal as any).companyName || 'Kreativ Desk Workspace'} • ${companySettings.street || ''} ${companySettings.buildingNumber || ''} • ${companySettings.postalCode || ''} ${companySettings.city || ''} • ${companySettings.website || 'www.kreativdesk.ch'}`}
         >
           {(settings) => (
             <MesseOffertePDFDocument
               settings={settings}
-              companyName={companySettings.companyName || 'interacTV Interactive Systems AG'}
-              companySubtitle="4K Smart Stelen, Digital Signage & 3D Spatial Experiences"
-              companyAddress={`${companySettings.street || 'Gotthardstrasse'} ${companySettings.buildingNumber || '26'} • ${companySettings.postalCode || '8002'} ${companySettings.city || 'Zürich'}`}
-              companyContact={`${companySettings.contactEmail || 'kontakt@interactv.ch'} • ${companySettings.contactPhone || '+41 44 200 40 80'}`}
-              leadName={acceptName || proposal.clientName || 'Schweizer Partner'}
-              leadCompany={acceptCompany || proposal.clientCompany || 'Unternehmen AG'}
+              companyName={companySettings.companyName || (proposal as any).companyName || 'Kreativ Desk Workspace'}
+              companySubtitle={(proposal as any).subtitle || 'Architektur-, Planungs- & Werkvertragsofferte'}
+              companyAddress={`${companySettings.street || ''} ${companySettings.buildingNumber || ''} • ${companySettings.postalCode || ''} ${companySettings.city || ''}`.trim()}
+              companyContact={`${companySettings.contactEmail || ''} • ${companySettings.contactPhone || ''}`.trim()}
+              leadName={acceptName || proposal.clientName || 'Auftraggeber'}
+              leadCompany={acceptCompany || proposal.clientCompany || ''}
               leadEmail={acceptEmail || proposal.clientEmail || ''}
               leadPhone={acceptPhone || proposal.clientPhone || ''}
-              fairName={proposal.title || 'Messe & Showroom 2026'}
+              fairName={proposal.title || 'Projekt-Offerte'}
               selectedPackage="stele_43_rental"
               steleChassisPrice={calculateTotal()}
               durationDays={3}

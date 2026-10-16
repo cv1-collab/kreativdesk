@@ -41,7 +41,12 @@ export function useProjectsQuery(companyId?: string | null) {
       .channel(`projects_realtime_${companyId}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'projects' },
+        {
+          event: '*',
+          schema: 'public',
+          table: 'projects',
+          filter: companyId ? `company_id=eq.${companyId}` : undefined,
+        },
         () => {
           queryClient.invalidateQueries({ queryKey: [PROJECTS_QUERY_KEY] });
         }

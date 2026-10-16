@@ -122,7 +122,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           name: cleanEmp.split('@')[0],
           email: cleanEmp,
           role: 'employee',
-          status: 'team',
+          status: 'invited',
           is_external: false,
           can_view_finance: true,
           can_approve_budget: false,

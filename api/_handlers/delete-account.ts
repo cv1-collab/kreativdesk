@@ -33,6 +33,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const { stripe_customer_id: stripeCustomerId, role, company_id: companyId } = profile;
+    const userEmail = (user.email || profile.email || '').toLowerCase().trim();
 
     // 1. STRIPE: Cancel active subscriptions
     if (stripeCustomerId && process.env.STRIPE_SECRET_KEY) {
@@ -42,17 +43,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
         const subscriptions = await stripe.subscriptions.list({
           customer: stripeCustomerId,
-          status: 'active',
+          status: 'all',
         });
         for (const sub of subscriptions.data) {
-          await stripe.subscriptions.cancel(sub.id);
+          if (sub.status === 'active' || sub.status === 'trialing' || sub.status === 'past_due') {
+            await stripe.subscriptions.cancel(sub.id);
+          }
         }
       } catch (stripeErr) {
         console.warn('Could not cancel Stripe subscriptions during account deletion:', stripeErr);
       }
     }
 
-    // 2. Cascading delete if user is owner
+    // 2. Cascading delete if user is owner, otherwise safely unlink non-owner
     if ((role === 'owner' || role === 'Owner') && companyId) {
       const tables = [
         'projects', 'time_entries', 'defects', 'documents', 'leads', 
@@ -72,11 +75,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         await supabaseAdmin.from('profiles').update({ company_id: null }).eq('company_id', companyId);
         await supabaseAdmin.from('companies').delete().eq('id', companyId);
       } catch (e) {}
+    } else {
+      await supabaseAdmin.from('projects').update({ owner_id: null }).eq('owner_id', uid);
+      await supabaseAdmin.from('documents').update({ owner_id: null }).eq('owner_id', uid);
+      await supabaseAdmin.from('defects').update({ owner_id: null }).eq('owner_id', uid);
+      await supabaseAdmin.from('company_users').delete().eq('user_id', uid);
+      if (userEmail) {
+        let cuDel = supabaseAdmin.from('company_users').delete().ilike('email', userEmail);
+        if (companyId) cuDel = cuDel.eq('company_id', companyId);
+        await cuDel;
+      }
+      await supabaseAdmin.from('project_members').delete().eq('user_id', uid);
+
+      if (companyId) {
+        try {
+          const { data: comp } = await supabaseAdmin
+            .from('companies')
+            .select('used_seats')
+            .eq('id', companyId)
+            .maybeSingle();
+          const nextSeats = Math.max(1, (Number(comp?.used_seats) || 1) - 1);
+          await supabaseAdmin
+            .from('companies')
+            .update({ used_seats: nextSeats })
+            .eq('id', companyId);
+        } catch (e) {}
+      }
     }
 
-    await supabaseAdmin.from('projects').delete().eq('owner_id', uid);
-    await supabaseAdmin.from('documents').delete().eq('owner_id', uid);
-    await supabaseAdmin.from('defects').delete().eq('owner_id', uid);
     await supabaseAdmin.from('time_entries').delete().eq('user_id', uid);
 
     // 3. SUPABASE: Delete profile and auth user

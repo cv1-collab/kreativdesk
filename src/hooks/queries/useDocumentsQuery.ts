@@ -44,7 +44,12 @@ export function useDocumentsQuery(companyId?: string | null) {
       .channel(`documents_realtime_${companyId}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'documents' },
+        {
+          event: '*',
+          schema: 'public',
+          table: 'documents',
+          filter: companyId ? `company_id=eq.${companyId}` : undefined,
+        },
         () => {
           queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
         }

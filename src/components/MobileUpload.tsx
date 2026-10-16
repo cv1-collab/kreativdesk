@@ -172,9 +172,11 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
       const payloadString = extractedData ? JSON.stringify(extractedData) : file.name;
 
       try {
-        await supabase.from('documents').insert({
+        const projectIdParam = searchParams.get('projectId') || '';
+        const validProjectUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectIdParam) ? projectIdParam : null;
+        const { error: docErr } = await supabase.from('documents').insert({
           company_id: validCompanyUuid,
-          project_id: null,
+          project_id: validProjectUuid,
           name: payloadString,
           url: downloadUrl,
           file_url: downloadUrl,
@@ -185,6 +187,7 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
           is_folder: false,
           created_at: new Date().toISOString()
         });
+        if (docErr) console.warn("documents temp_receipt insert note:", docErr);
       } catch (docErr) {
         console.warn("documents temp_receipt insert note:", docErr);
       }
@@ -267,20 +270,23 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
 
       if (sessionId) {
         const serializedRapport = JSON.stringify(rapportPayload);
+        const projectIdParam = searchParams.get('projectId') || '';
+        const validProjectUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectIdParam) ? projectIdParam : null;
         try {
-          await supabase.from('documents').insert({
+          const { error: rapErr } = await supabase.from('documents').insert({
             company_id: validCompanyUuid,
-            project_id: null,
+            project_id: validProjectUuid,
             name: `Baurapport_${rapportData.date}.json`,
             url: serializedRapport,
             file_url: serializedRapport,
             size: `${Math.max(1, Math.round(serializedRapport.length / 1024))} KB`,
             type: 'application/json',
-            category: 'temp_receipt',
+            category: 'bautagebuch',
             folder_id: sessionId,
             is_folder: false,
             created_at: new Date().toISOString()
           });
+          if (rapErr) console.warn("documents rapport insert note:", rapErr);
         } catch (docErr) {
           console.warn("documents rapport insert note:", docErr);
         }

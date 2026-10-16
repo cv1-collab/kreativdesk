@@ -389,13 +389,16 @@ export default function AdminUsersTab() {
           })
           .eq('id', editingUser.id);
       } else {
+        const cleanPlanToSave = editingUser.isOwner
+          ? (editingUser.plan || 'Pro')
+          : (editingUser.plan && !String(editingUser.plan).startsWith('Workspace Member') ? editingUser.plan : (editingUser.companyPlan || 'Enterprise'));
         await supabase
           .from('profiles')
           .update({
             role: editingUser.role,
             name: editingUser.name,
-            plan: editingUser.isOwner ? (editingUser.plan || 'Pro') : editingUser.plan,
-            has_active_subscription: editingUser.plan ? editingUser.plan !== 'Free Trial' : true
+            plan: cleanPlanToSave,
+            has_active_subscription: cleanPlanToSave !== 'Free Trial'
           })
           .eq('id', editingUser.id);
 

@@ -294,22 +294,24 @@ export default function Dashboard() {
           };
           setVersions([initVersion]);
           setActiveVersionId(initVersion.id);
-          try {
-            await saveSystemConfigJSON(`finance_${activeProject.id}`, {
-              versions: [initVersion],
-              activeVersionId: initVersion.id,
-              projectHeader: {
-                project: activeProject.name || 'Projektbudget',
-                client: 'Bauherrschaft AG',
-                date: new Date().toISOString().split('T')[0],
-                version: 'Originalbudget'
-              },
-              includeOptions: false,
-              ownerId: currentUser?.uid,
-              companyId: safeCompanyId,
-              projectId: activeProject.id
-            }, safeCompanyId, currentUser?.uid || 'global');
-          } catch (e) {}
+          if (isDemo) {
+            try {
+              await saveSystemConfigJSON(`finance_${activeProject.id}`, {
+                versions: [initVersion],
+                activeVersionId: initVersion.id,
+                projectHeader: {
+                  project: activeProject.name || 'Projektbudget',
+                  client: 'Bauherrschaft AG',
+                  date: new Date().toISOString().split('T')[0],
+                  version: 'Originalbudget'
+                },
+                includeOptions: false,
+                ownerId: currentUser?.uid,
+                companyId: safeCompanyId,
+                projectId: activeProject.id
+              }, safeCompanyId, currentUser?.uid || 'global');
+            } catch (e) {}
+          }
         }
       } catch (err) {
         console.error("Dashboard fetch data error:", err);
@@ -390,7 +392,7 @@ export default function Dashboard() {
     try {
       const fileName = `Executive_Summary_${Date.now()}.pdf`;
       const downloadUrl = await uploadPdfBlobWithFallback(blob, fileName, safeCompanyId);
-      await supabase.from('documents').insert({ 
+      const { error } = await supabase.from('documents').insert({ 
         name: fileName, 
         url: downloadUrl, 
         file_url: downloadUrl, 
@@ -398,12 +400,14 @@ export default function Dashboard() {
         type: 'application/pdf', 
         owner_id: currentUser.uid,
         company_id: safeCompanyId,
+        project_id: activeProject?.id || null,
         uploaded_by: currentUser.uid, 
         created_at: new Date().toISOString(), 
         uploaded_at: new Date().toISOString(), 
         is_folder: false, 
-        category: 'company'
+        category: activeProject?.id ? 'projects' : 'company'
       });
+      if (error) throw error;
       queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
       addToast(t('saved_cloud'), 'success');
       setIsPdfStudioOpen(false);
@@ -488,7 +492,7 @@ export default function Dashboard() {
                     {t(insight.titleKey)}
                   </h3>
                 </div>
-                <p className="text-sm text-text-primary font-medium">{insight.descKey}</p>
+                <p className="text-sm text-text-primary font-medium">{t(insight.descKey)}</p>
               </div>
             ))}
           </motion.div>

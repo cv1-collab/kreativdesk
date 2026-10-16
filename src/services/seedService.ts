@@ -54,12 +54,25 @@ export function generateDemoTransactions(financeGroups: any[], projectId: string
   return dummyTxs;
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function getOrCreateRealCompanyId(companyId: string, ownerId: string): Promise<string> {
   if (!ownerId) return companyId;
 
-  if (companyId) {
-    const { data: comp } = await supabase.from('companies').select('id').eq('id', companyId).maybeSingle();
+  const trimmedCompanyId = (companyId || '').trim();
+  const isValidCompanyUuid =
+    Boolean(trimmedCompanyId) &&
+    trimmedCompanyId !== 'default' &&
+    trimmedCompanyId !== 'comp_default' &&
+    trimmedCompanyId !== 'global' &&
+    UUID_REGEX.test(trimmedCompanyId);
+
+  if (trimmedCompanyId) {
+    const { data: comp } = await supabase.from('companies').select('id').eq('id', trimmedCompanyId).maybeSingle();
     if (comp?.id) return comp.id;
+    if (isValidCompanyUuid) {
+      return trimmedCompanyId;
+    }
   }
 
   const { data: ownerComp } = await supabase.from('companies').select('id').eq('owner_id', ownerId).maybeSingle();
