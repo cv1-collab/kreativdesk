@@ -2137,9 +2137,10 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       if (el.type === 'rect') {
         const rx = Math.min(el.x, el.x + el.w) * internalW; const ry = Math.min(el.y, el.y + el.h) * internalH;
         const rw = Math.abs(el.w) * internalW; const rh = Math.abs(el.h) * internalH;
-        const rawThickness = (el as any).strokeWidth || 1.5;
-        const strokeW = isPdf ? (rawThickness * 1.5) : (rawThickness * invScale);
-        const strokeDash = getStrokeDasharray(el.borderStyle, strokeW);
+        const rawStrokeWidth = (el as any).strokeWidth ?? 1.5;
+        const hasBorder = el.borderStyle !== 'none' && rawStrokeWidth > 0;
+        const strokeW = hasBorder ? (isPdf ? (rawStrokeWidth * 1.5) : (rawStrokeWidth * invScale)) : 0;
+        const strokeDash = hasBorder ? getStrokeDasharray(el.borderStyle, strokeW) : 'none';
         const rot = el.rotation || 0;
         const cx = rx + rw / 2;
         const cy = ry + rh / 2;
@@ -2170,10 +2171,10 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
               width={`${rw}px`} 
               height={`${rh}px`} 
               fill={el.color || '#3b82f6'} 
-              fillOpacity={el.opacity || 1} 
-              stroke={isSelected ? '#2563eb' : (el.strokeColor || '#2563eb')} 
-              strokeWidth={isSelected ? Math.max(strokeW, 2 * invScale) : strokeW} 
-              strokeDasharray={strokeDash}
+              fillOpacity={1} 
+              stroke={hasBorder ? (isSelected ? '#2563eb' : (el.strokeColor || '#2563eb')) : (isSelected ? '#3b82f6' : 'none')} 
+              strokeWidth={hasBorder ? (isSelected ? Math.max(strokeW, 2 * invScale) : strokeW) : (isSelected ? 1.2 * invScale : 0)} 
+              strokeDasharray={hasBorder ? strokeDash : (isSelected ? `${4 * invScale},${3 * invScale}` : 'none')}
               style={{ 
                 cursor: isInteractive ? (isElLocked ? 'default' : 'move') : 'crosshair', 
                 pointerEvents: isInteractive ? 'auto' : 'none'
@@ -2182,8 +2183,9 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
             />
             {showBadge && (() => {
               const tScale = (el as any).textScale || 1;
-              const bw = Math.max(34, labelText.length * 6 + 12) * tScale;
-              const bh = 18 * tScale;
+              const badgeScale = (isPdf ? 0.65 : Math.min(invScale, 0.85)) * tScale;
+              const bw = Math.max(34, labelText.length * 6 + 12) * badgeScale;
+              const bh = 18 * badgeScale;
               return (
                 <g pointerEvents="none">
                   <rect 
@@ -2193,15 +2195,15 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                     height={`${bh}px`} 
                     fill="#ffffff" 
                     stroke={isSelected ? '#2563eb' : (el.strokeColor || '#2563eb')} 
-                    strokeWidth={`${1.2 * tScale}px`} 
-                    rx={`${3.5 * tScale}px`} 
+                    strokeWidth={`${1.2 * badgeScale}px`} 
+                    rx={`${3.5 * badgeScale}px`} 
                     opacity={0.96}
                   />
                   <text 
                     x={`${cx}px`} 
                     y={`${cy}px`} 
                     fill="#0f172a" 
-                    fontSize={`${9.5 * tScale}px`} 
+                    fontSize={`${9.5 * badgeScale}px`} 
                     fontFamily="Inter, sans-serif" 
                     fontWeight="700" 
                     textAnchor="middle" 
@@ -2236,9 +2238,14 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       }
       if (el.type === 'circle') {
         const cx = el.x * internalW; const cy = el.y * internalH; const r = el.r * internalW;
-        const rawThickness = (el as any).strokeWidth || 1.5;
-        const strokeW = isPdf ? (rawThickness * 1.5) : (rawThickness * invScale);
-        const strokeDash = getStrokeDasharray(el.borderStyle, strokeW);
+        const rawStrokeWidth = (el as any).strokeWidth ?? 1.5;
+        const hasBorder = el.borderStyle !== 'none' && rawStrokeWidth > 0;
+        const strokeW = hasBorder ? (isPdf ? (rawStrokeWidth * 1.5) : (rawStrokeWidth * invScale)) : 0;
+        const strokeDash = hasBorder ? getStrokeDasharray(el.borderStyle, strokeW) : 'none';
+        const showBadge = (el as any).showArea === true && Math.abs(el.r) > 0.005;
+        const areaM2 = showBadge ? (Math.PI * Math.pow(((el.r || 0) * paperW_mm * planScale) / 1000, 2)).toFixed(2) : '';
+        const roomName = (el as any).roomName;
+        const labelText = roomName ? `${roomName}: ${areaM2} m²` : `${areaM2} m²`;
         const circleHandles = [
           { cx: cx, cy: cy - r, cursor: 'ns-resize' },
           { cx: cx + r, cy: cy, cursor: 'ew-resize' },
@@ -2252,16 +2259,49 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
               cy={`${cy}px`} 
               r={`${r}px`} 
               fill={el.color || '#3b82f6'} 
-              fillOpacity={el.opacity || 1} 
-              stroke={isSelected ? '#2563eb' : (el.strokeColor || '#2563eb')} 
-              strokeWidth={isSelected ? Math.max(strokeW, 2 * invScale) : strokeW} 
-              strokeDasharray={strokeDash}
+              fillOpacity={1} 
+              stroke={hasBorder ? (isSelected ? '#2563eb' : (el.strokeColor || '#2563eb')) : (isSelected ? '#3b82f6' : 'none')} 
+              strokeWidth={hasBorder ? (isSelected ? Math.max(strokeW, 2 * invScale) : strokeW) : (isSelected ? 1.2 * invScale : 0)} 
+              strokeDasharray={hasBorder ? strokeDash : (isSelected ? `${4 * invScale},${3 * invScale}` : 'none')}
               style={{ 
                 cursor: isInteractive ? (isElLocked ? 'default' : 'move') : 'crosshair', 
                 pointerEvents: isInteractive ? 'auto' : 'none'
               }} 
               onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, el); }}
             />
+            {showBadge && (() => {
+              const tScale = (el as any).textScale || 1;
+              const badgeScale = (isPdf ? 0.65 : Math.min(invScale, 0.85)) * tScale;
+              const bw = Math.max(34, labelText.length * 6 + 12) * badgeScale;
+              const bh = 18 * badgeScale;
+              return (
+                <g pointerEvents="none">
+                  <rect 
+                    x={`${cx - bw / 2}px`} 
+                    y={`${cy - bh / 2}px`} 
+                    width={`${bw}px`} 
+                    height={`${bh}px`} 
+                    fill="#ffffff" 
+                    stroke={isSelected ? '#2563eb' : (el.strokeColor || '#2563eb')} 
+                    strokeWidth={`${1.2 * badgeScale}px`} 
+                    rx={`${3.5 * badgeScale}px`} 
+                    opacity={0.96}
+                  />
+                  <text 
+                    x={`${cx}px`} 
+                    y={`${cy}px`} 
+                    fill="#0f172a" 
+                    fontSize={`${9.5 * badgeScale}px`} 
+                    fontFamily="Inter, sans-serif" 
+                    fontWeight="700" 
+                    textAnchor="middle" 
+                    dominantBaseline="central"
+                  >
+                    {labelText}
+                  </text>
+                </g>
+              );
+            })()}
             {isSelected && !isPdf && !isElLocked && circleHandles.map((pt, i) => (
               <circle
                 key={i}
@@ -2287,9 +2327,10 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
       if (el.type === 'polygon') {
         const pStr = el.points.map(p => `${p.x * internalW},${p.y * internalH}`).join(' ');
-        const rawThickness = (el as any).strokeWidth || 1.5;
-        const strokeW = isPdf ? (rawThickness * 1.5) : (rawThickness * invScale);
-        const strokeDash = getStrokeDasharray(el.borderStyle, strokeW);
+        const rawStrokeWidth = (el as any).strokeWidth ?? 1.5;
+        const hasBorder = el.borderStyle !== 'none' && rawStrokeWidth > 0;
+        const strokeW = hasBorder ? (isPdf ? (rawStrokeWidth * 1.5) : (rawStrokeWidth * invScale)) : 0;
+        const strokeDash = hasBorder ? getStrokeDasharray(el.borderStyle, strokeW) : 'none';
         const showBadge = (el as any).showArea !== false && el.points.length >= 3;
         const centroid = showBadge ? calculateCentroid(el.points) : { x: 0, y: 0 };
         const areaM2 = showBadge ? calculatePolygonAreaM2(el.points) : '';
@@ -2301,10 +2342,10 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
             <polygon 
               points={pStr} 
               fill={el.color || '#3b82f6'} 
-              fillOpacity={el.opacity || 1} 
-              stroke={isSelected ? '#2563eb' : (el.strokeColor || '#2563eb')} 
-              strokeWidth={isSelected ? Math.max(strokeW, 2 * invScale) : strokeW} 
-              strokeDasharray={strokeDash}
+              fillOpacity={1} 
+              stroke={hasBorder ? (isSelected ? '#2563eb' : (el.strokeColor || '#2563eb')) : (isSelected ? '#3b82f6' : 'none')} 
+              strokeWidth={hasBorder ? (isSelected ? Math.max(strokeW, 2 * invScale) : strokeW) : (isSelected ? 1.2 * invScale : 0)} 
+              strokeDasharray={hasBorder ? strokeDash : (isSelected ? `${4 * invScale},${3 * invScale}` : 'none')}
               style={{ 
                 cursor: isInteractive ? (isElLocked ? 'default' : 'move') : 'crosshair', 
                 pointerEvents: isInteractive ? 'auto' : 'none'
@@ -2313,8 +2354,9 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
             />
             {showBadge && (() => {
               const tScale = (el as any).textScale || 1;
-              const bw = Math.max(34, labelText.length * 6 + 12) * tScale;
-              const bh = 18 * tScale;
+              const badgeScale = (isPdf ? 0.65 : Math.min(invScale, 0.85)) * tScale;
+              const bw = Math.max(34, labelText.length * 6 + 12) * badgeScale;
+              const bh = 18 * badgeScale;
               return (
                 <g pointerEvents="none">
                   <rect 
@@ -2324,15 +2366,15 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                     height={`${bh}px`} 
                     fill="#ffffff" 
                     stroke={isSelected ? '#2563eb' : (el.strokeColor || '#2563eb')} 
-                    strokeWidth={`${1.2 * tScale}px`} 
-                    rx={`${3.5 * tScale}px`} 
+                    strokeWidth={`${1.2 * badgeScale}px`} 
+                    rx={`${3.5 * badgeScale}px`} 
                     opacity={0.96}
                   />
                   <text 
                     x={`${centroid.x * internalW}px`} 
                     y={`${centroid.y * internalH}px`} 
                     fill="#0f172a" 
-                    fontSize={`${9.5 * tScale}px`} 
+                    fontSize={`${9.5 * badgeScale}px`} 
                     fontFamily="Inter, sans-serif" 
                     fontWeight="700" 
                     textAnchor="middle" 
@@ -2444,21 +2486,24 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         const mx = (sx + ex) / 2; const my = (sy + ey) / 2;
         const distMeters = calculateDistance(el.start, el.end);
         const tScale = (el as Measurement).textScale || 1;
-        const strokeW = 1.5 * tScale;
-        const rCircle = 3.5 * tScale;
-        const fontSize = 11 * tScale;
+        const lineScale = isPdf ? 0.75 : invScale;
+        const badgeScale = (isPdf ? 0.65 : Math.min(invScale, 0.85)) * tScale;
+        const strokeW = 1.5 * lineScale * Math.min(1.5, Math.max(0.6, tScale));
+        const rCircle = 3.5 * lineScale * Math.min(1.5, Math.max(0.6, tScale));
+        const fontSize = 10.5 * badgeScale;
         const textStr = `${distMeters} m`;
-        const badgeW = Math.max(32, textStr.length * 6.5 + 14) * tScale;
-        const badgeH = 18 * tScale;
-        const badgeRx = 3.5 * tScale;
+        const badgeW = Math.max(30, textStr.length * 6.2 + 12) * badgeScale;
+        const badgeH = 17 * badgeScale;
+        const badgeRx = 3.5 * badgeScale;
+        const badgeStrokeW = 1.3 * badgeScale;
         return (
           <g key={el.id} style={{ opacity: totalOpacity, cursor: isInteractive ? (isElLocked ? 'default' : 'move') : 'crosshair', pointerEvents: isInteractive ? 'auto' : 'none' }} onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, el); }}>
             <line 
               x1={`${sx}px`} y1={`${sy}px`} x2={`${ex}px`} y2={`${ey}px`} 
               stroke="transparent" 
-              strokeWidth={`${Math.max(14 * invScale, strokeW + 10)}px`} 
+              strokeWidth={`${Math.max(14 * invScale, strokeW + 10 * invScale)}px`} 
             />
-            {/* Bemassungslinie (skaliert proportional beim Ein- und Auszoomen) */}
+            {/* Bemassungslinie */}
             <line 
               x1={`${sx}px`} y1={`${sy}px`} x2={`${ex}px`} y2={`${ey}px`} 
               stroke={el.color || '#3b82f6'} 
@@ -2498,10 +2543,10 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
               height={`${badgeH}px`} 
               fill="#ffffff" 
               stroke={isSelected ? '#2563eb' : (el.color || '#3b82f6')} 
-              strokeWidth={isSelected ? (strokeW * 1.3) : strokeW} 
+              strokeWidth={isSelected ? (badgeStrokeW * 1.3) : badgeStrokeW} 
               rx={`${badgeRx}px`} 
             />
-            {/* Masszahl (skaliert synchron mit dem Plan-Zoom) */}
+            {/* Masszahl (adaptiv skaliert beim Ein- und Auszoomen) */}
             <text 
               x={`${mx}px`} 
               y={`${my}px`} 
@@ -4085,13 +4130,123 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                           className="flex-1 min-w-0 bg-background border border-border rounded-lg px-2 py-1 text-[11px] text-text-primary placeholder:text-text-muted outline-none focus:border-blue-500"
                         />
                       </div>
+
+                      {(selectedElement.type === 'polygon' ? (selectedElement as any).showArea !== false : Boolean((selectedElement as any).showArea)) && (
+                        <div className="pt-1 border-t border-blue-500/20">
+                          <div className="flex justify-between items-center mb-0.5">
+                            <label className="text-[9px] font-bold uppercase text-text-muted">Stempel-Grösse</label>
+                            <span className="text-[10px] font-bold text-primary">{Math.round(((selectedElement as any).textScale || 1) * 100)}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0.25"
+                            max="2.5"
+                            step="0.05"
+                            value={(selectedElement as any).textScale || 1}
+                            onChange={e => updateElement({ ...selectedElement, textScale: Number(e.target.value) } as any)}
+                            className="w-full accent-blue-500 h-1.5 cursor-pointer"
+                          />
+                        </div>
+                      )}
                     </div>
+
+                    {/* RAND-MODUS (MIT RAND / OHNE RAND) & WEISSE ABDECKFLÄCHE */}
+                    {(() => {
+                      const hasBorder = (selectedElement as any).borderStyle !== 'none' && ((selectedElement as any).strokeWidth ?? 1.5) > 0;
+                      const isWhiteMask = !hasBorder && (selectedElement.color || '').toLowerCase() === '#ffffff' && (selectedElement.opacity ?? 1) >= 0.99;
+                      return (
+                        <div className="p-2 rounded-xl bg-background/70 border border-border/80 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[9px] font-extrabold uppercase tracking-wider text-text-muted">
+                              Umrandung & Abdeckfläche
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-1">
+                            <button
+                              type="button"
+                              onClick={() => updateElement({
+                                ...selectedElement,
+                                borderStyle: (selectedElement as any).borderStyle === 'none' ? 'solid' : ((selectedElement as any).borderStyle || 'solid'),
+                                strokeWidth: ((selectedElement as any).strokeWidth ?? 1.5) > 0 ? ((selectedElement as any).strokeWidth ?? 1.5) : 1.5
+                              } as any)}
+                              className={cn(
+                                "py-1 px-1.5 rounded-lg border text-[9px] font-bold cursor-pointer transition-colors",
+                                hasBorder
+                                  ? "border-primary text-primary bg-primary/10"
+                                  : "border-border bg-surface text-text-muted hover:text-text-primary"
+                              )}
+                            >
+                              Mit Rand
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updateElement({
+                                ...selectedElement,
+                                borderStyle: 'none',
+                                strokeWidth: 0
+                              } as any)}
+                              className={cn(
+                                "py-1 px-1.5 rounded-lg border text-[9px] font-bold cursor-pointer transition-colors",
+                                !hasBorder && !isWhiteMask
+                                  ? "border-primary text-primary bg-primary/10"
+                                  : "border-border bg-surface text-text-muted hover:text-text-primary"
+                              )}
+                            >
+                              Ohne Rand
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updateElement({
+                                ...selectedElement,
+                                color: '#ffffff',
+                                borderStyle: 'none',
+                                strokeWidth: 0,
+                                opacity: 1,
+                                showArea: false
+                              } as any)}
+                              className={cn(
+                                "py-1 px-1.5 rounded-lg border text-[9px] font-bold cursor-pointer transition-colors",
+                                isWhiteMask
+                                  ? "border-primary text-primary bg-primary/10"
+                                  : "border-border bg-surface text-text-muted hover:text-text-primary"
+                              )}
+                              title="Weisse Fläche ohne Linienumrandung (100% deckend) zum Abdecken von Planbereichen"
+                            >
+                              Weisse Fläche
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* FARBEN & LINIENSTIL IN EINER 3-SPALTEN-ZEILE */}
                     <div className="grid grid-cols-3 gap-1.5">
                       <div>
                         <label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">Füllfarbe</label>
                         <input type="color" value={selectedElement.color || '#3b82f6'} onChange={e => updateElement({...selectedElement, color: e.target.value} as any)} className="w-full h-7 rounded-lg border border-border cursor-pointer bg-background p-0.5" />
+                        <div className="flex items-center justify-between gap-1 mt-1">
+                          {[
+                            { hex: '#ffffff', label: 'Weiss' },
+                            { hex: '#3b82f6', label: 'Blau' },
+                            { hex: '#10b981', label: 'Grün' },
+                            { hex: '#f59e0b', label: 'Gelb' },
+                            { hex: '#ef4444', label: 'Rot' }
+                          ].map(sw => (
+                            <button
+                              key={sw.hex}
+                              type="button"
+                              onClick={() => updateElement({ ...selectedElement, color: sw.hex } as any)}
+                              title={sw.label}
+                              className={cn(
+                                "w-4 h-4 rounded-full border cursor-pointer transition-transform hover:scale-110",
+                                (selectedElement.color || '').toLowerCase() === sw.hex
+                                  ? "ring-2 ring-primary border-primary"
+                                  : "border-border"
+                              )}
+                              style={{ backgroundColor: sw.hex }}
+                            />
+                          ))}
+                        </div>
                       </div>
                       <div>
                         <label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">Linienfarbe</label>
@@ -4099,10 +4254,22 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                       </div>
                       <div>
                         <label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">{t('line_style')}</label>
-                        <select value={(selectedElement as PolygonMarkup).borderStyle || 'solid'} onChange={(e) => updateElement({ ...selectedElement, borderStyle: e.target.value as LineStyle } as any)} className="w-full h-7 bg-background border border-border rounded-lg px-1.5 text-[11px] font-bold outline-none cursor-pointer">
+                        <select
+                          value={((selectedElement as any).strokeWidth ?? 1.5) === 0 ? 'none' : ((selectedElement as PolygonMarkup).borderStyle || 'solid')}
+                          onChange={(e) => {
+                            const nextStyle = e.target.value as LineStyle;
+                            updateElement({
+                              ...selectedElement,
+                              borderStyle: nextStyle,
+                              strokeWidth: nextStyle === 'none' ? 0 : (((selectedElement as any).strokeWidth ?? 1.5) || 1.5)
+                            } as any);
+                          }}
+                          className="w-full h-7 bg-background border border-border rounded-lg px-1.5 text-[11px] font-bold outline-none cursor-pointer"
+                        >
                           <option value="solid">Linie</option>
                           <option value="dashed">Strich</option>
                           <option value="dotted">Punkt</option>
+                          <option value="none">Ohne Rand</option>
                         </select>
                       </div>
                     </div>
@@ -4112,33 +4279,51 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                       <div>
                         <div className="flex justify-between items-center mb-0.5">
                           <label className="text-[9px] font-bold uppercase text-text-muted">Kontur</label>
-                          <span className="text-[10px] font-bold text-primary">{((selectedElement as any).strokeWidth ?? 1.5)}px</span>
+                          <span className="text-[10px] font-bold text-primary">
+                            {((selectedElement as any).borderStyle === 'none' || ((selectedElement as any).strokeWidth ?? 1.5) === 0)
+                              ? 'Ohne'
+                              : `${(selectedElement as any).strokeWidth ?? 1.5}px`}
+                          </span>
                         </div>
                         <input 
                           type="range" 
-                          min="0.5" 
+                          min="0" 
                           max="8" 
                           step="0.5" 
-                          value={((selectedElement as any).strokeWidth ?? 1.5)} 
-                          onChange={e => updateElement({...selectedElement, strokeWidth: Number(e.target.value)} as any)} 
+                          value={(selectedElement as any).borderStyle === 'none' ? 0 : ((selectedElement as any).strokeWidth ?? 1.5)} 
+                          onChange={e => {
+                            const val = Number(e.target.value);
+                            updateElement({
+                              ...selectedElement,
+                              strokeWidth: val,
+                              borderStyle: val === 0 ? 'none' : ((selectedElement as any).borderStyle === 'none' ? 'solid' : ((selectedElement as any).borderStyle || 'solid'))
+                            } as any);
+                          }} 
                           className="w-full accent-blue-500 h-1.5 cursor-pointer" 
                         />
                         <div className="flex justify-between gap-0.5 mt-1">
-                          {[0.5, 1.5, 3, 6].map(w => (
-                            <button
-                              key={w}
-                              type="button"
-                              onClick={() => updateElement({...selectedElement, strokeWidth: w} as any)}
-                              className={cn(
-                                "flex-1 py-0.5 rounded border text-[9px] font-bold cursor-pointer",
-                                ((selectedElement as any).strokeWidth ?? 1.5) === w
-                                  ? "border-primary text-primary bg-primary/10"
-                                  : "border-border bg-background text-text-muted hover:text-text-primary"
-                              )}
-                            >
-                              {w}
-                            </button>
-                          ))}
+                          {[0, 0.5, 1.5, 3, 6].map(w => {
+                            const currentW = (selectedElement as any).borderStyle === 'none' ? 0 : ((selectedElement as any).strokeWidth ?? 1.5);
+                            return (
+                              <button
+                                key={w}
+                                type="button"
+                                onClick={() => updateElement({
+                                  ...selectedElement,
+                                  strokeWidth: w,
+                                  borderStyle: w === 0 ? 'none' : ((selectedElement as any).borderStyle === 'none' ? 'solid' : ((selectedElement as any).borderStyle || 'solid'))
+                                } as any)}
+                                className={cn(
+                                  "flex-1 py-0.5 rounded border text-[9px] font-bold cursor-pointer",
+                                  currentW === w
+                                    ? "border-primary text-primary bg-primary/10"
+                                    : "border-border bg-background text-text-muted hover:text-text-primary"
+                                )}
+                              >
+                                {w === 0 ? 'Ohne' : w}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
 
@@ -4349,13 +4534,30 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                       </div>
                       <input
                         type="range"
-                        min="0.5"
+                        min="0.25"
                         max="2.5"
-                        step="0.1"
+                        step="0.05"
                         value={(selectedElement as Measurement).textScale || 1}
                         onChange={e => updateElement({ ...selectedElement, textScale: Number(e.target.value) } as Measurement)}
                         className="w-full accent-blue-500 h-1.5 cursor-pointer"
                       />
+                      <div className="flex justify-between gap-1 mt-1">
+                        {[0.5, 0.75, 1, 1.5].map(sc => (
+                          <button
+                            key={sc}
+                            type="button"
+                            onClick={() => updateElement({ ...selectedElement, textScale: sc } as Measurement)}
+                            className={cn(
+                              "flex-1 py-0.5 rounded border text-[9px] font-bold cursor-pointer",
+                              Math.round(((selectedElement as Measurement).textScale || 1) * 100) === Math.round(sc * 100)
+                                ? "border-primary text-primary bg-primary/10"
+                                : "border-border bg-background text-text-muted hover:text-text-primary"
+                            )}
+                          >
+                            {Math.round(sc * 100)}%
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}

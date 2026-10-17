@@ -102,23 +102,29 @@ export const CADPlanPDFDocument = ({ settings, docHeader, planImage, elements, l
                 if (el.type === 'rect') {
                    const left = Math.min(el.x, el.x + el.w) * SAFE_W; const top = Math.min(el.y, el.y + el.h) * SAFE_H;
                    const w = Math.abs(el.w) * SAFE_W; const h = Math.abs(el.h) * SAFE_H;
-                   const thick = ((el.strokeWidth || 1.5) * 0.5 * MM_TO_PX) * SCALE_AVG;
+                   const rawStrokeWidth = el.strokeWidth ?? 1.5;
+                   const hasBorder = el.borderStyle !== 'none' && rawStrokeWidth > 0;
+                   const thick = hasBorder ? ((rawStrokeWidth * 0.5 * MM_TO_PX) * SCALE_AVG) : 0;
                    const rot = el.rotation || 0;
                    return (
                      <G key={el.id} opacity={totalOpacity} {...(rot ? { transform: `rotate(${rot}, ${left + w / 2}, ${top + h / 2})` } : {})}>
-                       <Rect x={left} y={top} width={w} height={h} fill={el.color} fillOpacity={el.opacity || 1} stroke={el.strokeColor} strokeWidth={thick} strokeDasharray={getDashArray(el.borderStyle, thick * 1.5)} />
+                       <Rect x={left} y={top} width={w} height={h} fill={el.color} fillOpacity={1} stroke={hasBorder ? el.strokeColor : 'none'} strokeWidth={thick} strokeDasharray={hasBorder ? getDashArray(el.borderStyle, thick * 1.5) : undefined} />
                      </G>
                    );
                 }
                 if (el.type === 'circle') {
                    const cx = el.x * SAFE_W; const cy = el.y * SAFE_H; const r = el.r * SAFE_W; 
-                   const thick = ((el.strokeWidth || 1.5) * 0.5 * MM_TO_PX) * SCALE_AVG;
-                   return <G key={el.id} opacity={totalOpacity}><PDFCircle cx={cx} cy={cy} r={r} fill={el.color} fillOpacity={el.opacity || 1} stroke={el.strokeColor} strokeWidth={thick} strokeDasharray={getDashArray(el.borderStyle, thick * 1.5)} /></G>;
+                   const rawStrokeWidth = el.strokeWidth ?? 1.5;
+                   const hasBorder = el.borderStyle !== 'none' && rawStrokeWidth > 0;
+                   const thick = hasBorder ? ((rawStrokeWidth * 0.5 * MM_TO_PX) * SCALE_AVG) : 0;
+                   return <G key={el.id} opacity={totalOpacity}><PDFCircle cx={cx} cy={cy} r={r} fill={el.color} fillOpacity={1} stroke={hasBorder ? el.strokeColor : 'none'} strokeWidth={thick} strokeDasharray={hasBorder ? getDashArray(el.borderStyle, thick * 1.5) : undefined} /></G>;
                 }
                 if (el.type === 'polygon') {
                    const pts = el.points.map((p:any) => `${p.x * SAFE_W},${p.y * SAFE_H}`).join(' ');
-                   const thick = ((el.strokeWidth || 1.5) * 0.5 * MM_TO_PX) * SCALE_AVG;
-                   return <G key={el.id} opacity={totalOpacity}><Polygon points={pts} fill={el.color} fillOpacity={el.opacity || 1} stroke={el.strokeColor} strokeWidth={thick} strokeDasharray={getDashArray(el.borderStyle, thick * 1.5)} /></G>;
+                   const rawStrokeWidth = el.strokeWidth ?? 1.5;
+                   const hasBorder = el.borderStyle !== 'none' && rawStrokeWidth > 0;
+                   const thick = hasBorder ? ((rawStrokeWidth * 0.5 * MM_TO_PX) * SCALE_AVG) : 0;
+                   return <G key={el.id} opacity={totalOpacity}><Polygon points={pts} fill={el.color} fillOpacity={1} stroke={hasBorder ? el.strokeColor : 'none'} strokeWidth={thick} strokeDasharray={hasBorder ? getDashArray(el.borderStyle, thick * 1.5) : undefined} /></G>;
                 }
                 if (el.type === 'arrow') {
                    const arr = el as any;
@@ -263,6 +269,22 @@ export const CADPlanPDFDocument = ({ settings, docHeader, planImage, elements, l
                  const w_m = (Math.abs(el.w) * origW_mm * planScale) / 1000;
                  const h_m = (Math.abs(el.h) * origH_mm * planScale) / 1000;
                  const areaM2 = (w_m * h_m).toFixed(2);
+                 const rName = (el as any).roomName;
+                 const label = rName ? `${rName}: ${areaM2} m²` : `${areaM2} m²`;
+                 const tScale = el.textScale || 1;
+                 const badgeW = Math.max(30 * MM_TO_PX * SCALE_AVG, (label.length * 2.2 + 6) * MM_TO_PX * SCALE_AVG) * tScale;
+                 const badgeH = 5 * MM_TO_PX * SCALE_AVG * tScale;
+                 return (
+                   <View key={`${el.id}-badge`} style={{ position: 'absolute', left: cx - badgeW / 2, top: cy - badgeH / 2, width: badgeW, height: badgeH, backgroundColor: '#ffffff', border: `0.8px solid ${el.strokeColor || '#2563eb'}`, borderRadius: 1 * MM_TO_PX * SCALE_AVG * tScale, justifyContent: 'center', alignItems: 'center', opacity: totalOpacity }}>
+                     <Text style={{ color: '#0f172a', fontSize: 2.6 * MM_TO_PX * SCALE_AVG * tScale, fontFamily: 'Helvetica-Bold' }}>{label}</Text>
+                   </View>
+                 );
+              }
+              if (el.type === 'circle' && (el as any).showArea === true && Math.abs(el.r) > 0.005) {
+                 const cx = el.x * SAFE_W;
+                 const cy = el.y * SAFE_H;
+                 const r_m = (Math.abs(el.r) * origW_mm * planScale) / 1000;
+                 const areaM2 = (Math.PI * r_m * r_m).toFixed(2);
                  const rName = (el as any).roomName;
                  const label = rName ? `${rName}: ${areaM2} m²` : `${areaM2} m²`;
                  const tScale = el.textScale || 1;

@@ -106,7 +106,7 @@ export const TOOL_LABELS: Record<string, { de: string; en: string }> = {
 };
 
 export type ToolType = 'pan' | 'defect' | 'zone' | 'text' | 'pen' | 'measure' | 'polygon' | 'titleblock' | 'rect' | 'circle' | 'scalebar' | 'image' | 'arrow';
-export type LineStyle = 'solid' | 'dashed' | 'dotted';
+export type LineStyle = 'solid' | 'dashed' | 'dotted' | 'none';
 
 export const SWISS_TRADES = [
   'Baumeister',
