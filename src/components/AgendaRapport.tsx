@@ -48,8 +48,17 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 const internalProjectsMap: Record<string, string> = {
   'internal_urlaub': 'Ferien / Urlaub',
   'internal_krank': 'Krankheit',
-  'internal_admin': 'Administration',
-  'internal_weiterbildung': 'Weiterbildung'
+  'internal_admin': 'Administration & Büro',
+  'internal_weiterbildung': 'Weiterbildung & Schulung',
+  'internal_sales': 'Akquise & Offertwesen',
+  'internal_planning': 'Vorprojekt & Machbarkeit',
+  'internal_design': 'Konzept, Entwurf & Design',
+  'internal_pm': 'Projektleitung & Koordination',
+  'internal_cad': 'CAD-Planung & Ausführungspläne',
+  'internal_3d': '3D-Modellierung, BIM & Visualisierung',
+  'internal_calls': 'Team-Meetings & Kundengespräche',
+  'internal_strategy': 'Geschäftsleitung & Strategie',
+  'internal_absence': 'Ferien, Feiertage & Abwesenheit'
 };
 
 export default function AgendaRapport() {
@@ -71,7 +80,10 @@ export default function AgendaRapport() {
 
     const fetchEntries = async () => {
       const localCached = safeStorage.getItem<any[]>(`time_entries_cache_${safeCompanyId}`, []) || [];
-      const deletedSet = new Set<string>(safeStorage.getItem<string[]>(`deleted_time_entries_${safeCompanyId}`, []) || []);
+      const deletedSet = new Set<string>([
+        ...(safeStorage.getItem<string[]>(`deleted_time_entries_${safeCompanyId}`, []) || []),
+        ...(safeStorage.getItem<string[]>(`time_deleted_${safeCompanyId}`, []) || [])
+      ]);
       const { data } = await supabase
         .from('time_entries')
         .select('*')
@@ -119,7 +131,7 @@ export default function AgendaRapport() {
                 return (
                   <tr key={entry.id} className="hover:bg-background/50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap font-medium">{new Date(entry.date).toLocaleDateString(currentLang === 'de' ? 'de-CH' : 'en-US')}</td>
-                    <td className="px-6 py-4 font-bold">{isInternal ? internalProjectsMap[targetProjId] : (proj?.name || entry.projectName || entry.project_name || 'Unbekannt')}</td>
+                    <td className="px-6 py-4 font-bold">{isInternal ? (internalProjectsMap[targetProjId] || entry.projectName || entry.project_name || 'Intern') : (proj?.name || entry.projectName || entry.project_name || 'Unbekannt')}</td>
                     <td className="px-6 py-4 font-sans font-bold text-accent-ai">{parseFloat(entry.hours || 0).toFixed(1)}h</td>
                     <td className="px-6 py-4 text-text-muted">{entry.description}</td>
                   </tr>

@@ -133,9 +133,9 @@ export default function DashboardOverviewTab({
     loadData();
 
     const channel = supabase
-      .channel('dashboard-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, loadData)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, loadData)
+      .channel(`dashboard-changes-${compId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'projects', filter: `company_id=eq.${compId}` }, loadData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads', filter: `company_id=eq.${compId}` }, loadData)
       .subscribe();
 
     return () => {

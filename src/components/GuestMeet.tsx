@@ -287,7 +287,8 @@ export default function GuestMeet() {
         }
 
         if (callDoc) {
-          setMeetingCompanyId((callDoc as any).company_id || null);
+          const fallbackHostId = callDoc.host_id && callDoc.host_id !== 'guest' && callDoc.host_id !== 'host' && callDoc.host_id !== 'user' ? callDoc.host_id : null;
+          setMeetingCompanyId((callDoc as any).company_id || fallbackHostId || null);
           setError('');
         } else {
           if (joinId && joinId.length >= 3) {

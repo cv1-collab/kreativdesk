@@ -399,6 +399,9 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
             website: payload.website || '',
             description: payload.description || 'Gefunden per Smartphone-Visitenkartenscan'
           });
+          if (payload.photoUrl) {
+            setScannedCardPreview(payload.photoUrl);
+          }
           setIsScannerModalOpen(true);
         }
       })
@@ -435,8 +438,12 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
               street: parsed.street || '',
               zipCity: parsed.zipCity || '',
               website: parsed.website || '',
-              description: parsed.description || 'Gefunden per Smartphone-Visitenkartenscan'
+              description: parsed.description || 'Gefunden per KI-Visitenkartenscan'
             });
+            const cardUrl = parsed.photoUrl || rec.url || (rec as any).file_url;
+            if (cardUrl) {
+              setScannedCardPreview(cardUrl);
+            }
             setIsScannerModalOpen(true);
             pollFailed = true;
             try { await supabase.from('documents').delete().eq('id', rec.id); } catch (e) {}
@@ -1496,12 +1503,16 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
     try {
       let photoURL = null;
       if (scannedCardPreview) {
-        try {
-          const blob = await (await fetch(scannedCardPreview)).blob();
-          const file = new File([blob], `business_card_${Date.now()}.jpg`, { type: 'image/jpeg' });
-          photoURL = await uploadFileWithFallback(file, file.name, safeCompanyId, 'crm_avatars');
-        } catch (e) {
-          console.warn('Avatar upload fallback handled:', e);
+        if (scannedCardPreview.startsWith('http')) {
+          photoURL = scannedCardPreview;
+        } else {
+          try {
+            const blob = await (await fetch(scannedCardPreview)).blob();
+            const file = new File([blob], `business_card_${Date.now()}.jpg`, { type: 'image/jpeg' });
+            photoURL = await uploadFileWithFallback(file, file.name, safeCompanyId, 'crm_avatars');
+          } catch (e) {
+            console.warn('Avatar upload fallback handled:', e);
+          }
         }
       }
 

@@ -1108,8 +1108,8 @@ export default function Calendar() {
     if (target) {
       setActiveScheduleId(id);
       setScheduleName(target.name || t('master_plan'));
-      setGanttTasks(target.ganttTasks?.length ? target.ganttTasks : DEFAULT_TASKS);
-      setSmartMarkers(target.smartMarkers?.length ? target.smartMarkers : DEFAULT_MARKERS);
+      setGanttTasks(Array.isArray(target.ganttTasks) ? target.ganttTasks : DEFAULT_TASKS);
+      setSmartMarkers(Array.isArray(target.smartMarkers) ? target.smartMarkers : DEFAULT_MARKERS);
       setShapes(target.shapes || []);
       setTargetYear(target.targetYear || new Date().getFullYear());
     }
@@ -1144,7 +1144,10 @@ export default function Calendar() {
     if (newName && newName !== currentName && safeCompanyId) {
       const newSchedules = schedules.map(s => s.id === id ? { ...s, name: newName } : s);
       setSchedules(newSchedules);
-      if (id === activeScheduleId) setDocHeader(prev => ({ ...prev, title: newName }));
+      if (id === activeScheduleId) {
+        setScheduleName(newName.trim());
+        setDocHeader(prev => ({ ...prev, title: newName }));
+      }
       const scheduleDocId = currentProjectId === 'global' ? `global_${safeCompanyId}` : currentProjectId;
       safeStorage.setItem(`schedule_cache_${scheduleDocId}`, { schedules: newSchedules, activeScheduleId, companyId: safeCompanyId, projectId: currentProjectId });
       try {
@@ -1526,7 +1529,7 @@ export default function Calendar() {
                       <div
                         key={task.id}
                         className="hidden sm:flex items-center gap-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold truncate text-white shadow-xs"
-                        style={{ backgroundColor: task.color.startsWith('#') ? task.color : '#3b82f6' }}
+                        style={{ backgroundColor: task.color?.startsWith('#') ? task.color : '#3b82f6' }}
                       >
                         <span className="truncate">{task.title}</span>
                       </div>
@@ -1539,14 +1542,14 @@ export default function Calendar() {
                           <div
                             key={tIdx}
                             className="w-1.5 h-1.5 rounded-full shrink-0"
-                            style={{ backgroundColor: t.color.startsWith('#') ? t.color : '#3b82f6' }}
+                            style={{ backgroundColor: t.color?.startsWith('#') ? t.color : '#3b82f6' }}
                           />
                         ))}
                         {dayMarkers.slice(0, 2).map((m, mIdx) => (
                           <div
                             key={mIdx}
                             className="w-1.5 h-1.5 rounded-full shrink-0 border border-white"
-                            style={{ backgroundColor: m.color }}
+                            style={{ backgroundColor: m.color || '#f97316' }}
                           />
                         ))}
                       </div>
@@ -1593,7 +1596,7 @@ export default function Calendar() {
           ) : (
             <div className="space-y-3">
               {selectedDayTasks.map(task => {
-                const brdColor = task.color.startsWith('#') ? task.color : '#3b82f6';
+                const brdColor = task.color?.startsWith('#') ? task.color : '#3b82f6';
                 return (
                   <div key={task.id} className="bg-background border border-border/50 rounded-xl p-4 shadow-sm relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="absolute left-0 top-0 bottom-0 w-1.5" style={{ backgroundColor: brdColor }}></div>

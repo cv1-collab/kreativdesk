@@ -189,7 +189,8 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
-  const draftCacheKey = `invoice_studio_draft_${type}`;
+  const safeDraftCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid || 'global';
+  const draftCacheKey = `invoice_studio_draft_${type}_${safeDraftCompanyId}`;
   const initialDraft = React.useMemo(() => {
     try {
       const raw = safeStorage.getItem(draftCacheKey);
@@ -269,7 +270,7 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
       unitPrice: g.items?.reduce((sum: number, item: any) => sum + (item.total || 0), 0) || 0,
       total: g.items?.reduce((sum: number, item: any) => sum + (item.total || 0), 0) || 0
     }));
-    setPositions([...positions.filter((p: any) => p.unitPrice > 0), ...importedPositions]);
+    setPositions([...positions.filter((p: any) => !(p.id === 'pos1' && p.unitPrice === 0)), ...importedPositions]);
     setShowBudgetImport(false);
   };
 

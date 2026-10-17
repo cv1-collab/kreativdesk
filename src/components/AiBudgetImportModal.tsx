@@ -275,12 +275,12 @@ export default function AiBudgetImportModal({
     // 4. Image or PDF
     setFile(selectedFile);
     setOptimizedFileInfo(null);
-    if (selectedFile.type.startsWith('image/')) {
-      const url = URL.createObjectURL(selectedFile);
-      setPreviewUrl(url);
-    } else {
-      setPreviewUrl(null);
-    }
+    setPreviewUrl(prev => {
+      if (prev && prev.startsWith('blob:')) {
+        try { URL.revokeObjectURL(prev); } catch {}
+      }
+      return selectedFile.type.startsWith('image/') ? URL.createObjectURL(selectedFile) : null;
+    });
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -434,9 +434,10 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
         const groupId = `g_ai_${timestamp}_${gIdx}`;
         const items: BudgetItem[] = Array.isArray(g.items) 
           ? g.items.map((it: any, itIdx: number) => {
-              const qty = Number(it.qty) || 1;
+              const parsedQty = Number(it.qty);
+              const qty = !Number.isNaN(parsedQty) && it.qty !== undefined && it.qty !== null && it.qty !== '' ? parsedQty : 1;
               const unitPrice = Number(it.unitPrice) || 0;
-              const total = Number(it.total) || (qty * unitPrice);
+              const total = qty * unitPrice || Number(it.total) || 0;
               return {
                 id: `i_ai_${timestamp}_${gIdx}_${itIdx}`,
                 pos: String(it.pos || `${g.pos || gIdx + 1}.${itIdx + 1}`),

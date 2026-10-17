@@ -463,6 +463,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const isExternalRoleEffective = effectiveRole === 'guest' || effectiveRole === 'client';
         const isLeadershipRole = effectiveRole === 'owner' || effectiveRole === 'management' || isSuperUser;
 
+        let resolvedTrialEndsAt: string | undefined = undefined;
+        if (effectiveRole === 'owner' && !isSuperUser && !companyHasPaidPlan && !isInvitedUser) {
+          if (profile.trial_ends_at) {
+            resolvedTrialEndsAt = profile.trial_ends_at;
+          } else {
+            const baseCreated = (profile as any)?.created_at || user.created_at;
+            const startMs = baseCreated ? new Date(baseCreated).getTime() : Date.now();
+            const safeStartMs = Number.isFinite(startMs) ? startMs : Date.now();
+            resolvedTrialEndsAt = new Date(safeStartMs + 30 * 24 * 60 * 60 * 1000).toISOString();
+            try {
+              await supabase
+                .from('profiles')
+                .update({ trial_ends_at: resolvedTrialEndsAt })
+                .eq('id', user.id)
+                .is('trial_ends_at', null);
+            } catch (_) {}
+          }
+        }
+
         const resolvedTenantId = effectiveCompanyId || user.id;
         safeStorage.setItem('kd_active_company_id', resolvedTenantId);
 
@@ -482,7 +501,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           companyName: resolvedCompanyName,
           companyId: resolvedTenantId,
           company_id: resolvedTenantId,
-          trialEndsAt: (effectiveRole === 'owner' && !isSuperUser && !companyHasPaidPlan) ? profile.trial_ends_at : undefined,
+          trialEndsAt: resolvedTrialEndsAt,
           canViewFinance: isExternalRoleEffective ? false : (profile.can_view_finance ?? true),
           canApproveBudget: isExternalRoleEffective ? false : (profile.can_approve_budget ?? isLeadershipRole),
           hasSeenTour: profile.has_seen_tour ?? false,

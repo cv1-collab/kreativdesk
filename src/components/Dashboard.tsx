@@ -364,9 +364,16 @@ export default function Dashboard() {
     overviewTotalBudget = activeVersion.groups?.reduce((s:number, g:any) => s + calculateGroupTotal(g), 0) || 0;
   }
 
-  // Include all external costs, creditor invoices, and negative expense transactions
+  // Include all external costs, creditor invoices, and negative expense transactions (excluding quotes and revenue invoices)
   const globalExtSpent = transactions
-    .filter(tx => tx.type === 'expense' || Number(tx.amount) < 0 || (tx.category && tx.category !== 'Debitorenrechnung' && tx.category !== 'Interne Stunden'))
+    .filter(tx => {
+      const cat = String(tx.category || '');
+      const tp = String((tx as any).type || '');
+      if (cat === 'Offerte' || cat === 'Quote' || tp === 'quote') return false;
+      if (cat === 'Debitorenrechnung' || cat === 'Outgoing Invoice' || tp === 'income' || tp === 'revenue' || tp === 'invoice') return false;
+      if (cat === 'Interne Stunden' || tp === 'time_entry') return false;
+      return tp === 'expense' || tp === 'operating_cost' || tp === 'external_cost' || tp === 'ext_cost' || Number(tx.amount) < 0 || Boolean(cat);
+    })
     .reduce((sum, tx) => sum + Math.abs(Number(tx.amount) || 0), 0);
   const globalSpent = globalExtSpent + totalHoursCost;
   const budgetRemaining = Math.max(0, overviewTotalBudget - globalSpent);

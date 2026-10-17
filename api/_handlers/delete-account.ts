@@ -56,7 +56,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 2. Cascading delete if user is owner, otherwise safely unlink non-owner
-    if ((role === 'owner' || role === 'Owner') && companyId) {
+    const normalizedRole = String(role || '').toLowerCase().trim();
+    if (normalizedRole === 'owner' && companyId) {
       const tables: Array<keyof import('../../src/types/database.types.js').Database['public']['Tables']> = [
         'projects', 'time_entries', 'defects', 'documents', 'leads', 
         'company_users', 'invites', 'notifications', 'smart_proposals',
@@ -73,7 +74,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       try {
         // Unlink any profiles pointing to this company to avoid FK constraint violation
-        await supabaseAdmin.from('profiles').update({ company_id: null }).eq('company_id', companyId);
+        await supabaseAdmin
+          .from('profiles')
+          .update({ company_id: null, has_active_subscription: false, plan: 'Free Trial' })
+          .eq('company_id', companyId);
         await supabaseAdmin.from('companies').delete().eq('id', companyId);
       } catch (e) {}
     } else {

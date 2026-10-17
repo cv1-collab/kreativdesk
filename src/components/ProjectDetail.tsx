@@ -64,7 +64,7 @@ export default function ProjectDetail() {
         .eq('project_id', projectId)
         .eq('company_id', safeCompanyId);
 
-      if (data && data.length > 0) {
+      if (Array.isArray(data)) {
         setTasks(data);
       }
     } catch (err) {
@@ -83,9 +83,12 @@ export default function ProjectDetail() {
   const handleDrop = async (e: React.DragEvent, status: string) => {
     const taskId = e.dataTransfer.getData('taskId');
     if (taskId) {
+      const safeCompanyId = currentUser?.companyId || currentUser?.uid;
       setTasks(prev => prev.map(tk => tk.id === taskId ? { ...tk, status } : tk));
       try {
-        await supabase.from('project_tasks').update({ status }).eq('id', taskId);
+        let query = supabase.from('project_tasks').update({ status }).eq('id', taskId);
+        if (safeCompanyId) query = query.eq('company_id', safeCompanyId);
+        await query;
       } catch (err) {}
       fetchTasks();
     }
@@ -127,9 +130,12 @@ export default function ProjectDetail() {
 
   const handleDeleteTask = async (taskId: string) => {
     if (window.confirm(t('delete_confirm'))) {
+      const safeCompanyId = currentUser?.companyId || currentUser?.uid;
       setTasks(prev => prev.filter(tk => tk.id !== taskId));
       try {
-        await supabase.from('project_tasks').delete().eq('id', taskId);
+        let query = supabase.from('project_tasks').delete().eq('id', taskId);
+        if (safeCompanyId) query = query.eq('company_id', safeCompanyId);
+        await query;
       } catch (err) {}
       fetchTasks();
     }

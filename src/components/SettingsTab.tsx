@@ -2718,7 +2718,7 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
             name: p.name || p.full_name || p.display_name || p.email,
             role: normRole,
             isRegistered: true,
-            canViewFinance: p.can_view_finance ?? p.canViewFinance ?? (normRole === 'owner' || normRole === 'admin' || normRole === 'super_admin' ? true : true),
+            canViewFinance: p.can_view_finance ?? p.canViewFinance ?? (normRole === 'client' || normRole === 'guest' ? false : true),
             canApproveBudget: p.can_approve_budget ?? p.canApproveBudget ?? (normRole === 'owner' || normRole === 'admin' || normRole === 'super_admin')
           });
         });
@@ -2929,6 +2929,7 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
             .select('id, status, is_external')
             .eq('company_id', safeCompanyId)
             .ilike('email', cleanEmail)
+            .limit(1)
             .maybeSingle();
 
           const isAlreadyCounted = Boolean(

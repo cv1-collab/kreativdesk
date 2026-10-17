@@ -213,7 +213,9 @@ export default function API() {
       if (safeCompanyId) query = query.eq('company_id', safeCompanyId);
       await query;
       if (targetKey?.key) {
-        await supabase.from('api_keys').delete().eq('key', targetKey.key);
+        let keyDel = supabase.from('api_keys').delete().eq('key', targetKey.key);
+        if (safeCompanyId) keyDel = keyDel.eq('company_id', safeCompanyId);
+        await keyDel;
       }
 
       await logAuditAction({

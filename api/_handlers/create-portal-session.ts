@@ -22,13 +22,26 @@ export default async function handler(req: any, res: any) {
 
     const { data: profile } = await supabaseAdmin
       .from('profiles')
-      .select('stripe_customer_id')
+      .select('stripe_customer_id, company_id, role')
       .eq('id', authUser.id)
       .maybeSingle();
 
     let targetCustomerId = profile?.stripe_customer_id;
     if ((authUser as any).isSuperAdmin && bodyCustomerId) {
       targetCustomerId = bodyCustomerId;
+    }
+
+    const effectiveCompanyId = profile?.company_id || (authUser as any).companyId;
+    if (!targetCustomerId && effectiveCompanyId) {
+      const { data: ownerProfiles } = await supabaseAdmin
+        .from('profiles')
+        .select('stripe_customer_id')
+        .eq('company_id', effectiveCompanyId)
+        .not('stripe_customer_id', 'is', null)
+        .limit(1);
+      if (ownerProfiles && ownerProfiles.length > 0 && ownerProfiles[0].stripe_customer_id) {
+        targetCustomerId = ownerProfiles[0].stripe_customer_id;
+      }
     }
 
     if (!targetCustomerId && authUser.email) {

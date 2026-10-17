@@ -75,7 +75,7 @@ export async function getOrCreateRealCompanyId(companyId: string, ownerId: strin
     }
   }
 
-  const { data: ownerComp } = await supabase.from('companies').select('id').eq('owner_id', ownerId).maybeSingle();
+  const { data: ownerComp } = await supabase.from('companies').select('id').eq('owner_id', ownerId).limit(1).maybeSingle();
   if (ownerComp?.id) {
     await supabase.from('profiles').update({ company_id: ownerComp.id }).eq('id', ownerId);
     return ownerComp.id;
@@ -321,6 +321,7 @@ function getDeterministicUUID(str: string): string {
       .select('id')
       .eq('company_id', realCompanyId)
       .eq('project_id', projId)
+      .limit(1)
       .maybeSingle();
 
     if (!existingCad) {
@@ -404,6 +405,7 @@ function getDeterministicUUID(str: string): string {
         .eq('company_id', realCompanyId)
         .eq('project_id', projId)
         .eq('prompt', def.title)
+        .limit(1)
         .maybeSingle();
 
       if (!existingDef) {
@@ -431,6 +433,7 @@ function getDeterministicUUID(str: string): string {
       .eq('company_id', realCompanyId)
       .eq('project_id', projId)
       .eq('description', tx.description)
+      .limit(1)
       .maybeSingle();
 
     if (!existingTx) {
@@ -446,6 +449,7 @@ function getDeterministicUUID(str: string): string {
         .eq('company_id', realCompanyId)
         .eq('project_id', projId)
         .eq('description', te.description)
+        .limit(1)
         .maybeSingle();
 
       if (!existingTe) {
@@ -471,6 +475,7 @@ function getDeterministicUUID(str: string): string {
         .eq('company_id', realCompanyId)
         .eq('project_id', projId)
         .eq('title', s.title)
+        .limit(1)
         .maybeSingle();
 
       if (!existingSlide) {
@@ -589,6 +594,7 @@ function getDeterministicUUID(str: string): string {
       .from('smart_proposals')
       .select('id')
       .eq('project_id', projId)
+      .limit(1)
       .maybeSingle();
 
     if (!existingProp) {

@@ -279,10 +279,12 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
     );
   });
 
+  const isCreditorCategory = (cat: unknown) =>
+    typeof cat === 'string' && (cat.includes('Kreditor') || cat.includes('Honorar') || cat.includes('Gebühr'));
   const quotes = searchFiltered.filter(tx => tx.category === 'Offerte' || tx.category === 'Quote' || tx.type === 'quote');
-  const invoices = searchFiltered.filter(tx => tx.category === 'Debitorenrechnung' || tx.category === 'Outgoing Invoice' || tx.type === 'revenue' || tx.type === 'invoice');
-  const expenses = searchFiltered.filter(tx => tx.category === 'Spesen' || tx.type === 'expense');
-  const operatingCosts = searchFiltered.filter(tx => tx.type === 'operating_cost' || (typeof tx.category === 'string' && (tx.category.includes('Kreditor') || tx.category.includes('Honorar') || tx.category.includes('Gebühr'))));
+  const invoices = searchFiltered.filter(tx => tx.category === 'Debitorenrechnung' || tx.category === 'Outgoing Invoice' || tx.type === 'income' || tx.type === 'revenue' || tx.type === 'invoice');
+  const operatingCosts = searchFiltered.filter(tx => tx.type === 'operating_cost' || tx.type === 'external_cost' || tx.type === 'ext_cost' || isCreditorCategory(tx.category));
+  const expenses = searchFiltered.filter(tx => (tx.category === 'Spesen' || tx.type === 'expense') && tx.type !== 'operating_cost' && tx.type !== 'external_cost' && tx.type !== 'ext_cost' && !isCreditorCategory(tx.category));
   const timeEntriesList = searchFiltered.filter(tx => tx.category === 'Interne Stunden' || tx.type === 'time_entry');
 
   const totalRevenue = invoices.reduce((acc, curr) => acc + Math.abs(Number(curr.amount)), 0);

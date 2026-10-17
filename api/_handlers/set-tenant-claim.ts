@@ -58,13 +58,24 @@ export default async function handler(req: any, res: any) {
           return res.status(403).json({ error: 'Forbidden: Invitation has expired' });
         }
 
-        const safeRole = invite.role === 'super_admin' || invite.role === 'owner' ? 'admin' : (invite.role || 'employee');
+        const rawInviteRole = String(invite.role || 'employee').toLowerCase().trim();
+        const safeRole = rawInviteRole === 'super_admin' ? 'admin' : (invite.role || 'employee');
+        const isExtInvite = ['guest', 'client', 'external', 'partner', 'subcontractor', 'field guest', 'external planner', 'bauherr', 'handwerker'].includes(rawInviteRole);
         profileUpdate = {
           company_id: companyId,
           role: safeRole,
           has_active_subscription: true,
           trial_ends_at: null
         };
+
+        if (rawInviteRole === 'owner') {
+          try {
+            await supabaseAdmin
+              .from('companies')
+              .update({ owner_id: user.id })
+              .eq('id', companyId);
+          } catch (_) {}
+        }
 
         await supabaseAdmin
           .from('invites')
@@ -79,7 +90,7 @@ export default async function handler(req: any, res: any) {
           try {
             await supabaseAdmin
               .from('company_users')
-              .update({ user_id: user.id, status: 'team' })
+              .update({ user_id: user.id, status: isExtInvite ? 'partner' : 'team', is_external: isExtInvite })
               .eq('company_id', companyId)
               .ilike('email', user.email.toLowerCase());
           } catch (_) {}

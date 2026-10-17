@@ -38,7 +38,8 @@ export default function NotificationCenter({ isOpen, onClose }: NotificationCent
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const { language, t: globalT } = useLanguage();
-  const t = (key: string) => localTranslations[language as 'en' | 'de']?.[key] || globalT(key) || key;
+  const currentLang: 'en' | 'de' = typeof language === 'string' && language.toLowerCase().startsWith('en') ? 'en' : 'de';
+  const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
   
   const [newLeads, setNewLeads] = useState<any[]>([]);
   const [userNotifications, setUserNotifications] = useState<AppNotification[]>([]);

@@ -53,14 +53,15 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
   const { language, t: globalT } = useLanguage();
   const t = useCallback((key: string) => localTranslations[language as 'en' | 'de']?.[key] || globalT(key) || key, [language, globalT]);
 
-  const cacheKey = `daily_goals_cache_${projectId || 'global'}`;
+  const safeCompanyId = currentUser?.companyId || currentUser?.uid || 'default';
+  const cacheKey = `daily_goals_cache_${safeCompanyId}_${projectId || 'global'}`;
 
   const getInitialGoals = useCallback((): Goal[] => {
     try {
       const raw = safeStorage.getItem(cacheKey);
       if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch {}
     if (isDemoMode) {
@@ -87,16 +88,16 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
 
   const fetchGoals = useCallback(async () => {
     if (!currentUser) return;
-    const safeCompanyId = currentUser.companyId || currentUser.uid;
+    const compId = currentUser.companyId || currentUser.uid;
 
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('goals')
         .select('*')
-        .eq('company_id', safeCompanyId)
+        .eq('company_id', compId)
         .order('created_at', { ascending: false });
 
-      if (data && data.length > 0) {
+      if (!error && Array.isArray(data)) {
         const parsed = data.map(d => {
           let priorityVal: 'Low' | 'Medium' | 'High' = 'Medium';
           let displayTitle = d.title || '';
@@ -131,9 +132,7 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
         const scoped = (projectId && projectId !== 'global')
           ? parsed.filter(g => g.projectId === projectId || g.projectId === 'global')
           : parsed;
-        if (scoped.length > 0) {
-          persistGoals(scoped);
-        }
+        persistGoals(scoped);
       }
     } catch (err) {
       console.error("Error fetching goals:", err);
@@ -165,7 +164,7 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
     setIsAdding(false);
 
     if (isDemoMode || !currentUser) return;
-    const safeCompanyId = currentUser.companyId || currentUser.uid;
+    const compId = currentUser.companyId || currentUser.uid;
 
     try {
       const projPrefix = (projectId && projectId !== 'global') ? `[Proj:${projectId}] ` : '';
@@ -173,7 +172,7 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
       const fullTitle = `${projPrefix}${prioPrefix}${optimisticGoal.title}`;
       const { data: inserted } = await supabase.from('goals').insert({
         title: fullTitle,
-        company_id: safeCompanyId,
+        company_id: compId,
         target_value: 1,
         current_value: 0,
         created_at: optimisticGoal.createdAt
@@ -192,7 +191,10 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
     persistGoals(nextGoals);
     if (isDemoMode || goalId.startsWith('local-') || goalId.startsWith('demo-')) return;
     try {
-      await supabase.from('goals').update({ current_value: !currentCompleted ? 1 : 0 }).eq('id', goalId);
+      const compId = currentUser?.companyId || currentUser?.uid;
+      let q = supabase.from('goals').update({ current_value: !currentCompleted ? 1 : 0 }).eq('id', goalId);
+      if (compId) q = q.eq('company_id', compId);
+      await q;
     } catch (err) {
       console.error("Error toggling goal:", err);
     }
@@ -203,7 +205,10 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
     persistGoals(nextGoals);
     if (isDemoMode || goalId.startsWith('local-') || goalId.startsWith('demo-')) return;
     try {
-      await supabase.from('goals').delete().eq('id', goalId);
+      const compId = currentUser?.companyId || currentUser?.uid;
+      let q = supabase.from('goals').delete().eq('id', goalId);
+      if (compId) q = q.eq('company_id', compId);
+      await q;
     } catch (err) {
       console.error("Error deleting goal:", err);
     }

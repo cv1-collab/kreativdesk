@@ -889,10 +889,10 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
     const file = e.target.files?.[0];
     if (!file) return;
     
-    // 100 MB File Size Guard
-    const MAX_FILE_SIZE = 100 * 1024 * 1024;
+    // 250 MB File Size Guard (aligned with Supabase Storage & cloudStorageHelper)
+    const MAX_FILE_SIZE = 250 * 1024 * 1024;
     if (file.size > MAX_FILE_SIZE) {
-      addToast('Datei überschreitet das maximale Upload-Limit von 100 MB. Bitte Datei komprimieren.', 'error');
+      addToast('Datei überschreitet das maximale Upload-Limit von 250 MB. Bitte Datei komprimieren.', 'error');
       return;
     }
 

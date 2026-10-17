@@ -255,13 +255,14 @@ export default function TemplatesTab({
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
+  const aiDraftKey = `templates_ai_draft_${currentUser?.companyId || currentUser?.uid || 'global'}`;
   const initialAiDraft = useMemo(() => {
     try {
-      const raw = safeStorage.getItem('templates_ai_draft');
+      const raw = safeStorage.getItem(aiDraftKey);
       if (raw) return JSON.parse(raw);
     } catch {}
     return null;
-  }, []);
+  }, [aiDraftKey]);
 
   // AI Modal States
   const [aiPrompt, setAiPrompt] = useState<string>(() => initialAiDraft?.aiPrompt || '');
@@ -286,7 +287,7 @@ export default function TemplatesTab({
 
   React.useEffect(() => {
     try {
-      safeStorage.setItem('templates_ai_draft', JSON.stringify({
+      safeStorage.setItem(aiDraftKey, JSON.stringify({
         aiPrompt,
         generatedTemplate,
         studioDocTitle,
@@ -295,7 +296,7 @@ export default function TemplatesTab({
         selectedAiLang
       }));
     } catch {}
-  }, [aiPrompt, generatedTemplate, studioDocTitle, selectedAiCategory, selectedAiTone, selectedAiLang]);
+  }, [aiDraftKey, aiPrompt, generatedTemplate, studioDocTitle, selectedAiCategory, selectedAiTone, selectedAiLang]);
 
   const [templateSearch, setTemplateSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -366,6 +367,10 @@ export default function TemplatesTab({
 
   const handleSaveToDocuments = async () => {
     if (!generatedTemplate || isSavingDoc) return;
+    if (currentUser?.uid === 'demo-user') {
+      addToast('Im Demo-Modus deaktiviert.', 'info');
+      return;
+    }
     setIsSavingDoc(true);
     try {
       const safeCompanyId = (currentUser?.companyId && currentUser.companyId !== 'global') ? currentUser.companyId : (currentUser?.uid || null);

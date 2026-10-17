@@ -56,22 +56,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (isDemo && !user) {
       return res.status(401).json({ error: 'Unauthorized: Authentication required for demo proposals' });
     }
-    if (!user) {
-      if (!proposalId || typeof proposalId !== 'string') {
-        return res.status(401).json({ error: 'Unauthorized: Missing proposal reference' });
-      }
+    if (!user && (!proposalId || typeof proposalId !== 'string')) {
+      return res.status(401).json({ error: 'Unauthorized: Missing proposal reference' });
+    }
+    if (proposalId && typeof proposalId === 'string' && !isDemo) {
       const { data: prop } = await supabaseAdmin
         .from('smart_proposals')
-        .select('id, title, base_price, accepted_by, status, share_token')
+        .select('id, company_id, title, base_price, accepted_by, status, share_token')
         .eq('id', proposalId)
         .maybeSingle();
-      if (!prop) {
-        return res.status(403).json({ error: 'Forbidden: Invalid proposal reference' });
+      if (!user) {
+        if (!prop) {
+          return res.status(403).json({ error: 'Forbidden: Invalid proposal reference' });
+        }
+        if (!prop.share_token || !shareToken || prop.share_token !== shareToken) {
+          return res.status(403).json({ error: 'Invalid or missing share token for proposal.' });
+        }
       }
-      if (!prop.share_token || !shareToken || prop.share_token !== shareToken) {
-        return res.status(403).json({ error: 'Invalid or missing share token for proposal.' });
+      if (prop) {
+        verifiedProp = prop;
       }
-      verifiedProp = prop;
     }
 
     const cleanRecipientEmail = recipientEmail.trim();

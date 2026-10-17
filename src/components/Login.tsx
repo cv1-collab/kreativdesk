@@ -120,8 +120,16 @@ export default function Login() {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
 
+  const urlSearchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  const urlEmailParam = urlSearchParams.get('email') || '';
+  const isDifferentTargetUser = Boolean(
+    currentUser &&
+    urlEmailParam &&
+    currentUser.email?.toLowerCase() !== urlEmailParam.toLowerCase()
+  );
+
   React.useEffect(() => {
-    if (currentUser && !requires2FA) {
+    if (currentUser && !requires2FA && !isDifferentTargetUser) {
       const timer = setTimeout(() => {
         setLoading(false);
         if (checkIsSuperAdmin(currentUser.email)) {
@@ -132,7 +140,7 @@ export default function Login() {
       }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [currentUser, navigate, requires2FA]);
+  }, [currentUser, navigate, requires2FA, isDifferentTargetUser]);
 
   React.useEffect(() => {
     try {
@@ -182,7 +190,7 @@ export default function Login() {
     fetchBg();
   }, []);
 
-  if (currentUser && !loading && !requires2FA) {
+  if (currentUser && !loading && !requires2FA && !isDifferentTargetUser) {
     if (checkIsSuperAdmin(currentUser.email)) return <Navigate to="/admin" />;
     return <Navigate to="/app" />;
   }

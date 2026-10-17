@@ -185,12 +185,13 @@ export const offboardCompanyUser = async (userId: string, companyId?: string | n
 
     // 1. User aus company_users & invites löschen (nach id, user_id und email)
     for (const tid of targetIds) {
-      await supabase.from('company_users').delete().eq('id', tid);
-      await supabase.from('company_users').delete().eq('user_id', tid);
       if (companyId) {
         await supabase.from('company_users').delete().eq('id', tid).eq('company_id', companyId);
         await supabase.from('company_users').delete().eq('user_id', tid).eq('company_id', companyId);
         try { await supabase.from('invites').delete().eq('id', tid).eq('company_id', companyId); } catch (_) {}
+      } else {
+        await supabase.from('company_users').delete().eq('id', tid);
+        await supabase.from('company_users').delete().eq('user_id', tid);
       }
     }
 

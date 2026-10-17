@@ -254,6 +254,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
         .from('site_data')
         .select('data')
         .eq('id', `site_monitoring_${currentProjectId}`)
+        .limit(1)
         .maybeSingle()
         .then(({ data: row }) => {
           const cloudData = row?.data as Record<string, any> | null;
@@ -305,7 +306,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
       return;
     }
     try {
-      const safeCompanyId = currentUser?.companyId || (activeProject as any)?.company_id || null;
+      const safeCompanyId = currentUser?.companyId || (activeProject as any)?.company_id || currentUser?.uid || null;
       const safeProjectId = (currentProjectId && currentProjectId !== 'global') ? currentProjectId : (activeProject?.id && activeProject.id !== 'global' ? activeProject.id : null);
 
       const { error } = await supabase.from('defects').insert({
@@ -369,7 +370,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
       setCustomLinks(nextLinks);
       safeStorage.setItem(`camera_links_${activeProject.id}`, nextLinks);
 
-      const safeCompanyId = currentUser?.companyId || (activeProject as any)?.company_id || null;
+      const safeCompanyId = currentUser?.companyId || (activeProject as any)?.company_id || currentUser?.uid || null;
       const { error } = await supabase.from('site_data').upsert({
         id: `site_monitoring_${activeProject.id}`,
         company_id: safeCompanyId,
@@ -444,7 +445,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
       setCustomLocation(trimmedLoc);
       safeStorage.setItem(`project_location_${activeProject.id}`, trimmedLoc);
 
-      const safeCompanyId = currentUser?.companyId || (activeProject as any)?.company_id || null;
+      const safeCompanyId = currentUser?.companyId || (activeProject as any)?.company_id || currentUser?.uid || null;
       await supabase.from('site_data').upsert({
         id: `site_monitoring_${activeProject.id}`,
         company_id: safeCompanyId,

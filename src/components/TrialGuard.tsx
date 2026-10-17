@@ -60,7 +60,7 @@ export default function TrialGuard({ children }: TrialGuardProps) {
 
   useEffect(() => {
     const handleUpgradeModal = () => {
-      if (canManageBilling && !isMemberOrExternal) {
+      if (canManageBilling) {
         setForceLock(true);
       } else {
         appAlert('Hinweis', 'Bitte wende dich an den Kontoinhaber oder Administrator deiner Firma, um das Abo zu upgraden.');
@@ -68,7 +68,7 @@ export default function TrialGuard({ children }: TrialGuardProps) {
     };
     window.addEventListener('open-upgrade-modal', handleUpgradeModal);
     return () => window.removeEventListener('open-upgrade-modal', handleUpgradeModal);
-  }, [canManageBilling, isMemberOrExternal, appAlert]);
+  }, [canManageBilling, appAlert]);
 
   const handleCheckout = async (planName: 'Starter' | 'Pro' | 'Team Starter' | 'Expert') => {
     if (!currentUser?.uid || !currentUser?.email) return;

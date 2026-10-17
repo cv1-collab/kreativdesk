@@ -334,15 +334,19 @@ export const saveProposal = saveSmartProposal;
 /**
  * Verlängert eine Offerte um zusätzliche 30 Tage
  */
-export async function extendProposalExpiry(proposalId: string, days: number = 30): Promise<SmartProposal | null> {
+export async function extendProposalExpiry(proposalId: string, days: number = 30, companyId?: string): Promise<SmartProposal | null> {
   const newDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
   
   try {
     if (supabase) {
-      await supabase
+      let query = supabase
         .from('smart_proposals')
         .update({ expires_at: newDate, status: 'active', updated_at: new Date().toISOString() })
         .eq('id', proposalId);
+      if (companyId && companyId !== 'default-company') {
+        query = query.eq('company_id', companyId);
+      }
+      await query;
     }
   } catch (e) {}
 
@@ -511,10 +515,14 @@ export async function acceptProposalByClient(
 /**
  * Löscht eine Proposal
  */
-export async function deleteProposal(proposalId: string): Promise<boolean> {
+export async function deleteProposal(proposalId: string, companyId?: string): Promise<boolean> {
   try {
     if (supabase) {
-      await supabase.from('smart_proposals').delete().eq('id', proposalId);
+      let query = supabase.from('smart_proposals').delete().eq('id', proposalId);
+      if (companyId && companyId !== 'default-company') {
+        query = query.eq('company_id', companyId);
+      }
+      await query;
     }
   } catch (e) {}
 

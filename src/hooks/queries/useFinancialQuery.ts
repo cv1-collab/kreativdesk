@@ -32,9 +32,10 @@ export function useFinancialQuery(companyId?: string | null, selectedYear = 'all
         ...(safeStorage.getItem<string[]>(`deleted_finance_tx_${companyId}`, []) || []),
         ...((safeStorage.getItem<{ deletedIds?: string[] }>(`company_finance_overrides_${companyId}`, {}) || {}).deletedIds || []),
       ]);
-      const deletedTimeIds = new Set<string>(
-        safeStorage.getItem<string[]>(`deleted_time_entries_${companyId}`, []) || []
-      );
+      const deletedTimeIds = new Set<string>([
+        ...(safeStorage.getItem<string[]>(`deleted_time_entries_${companyId}`, []) || []),
+        ...(safeStorage.getItem<string[]>(`time_deleted_${companyId}`, []) || []),
+      ]);
 
       // 1. Fetch transactions (SQL + local cache fallback)
       const { data: txData, error: txErr } = await supabase

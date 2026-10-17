@@ -38,7 +38,7 @@ export function useTimeEntriesQuery(companyId?: string | null, projectId?: strin
         date: t.date || (t.created_at ? t.created_at.split('T')[0] : new Date().toISOString().split('T')[0]),
         hours: Number(t.hours || 0),
         description: t.description || 'Zeiterfassung',
-        hourlyRate: Number(t.hourly_rate || t.hourlyRate || 120),
+        hourlyRate: Number(t.hourly_rate ?? t.hourlyRate ?? 120),
         isBillable: t.is_billable !== undefined ? t.is_billable : (t.isBillable !== undefined ? t.isBillable : true),
         ownerId: t.owner_id || t.user_id || '',
         companyId: t.company_id || companyId,

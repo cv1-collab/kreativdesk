@@ -1384,6 +1384,8 @@ export default function DocumentStudioModal({
             .eq('company_id', safeCompanyId)
             .eq('name', folderName)
             .eq('is_folder', true)
+            .is('project_id', null)
+            .limit(1)
             .maybeSingle();
 
           if (existingFolder) {
@@ -1510,6 +1512,8 @@ ${footerText}
             .eq('company_id', safeCompanyId)
             .eq('name', folderName)
             .eq('is_folder', true)
+            .is('project_id', null)
+            .limit(1)
             .maybeSingle();
 
           if (existingFolder) {

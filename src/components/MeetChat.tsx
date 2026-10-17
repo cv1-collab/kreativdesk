@@ -1063,9 +1063,19 @@ export default function MeetChat() {
         try {
           const safeCompId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
           if (safeCompId) {
-            const { data: docs } = await supabase.from('documents').select('*').eq('company_id', safeCompId);
-            if (docs && docs.length > 0) {
-              knowledgeContext = `\n\nRelevant Knowledge Base Excerpts:\n${docs.slice(0, 3).map(c => `--- Document: ${c.name} ---\n${c.url}\n`).join('\n')}`;
+            const { data: docs } = await supabase
+              .from('documents')
+              .select('name, category, is_folder, type')
+              .eq('company_id', safeCompId);
+            const safeDocs = (docs || []).filter(
+              (c: any) =>
+                !c.is_folder &&
+                c.category !== 'system_config' &&
+                c.category !== 'company_settings' &&
+                c.category !== 'temp_receipt'
+            );
+            if (safeDocs.length > 0) {
+              knowledgeContext = `\n\nRelevant Knowledge Base Documents:\n${safeDocs.slice(0, 5).map((c: any) => `--- Document: ${c.name} (${c.category || 'general'}) ---`).join('\n')}`;
             }
           }
         } catch (err) { console.error('Knowledge search fail', err); }

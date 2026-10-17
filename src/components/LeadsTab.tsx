@@ -372,6 +372,9 @@ export default function LeadsTab() {
             zipCity: payload.zipCity || '',
             description: payload.description || ''
           });
+          if (payload.photoUrl) {
+            setScannedCardPreview(payload.photoUrl);
+          }
           setLeadTab('scanner');
           addToast('Visitenkarte vom Smartphone empfangen & per KI ausgelesen!', 'success');
         }
@@ -406,10 +409,14 @@ export default function LeadsTab() {
               company: parsed.company || '',
               email: parsed.email || '',
               phone: parsed.phone || '',
-              street: '',
+              street: parsed.street || '',
               zipCity: parsed.zipCity || '',
               description: parsed.description || ''
             });
+            const cardUrl = parsed.photoUrl || rec.url || (rec as any).file_url;
+            if (cardUrl) {
+              setScannedCardPreview(cardUrl);
+            }
             setLeadTab('scanner');
             addToast('Visitenkarte vom Smartphone empfangen & per KI ausgelesen!', 'success');
             pollFailed = true;
@@ -487,39 +494,40 @@ export default function LeadsTab() {
     setScannedCardFile(file);
     setIsScanningCard(true);
     try {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const fullDataUrl = reader.result as string;
-        setScannedCardPreview(fullDataUrl);
-        const base64Data = fullDataUrl.split(',')[1];
-        const prompt = `Analysiere diese Visitenkarte. Extrahiere die Daten als striktes JSON Objekt mit exakt diesen Keys: "firstName" (Vorname), "lastName" (Nachname), "company" (Firma), "email", "phone" (Telefon), "zipCity" (PLZ & Ort), "description" (Jobtitel oder Notizen). Verwende Schweizer Rechtschreibung (immer "ss", niemals "ß"). Antworte NUR mit dem JSON-Code ohne Markdown-Formatierung.`;
-        
-        const response = await callGeminiAPI('gemini-2.5-flash', [
-          { inlineData: { data: base64Data, mimeType: file.type } },
-          { text: prompt }
-        ]);
-        
-        let text = typeof response === 'string' ? response : (response?.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || "{}");
-        text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-        
-        try {
-          const data = JSON.parse(text);
-          setScannedData({
-            firstName: data.firstName || '',
-            lastName: data.lastName || '',
-            company: data.company || '',
-            email: data.email || '',
-            phone: data.phone || '',
-            street: '',
-            zipCity: data.zipCity || '',
-            description: data.description || ''
-          });
-          addToast(t('scanned_lead_data') + ' geladen!', 'success');
-        } catch (jsonErr) {
-          addToast('Fehler beim Auslesen der Daten.', 'error');
-        }
-      };
-      reader.readAsDataURL(file);
+      const fullDataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error('FileReader error'));
+        reader.readAsDataURL(file);
+      });
+      setScannedCardPreview(fullDataUrl);
+      const base64Data = fullDataUrl.split(',')[1];
+      const prompt = `Analysiere diese Visitenkarte. Extrahiere die Daten als striktes JSON Objekt mit exakt diesen Keys: "firstName" (Vorname), "lastName" (Nachname), "company" (Firma), "email", "phone" (Telefon), "street" (Strasse & Hausnummer), "zipCity" (PLZ & Ort), "description" (Jobtitel oder Notizen). Verwende Schweizer Rechtschreibung (immer "ss", niemals "ß"). Antworte NUR mit dem JSON-Code ohne Markdown-Formatierung.`;
+      
+      const response = await callGeminiAPI('gemini-2.5-flash', [
+        { inlineData: { data: base64Data, mimeType: file.type || 'image/jpeg' } },
+        { text: prompt }
+      ]);
+      
+      let text = typeof response === 'string' ? response : (response?.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || "{}");
+      text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      
+      try {
+        const data = JSON.parse(text);
+        setScannedData({
+          firstName: data.firstName || '',
+          lastName: data.lastName || '',
+          company: data.company || '',
+          email: data.email || '',
+          phone: data.phone || '',
+          street: data.street || '',
+          zipCity: data.zipCity || '',
+          description: data.description || ''
+        });
+        addToast(t('scanned_lead_data') + ' geladen!', 'success');
+      } catch (jsonErr) {
+        addToast('Fehler beim Auslesen der Daten.', 'error');
+      }
     } catch (error) {
       addToast('Fehler beim Scannen der Visitenkarte', 'error');
     } finally {
@@ -530,48 +538,52 @@ export default function LeadsTab() {
 
   const handleSaveScannedLead = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!scannedData.firstName || !scannedData.email || !currentUser || !currentUser.uid) {
-      addToast(t('name_email_required'), 'error');
+    if ((!scannedData.firstName && !scannedData.lastName && !scannedData.company) || !currentUser || !currentUser.uid) {
+      addToast(t('name_or_company_required') || t('name_email_required'), 'error');
       return;
     }
     const safeCompanyId = currentUser.companyId || currentUser.uid;
     
     setIsSubmittingScanner(true);
     try {
-      const fullName = [scannedData.firstName, scannedData.lastName].filter(Boolean).join(' ') || 'Neuer Kontakt';
+      const fullName = [scannedData.firstName, scannedData.lastName].filter(Boolean).join(' ') || scannedData.company || 'Neuer Kontakt';
       
-      let photoUrl = '';
-      if (scannedCardFile) {
+      let photoUrl = (!scannedCardFile && scannedCardPreview) ? scannedCardPreview : '';
+      if (scannedCardFile || photoUrl) {
         try {
           const safeFileName = `Visitenkarte_${fullName.replace(/\s+/g, '_')}_${Date.now()}.jpg`;
-          photoUrl = await uploadFileWithFallback(scannedCardFile, safeFileName, safeCompanyId, 'business_cards');
+          if (scannedCardFile) {
+            photoUrl = await uploadFileWithFallback(scannedCardFile, safeFileName, safeCompanyId, 'business_cards');
+          }
 
-          // Automatisch in Dokumente (04_SALES) archivieren
-          const { data: existingFolder } = await supabase
-            .from('documents')
-            .select('id')
-            .eq('company_id', safeCompanyId)
-            .eq('name', '04_SALES')
-            .eq('is_folder', true)
-            .maybeSingle();
-          const targetFolderId = existingFolder ? existingFolder.id : 'root';
+          if (photoUrl) {
+            // Automatisch in Dokumente (04_SALES) archivieren
+            const { data: existingFolder } = await supabase
+              .from('documents')
+              .select('id')
+              .eq('company_id', safeCompanyId)
+              .eq('name', '04_SALES')
+              .eq('is_folder', true)
+              .maybeSingle();
+            const targetFolderId = existingFolder ? existingFolder.id : 'root';
 
-          await supabase.from('documents').insert({
-            name: safeFileName,
-            url: photoUrl,
-            file_url: photoUrl,
-            project_id: null,
-            folder_id: targetFolderId,
-            category: 'company',
-            owner_id: currentUser.uid,
-            company_id: safeCompanyId,
-            type: scannedCardFile.type || 'image/jpeg',
-            size: `${Math.round(scannedCardFile.size / 1024)} KB`,
-            is_folder: false,
-            created_at: new Date().toISOString(),
-            uploaded_at: new Date().toISOString()
-          });
-          queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
+            await supabase.from('documents').insert({
+              name: safeFileName,
+              url: photoUrl,
+              file_url: photoUrl,
+              project_id: null,
+              folder_id: targetFolderId,
+              category: 'company',
+              owner_id: currentUser.uid,
+              company_id: safeCompanyId,
+              type: scannedCardFile?.type || 'image/jpeg',
+              size: scannedCardFile ? `${Math.round(scannedCardFile.size / 1024)} KB` : '120 KB',
+              is_folder: false,
+              created_at: new Date().toISOString(),
+              uploaded_at: new Date().toISOString()
+            });
+            queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
+          }
         } catch (uploadErr) {
           console.warn("Card photo upload note:", uploadErr);
         }

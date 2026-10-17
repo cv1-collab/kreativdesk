@@ -88,7 +88,7 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
   };
 
   const normRole = (currentUser?.role || '').toLowerCase().trim();
-  const isAdmin = checkIsSuperAdmin(currentUser?.email) || normRole === 'super_admin' || normRole === 'owner' || normRole === 'admin' || normRole === 'management' || bypassUnlocked;
+  const isAdmin = checkIsSuperAdmin(currentUser?.email) || normRole === 'super_admin' || bypassUnlocked;
   
   const isPublicRoute = 
     location.pathname === '/login' || 
@@ -104,6 +104,7 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
     location.pathname.startsWith('/interactv/') ||
     location.pathname.startsWith('/guest-meet/') ||
     location.pathname.startsWith('/lead-form') ||
+    location.pathname.startsWith('/lead') ||
     location.pathname.startsWith('/mobile-upload/') ||
     location.pathname === '/deck';
 

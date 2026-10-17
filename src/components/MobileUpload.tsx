@@ -167,6 +167,9 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
 
       setUploadProgress(70);
       const downloadUrl = await uploadFileWithFallback(file, file.name, validCompanyUuid || sessionId, 'temp_mobile_uploads');
+      if (isVcard && extractedData && typeof extractedData === 'object') {
+        extractedData.photoUrl = downloadUrl;
+      }
 
       setUploadProgress(90);
       const payloadString = extractedData ? JSON.stringify(extractedData) : file.name;

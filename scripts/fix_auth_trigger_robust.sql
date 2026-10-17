@@ -185,8 +185,8 @@ BEGIN
       VALUES (company_name, 'Free Trial', 1, 1, NEW.id)
       RETURNING id INTO new_company_id;
 
-      -- Profil als Owner der neuen Firma anlegen
-      INSERT INTO public.profiles (id, email, name, role, company_id, has_active_subscription, plan)
+      -- Profil als Owner der neuen Firma anlegen (inkl. 14 Tage Free Trial Ablaufdatum)
+      INSERT INTO public.profiles (id, email, name, role, company_id, has_active_subscription, plan, trial_ends_at)
       VALUES (
         NEW.id,
         NEW.email,
@@ -194,11 +194,13 @@ BEGIN
         'owner',
         new_company_id,
         true,
-        'Free Trial'
+        'Free Trial',
+        now() + interval '14 days'
       )
       ON CONFLICT (id) DO UPDATE 
         SET company_id = COALESCE(public.profiles.company_id, EXCLUDED.company_id),
-            role = COALESCE(public.profiles.role, EXCLUDED.role);
+            role = COALESCE(public.profiles.role, EXCLUDED.role),
+            trial_ends_at = COALESCE(public.profiles.trial_ends_at, EXCLUDED.trial_ends_at);
 
       -- Eintrag in company_users anlegen
       INSERT INTO public.company_users (company_id, name, email, role, status, user_id)

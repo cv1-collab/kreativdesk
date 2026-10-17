@@ -261,7 +261,7 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
 
   const handleExtend = async (proposalId: string) => {
     audioFeedback.playTouchClick();
-    const updated = await extendProposalExpiry(proposalId, 30);
+    const updated = await extendProposalExpiry(proposalId, 30, companyId);
     if (updated) {
       addToast(t('toast_extended'), 'success');
       loadProposals();
@@ -271,7 +271,7 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
   const handleDelete = async (proposalId: string) => {
     if (!window.confirm(t('confirm_delete'))) return;
     audioFeedback.playTrashSwipe();
-    const ok = await deleteProposal(proposalId);
+    const ok = await deleteProposal(proposalId, companyId);
     if (ok) {
       addToast(t('toast_deleted'), 'info');
       setProposals(prev => prev.filter(p => p.id !== proposalId));

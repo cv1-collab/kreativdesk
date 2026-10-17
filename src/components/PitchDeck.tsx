@@ -355,8 +355,8 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
     return cleanup;
   }, []);
 
-  const activeSlide = slides.find(s => s.id === activeSlideId) || null;
-  const currentSlideIndex = slides.findIndex(s => s.id === activeSlideId);
+  const activeSlide = slides.find(s => s.id === activeSlideId) || slides[0] || null;
+  const currentSlideIndex = slides.findIndex(s => s.id === (activeSlide?.id || activeSlideId));
   const hasPrevSlide = currentSlideIndex > 0;
   const hasNextSlide = currentSlideIndex !== -1 && currentSlideIndex < slides.length - 1;
 

@@ -286,7 +286,9 @@ export default function AdminUsersTab() {
       const companyId = user.company_id || user.companyId;
       await offboardCompanyUser(user.id, companyId);
       if (user.email) {
-        await supabase.from('invites').delete().ilike('email', user.email);
+        let invDel = supabase.from('invites').delete().ilike('email', user.email);
+        if (companyId) invDel = invDel.eq('company_id', companyId);
+        await invDel;
       }
       await logAuditAction({
         companyId: companyId || currentUser?.companyId || 'global_master',
@@ -312,10 +314,12 @@ export default function AdminUsersTab() {
     }
     try {
       const companyId = user.company_id;
-      const { data: existingInvites } = await supabase
+      let invQuery = supabase
         .from('invites')
         .select('token')
-        .ilike('email', user.email)
+        .ilike('email', user.email);
+      if (companyId) invQuery = invQuery.eq('company_id', companyId);
+      const { data: existingInvites } = await invQuery
         .order('created_at', { ascending: false })
         .limit(1);
 
@@ -347,10 +351,12 @@ export default function AdminUsersTab() {
     await handleCopyInviteLink(user);
     const host = 'Kreativ Desk OS Team';
     const compName = user.companyName || 'Kreativ Desk OS';
-    const { data: existingInvites } = await supabase
+    let invQuery = supabase
       .from('invites')
       .select('token')
-      .ilike('email', user.email)
+      .ilike('email', user.email);
+    if (user.company_id) invQuery = invQuery.eq('company_id', user.company_id);
+    const { data: existingInvites } = await invQuery
       .order('created_at', { ascending: false })
       .limit(1);
     const token = existingInvites?.[0]?.token || '';
@@ -435,13 +441,15 @@ export default function AdminUsersTab() {
           })
           .eq('id', editingUser.id);
 
-        await supabase
+        let cuUpd = supabase
           .from('company_users')
           .update({
             name: editingUser.name,
             role: editingUser.role
           })
           .eq('user_id', editingUser.id);
+        if (editingUser.company_id) cuUpd = cuUpd.eq('company_id', editingUser.company_id);
+        await cuUpd;
 
         if (editingUser.isOwner) {
           const seatsToSave = parseInt(editingUser.maxSeats) || 1;

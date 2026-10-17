@@ -20,15 +20,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Multi-tenant security check: always verify caller is either authenticated for this company
     // or submitting an acceptance with a valid shareToken matching smart_proposals
     const authUser = await verifyAuth(req).catch(() => null);
-    let isAuthorizedForCompany = Boolean(
-      authUser && (
-        authUser.isSuperAdmin ||
-        authUser.role === 'super_admin' ||
-        (proposal?.companyId && String(authUser.companyId) === String(proposal.companyId)) ||
-        (!proposal?.companyId && authUser.companyId)
-      )
-    );
+    const isSuperAdmin = Boolean(authUser && (authUser.isSuperAdmin || authUser.role === 'super_admin'));
+    const roleStr = String(authUser?.role || authUser?.profile?.role || '').toLowerCase().trim();
+    const isExternalUser = [
+      'guest', 'extern', 'partner', 'contractor', 'subcontractor',
+      'subunternehmer', 'handwerker', 'kunde', 'auftraggeber', 'bauherr', 'client', 'external'
+    ].some(k => roleStr.includes(k));
 
+    let isAuthorizedByShareToken = false;
     let verifiedProp: any = null;
     if (proposal?.shareToken || proposal?.id) {
       let propQuery = supabaseAdmin
@@ -45,11 +44,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const { data: propRow } = await propQuery.maybeSingle();
       if (propRow) {
         verifiedProp = propRow;
-        if (proposal.shareToken && propRow.share_token === proposal.shareToken) {
-          isAuthorizedForCompany = true;
+        if (proposal.shareToken && propRow.share_token && propRow.share_token === proposal.shareToken) {
+          isAuthorizedByShareToken = true;
         }
       }
     }
+
+    const effectiveCompanyId = verifiedProp?.company_id || proposal?.companyId || authUser?.companyId;
+
+    const isAuthorizedForCompany = Boolean(
+      isAuthorizedByShareToken ||
+      isSuperAdmin ||
+      (authUser && !isExternalUser && authUser.companyId && effectiveCompanyId && String(authUser.companyId) === String(effectiveCompanyId))
+    );
 
     if (!isAuthorizedForCompany) {
       return res.status(403).json({
@@ -59,7 +66,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    const effectiveCompanyId = verifiedProp?.company_id || proposal?.companyId || authUser?.companyId;
+    if (!authUser && verifiedProp?.accepted_by?.bexioSynced) {
+      return res.status(200).json({
+        success: true,
+        alreadySynced: true,
+        mode: 'live',
+        timestamp: new Date().toISOString()
+      });
+    }
 
     // Resolve Bexio API token: client payload (only if authenticated) -> server env -> company system_config in DB
     let effectiveToken = (authUser ? apiToken : undefined) || process.env.BEXIO_API_TOKEN || '';
@@ -237,6 +251,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } catch (invErr: any) {
         errors.push(`Rechnungs-Erstellung Fehler: ${invErr.message}`);
       }
+    }
+
+    if (verifiedProp?.id && (offerId || invoiceId)) {
+      try {
+        const nextAcceptedBy = {
+          ...(typeof verifiedProp.accepted_by === 'object' && verifiedProp.accepted_by ? verifiedProp.accepted_by : acceptanceData),
+          bexioSynced: true,
+          bexioOfferId: offerId,
+          bexioInvoiceId: invoiceId
+        };
+        await supabaseAdmin
+          .from('smart_proposals')
+          .update({ accepted_by: nextAcceptedBy })
+          .eq('id', verifiedProp.id);
+      } catch (_) {}
     }
 
     return res.status(200).json({

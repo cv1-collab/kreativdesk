@@ -91,7 +91,7 @@ DEINE AUFGABE:
 
     // Historie der letzten Nachrichten hinzufügen (max. 15 Einträge, je max. 1500 Zeichen)
     if (Array.isArray(messageHistory)) {
-      messageHistory.slice(-15).slice(-4).forEach((msg: any) => {
+      messageHistory.slice(-15).forEach((msg: any) => {
         if (msg?.role && typeof msg?.text === 'string' && msg.text.trim()) {
           contents.push({
             role: msg.role === 'user' ? 'user' : 'model',

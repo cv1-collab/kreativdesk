@@ -1159,10 +1159,11 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
     if (activeProject?.id && activeProject.id !== 'global' && !activeProject.id.startsWith('demo-')) {
        const payloadStr = JSON.stringify(updated);
        try {
-         const compId = activeProject.companyId || 'global';
+         const compId = activeProject.companyId || (activeProject as any).company_id || currentUser?.companyId || currentUser?.uid || 'global';
          const { data: existingDoc } = await supabase
            .from('documents')
            .select('id')
+           .eq('company_id', compId)
            .eq('project_id', activeProject.id)
            .eq('category', 'pitch_deck_config')
            .eq('name', 'deck_settings');
@@ -1173,13 +1174,13 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
              url: payloadStr,
              file_url: payloadStr,
              uploaded_at: new Date().toISOString()
-           }).eq('id', activeDoc.id);
+           }).eq('id', activeDoc.id).eq('company_id', compId);
          } else {
            await supabase.from('documents').insert({
              company_id: compId,
              project_id: activeProject.id,
-             owner_id: activeProject.ownerId || 'global',
-             uploaded_by: activeProject.ownerId || 'global',
+             owner_id: activeProject.ownerId || currentUser?.uid || 'global',
+             uploaded_by: activeProject.ownerId || currentUser?.uid || 'global',
              name: 'deck_settings',
              category: 'pitch_deck_config',
              folder_id: 'root',
@@ -2848,8 +2849,18 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
            }
          }
 
+         const defectIdx = mediaPickerType.meta?.defectIdx;
          const imageIndex = mediaPickerType.meta?.imageIndex;
-         if (imageIndex !== undefined && imageIndex !== null) {
+         if (defectIdx !== undefined && defectIdx !== null) {
+           const currentSlide = slides.find(s => s.id === targetId);
+           if (currentSlide && Array.isArray(currentSlide.dataPayload?.defects)) {
+             const newDefects = [...currentSlide.dataPayload.defects];
+             if (newDefects[defectIdx]) {
+               newDefects[defectIdx] = { ...newDefects[defectIdx], imageUrl: mediaUrl };
+               updateSlidePayload(targetId, { ...currentSlide.dataPayload, defects: newDefects });
+             }
+           }
+         } else if (imageIndex !== undefined && imageIndex !== null) {
            setSlides(prev => prev.map(s => {
              if (s.id !== targetId) return s;
              const currentImages = [...(s.dataPayload?.images || [s.imageUrl || '', s.compareImageUrl || '', ''])];
@@ -4229,7 +4240,7 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
                 <div className="grid grid-cols-2 gap-4 flex-1 overflow-y-auto custom-scrollbar">
                   {slide.dataPayload.defects.map((d: any, i: number) => (
                     <div key={i} className={cn("flex flex-col rounded-xl overflow-hidden border shadow-sm relative group", isDarkTheme ? "border-zinc-800 bg-zinc-900/50" : "border-zinc-200 bg-white")}>
-                      <div onClick={() => !isPreviewMode && openMediaPicker('render', t('choose_image'), 'slide')} className="h-32 bg-zinc-800 relative overflow-hidden shrink-0 cursor-pointer">
+                      <div onClick={() => !isPreviewMode && openMediaPicker('render', t('choose_image'), 'slide', { slideId: slide.id, defectIdx: i })} className="h-32 bg-zinc-800 relative overflow-hidden shrink-0 cursor-pointer">
                         {sanitizeUrl(d.imageUrl) ? <img src={sanitizeUrl(d.imageUrl)} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center text-zinc-500"><ImageIcon size={28}/></div>}
                         {!isPreviewMode ? (
                           <select value={d.status} onChange={(e) => handleUpdateDefect(slide.id, i, 'status', e.target.value)} className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest bg-black/60 text-white border border-white/20 outline-none cursor-pointer">

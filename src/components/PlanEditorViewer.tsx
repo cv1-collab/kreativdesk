@@ -692,6 +692,9 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       const updatedSlides = [...existingSlides, { ...newSlide, id: slideUuid || `slide-cad-${Date.now()}`, imageUrl: snapshotImageUrl }];
       safeStorage.setItem(localKey, updatedSlides);
       safeStorage.setItem(`kreativ_pitch_slides_${targetProjectId}`, updatedSlides);
+      const studioKey = `pitch_deck_slides_${targetProjectId}`;
+      const existingStudioSlides = safeStorage.getItem<any[]>(studioKey, []) || [];
+      safeStorage.setItem(studioKey, [...existingStudioSlides, { ...newSlide, id: slideUuid || `slide-cad-${Date.now()}`, imageUrl: snapshotImageUrl }]);
 
       addToast('CAD-Plan als Folie im Pitch Deck gespeichert!', 'success');
     } catch (err) {

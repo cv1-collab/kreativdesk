@@ -30,6 +30,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       'status'
     ).toLowerCase().trim();
 
+    // Multi-tenant role & permission check when called via user JWT (not an admin API key)
+    if (!(authUser as any).isApiKey && !authUser.isSuperAdmin) {
+      const roleStr = String(authUser.role || authUser.profile?.role || '').toLowerCase().trim();
+      const EXTERNAL_KEYWORDS = [
+        'guest', 'extern', 'partner', 'contractor', 'subcontractor',
+        'subunternehmer', 'handwerker', 'kunde', 'auftraggeber', 'bauherr', 'client', 'external'
+      ];
+      if (EXTERNAL_KEYWORDS.some(k => roleStr.includes(k))) {
+        return res.status(403).json({ error: 'Forbidden: External or guest users cannot access the Open REST API.' });
+      }
+      const ELEVATED_ROLES = new Set([
+        'owner', 'admin', 'management', 'project_lead', 'projektleiter', 'bauleiter', 'super_admin', 'geschäftsführung'
+      ]);
+      const SENSITIVE_RESOURCES = new Set(['transactions', 'invoices', 'invoice', 'proposals', 'quotes', 'leads', 'lead', 'contacts', 'contact']);
+      if (SENSITIVE_RESOURCES.has(resource) && !ELEVATED_ROLES.has(roleStr) && authUser.profile?.can_view_finance === false) {
+        return res.status(403).json({ error: 'Forbidden: Insufficient permissions to access financial or CRM records via API.' });
+      }
+    }
+
     if (req.method === 'GET') {
       const limit = Math.min(Math.max(Number(req.query?.limit) || 50, 1), 200);
 

@@ -232,20 +232,27 @@ export default function ExpenseReport({ onClose, onSave, initialCurrency }: Expe
   processImageWithAIRef.current = processImageWithAI;
   const addToastRef = useRef(addToast);
   addToastRef.current = addToast;
+  const processedReceiptUrlsRef = useRef<Set<string>>(new Set());
 
   // Realtime & Polling listener for Smartphone Live Scan (QR Code)
   useEffect(() => {
     if (!sessionId) return;
     let isMounted = true;
 
+    const handleIncomingReceipt = async (docUrl: string, mimeType = 'image/jpeg') => {
+      if (!isMounted || !docUrl || processedReceiptUrlsRef.current.has(docUrl)) return;
+      processedReceiptUrlsRef.current.add(docUrl);
+      setReceipts(prev => prev.includes(docUrl) ? prev : [...prev, docUrl]);
+      addToastRef.current('Beleg vom Smartphone empfangen!', 'success');
+      await processImageWithAIRef.current(null, docUrl, mimeType);
+    };
+
     const channel = supabase.channel(`mobile_upload_${sessionId}`)
       .on('broadcast', { event: 'receipt_uploaded' }, async (payload: any) => {
         if (!isMounted) return;
         const data = payload?.payload;
         if (data?.url) {
-          setReceipts(prev => prev.includes(data.url) ? prev : [...prev, data.url]);
-          await processImageWithAIRef.current(null, data.url, data.type || 'image/jpeg');
-          addToastRef.current('Beleg vom Smartphone empfangen!', 'success');
+          await handleIncomingReceipt(data.url, data.type || 'image/jpeg');
         }
       })
       .subscribe();
@@ -264,13 +271,11 @@ export default function ExpenseReport({ onClose, onSave, initialCurrency }: Expe
         if (docs && docs.length > 0) {
           const doc = docs[0];
           const docUrl = doc.url || doc.file_url;
+          if (doc.id) {
+            try { await supabase.from('documents').delete().eq('id', doc.id); } catch (_) {}
+          }
           if (docUrl) {
-            setReceipts(prev => {
-              if (prev.includes(docUrl)) return prev;
-              processImageWithAIRef.current(null, docUrl, doc.type || 'image/jpeg');
-              addToastRef.current('Beleg vom Smartphone empfangen!', 'success');
-              return [...prev, docUrl];
-            });
+            await handleIncomingReceipt(docUrl, doc.type || 'image/jpeg');
           }
         }
       } catch (err) {
@@ -407,7 +412,7 @@ export default function ExpenseReport({ onClose, onSave, initialCurrency }: Expe
       }
 
       await supabase.from('transactions').insert({ 
-        type: 'expense', amount: totalAmount, category: 'Spesen', description: `Spesenabrechnung (${positions.length} Positionen)`, date: headerData.date, status: 'Pending', project_id: cleanProjectId, owner_id: currentUser.uid, company_id: safeCompanyId, receipt_urls: [finalPdfUrl, ...uploadedReceiptUrls], created_at: new Date().toISOString() 
+        type: 'expense', amount: -Math.abs(Number(totalAmount) || 0), category: 'Spesen', description: `Spesenabrechnung (${positions.length} Positionen)`, date: headerData.date, status: 'Pending', project_id: cleanProjectId, owner_id: currentUser.uid, company_id: safeCompanyId, receipt_urls: [finalPdfUrl, ...uploadedReceiptUrls], created_at: new Date().toISOString() 
       });
 
       await supabase.from('documents').insert({ 

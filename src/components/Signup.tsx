@@ -207,6 +207,9 @@ export default function Signup() {
       }
 
       const cleanEmail = email.trim();
+      if (currentUser && currentUser.email?.toLowerCase() !== cleanEmail.toLowerCase()) {
+        await supabase.auth.signOut();
+      }
       const emailRedirectUrl = selectedPlanParam && !effectiveInviteToken
         ? `${window.location.origin}/pricing?plan=${encodeURIComponent(selectedPlanParam)}&billing=${encodeURIComponent(selectedBillingParam || 'yearly')}`
         : `${window.location.origin}/app`;
@@ -269,7 +272,14 @@ export default function Signup() {
     }
   }
 
-  if (currentUser && !loading) {
+  const isDifferentInvitedUser = Boolean(
+    currentUser &&
+    rawInviteToken &&
+    initialEmail &&
+    currentUser.email?.toLowerCase() !== initialEmail.toLowerCase()
+  );
+
+  if (currentUser && !loading && !isDifferentInvitedUser) {
     const pendingPlan = searchParams.get('plan') || safeStorage.session.getItem('pending_checkout_plan');
     const pendingBilling = searchParams.get('billing') || safeStorage.session.getItem('pending_checkout_billing') || 'yearly';
     const hasInvite = inviteToken || safeStorage.getString('pending_invite_token');

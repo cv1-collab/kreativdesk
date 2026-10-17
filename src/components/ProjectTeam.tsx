@@ -58,8 +58,8 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
   const currentProjectId = propProjectId || projectId || activeProjectId;
   const isDemo = isDemoMode || currentProjectId === 'demo-1' || currentProjectId?.startsWith('demo-');
   const userRoleLower = String(currentUser?.role || '').toLowerCase().trim();
-  const isExternalViewer = !isDemo && ['guest', 'client', 'external', 'partner', 'subcontractor', 'handwerker', 'bauherr', 'field guest', 'external planner'].includes(userRoleLower);
-  const canManageProjectTeam = !isExternalViewer;
+  const isExternalViewer = !isDemo && ['guest', 'client', 'external', 'partner', 'subcontractor', 'handwerker', 'bauherr', 'field guest', 'external planner', 'viewer'].includes(userRoleLower);
+  const canManageProjectTeam = isDemo || ['owner', 'admin', 'management', 'project_lead', 'projektleiter', 'bauleiter', 'super_admin', 'geschäftsführung'].includes(userRoleLower);
   const dbMembers = (projectMembers || []).filter((m: any) => m.projectId === currentProjectId);
   const currentMembers = dbMembers.length > 0 ? dbMembers : (isDemo ? DEFAULT_DEMO_USERS : []);
   const allCompanyUsers = companyUsers.length > 0 ? companyUsers : (isDemo ? DEFAULT_DEMO_USERS : []);
@@ -379,7 +379,7 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
               if (!user) return null;
               const norm = (user.role || '').toLowerCase().trim();
               const isClient = norm === 'client' || norm === 'kunde';
-              const isExternal = norm === 'external' || norm === 'extern' || norm === 'external partner' || norm === 'external planner' || norm === 'subcontractor';
+              const isExternal = norm === 'external' || norm === 'extern' || norm === 'external partner' || norm === 'external planner' || norm === 'subcontractor' || norm === 'field guest' || norm === 'contractor' || norm === 'handwerker';
               const isInternal = !isExternal && !isClient;
               return (
                 <div key={member.id} className="bg-surface border border-border rounded-2xl p-5 flex flex-col gap-4 shadow-sm relative overflow-hidden">

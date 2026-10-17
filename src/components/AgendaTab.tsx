@@ -478,6 +478,13 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
             const linkMatch = desc.match(/Meeting Link:\s*([^\n\r]+)/i);
             const link = evt.meetingLink || evt.meeting_link || evt.location || meta.meetingLink || meta.meeting_link || (linkMatch ? linkMatch[1].trim() : null);
 
+            const partMatch = desc.match(/Teilnehmer:\s*([^\n\r]+)/i);
+            const extractedParticipants = Array.isArray(evt.participants) && evt.participants.length > 0
+              ? evt.participants
+              : (Array.isArray(meta.participants) && meta.participants.length > 0
+                ? meta.participants
+                : (partMatch ? partMatch[1].split(',').map((s: string) => s.trim()).filter(Boolean) : []));
+
             const normalized = {
               ...meta,
               ...evt,
@@ -486,6 +493,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
               event_date: dateStr,
               start_date: dateStr,
               time: extractedTime,
+              participants: extractedParticipants,
               projectId: evt.projectId || evt.project_id || meta.projectId || meta.project_id || 'global',
               project_id: evt.projectId || evt.project_id || meta.project_id || meta.projectId || 'global',
               meetingLink: link,
@@ -886,6 +894,8 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         date: newEvent.date,
         event_date: newEvent.date,
         start_date: newEvent.date,
+        time: newEvent.time,
+        participants: combinedParticipants,
         projectId: targetProjectId,
         project_id: targetProjectId,
         meetingLink: meetingLink,
@@ -1016,6 +1026,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
       }
 
       setIsEventModalOpen(false);
+      setGeneratedMeetingId(`meet-${Date.now()}`);
       setNewEvent({ title: '', date: new Date().toISOString().split('T')[0], time: '10:00', type: 'meeting', projectId: '', participants: [], externalEmails: [], description: '', videoProvider: 'kreativdesk', customLink: '' });
       addToast('Termin erfolgreich in der Agenda eingetragen!', 'success');
     } catch (err) {
@@ -1078,7 +1089,9 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
 
       let updatedEvent: any = null;
       if (selectedEvent.id && isUuidRegex.test(selectedEvent.id)) {
-        const { data: upData, error } = await supabase.from('calendar_events').update(dbUpdateData).eq('id', selectedEvent.id).select().maybeSingle();
+        let upQuery = supabase.from('calendar_events').update(dbUpdateData).eq('id', selectedEvent.id);
+        if (safeCompanyId) upQuery = upQuery.eq('company_id', safeCompanyId);
+        const { data: upData, error } = await upQuery.select().maybeSingle();
         if (error) {
           console.warn("Calendar event update warning:", error);
         } else {
@@ -1091,6 +1104,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         event_date: selectedEvent.date,
         start_date: selectedEvent.date,
         time: selectedEvent.time,
+        participants: selectedEvent.participants || [],
         projectId: projId,
         project_id: projId,
         meetingLink: meetingLink,
@@ -1141,7 +1155,9 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         // 2. Aus Supabase calendar_events löschen
         const isUuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         if (isUuidRegex.test(eventId)) {
-          await supabase.from('calendar_events').delete().eq('id', eventId);
+          let delQuery = supabase.from('calendar_events').delete().eq('id', eventId);
+          if (safeCompanyId) delQuery = delQuery.eq('company_id', safeCompanyId);
+          await delQuery;
         }
 
         // 3. Aus documents Backup entfernen
@@ -1172,7 +1188,9 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
     if (eventId) {
       try {
         if (isUuidRegex.test(eventId)) {
-          await supabase.from('calendar_events').update({ start_date: newDateStr, end_date: newDateStr }).eq('id', eventId);
+          let dropQuery = supabase.from('calendar_events').update({ start_date: newDateStr, end_date: newDateStr }).eq('id', eventId);
+          if (safeCompanyId) dropQuery = dropQuery.eq('company_id', safeCompanyId);
+          await dropQuery;
         }
         setCalendarEvents(prev => {
           const next = prev.map(ev => ev.id === eventId ? { ...ev, date: newDateStr, event_date: newDateStr, start_date: newDateStr } : ev);
@@ -1325,7 +1343,9 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         // 2. Aus Supabase time_entries löschen
         const isUuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         if (isUuidRegex.test(entryId)) {
-          await supabase.from('time_entries').delete().eq('id', entryId);
+          let delTimeQuery = supabase.from('time_entries').delete().eq('id', entryId);
+          if (safeCompanyId) delTimeQuery = delTimeQuery.eq('company_id', safeCompanyId);
+          await delTimeQuery;
         }
 
         // 3. Aus documents Backup entfernen

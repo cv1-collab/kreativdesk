@@ -132,6 +132,8 @@ export function calculateFinancialLedger(
 ): FinancialLedgerSummary {
   const filtered = transactions.filter((t) => {
     if (!t || typeof t.amount !== 'number') return false;
+    const statusLower = String(t.status || '').toLowerCase().trim();
+    if (statusLower === 'storniert' || statusLower === 'canceled' || statusLower === 'cancelled') return false;
     if (selectedYear === 'all') return true;
     const txYear = (t.date || t.createdAt || '').substring(0, 4);
     return txYear === selectedYear;
@@ -146,17 +148,19 @@ export function calculateFinancialLedger(
   for (const t of filtered) {
     const amt = Math.abs(Number(t.amount) || 0);
     const type = (t.type || '').toLowerCase();
+    const cat = String(t.category || '');
+    const isCreditorCat = cat.includes('Kreditor') || cat.includes('Honorar') || cat.includes('Gebühr');
 
-    if (type === 'invoice' || type === 'income' || type === 'revenue') {
-      outgoingInvoicesTotal += amt;
-    } else if (type === 'quote') {
+    if (cat === 'Offerte' || cat === 'Quote' || type === 'quote') {
       openQuotesTotal += amt;
-    } else if (type === 'expense') {
-      teamExpensesTotal += amt;
-    } else if (type === 'external_cost' || type === 'ext_cost' || type === 'operating_cost') {
-      externalCostsTotal += amt;
-    } else if (type === 'time_entry') {
+    } else if (cat === 'Debitorenrechnung' || cat === 'Outgoing Invoice' || type === 'invoice' || type === 'income' || type === 'revenue') {
+      outgoingInvoicesTotal += amt;
+    } else if (cat === 'Interne Stunden' || type === 'time_entry') {
       internalTimeCostTotal += amt;
+    } else if (type === 'external_cost' || type === 'ext_cost' || type === 'operating_cost' || isCreditorCat) {
+      externalCostsTotal += amt;
+    } else if (type === 'expense' || cat === 'Spesen') {
+      teamExpensesTotal += amt;
     }
   }
 

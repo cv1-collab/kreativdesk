@@ -389,10 +389,17 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
           setOpCostReceipts(prev => [...prev, base64String]);
           const base64Data = base64String.split(',')[1];
           await processImageWithAI(base64Data, null, file.type || 'image/jpeg');
+        } else {
+          setIsAnalyzingAI(false);
         }
+      };
+      reader.onerror = () => {
+        setIsAnalyzingAI(false);
+        addToast('Upload Fehler', 'error');
       };
       reader.readAsDataURL(file);
     } catch (error) {
+      setIsAnalyzingAI(false);
       addToast('Upload Fehler', 'error');
     } finally {
       if (mobileCameraRef.current) mobileCameraRef.current.value = '';
@@ -403,20 +410,27 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
   processImageWithAIRef.current = processImageWithAI;
   const addToastRef = useRef(addToast);
   addToastRef.current = addToast;
+  const processedReceiptUrlsRef = useRef<Set<string>>(new Set());
 
   // Realtime & Polling listener for Smartphone Live Scan (QR Code)
   useEffect(() => {
     if (!uploadSessionId) return;
     let isMounted = true;
 
+    const handleIncomingReceipt = async (docUrl: string, mimeType = 'image/jpeg') => {
+      if (!isMounted || !docUrl || processedReceiptUrlsRef.current.has(docUrl)) return;
+      processedReceiptUrlsRef.current.add(docUrl);
+      setOpCostReceipts(prev => prev.includes(docUrl) ? prev : [...prev, docUrl]);
+      addToastRef.current('Beleg vom Smartphone empfangen & analysiert!', 'success');
+      await processImageWithAIRef.current(null, docUrl, mimeType);
+    };
+
     const channel = supabase.channel(`mobile_upload_${uploadSessionId}`)
       .on('broadcast', { event: 'receipt_uploaded' }, async (payload: any) => {
         if (!isMounted) return;
         const data = payload?.payload;
         if (data?.url) {
-          setOpCostReceipts(prev => prev.includes(data.url) ? prev : [...prev, data.url]);
-          await processImageWithAIRef.current(null, data.url, data.type || 'image/jpeg');
-          addToastRef.current('Beleg vom Smartphone empfangen & analysiert!', 'success');
+          await handleIncomingReceipt(data.url, data.type || 'image/jpeg');
         }
       })
       .subscribe();
@@ -435,13 +449,11 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
         if (docs && docs.length > 0) {
           const doc = docs[0];
           const docUrl = doc.url || doc.file_url;
+          if (doc.id) {
+            try { await supabase.from('documents').delete().eq('id', doc.id); } catch (_) {}
+          }
           if (docUrl) {
-            setOpCostReceipts(prev => {
-              if (prev.includes(docUrl)) return prev;
-              processImageWithAIRef.current(null, docUrl, doc.type || 'image/jpeg');
-              addToastRef.current('Beleg vom Smartphone empfangen & analysiert!', 'success');
-              return [...prev, docUrl];
-            });
+            await handleIncomingReceipt(docUrl, doc.type || 'image/jpeg');
           }
         }
       } catch (err) {}

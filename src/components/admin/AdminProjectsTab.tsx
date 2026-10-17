@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { safeStorage } from '../../utils/safeStorage';
 import { logAuditAction } from '../../utils/auditLogger';
 import { useAuth } from '../../contexts/AuthContext';
+import { offboardProject } from '../../services/projectService';
 
 export default function AdminProjectsTab() {
   const { currentUser } = useAuth();
@@ -60,7 +61,7 @@ export default function AdminProjectsTab() {
       setProjects(updated);
       safeStorage.setItem('admin_projects_cache', updated);
 
-      await supabase.from('projects').delete().eq('id', projectId);
+      await offboardProject(projectId, target?.company_id || target?.companyId);
       await logAuditAction({
         companyId: target?.company_id || currentUser?.companyId || 'global_master',
         userId: currentUser?.uid || 'admin',

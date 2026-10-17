@@ -202,6 +202,13 @@ export default async function handler(req: any, res: any) {
     let currentPlan = profile.plan || 'Free Trial';
     let needsDbUpdate = false;
 
+    const isTrialPlan =
+      String(currentPlan).toLowerCase().includes('trial') ||
+      String(currentPlan).toLowerCase().trim() === 'free';
+    if (isTrialPlan && profile.trial_ends_at && new Date(profile.trial_ends_at) <= new Date()) {
+      hasActiveSub = false;
+    }
+
     if (profile.company_id) {
       const { data: comp } = await supabaseAdmin
         .from('companies')
@@ -287,7 +294,7 @@ export default async function handler(req: any, res: any) {
               syncedSeats = Math.max(itemQty, metaSeats, 1);
             }
           }
-        } else if (!isManualB2BPlan) {
+        } else if (!isManualB2BPlan && !hasActiveSub) {
           hasActiveSub = false;
           currentPlan = 'Free Trial';
         }

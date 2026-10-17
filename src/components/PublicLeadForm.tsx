@@ -112,9 +112,12 @@ export default function PublicLeadForm() {
   useEffect(() => {
     if (!sessionId || isMobileOrTablet) return;
 
+    let pollStop = false;
+
     const channel = supabase.channel(`vcard_upload_${sessionId}`)
       .on('broadcast', { event: 'vcard_scanned' }, ({ payload }) => {
-        if (payload) {
+        if (payload && !pollStop) {
+          pollStop = true;
           setFormData(prev => ({
             ...prev,
             firstName: payload.firstName || prev.firstName,
@@ -122,15 +125,15 @@ export default function PublicLeadForm() {
             company: payload.company || prev.company,
             email: payload.email || prev.email,
             phone: payload.phone || prev.phone,
-            message: payload.description ? `${prev.message ? prev.message + '\n' : ''}${payload.description}` : prev.message
+            message: payload.description && !prev.message.includes(payload.description)
+              ? `${prev.message ? prev.message + '\n' : ''}${payload.description}`
+              : prev.message
           }));
           setShowQR(false);
           setSuccessMsg(t('scan_success'));
         }
       })
       .subscribe();
-
-    let pollStop = false;
     const interval = setInterval(async () => {
       if (pollStop || !sessionId) return;
       try {
@@ -191,36 +194,38 @@ export default function PublicLeadForm() {
     setSuccessMsg(null);
     
     try {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64Data = (reader.result as string).split(',')[1];
-        const prompt = `Analysiere diese Visitenkarte. Extrahiere die Daten als striktes JSON Objekt mit exakt diesen Keys: "firstName" (Vorname), "lastName" (Nachname), "company" (Firma), "email", "phone" (Telefon). Verwende Schweizer Rechtschreibung (immer "ss", niemals "ß"). Antworte NUR mit dem JSON-Code ohne Markdown-Formatierung.`;
+      const fullDataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error('FileReader error'));
+        reader.readAsDataURL(file);
+      });
+      const base64Data = fullDataUrl.split(',')[1];
+      const prompt = `Analysiere diese Visitenkarte. Extrahiere die Daten als striktes JSON Objekt mit exakt diesen Keys: "firstName" (Vorname), "lastName" (Nachname), "company" (Firma), "email", "phone" (Telefon). Verwende Schweizer Rechtschreibung (immer "ss", niemals "ß"). Antworte NUR mit dem JSON-Code ohne Markdown-Formatierung.`;
+      
+      const response = await callGeminiAPI('gemini-2.5-flash', [
+        { inlineData: { data: base64Data, mimeType: file.type || 'image/jpeg' } },
+        { text: prompt }
+      ]);
+      
+      let text = typeof response === 'string' ? response : (response?.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || "{}");
+      text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      
+      try {
+        const data = JSON.parse(text);
         
-        const response = await callGeminiAPI('gemini-2.5-flash', [
-          { inlineData: { data: base64Data, mimeType: file.type } },
-          { text: prompt }
-        ]);
-        
-        let text = typeof response === 'string' ? response : (response?.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || "{}");
-        text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-        
-        try {
-          const data = JSON.parse(text);
-          
-          setFormData(prev => ({
-            ...prev,
-            firstName: data.firstName || prev.firstName,
-            lastName: data.lastName || prev.lastName,
-            company: data.company || prev.company,
-            email: data.email || prev.email,
-            phone: data.phone || prev.phone
-          }));
-          setSuccessMsg(t('scan_success'));
-        } catch (jsonErr) {
-          setError(t('scan_error'));
-        }
-      };
-      reader.readAsDataURL(file);
+        setFormData(prev => ({
+          ...prev,
+          firstName: data.firstName || prev.firstName,
+          lastName: data.lastName || prev.lastName,
+          company: data.company || prev.company,
+          email: data.email || prev.email,
+          phone: data.phone || prev.phone
+        }));
+        setSuccessMsg(t('scan_success'));
+      } catch (jsonErr) {
+        setError(t('scan_error'));
+      }
     } catch (error) {
       setError(t('scan_error'));
     } finally {

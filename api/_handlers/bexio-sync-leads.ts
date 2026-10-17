@@ -22,12 +22,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const { leads = [], apiToken: bodyToken, companyId: bodyCompanyId } = req.body || {};
 
+    const userCompanyId = (authUser as any).companyId;
+    const isSuperAdmin = Boolean((authUser as any).isSuperAdmin || (authUser as any).role === 'super_admin');
+    const roleLower = String((authUser as any).role || '').toLowerCase().trim();
+    const EXTERNAL_ROLES = ['guest', 'client', 'external', 'partner', 'subcontractor', 'field guest', 'external planner', 'bauherr', 'handwerker'];
+    if (!isSuperAdmin && EXTERNAL_ROLES.includes(roleLower)) {
+      return res.status(403).json({ success: false, syncedCount: 0, errors: ['Forbidden: Externe Rollen haben keinen Zugriff auf den Bexio-Sync'] });
+    }
+
+    if (bodyCompanyId && !isSuperAdmin && userCompanyId && String(userCompanyId) !== String(bodyCompanyId)) {
+      return res.status(403).json({ success: false, syncedCount: 0, errors: ['Forbidden: Mandanten-Zugriff verweigert'] });
+    }
+
     let resolvedToken = bodyToken;
     const resolvedCompanyId =
-      bodyCompanyId ||
-      (authUser as any).companyId ||
+      (isSuperAdmin ? bodyCompanyId : (userCompanyId || bodyCompanyId)) ||
       (Array.isArray(leads) && (leads[0]?.company_id || leads[0]?.companyId)) ||
       null;
+
+    if (resolvedCompanyId && !isSuperAdmin && userCompanyId && String(resolvedCompanyId) !== String(userCompanyId)) {
+      return res.status(403).json({ success: false, syncedCount: 0, errors: ['Forbidden: Mandanten-Zugriff verweigert'] });
+    }
 
     if (!resolvedToken && resolvedCompanyId) {
       try {
@@ -35,6 +50,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .from('documents')
           .select('url, file_url')
           .eq('category', 'system_config')
+          .eq('company_id', resolvedCompanyId)
           .eq('name', `bexio_config_${resolvedCompanyId}`)
           .order('uploaded_at', { ascending: false })
           .limit(1);

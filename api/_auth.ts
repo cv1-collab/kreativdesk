@@ -72,7 +72,7 @@ export async function verifyAuth(req: any, _res?: any) {
           .from('documents')
           .select('company_id, url, file_url')
           .eq('category', 'system_config')
-          .like('name', 'kreativdesk_api_keys_%')
+          .or('name.eq.kreativdesk_api_keys,name.like.kreativdesk_api_keys_%')
           .limit(50);
 
         for (const doc of (fallbackDocs || [])) {
@@ -178,12 +178,15 @@ export async function verifySubscriptionAuth(req: any, res?: any) {
   }
 
   const profile = user.profile;
-  const hasActiveSub =
-    profile?.has_active_subscription === true ||
-    (profile?.has_active_subscription !== false && (!profile?.trial_ends_at || new Date(profile.trial_ends_at) > new Date()));
+  const planStr = String(profile?.plan || '').toLowerCase().trim();
+  const isTrialPlan = !planStr || planStr.includes('trial') || planStr === 'free';
   const hasValidTrial = Boolean(profile?.trial_ends_at && new Date(profile.trial_ends_at) > new Date());
+  const hasActivePaidSub = !isTrialPlan && profile?.has_active_subscription === true;
+  const hasActiveTrialOrLegacy =
+    profile?.has_active_subscription !== false &&
+    (!profile?.trial_ends_at || hasValidTrial);
 
-  if (hasActiveSub || hasValidTrial) {
+  if (hasActivePaidSub || hasValidTrial || hasActiveTrialOrLegacy) {
     return user;
   }
 

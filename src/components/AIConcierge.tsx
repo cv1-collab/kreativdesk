@@ -117,7 +117,15 @@ export default function AIConcierge() {
           const { data: defects } = await defQuery;
           const defs = defects || [];
 
-          const totalSpent = txs.filter((t: any) => t.amount < 0).reduce((sum: number, t: any) => sum + Math.abs(t.amount), 0);
+          const totalSpent = txs
+            .filter((t: any) => {
+              const cat = String(t.category || '');
+              const tp = String(t.type || '');
+              if (cat === 'Offerte' || cat === 'Quote' || tp === 'quote') return false;
+              if (cat === 'Debitorenrechnung' || cat === 'Outgoing Invoice' || tp === 'income' || tp === 'revenue' || tp === 'invoice') return false;
+              return tp === 'expense' || tp === 'operating_cost' || tp === 'external_cost' || tp === 'ext_cost' || Number(t.amount) < 0;
+            })
+            .reduce((sum: number, t: any) => sum + Math.abs(Number(t.amount) || 0), 0);
           const criticalDefects = defs.filter((d: any) => (d.severity === 'Critical' || d.priority === 'Critical')).length;
           
           setProjectContext({ transactions: txs, defects: defs, totalSpent, criticalDefects });

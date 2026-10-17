@@ -42,6 +42,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(401).json({ error: 'Unauthorized: Authentication required to send emails' });
     }
 
+    const roleStr = String((authUser as any).role || (authUser as any).profile?.role || '').toLowerCase().trim();
+    const isExternalGuest = [
+      'guest', 'extern', 'partner', 'contractor', 'subcontractor',
+      'subunternehmer', 'handwerker', 'kunde', 'auftraggeber', 'bauherr', 'client', 'external'
+    ].some(k => roleStr.includes(k));
+    if (isExternalGuest) {
+      return res.status(403).json({ error: 'Forbidden: External guest accounts cannot dispatch arbitrary emails' });
+    }
+
     const clientIp = (
       (req.headers['x-vercel-forwarded-for'] as string) ||
       (req.headers['x-real-ip'] as string) ||

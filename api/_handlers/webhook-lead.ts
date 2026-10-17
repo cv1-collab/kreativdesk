@@ -49,42 +49,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const user = await verifyAuth(req);
 
     let verifiedProp: any = null;
-    if (!user) {
-      const isAllowedUnauthAction =
-        event === 'PROPOSAL_ACCEPTED' ||
-        event === 'PROPOSAL_QUESTION' ||
-        event === 'PROPOSAL_INQUIRY' ||
-        action === 'accept' ||
-        action === 'question';
-      if (!isAllowedUnauthAction || !proposalId || typeof proposalId !== 'string') {
-        return res.status(401).json({ error: 'Unauthorized: Valid proposal reference required' });
-      }
+    if (proposalId && typeof proposalId === 'string') {
       const { data: prop } = await supabaseAdmin
         .from('smart_proposals')
         .select('id, company_id, title, share_token')
         .eq('id', proposalId)
         .maybeSingle();
-      if (!prop) {
+      if (prop) {
+        const hasValidShareToken = Boolean(prop.share_token && shareToken && prop.share_token === shareToken);
+        const isAuthorizedUser = Boolean(user && (user.isSuperAdmin || (user.companyId && String(user.companyId) === String(prop.company_id))));
+        if (hasValidShareToken || isAuthorizedUser) {
+          verifiedProp = prop;
+        } else if (!user) {
+          return res.status(403).json({ error: 'Invalid or missing share token for proposal.' });
+        } else {
+          return res.status(403).json({ error: 'Forbidden: Cross-tenant proposal reference' });
+        }
+      } else if (!user) {
         return res.status(403).json({ error: 'Forbidden: Invalid proposal reference' });
       }
-      if (!prop.share_token || !shareToken || prop.share_token !== shareToken) {
-        return res.status(403).json({ error: 'Invalid or missing share token for proposal.' });
-      }
-      verifiedProp = prop;
+    } else if (!user) {
+      return res.status(401).json({ error: 'Unauthorized: Valid proposal reference required' });
     }
 
     // Only allow client-supplied webhookUrl override when caller is an authenticated user
     let targetUrl: string | undefined = user && webhookUrl ? webhookUrl : undefined;
 
     if (!targetUrl && (companyId || proposalId || verifiedProp)) {
-      let resolvedCompanyId = verifiedProp ? verifiedProp.company_id : companyId;
-      if (!resolvedCompanyId && proposalId) {
-        const { data: prop } = await supabaseAdmin
-          .from('smart_proposals')
-          .select('company_id')
-          .eq('id', proposalId)
-          .maybeSingle();
-        resolvedCompanyId = (prop as any)?.company_id;
+      const resolvedCompanyId = verifiedProp ? verifiedProp.company_id : companyId;
+      if (
+        resolvedCompanyId &&
+        user &&
+        !verifiedProp &&
+        !user.isSuperAdmin &&
+        String(user.companyId || '') !== String(resolvedCompanyId)
+      ) {
+        return res.status(403).json({ error: 'Forbidden: Cross-tenant webhook dispatch not allowed' });
       }
       if (resolvedCompanyId) {
         const { data: whDoc } = await supabaseAdmin
@@ -106,8 +106,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           } catch (_) {}
         }
 
-        // Ensure in-app notification & audit log are persisted via supabaseAdmin when client is unauthenticated and verifiedProp matched
-        if (!user && verifiedProp) {
+        // Ensure in-app notification & audit log are persisted via supabaseAdmin whenever verifiedProp matched
+        if (verifiedProp) {
           const propTitle = verifiedProp.title || rest.proposalTitle || 'Projekt';
           if ((event === 'PROPOSAL_ACCEPTED' || action === 'accept') && (acceptanceData?.acceptedByName || rest.acceptedByName)) {
             try {

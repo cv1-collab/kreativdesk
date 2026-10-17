@@ -192,6 +192,18 @@ const pdfStyles = StyleSheet.create({
   footerText: { fontSize: 8, color: '#9ca3af' },
 });
 
+const isExpenseTx = (tx: any) =>
+  tx.type === 'expense' ||
+  tx.type === 'operating_cost' ||
+  (typeof tx.category === 'string' && (
+    tx.category.includes('Kreditor') ||
+    tx.category.includes('Honorar') ||
+    tx.category.includes('Gebühr') ||
+    tx.category === 'Spesen' ||
+    tx.category === 'Material'
+  )) ||
+  (tx.category !== 'Debitorenrechnung' && tx.category !== 'Outgoing Invoice' && tx.category !== 'Offerte' && tx.category !== 'Quote' && tx.type !== 'income' && Number(tx.amount) < 0);
+
 const FinancePDFDocument = ({ settings, activeTab, t, projectHeader, budgetGroups, approvedVersions, allTimeHours, allTimeHoursCost, displayLedger, getBudgetDetails, overviewTotalBudget, totalActualCostsIncludingHoursAllTime, totalBudget, vatRate, formatCHF, calculateGroupTotal, getAllTimeActualCostForGroup, getAllTimeActualCostForItem, currency = 'CHF' }: any) => {
   const title = activeTab === 'budget' ? t('budget_plan') : activeTab === 'control' ? t('payment_control') : t('cashflow');
   return (
@@ -343,9 +355,9 @@ const FinancePDFDocument = ({ settings, activeTab, t, projectHeader, budgetGroup
               <Text style={[pdfStyles.col4, pdfStyles.textBold, { textAlign: 'right' }]}>Saldo</Text>
             </View>
             {displayLedger.map((tx: any) => {
-              const isQuote = tx.category === 'Offerte' || tx.category === 'Quote';
+              const isQuote = tx.category === 'Offerte' || tx.category === 'Quote' || (tx as any).type === 'quote';
               const isTime = !!tx.isTimeEntry;
-              const isRevenue = tx.category === 'Debitorenrechnung' || tx.category === 'Outgoing Invoice' || (!isQuote && !isTime && tx.amount > 0);
+              const isRevenue = tx.category === 'Debitorenrechnung' || tx.category === 'Outgoing Invoice' || (!isQuote && !isTime && !isExpenseTx(tx) && tx.amount > 0);
               const displayAmount = tx.amount === 0 ? 0 : Math.abs(tx.amount);
               const bdDetails = getBudgetDetails(tx.budgetPosId);
               const isBalanceNegative = 0 > tx.balance;
@@ -729,20 +741,27 @@ export default function Finance() {
   const processImageWithAIRef = useRef<any>(null);
   const addToastRef = useRef(addToast);
   addToastRef.current = addToast;
+  const processedReceiptUrlsRef = useRef<Set<string>>(new Set());
 
   // Realtime & Polling listener for Smartphone Live Scan (QR Code)
   useEffect(() => {
     if (!opCostSessionId || isDemoMode || currentProjectId === 'demo-1' || currentProjectId?.startsWith('demo-')) return;
     let isMounted = true;
 
+    const handleIncomingReceipt = async (docUrl: string, mimeType = 'image/jpeg') => {
+      if (!isMounted || !docUrl || processedReceiptUrlsRef.current.has(docUrl)) return;
+      processedReceiptUrlsRef.current.add(docUrl);
+      setIncomingReceipts(prev => prev.includes(docUrl) ? prev : [...prev, docUrl]);
+      addToastRef.current('Beleg vom Smartphone empfangen & analysiert!', 'success');
+      await processImageWithAIRef.current?.(null, docUrl, mimeType);
+    };
+
     const channel = supabase.channel(`mobile_upload_${opCostSessionId}`)
       .on('broadcast', { event: 'receipt_uploaded' }, async (payload: any) => {
         if (!isMounted) return;
         const data = payload?.payload;
         if (data?.url) {
-          setIncomingReceipts(prev => prev.includes(data.url) ? prev : [...prev, data.url]);
-          await processImageWithAIRef.current?.(null, data.url, data.type || 'image/jpeg');
-          addToastRef.current('Beleg vom Smartphone empfangen & analysiert!', 'success');
+          await handleIncomingReceipt(data.url, data.type || 'image/jpeg');
         }
       })
       .subscribe();
@@ -761,13 +780,11 @@ export default function Finance() {
         if (docs && docs.length > 0) {
           const doc = docs[0];
           const docUrl = doc.url || doc.file_url;
+          if (doc.id) {
+            try { await supabase.from('documents').delete().eq('id', doc.id); } catch (_) {}
+          }
           if (docUrl) {
-            setIncomingReceipts(prev => {
-              if (prev.includes(docUrl)) return prev;
-              processImageWithAIRef.current?.(null, docUrl, doc.type || 'image/jpeg');
-              addToastRef.current('Beleg vom Smartphone empfangen & analysiert!', 'success');
-              return [...prev, docUrl];
-            });
+            await handleIncomingReceipt(docUrl, doc.type || 'image/jpeg');
           }
         }
       } catch (err) { }
@@ -856,8 +873,12 @@ export default function Finance() {
       if (txs && txs.length > 0) {
         setTransactions(txs.map(t => {
           const budgetMatch = typeof t.description === 'string' ? t.description.match(/\[Budget:\s*([^\]]+)\]/) : null;
+          const firstUrl = (Array.isArray((t as any).receipt_urls) && (t as any).receipt_urls.length > 0)
+            ? (t as any).receipt_urls[0]
+            : ((t as any).url || '');
           return {
             ...t,
+            url: firstUrl,
             projectId: t.project_id,
             companyId: t.company_id,
             ownerId: t.owner_id,
@@ -1222,13 +1243,15 @@ export default function Finance() {
   let runningBalance = 0;
   const allLedgerTransactions = combinedLedgerAsc.map(tx => {
     const isQuote = tx.category === 'Offerte' || tx.category === 'Quote' || (tx as any).type === 'quote';
+    let normalizedAmount = Number(tx.amount) || 0;
     if (!isQuote) {
       const signedAmt = (tx.isTimeEntry || isExpenseTx(tx))
         ? -Math.abs(Number(tx.amount) || 0)
         : Math.abs(Number(tx.amount) || 0);
       runningBalance += signedAmt;
+      normalizedAmount = signedAmt;
     }
-    return { ...tx, balance: runningBalance };
+    return { ...tx, amount: normalizedAmount, balance: runningBalance };
   });
 
   const displayLedger = [...allLedgerTransactions].reverse().filter(tx => {
@@ -1686,18 +1709,33 @@ export default function Finance() {
         name: documentName, size: fileData.size || '0 MB', type: 'application/pdf', url: downloadUrl, file_url: downloadUrl, folder_id: targetFolderId, is_folder: false, owner_id: currentUser.uid, company_id: safeCompanyId, project_id: cleanProjectId, category: cleanProjectId ? 'projects' : 'company', uploaded_by: currentUser.uid, created_at: new Date().toISOString()
       });
       const displayCategory = category === 'Debitorenrechnung' ? t('invoice') : t('quote');
-      await supabase.from('transactions').insert({
+      const txDate = fileData.date || new Date().toISOString().split('T')[0];
+      const txDesc = `${displayCategory}: ${documentName}`;
+      const txStatus = defaultStatus || 'Offen';
+      const { data: insertedDocTx } = await supabase.from('transactions').insert({
         type: category === 'Debitorenrechnung' ? 'income' : 'quote',
-        date: fileData.date || new Date().toISOString().split('T')[0],
-        description: `${displayCategory}: ${documentName}`,
+        date: txDate,
+        description: txDesc,
         category: category || 'Dokument',
         amount: documentTotal || 0,
-        status: defaultStatus || 'Offen',
+        status: txStatus,
         owner_id: currentUser.uid,
         company_id: safeCompanyId,
         project_id: cleanProjectId,
         receipt_urls: downloadUrl ? [downloadUrl] : []
-      });
+      }).select().maybeSingle();
+      const newDocTx: Transaction = {
+        id: insertedDocTx?.id || `tx-${Date.now()}`,
+        date: txDate,
+        description: txDesc,
+        category: category || 'Dokument',
+        amount: Number(documentTotal) || 0,
+        status: txStatus,
+        url: downloadUrl || '',
+        projectId: cleanProjectId || 'global',
+        ownerId: currentUser.uid
+      };
+      setTransactions(prev => [newDocTx, ...prev]);
       await notifyNewDocument(safeCompanyId, documentName, category, cleanProjectId || undefined);
       queryClient.invalidateQueries({ queryKey: [FINANCIAL_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
@@ -1766,8 +1804,8 @@ export default function Finance() {
       const fullDescription = `${descPrefix} ${incomingData.description || (isExternal ? 'Kreditorenrechnung' : 'Spesen')}${budgetSuffix}`.trim();
       const statusValue = incomingData.status || (isExternal ? 'Offen zur Prüfung' : 'Offen (Rückerstattung ausstehend)');
 
-      await supabase.from('transactions').insert({
-        type: 'expense',
+      const { data: insertedTx } = await supabase.from('transactions').insert({
+        type: isExternal ? 'operating_cost' : 'expense',
         date: incomingData.date || new Date().toISOString().split('T')[0],
         description: fullDescription,
         category: transactionCategory,
@@ -1777,17 +1815,37 @@ export default function Finance() {
         owner_id: currentUser.uid,
         company_id: safeCompanyId,
         receipt_urls: uploadedUrls
+      }).select().maybeSingle();
+
+      const targetFolderId = await ensureFolderLocal('Finanzen', 'projects');
+      await supabase.from('documents').insert({
+        name: fileName,
+        url: finalPdfUrl,
+        file_url: finalPdfUrl,
+        type: 'application/pdf',
+        size: `${Math.round(blob.size / 1024)} KB`,
+        is_folder: false,
+        owner_id: currentUser.uid,
+        uploaded_by: currentUser.uid,
+        company_id: safeCompanyId,
+        project_id: cleanProjectId,
+        folder_id: targetFolderId,
+        category: cleanProjectId ? 'projects' : 'company',
+        created_at: new Date().toISOString(),
+        uploaded_at: new Date().toISOString()
       });
 
       queryClient.invalidateQueries({ queryKey: [FINANCIAL_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
 
       const newTx: Transaction = {
-        id: `tx-${Date.now()}`,
+        id: insertedTx?.id || `tx-${Date.now()}`,
         date: incomingData.date || new Date().toISOString().split('T')[0],
         description: fullDescription,
         category: transactionCategory,
         amount: -Math.abs(Number(incomingData.amount) || 0),
         status: statusValue,
+        url: finalPdfUrl || '',
         budgetPosId: incomingData.budgetPosId || '',
         projectId: cleanProjectId || 'global',
         ownerId: currentUser.uid
@@ -2316,9 +2374,9 @@ export default function Finance() {
                       <tr><td colSpan={6} className="px-4 py-8 text-center text-text-muted italic">{t('no_bookings_period')}</td></tr>
                     )}
                     {displayLedger.map((tx) => {
-                      const isQuote = tx.category === 'Offerte' || tx.category === 'Quote';
+                      const isQuote = tx.category === 'Offerte' || tx.category === 'Quote' || (tx as any).type === 'quote';
                       const isTime = !!tx.isTimeEntry;
-                      const isRevenue = tx.category === 'Debitorenrechnung' || tx.category === 'Outgoing Invoice' || (!isQuote && !isTime && tx.amount > 0);
+                      const isRevenue = tx.category === 'Debitorenrechnung' || tx.category === 'Outgoing Invoice' || (!isQuote && !isTime && !isExpenseTx(tx) && tx.amount > 0);
                       const displayAmount = tx.amount === 0 ? 0 : Math.abs(tx.amount);
                       const bdDetails = getBudgetDetails(tx.budgetPosId);
                       const isBalanceNegative = 0 > tx.balance;

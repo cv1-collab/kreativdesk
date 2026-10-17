@@ -174,11 +174,15 @@ export default function Settings() {
           if (raw.zip_city || raw.zipCity) setZipCity(raw.zip_city || raw.zipCity);
         }
         if (currentUser.email || currentUser.uid) {
-          const { data: cuData } = await supabase
+          let cuQuery = supabase
             .from('company_users')
             .select('phone, street, zip_city')
-            .or(`user_id.eq.${currentUser.uid},email.eq.${currentUser.email}`)
-            .maybeSingle();
+            .or(`user_id.eq.${currentUser.uid},email.eq.${currentUser.email}`);
+          if (currentUser.companyId) {
+            cuQuery = cuQuery.eq('company_id', currentUser.companyId);
+          }
+          const { data: cuRows } = await cuQuery.limit(1);
+          const cuData = cuRows?.[0];
           if (cuData) {
             if (cuData.phone) setPhone(cuData.phone);
             if (cuData.street) setStreet(cuData.street);

@@ -68,9 +68,10 @@ export function useProjectTimeEntries() {
             date: t.date || new Date().toISOString().split('T')[0],
             hours: Number(t.hours || 0),
             description: t.description || 'Zeiterfassung',
-            hourlyRate: Number(t.hourlyRate || t.hourly_rate || 120),
+            hourlyRate: Number(t.hourlyRate ?? t.hourly_rate ?? 120),
             isBillable: t.isBillable !== undefined ? t.isBillable : (t.is_billable !== undefined ? t.is_billable : true),
             budgetPosId: t.budgetPosId || t.budget_pos_id || '',
+            internalData: t.internalData || t.internal_data || null,
             externalData: t.externalData || t.external_data || null,
             ownerId: t.ownerId || t.owner_id || currentUserId,
             companyId: t.companyId || t.company_id || safeCompanyId

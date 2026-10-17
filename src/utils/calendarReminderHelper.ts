@@ -26,13 +26,13 @@ export const checkUpcomingEventReminders = async (companyId: string) => {
       const desc = evt.description || '';
       const timeMatch = desc.match(/Uhrzeit:\s*(\d{1,2}:\d{2})/i) || desc.match(/Time:\s*(\d{1,2}:\d{2})/i);
       let eventTimeStr = '10:00';
-      if (startIso.includes('T')) {
+      if (timeMatch) {
+        eventTimeStr = timeMatch[1].padStart(5, '0');
+      } else if (startIso.includes('T')) {
         eventTimeStr = startIso.split('T')[1].substring(0, 5);
-      } else if (timeMatch) {
-        eventTimeStr = timeMatch[1];
       }
 
-      const eventTimeMs = new Date(startIso.includes('T') ? startIso : `${eventDateStr}T${eventTimeStr}`).getTime();
+      const eventTimeMs = new Date(`${eventDateStr}T${eventTimeStr}`).getTime();
       if (isNaN(eventTimeMs)) continue;
 
       const isCall = desc.toLowerCase().includes('call') || desc.toLowerCase().includes('video');

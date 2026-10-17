@@ -676,7 +676,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
     } else {
       folderQuery = folderQuery.is('project_id', null);
     }
-    const { data: existing } = await folderQuery.maybeSingle();
+    const { data: existing } = await folderQuery.limit(1).maybeSingle();
     if (existing) return existing.id;
     const { data: newF } = await supabase.from('documents').insert({ 
       name: folderName, is_folder: true, category: docCategory, 

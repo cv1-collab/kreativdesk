@@ -408,8 +408,10 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
     if (!uploadSessionId || !showQrScanner || isDemo) return;
     let isMounted = true;
 
+    let handledPhotoUrl = '';
     const handleIncomingPhoto = (photoUrl: string) => {
-      if (!isMounted || !photoUrl) return;
+      if (!isMounted || !photoUrl || handledPhotoUrl === photoUrl) return;
+      handledPhotoUrl = photoUrl;
       setCurrentDefect(prev => ({ ...prev, imageUrl: photoUrl }));
       setShowQrScanner(false);
       addToast('Foto vom Smartphone empfangen!', 'success');
@@ -429,14 +431,18 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
       try {
         const { data: docs } = await supabase
           .from('documents')
-          .select('url, file_url')
+          .select('id, url, file_url')
           .eq('category', 'temp_receipt')
           .eq('folder_id', uploadSessionId)
           .order('created_at', { ascending: false })
           .limit(1);
 
         if (docs && docs.length > 0) {
-          const docUrl = docs[0].url || docs[0].file_url;
+          const doc = docs[0];
+          const docUrl = doc.url || doc.file_url;
+          if (doc.id) {
+            try { await supabase.from('documents').delete().eq('id', doc.id); } catch (_) {}
+          }
           if (docUrl) {
             handleIncomingPhoto(docUrl);
           }

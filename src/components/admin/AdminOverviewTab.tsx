@@ -64,10 +64,10 @@ export default function AdminOverviewTab({ stats }: { stats?: any }) {
           setProjectsCount(nextProjectsCount);
           let active = 0; let planning = 0; let completed = 0;
           projs.forEach(p => {
-            const s = p.status;
-            if (s === 'active' || s === 'Aktiv') active++;
-            else if (s === 'planning' || s === 'Planung') planning++;
-            else if (s === 'completed' || s === 'Abgeschlossen') completed++;
+            const s = (p.status || '').toLowerCase();
+            if (s === 'active' || s === 'aktiv') active++;
+            else if (s === 'planning' || s === 'planung') planning++;
+            else if (s === 'completed' || s === 'abgeschlossen' || s === 'archived' || s === 'archiviert') completed++;
             else active++;
           });
           nextProjectStats = [

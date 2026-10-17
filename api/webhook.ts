@@ -185,10 +185,19 @@ export default async function handler(req: any, res: any) {
         }).eq('id', profile.id);
 
         if (profile.company_id) {
-          await supabaseAdmin.from('companies').update({
-            plan: 'Free Trial',
-            max_seats: 1
-          }).eq('id', profile.company_id);
+          const { data: comp } = await supabaseAdmin
+            .from('companies')
+            .select('plan')
+            .eq('id', profile.company_id)
+            .maybeSingle();
+          const compPlanLower = String(comp?.plan || '').toLowerCase();
+          const isManualB2BPlan = ['studio os', 'agency os', 'enterprise os', 'enterprise'].some(p => compPlanLower.includes(p));
+          if (!isManualB2BPlan) {
+            await supabaseAdmin.from('companies').update({
+              plan: 'Free Trial',
+              max_seats: 1
+            }).eq('id', profile.company_id);
+          }
         }
 
         try {

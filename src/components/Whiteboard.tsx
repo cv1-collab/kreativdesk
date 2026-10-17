@@ -1307,11 +1307,12 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
               image_url: freistellenTargetItem.src
             }
           });
-          if (res?.image?.url) {
+          const bgRemovedUrl = res?.data?.image?.url || res?.image?.url;
+          if (bgRemovedUrl) {
             commitSnapshot();
             updateItemById(freistellenTargetItem.id, old => ({
               ...old,
-              src: res.image.url
+              src: bgRemovedUrl
             }));
             addToast('Hintergrund per KI erfolgreich freigestellt!', 'success');
             setShowFreistellenModal(false);

@@ -66,6 +66,9 @@ export async function sendAcceptanceConfirmationEmail(payload: EmailDispatchPayl
   const formattedDownPayment = payload.downPaymentCHF.toLocaleString('de-CH', { minimumFractionDigits: 2 });
   const formattedTotal = payload.finalPriceCHF.toLocaleString('de-CH', { minimumFractionDigits: 2 });
 
+  const esc = (s: any) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const safeShareUrl = /^https?:\/\//i.test(String(payload.shareUrl || '')) ? esc(payload.shareUrl) : '#';
+
   const htmlContent = `
 <!DOCTYPE html>
 <html>
@@ -85,13 +88,13 @@ export async function sendAcceptanceConfirmationEmail(payload: EmailDispatchPayl
 <body>
   <div class="container">
     <div class="header">
-      <h1 style="margin:0; font-size:24px; font-weight:900;">${company.companyName}</h1>
+      <h1 style="margin:0; font-size:24px; font-weight:900;">${esc(company.companyName)}</h1>
       <p style="margin:6px 0 0 0; opacity:0.9; font-size:14px;">Auftragsbestätigung & Projektfreigabe</p>
     </div>
     <div class="content">
       <span class="badge">✓ SIA 118 RECHTSVERBINDLICH UNTERZEICHNET</span>
-      <h2 style="margin:8px 0 16px 0; font-size:20px;">Guten Tag ${payload.recipientName},</h2>
-      <p>vielen Dank für die Bestätigung und das Vertrauen in unser Team. Ihre Annahme zum Projekt <strong>«${payload.proposalTitle}»</strong> wurde erfolgreich erfasst und im Schweizer System verbucht.</p>
+      <h2 style="margin:8px 0 16px 0; font-size:20px;">Guten Tag ${esc(payload.recipientName)},</h2>
+      <p>vielen Dank für die Bestätigung und das Vertrauen in unser Team. Ihre Annahme zum Projekt <strong>«${esc(payload.proposalTitle)}»</strong> wurde erfolgreich erfasst und im Schweizer System verbucht.</p>
       
       <div class="price-box">
         <table style="width:100%; border-collapse:collapse; font-size:14px;">
@@ -105,19 +108,19 @@ export async function sendAcceptanceConfirmationEmail(payload: EmailDispatchPayl
           </tr>
           <tr>
             <td style="padding:6px 0; color:#94a3b8;">QR-IBAN:</td>
-            <td style="padding:6px 0; text-align:right; font-family:monospace;">${company.qrIban}</td>
+            <td style="padding:6px 0; text-align:right; font-family:monospace;">${esc(company.qrIban)}</td>
           </tr>
         </table>
       </div>
 
       <p style="font-size:13px; color:#94a3b8;">Sie können die digital signierte Offerte sowie den Schweizer QR-Zahlteil jederzeit über den nachfolgenden gesicherten Projekt-Link abrufen:</p>
       <center>
-        <a href="${payload.shareUrl}" class="btn">Offerte & QR-Rechnung online aufrufen →</a>
+        <a href="${safeShareUrl}" class="btn">Offerte & QR-Rechnung online aufrufen →</a>
       </center>
     </div>
     <div class="footer">
-      ${company.companyName} • ${company.street} ${company.buildingNumber}, ${company.postalCode} ${company.city}<br>
-      UID: ${company.uid} • E-Mail: ${company.contactEmail} • Tel: ${company.contactPhone}
+      ${esc(company.companyName)} • ${esc(company.street)} ${esc(company.buildingNumber)}, ${esc(company.postalCode)} ${esc(company.city)}<br>
+      UID: ${esc(company.uid)} • E-Mail: ${esc(company.contactEmail)} • Tel: ${esc(company.contactPhone)}
     </div>
   </div>
 </body>
