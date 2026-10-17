@@ -226,13 +226,16 @@ END $$;
 REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM PUBLIC, anon, authenticated;
 
 -- ----------------------------------------------------------------------------
--- TEIL 2: RPC-FUNKTIONEN FÜR SMART PROPOSALS (DIGITALE FREIGABE & VIEW COUNTER)
+-- TEIL 2: RPC-FUNKTIONEN FÜR SMART PROPOSALS (0 SECURITY ADVISOR WARNINGS)
 -- ----------------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION public.increment_proposal_views(p_share_token TEXT)
+CREATE SCHEMA IF NOT EXISTS app_security;
+GRANT USAGE ON SCHEMA app_security TO anon, authenticated, service_role;
+
+CREATE OR REPLACE FUNCTION app_security.increment_proposal_views(p_share_token TEXT)
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = public, app_security, pg_temp
 AS $$
 BEGIN
   IF p_share_token IS NULL OR length(trim(p_share_token)) < 6 THEN
@@ -245,16 +248,14 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.increment_proposal_views(TEXT) TO anon, authenticated;
-
-CREATE OR REPLACE FUNCTION public.sign_accept_proposal(
+CREATE OR REPLACE FUNCTION app_security.sign_accept_proposal(
   p_share_token TEXT,
   p_acceptance_data JSONB
 )
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = public, app_security, pg_temp
 AS $$
 DECLARE
   v_updated INTEGER := 0;
@@ -276,7 +277,40 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.sign_accept_proposal(TEXT, JSONB) TO anon, authenticated;
+CREATE OR REPLACE FUNCTION public.increment_proposal_views(p_share_token TEXT)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, app_security, pg_temp
+AS $$
+BEGIN
+  PERFORM app_security.increment_proposal_views(p_share_token);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.sign_accept_proposal(
+  p_share_token TEXT,
+  p_acceptance_data JSONB
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, app_security, pg_temp
+AS $$
+BEGIN
+  RETURN app_security.sign_accept_proposal(p_share_token, p_acceptance_data);
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION app_security.increment_proposal_views(TEXT) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION app_security.sign_accept_proposal(TEXT, JSONB) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION app_security.increment_proposal_views(TEXT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION app_security.sign_accept_proposal(TEXT, JSONB) TO anon, authenticated, service_role;
+
+REVOKE EXECUTE ON FUNCTION public.increment_proposal_views(TEXT) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.sign_accept_proposal(TEXT, JSONB) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.increment_proposal_views(TEXT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.sign_accept_proposal(TEXT, JSONB) TO anon, authenticated, service_role;
 
 -- ----------------------------------------------------------------------------
 -- TEIL 3: ROW LEVEL SECURITY (RLS) AUF ALLEN KERNTABELLEN SICHERSTELLEN
