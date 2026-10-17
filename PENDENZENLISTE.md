@@ -1,11 +1,37 @@
 # Kreativ Desk & interacTV — Status, Erfolge & Pendenzen
 
-**Datum:** 11. Oktober 2026  
-**Status:** 🟢 Alle Prüfungen grün (Vitest 131/131 grün in 18 Test-Dateien, Playwright E2E 30/30 grün, TypeScript 0 Fehler `tsc --noEmit`, ESLint 0 Fehler / 0 Warnungen, Production Build 100% fehlerfrei, 100% Schweizer Rechtschreibung), alle Module und Tools synchronisiert und live geschaltet (`https://www.kreativdesk.ch`).
+**Datum:** 17. Oktober 2026  
+**Status:** 🟢 Alle Prüfungen grün (Vitest 144/144 grün in 21 Test-Dateien, TypeScript 0 Fehler `tsc --noEmit`, Supabase Security Advisor 0 Warnungen, Production Build 100% fehlerfrei, 100% Schweizer Rechtschreibung), alle Module und Tools synchronisiert und live geschaltet (`https://www.kreativdesk.ch`).
 
 ---
 
-## 🏆 Erfolgsliste von heute (11. Oktober 2026)
+## 🏆 Erfolgsliste von heute (17. Oktober 2026)
+
+### 0.000000000000000014 Go-Live 360°-Systemhärtung, Academy & Modul-Handbuch, Eigenes PDF-Branding, CAD-Skalierung & Rahmenlose Flächen (17. Oktober 2026)
+* **1. Supabase Datenbank- & Security-Advisor-Härtung auf 0 Warnungen ([go_live_security_and_rls_audit.sql](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/scripts/go_live_security_and_rls_audit.sql) & [fix_4_security_advisor_warnings.sql](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/scripts/fix_4_security_advisor_warnings.sql)):**
+  * Alle 17 ursprünglichen sowie die letzten 4 `SECURITY DEFINER`-Warnungen im Supabase Security Advisor durch Kapselung im geschützten Schema `app_security` und `SECURITY INVOKER`-Wrapper in `public` restlos auf **0 Warnungen** bereinigt (`increment_proposal_views`, `sign_accept_proposal`, `handle_new_user` etc.).
+  * Row Level Security (`RLS`) auf allen **32 Kerntabellen** aktiv und verifiziert.
+* **2. Ganzheitlicher 360°-Code-Audit über 76 Systemdateien (Auth, Multi-Tenant, Finanzen, Studios & API):**
+  * **Auth & Multi-Company-Stabilität ([AuthContext.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/contexts/AuthContext.tsx), [TrialGuard.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/TrialGuard.tsx), [MaintenanceGuard.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/MaintenanceGuard.tsx)):** `.limit(1)` statt absturzgefährdeter `.maybeSingle()`-Abfragen bei Mehrfach-Einladungen, saubere 14-Tage Pro-Trial-Synchronisation, Super-Admin-Bypass im Wartungsmodus und strikte Gast-/Handwerker-Isolation (`isExternal`).
+  * **Finanz-Cockpit & Ledger-Präzision ([Finance.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/Finance.tsx), [financialLedgerService.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/services/financialLedgerService.ts), [InvoiceStudio.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/InvoiceStudio.tsx)):** Strikte Trennung von Offerten (`quote`), Rechnungen (`invoice`), Fremdkosten (`external_cost`) und Spesen (`expense`); Einbezug gebuchter Zeiteinträge (`[ZEIT]`) in die BKP-Kostenkontrolle; funktionierendes Löschen von Zeiteinträgen direkt aus der Cashflow-Tabelle; Management-Summary-PDF für den Finanz-Übersichts-Tab; Bereinigung doppelter Währungspräfixe (`CHF €`).
+  * **Mängel, Whiteboard & Baustelle ([Defects.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/Defects.tsx), [Whiteboard.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/Whiteboard.tsx), [SiteMonitoring.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/SiteMonitoring.tsx), [BIMViewer.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/BIMViewer.tsx)):** Cache-Synchronisation beim Löschen des letzten Mangels behoben (kein Wiederauftauchen), Konva-Zoom-Skalierung im Whiteboard korrigiert, Undo (`Cmd+Z`) für Hintergrund-Renderings ergänzt, Safari/iOS-Sprachnotizen gehärtet und QR-Mobile-Uploads dedupliziert.
+  * **Backend-Sicherheit & Preprovisioning ([api/webhook.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/api/webhook.ts), [preprovision-company.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/api/_handlers/preprovision-company.ts), [AdminSupportTab.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/admin/AdminSupportTab.tsx)):** Manuelle B2B-Pläne (`Studio OS`, `Agency OS`, `Enterprise OS`) vor versehentlichem Stripe-Downgrade geschützt, 11 Standard-Bauakten-Ordner beim Preprovisioning angelegt und Super-Admin Support-Cockpit erweitert.
+* **3. Neue Kreativ Desk Academy & Interaktiver 4-Tab Modul-Handbuch-Drawer ([moduleKnowledgeBase.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/data/moduleKnowledgeBase.ts), [ModuleGuideButton.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/ModuleGuideButton.tsx), [HelpCenter.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/HelpCenter.tsx), [ProductTour.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/ProductTour.tsx)):**
+  * Umfassende Wissensdatenbank für alle **14 Hauptmodule** mit 4 Reitern: *Workflow (Schritt-für-Schritt)*, *Vernetzter Datenfluss («Was fliesst wohin?»)*, *Rollen & Rechte Matrix* sowie *Praxis-Tipps & Shortcuts*.
+  * **Guided Tour im Pitch Deck Studio & allen Modulen repariert:** Z-Index auf `1100000` erhöht (übertrifft alle Fullscreen-Portals), fehlende `.tour-pitch-*` Ziel-Selektoren ergänzt und automatische Ziel-Navigation beim Starten einer Tour aus dem Handbuch oder HelpCenter eingebaut.
+* **4. Durchgängiges Eigenes Firmen-Branding & Fehlerfreie PDF-Layouts ([UniversalPDFStudio.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/UniversalPDFStudio.tsx), [CADPlanPDFDocument.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/plan-editor/CADPlanPDFDocument.tsx), [DocumentStudioModal.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/DocumentStudioModal.tsx), [pitchDeckPdfExport.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/pitchdeck/pitchDeckPdfExport.ts), [smartProposalPdfExport.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/proposal/smartProposalPdfExport.ts)):**
+  * **SIA-Plankopf im CAD-Editor:** Hardcodiertes «KREATIV DESK» entfernt; eigenes Firmenlogo kann direkt im Plankopf-Inspektor hochgeladen, geändert oder ausgeblendet werden (mit automatischer Übernahme aus dem Firmenprofil).
+  * **SIA-Plankopf 4-Zeilen-Layout:** Korrekte 4-Zeilen-Struktur ohne Textüberlappungen im Canvas und im PDF-Export sowie präzise platzierte Massstabsleisten-Zahlen.
+  * **Universeller SVG/WebP-zu-PNG-Rasterizer:** Verhindert Abstürze von `@react-pdf/renderer` bei SVG-/WebP-Firmenlogos und SVG-Grundrissen.
+* **5. CAD-Plan-Editor: Adaptive Zoom-Skalierung & Flächen mit/ohne Rand + Weisse Abdeckmasken ([PlanEditorViewer.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/PlanEditorViewer.tsx), [CADPlanPDFDocument.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/plan-editor/CADPlanPDFDocument.tsx), [planEditorConfig.ts](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/plan-editor/planEditorConfig.ts)):**
+  * **Proportionale Massketten- & Raumstempel-Skalierung:** Beim Herauszoomen auf kleine Pläne schrumpfen Masszahlen, Pfeile, Hilfslinien und Raumstempel-Badges proportional mit (`Math.min(invScale, 0.85)`), sodass nichts mehr den Grundriss verdeckt.
+  * **Flächen mit Rand / ohne Linienumrandung & «Weisse Fläche (Abdecken)»:** Rechtecke, Kreise und Polygone können neu wahlweise **Mit Rand** oder **Ohne Rand (`strokeWidth = 0`, `lineStyle = 'none'`)** sowie per 1-Klick-Button als **100 % deckende weisse Abdeckmaske** über bestehende Planteile gelegt werden (identische Darstellung im Editor und im PDF-Export).
+* **6. Architektur-Analyse & Konzept für das «CAD Pro Add-on» (`Kreativ Desk 2D_Supabase`):**
+  * Vollständige Evaluation des Schwesterprojekts `/Users/carlo/Desktop/Kreativ Desk 2D_Supabase` und Definition von 3 modularen Integrationspaketen (Paket A: Präzisions-CAD & Architektur-Symbole, Paket B: Möbel-Katalog & Stückliste/BOM, Paket C: Live 2D-zu-3D Raumvorschau & DXF-Import).
+
+---
+
+## 🏆 Erfolgsliste der Vortage (11. Oktober 2026)
 
 ### 0.000000000000000013 Ganzheitlicher 360°-Systemaudit, Sicherheits-Härtung, Beseitigung aller statischen Keys & Netzwerk-Resilienz (11. Oktober 2026)
 * **Problemstellung & Benutzer-Anfrage («wo haben wir noch fehler und schwachstellen im gesamten system? was funktioniert noch nicht richtig oder welche verbindungen sind nicht stabil? bitte alles überprüfen und beheben» sowie «ich habe angst das wir irgendwo noch keys im code haben... bitte alles auf github und vercel pushen»):**
@@ -1438,9 +1464,31 @@
 
 ---
 
-## 📋 Nächste Schritte
+## 📋 Offene Pendenzen & Nächste Schritte
 
-### Priorität 1: Messe & Kiosk Live-Testing
+### Priorität 1: Integration «CAD Pro Add-on» aus `/Users/carlo/Desktop/Kreativ Desk 2D_Supabase` in `PlanEditorViewer.tsx`
+> **Architektur-Entscheid:** Beibehaltung des bestehenden SVG-Vektor-Plan-Editors ([PlanEditorViewer.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/PlanEditorViewer.tsx) & [CADPlanPDFDocument.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%20V2_0_Supabase/src/components/plan-editor/CADPlanPDFDocument.tsx)) für gestochen scharfen SIA-Plankopf-PDF-Export und modulare Übernahme der besten Werkzeuge aus `Kreativ Desk 2D_Supabase` in 3 Paketen:
+
+- [ ] **Paket A: «CAD Pro Zeichnen & Architektur-Symbole» (Aufwand: ca. 2–3 Std.)**
+  - [ ] **Magnetisches Raster (Grid), Fangpunkte (Snapping) & Ortho-Modus** (`Shift` = 0°/45°/90°-Einrasten)
+  - [ ] **Smart Cursor HUD** ([SmartCursorHud.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%202D_Supabase/src/components/SmartCursorHud.tsx)): Live-Anzeige von Länge (`m`/`cm`), Winkel (`°`) und Koordinaten direkt neben dem Mauszeiger beim Zeichnen
+  - [ ] **Wand-Werkzeug (`draw_wall` / `draw_multi_wall`)** mit einstellbarer Wandstärke in cm & **Bemassungskette (`draw_chain_dimension`)**
+  - [ ] **Architektur-Bauteile & Prüf-Stempel** (inkl. 1:1 SIA-PDF-Vektor-Rendering):
+    - Tür mit Aufschlagbogen & Breite (`draw_door`)
+    - Fenster (`draw_window`), Säule/Stütze (`draw_column`), Treppe (`draw_stairs`)
+    - Fluchtweg / Feuerlöscher (`fire_extinguisher`) sowie **«Freigegeben / Geprüft»-Stempel (`stamp_approved`)**
+- [ ] **Paket B: «Möbel-/Bauteil-Katalog & Automatischer Mengenauszug (BOM)» (Aufwand: ca. 2–3 Std.)**
+  - [ ] **Möbel- & Bauteil-Bibliothek** ([CatalogModal.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%202D_Supabase/src/components/CatalogModal.tsx)) + **Eigene CAD-Blöcke speichern** ([CustomAssetModal.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%202D_Supabase/src/components/CustomAssetModal.tsx)) zum massstabsgetreuen Platzieren und Drehen auf dem Grundriss
+  - [ ] **Automatischer Stücklisten- & Mengenauszug ([BOMExportModal.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%202D_Supabase/src/components/BOMExportModal.tsx)):** Summiert alle gezeichneten Raumflächen ($\text{m}^2$), Wand-/Linienlängen ($\text{lfm}$) und platzierten Symbole/Möbel (Stück) inkl. CHF-Kalkulation, CSV-Export und **1-Klick-Übertrag ins BKP-Projektbudget**
+- [ ] **Paket C: «Live 2D-zu-3D Raumvorschau & Nativer DXF-Import» (Aufwand: ca. 3–4 Std.)**
+  - [ ] **1-Klick 3D-Raumvorschau ([Live3DPreviewModal.tsx](file:///Users/carlo/Desktop/Kreativ%20Desk%202D_Supabase/src/components/Live3DPreviewModal.tsx)):** Extrudiert gezeichnete 2D-Wände, Räume/Polygone und platzierte Möbel (inkl. `.glb`-3D-Modelle) sofort in eine interaktive Three.js-3D-Ansicht (Isometrie, Draufsicht, Frontansicht)
+  - [ ] **Nativer `.dxf`-Vektor-Import ([CADDXFImporterModule.js](file:///Users/carlo/Desktop/Kreativ%20Desk%202D_Supabase/src/components/CADDXFImporterModule.js)):** Liest AutoCAD/ArchiCAD `.dxf`-Linien, Polylinien, Kreise und Blöcke inkl. Einheiten-Skalierung (`mm`/`cm`/`m`) direkt in den Plan ein
+
+---
+
+### Erledigte Meilensteine (Archiv)
+
+#### Messe & Kiosk Live-Testing
 - [x] **Messe-Simulation am Stele-Simulator:**
   - Fast-Pass Self-Check-in & Badge-Druck mit `CheckinApp.tsx` (100% verifiziert & getestet).
   - TWINT 20%-Anzahlung mit Bon-Druck und SIX QR-Rechnung mit `TwintPaymentModal.tsx` (100% verifiziert, z-index auf z-[300] gehärtet).

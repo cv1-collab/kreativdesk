@@ -578,7 +578,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
                       <Maximize2 size={16} className="md:w-5 md:h-5" />
                     </button>
 
-                    {(activeProject.cam1Url || '').match(/\.(jpeg|jpg|gif|png)$/i) != null ? (
+                    {(/\.(jpeg|jpg|gif|png|webp)(\?.*)?$/i.test(activeProject.cam1Url || '') || (activeProject.cam1Url || '').includes('images.unsplash.com')) ? (
                        <img src={sanitizeUrl(activeProject.cam1Url)} crossOrigin="anonymous" className="absolute inset-0 w-full h-full object-cover z-0" alt="Cam 1" />
                     ) : (
                        <iframe src={activeProject.cam1Url} className="absolute inset-0 w-full h-full border-none z-0" allow="autoplay; fullscreen" title="Cam 1" />
@@ -611,7 +611,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
                       <Maximize2 size={16} className="md:w-5 md:h-5" />
                     </button>
 
-                    {(activeProject.cam2Url || '').match(/\.(jpeg|jpg|gif|png)$/i) != null ? (
+                    {(/\.(jpeg|jpg|gif|png|webp)(\?.*)?$/i.test(activeProject.cam2Url || '') || (activeProject.cam2Url || '').includes('images.unsplash.com')) ? (
                        <img src={sanitizeUrl(activeProject.cam2Url)} crossOrigin="anonymous" className="absolute inset-0 w-full h-full object-cover z-0" alt="Cam 2" />
                     ) : (
                        <iframe src={activeProject.cam2Url} className="absolute inset-0 w-full h-full border-none z-0" allow="autoplay; fullscreen" title="Cam 2" />
@@ -671,7 +671,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
                 {activeProject?.cam1Url ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                      <div className="relative rounded-xl overflow-hidden border border-border bg-black aspect-video flex items-center justify-center w-full">
-                       {(activeProject.cam1Url || '').match(/\.(jpeg|jpg|gif|png)$/i) != null ? (
+                       {(/\.(jpeg|jpg|gif|png|webp)(\?.*)?$/i.test(activeProject.cam1Url || '') || (activeProject.cam1Url || '').includes('images.unsplash.com')) ? (
                          <img src={sanitizeUrl(activeProject.cam1Url)} crossOrigin="anonymous" className="absolute inset-0 w-full h-full object-cover opacity-50 pointer-events-none" alt="AI bg" />
                        ) : (
                          <iframe src={activeProject.cam1Url} className="absolute inset-0 w-full h-full border-none opacity-50 pointer-events-none" title="AI Feed" />
@@ -1049,7 +1049,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
                      {t('site_monitoring_title')}
                   </div>
                 </div>
-                {(previewCam || '').match(/\.(jpeg|jpg|gif|png)$/i) != null ? (
+                {(/\.(jpeg|jpg|gif|png|webp)(\?.*)?$/i.test(previewCam || '') || (previewCam || '').includes('images.unsplash.com')) ? (
                    <motion.img initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} src={previewCam} alt="Cam Preview" className="w-full max-h-screen object-contain rounded-xl shadow-2xl" onClick={(e) => e.stopPropagation()} />
                 ) : (
                    <motion.iframe initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} src={previewCam} allow="autoplay; fullscreen" className="w-full max-w-6xl aspect-video border-none bg-black rounded-xl shadow-2xl" onClick={(e) => e.stopPropagation()} />

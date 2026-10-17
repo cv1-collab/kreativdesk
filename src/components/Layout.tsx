@@ -59,7 +59,7 @@ export default function Layout() {
   const { projectId } = useParams();
   const navigate = useNavigate();
 
-  const { projects, timeEntries, renameProject, updateProject } = useProject() as any;
+  const { projects, timeEntries, renameProject, updateProject, activeProjectId, setActiveProject } = useProject() as any;
   const { currentUser, userRole, logout = async () => { } } = useAuth() || {};
   const { onlineUsers } = useTeamPresence();
   const [showMobileUserMenu, setShowMobileUserMenu] = useState(false);
@@ -91,6 +91,13 @@ export default function Layout() {
   const [adminPreviewCompany, setAdminPreviewCompany] = useState<{ id: string; name: string } | null>(null);
 
   const location = useLocation();
+
+  // Synchronisiere URL :projectId mit ProjectContext.activeProjectId
+  useEffect(() => {
+    if (projectId && projectId !== activeProjectId && typeof setActiveProject === 'function') {
+      setActiveProject(projectId);
+    }
+  }, [projectId, activeProjectId, setActiveProject]);
 
   // Automatische Tour-Aktivierung beim Wechsel aus Ebene 2 (Firmen-Dashboard) in den Projekt-Workspace
   useEffect(() => {

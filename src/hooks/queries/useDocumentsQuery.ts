@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
 import type { Tables, TablesInsert, TablesUpdate } from '../../types/database.types';
@@ -8,6 +8,7 @@ export type DocumentInsert = TablesInsert<'documents'>;
 export type DocumentUpdate = TablesUpdate<'documents'>;
 
 export const DOCUMENTS_QUERY_KEY = 'documents';
+const EMPTY_DOCUMENTS: DocumentRow[] = [];
 
 export function useDocumentsQuery(companyId?: string | null) {
   const queryClient = useQueryClient();
@@ -61,13 +62,13 @@ export function useDocumentsQuery(companyId?: string | null) {
     };
   }, [companyId, queryClient]);
 
-  const invalidate = () => {
+  const invalidate = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: [DOCUMENTS_QUERY_KEY] });
-  };
+  }, [queryClient]);
 
   return {
     ...query,
-    documents: query.data || [],
+    documents: query.data || EMPTY_DOCUMENTS,
     isLoadingDocuments: query.isLoading,
     invalidateDocuments: invalidate,
   };

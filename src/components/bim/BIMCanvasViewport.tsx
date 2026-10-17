@@ -95,22 +95,30 @@ class ModelErrorBoundary extends React.Component<
 function IfcModel({
   url,
   onSelect,
+  onClick,
   t,
 }: {
   url: string;
   onSelect: (id: string, details: any) => void;
+  onClick?: (e: any) => void;
   t: (key: string) => string;
 }) {
   const [model, setModel] = useState<any>(null);
   const [scale, setScale] = useState<number>(1);
   const { addToast } = useToast();
+  const addToastRef = useRef(addToast);
+  addToastRef.current = addToast;
+  const tRef = useRef(t);
+  tRef.current = t;
 
   useEffect(() => {
+    let cancelled = false;
     const loader = new IFCLoader();
     loader.ifcManager.setWasmPath('/wasm/');
     loader.load(
       url,
       (ifcModel) => {
+        if (cancelled) return;
         ifcModel.updateMatrixWorld(true);
         const box = new THREE.Box3().setFromObject(ifcModel);
         const size = box.getSize(new THREE.Vector3());
@@ -136,11 +144,15 @@ function IfcModel({
       },
       undefined,
       (error) => {
+        if (cancelled) return;
         console.error('Error loading IFC:', error);
-        addToast(t('error_loading_ifc') || 'Fehler beim Laden des IFC-Modells', 'error');
+        addToastRef.current(tRef.current('error_loading_ifc') || 'Fehler beim Laden des IFC-Modells', 'error');
       }
     );
-  }, [url, addToast, t]);
+    return () => {
+      cancelled = true;
+    };
+  }, [url]);
 
   if (!model) return null;
   return (
@@ -149,6 +161,10 @@ function IfcModel({
         <primitive
           object={model}
           onClick={(e: any) => {
+            if (onClick) {
+              onClick(e);
+              return;
+            }
             e.stopPropagation();
             if (e.object.geometry && e.faceIndex !== undefined) {
               onSelect(`ifc-element-${Math.floor(Math.random() * 1000)}`, {
@@ -481,7 +497,7 @@ function UploadedModelViewer({
     }
   };
 
-  if (tType === 'ifc') return <IfcModel url={url} onSelect={onSelect} t={t} />;
+  if (tType === 'ifc') return <IfcModel url={url} onSelect={onSelect} onClick={handleClick} t={t} />;
   if (tType === 'obj') return <ObjModel url={url} onClick={handleClick} />;
   if (tType === 'gltf' || tType === 'glb') return <GltfModel url={url} onClick={handleClick} />;
   if (tType === 'dae') return <DaeModel url={url} onClick={handleClick} />;
@@ -729,6 +745,11 @@ function BIMCanvasViewportComponent({
   clippingY,
   clippingZ,
 }: BIMCanvasViewportProps) {
+  const orbitTarget = React.useMemo<[number, number, number]>(
+    () => (activeModel ? [0, 0, 0] : [0, activeFloor !== null ? activeFloor * 4 : 4, 0]),
+    [Boolean(activeModel), activeFloor]
+  );
+
   return (
     <Canvas
       dpr={isMobile ? [1, 1.5] : [1, 2]}
@@ -838,6 +859,7 @@ function BIMCanvasViewportComponent({
             ? new THREE.Vector3(pin.normal[0] || 0, pin.normal[1] || 1, pin.normal[2] || 0)
             : new THREE.Vector3(0, 1, 0);
           quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normVec);
+          const displayLabel = pin.title && !String(pin.title).startsWith('Erfasst im 3D-Viewer') ? pin.title : pin.description;
           return (
             <group key={pin.id || `pin-${i}`} position={pin.position} quaternion={quaternion}>
               <mesh position={[0, 0.25, 0]}>
@@ -852,7 +874,7 @@ function BIMCanvasViewportComponent({
                 <Html position={[0, 0.8, 0]} center zIndexRange={[10, 0]}>
                   <div className="bg-red-500 text-white px-3 py-1.5 rounded-lg border border-red-600 font-sans text-xs whitespace-nowrap shadow-xl cursor-pointer hover:bg-red-600 transition-colors flex flex-col items-center">
                     <span className="font-bold">{t('defect') || 'Mangel'} #{i + 1}</span>
-                    <span className="text-[10px] opacity-90">{pin.description}</span>
+                    <span className="text-[10px] opacity-90">{displayLabel}</span>
                   </div>
                 </Html>
               )}
@@ -865,7 +887,7 @@ function BIMCanvasViewportComponent({
 
       <OrbitControls
         makeDefault
-        target={activeModel ? [0, 0, 0] : [0, activeFloor !== null ? activeFloor * 4 : 4, 0]}
+        target={orbitTarget}
         enableDamping={!isMobile}
         dampingFactor={0.05}
         mouseButtons={{

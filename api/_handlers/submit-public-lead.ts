@@ -156,7 +156,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             event: 'new_b2b_lead',
-            leadId: leadRow.id,
+            leadId: leadRow?.id || null,
             fullName,
             firstName,
             lastName,

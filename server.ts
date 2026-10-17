@@ -37,10 +37,14 @@ async function startServer() {
   
   // Wichtig für den Stripe Webhook & Sentry Tunnel (brauchen raw body)
   app.use((req, res, next) => {
-    if (req.originalUrl === '/api/webhook' || req.originalUrl.startsWith('/api/sentry-tunnel')) {
+    if (
+      req.originalUrl === '/api/webhook' ||
+      req.originalUrl.startsWith('/api/sentry-tunnel') ||
+      req.originalUrl.startsWith('/api/sentry/tunnel')
+    ) {
       next();
     } else {
-      express.json()(req, res, next);
+      express.json({ limit: '15mb' })(req, res, next);
     }
   });
 

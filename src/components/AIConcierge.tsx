@@ -10,6 +10,7 @@ import { safeStorage } from '../utils/safeStorage';
 
 
 import { callGeminiAPI, callGeminiChatAPI } from '../utils/geminiClient';
+import { FormattedAiResponse } from '../utils/formatAiResponse';
 import { useLanguage } from '../contexts/LanguageContext';
 import { queryClient } from '../lib/queryClient';
 import { DEFECTS_QUERY_KEY } from '../hooks/queries/useDefectsQuery';
@@ -295,23 +296,29 @@ WICHTIG: Wenn der Nutzer dich bittet, eine Aufgabe, einen Mangel oder ein Ticket
 
       <AnimatePresence>
         {isOpen && (
-          <motion.div initial={{ opacity: 0, y: 50, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 50, scale: 0.95 }} transition={{ type: "spring", bounce: 0.4, duration: 0.6 }} className="fixed bottom-6 right-6 w-[380px] max-w-[calc(100vw-3rem)] h-[600px] max-h-[calc(100vh-6rem)] bg-background/95 backdrop-blur-xl border border-border rounded-3xl shadow-2xl z-50 flex flex-col overflow-hidden">
-            <div className="p-4 border-b border-border/50 flex items-center justify-between bg-surface/50">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-accent-ai/10 border border-accent-ai/20 flex items-center justify-center relative shadow-inner">
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 50, scale: 0.95 }}
+            transition={{ type: "spring", bounce: 0.4, duration: 0.6 }}
+            className="fixed bottom-3 left-3 right-3 sm:left-auto sm:bottom-6 sm:right-6 w-auto sm:w-[380px] max-w-full sm:max-w-[calc(100vw-3rem)] h-[min(580px,calc(100dvh-5rem))] bg-background/95 backdrop-blur-xl border border-border rounded-3xl shadow-2xl z-50 flex flex-col overflow-hidden overscroll-contain"
+          >
+            <div className="p-4 border-b border-border/50 flex items-center justify-between bg-surface/50 shrink-0">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-accent-ai/10 border border-accent-ai/20 flex items-center justify-center relative shadow-inner shrink-0">
                   <Sparkles className="w-5 h-5 text-accent-ai" />
                   <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-surface animate-pulse" />
                 </div>
-                <div>
-                  <h3 className="font-bold text-text-primary leading-tight">{t('ai_concierge')}</h3>
-                  <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">{t('online_syncing')}</p>
+                <div className="min-w-0">
+                  <h3 className="font-bold text-text-primary leading-tight truncate">{t('ai_concierge')}</h3>
+                  <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest truncate">{t('online_syncing')}</p>
                 </div>
               </div>
-              <button onClick={() => setIsOpen(false)} className="h-8 w-8 flex items-center justify-center text-text-muted hover:text-text-primary bg-background border border-border/50 rounded-lg cursor-pointer transition-colors shadow-xs"><Minimize2 className="w-4 h-4" /></button>
+              <button onClick={() => setIsOpen(false)} className="h-8 w-8 flex items-center justify-center text-text-muted hover:text-text-primary bg-background border border-border/50 rounded-lg cursor-pointer transition-colors shadow-xs shrink-0"><Minimize2 className="w-4 h-4" /></button>
             </div>
 
             {warnings.length > 0 && (
-              <div className="bg-red-500/10 border-b border-red-500/20 p-3 max-h-32 overflow-y-auto">
+              <div className="bg-red-500/10 border-b border-red-500/20 p-3 max-h-32 overflow-y-auto shrink-0">
                 <div className="flex items-center gap-1.5 mb-2">
                   <div className="w-5 h-5 rounded-md bg-red-500/20 text-red-500 flex items-center justify-center shrink-0">
                     <AlertTriangle size={11} />
@@ -320,7 +327,7 @@ WICHTIG: Wenn der Nutzer dich bittet, eine Aufgabe, einen Mangel oder ein Ticket
                 </div>
                 <div className="space-y-2">
                   {warnings.map(warn => (
-                    <div key={warn.id} className="text-xs text-red-400 bg-background/50 p-2 rounded border border-red-500/10">
+                    <div key={warn.id} className="text-xs text-red-400 bg-background/50 p-2 rounded border border-red-500/10 break-words">
                       <strong>{warn.module}:</strong> {warn.message}
                     </div>
                   ))}
@@ -328,19 +335,23 @@ WICHTIG: Wenn der Nutzer dich bittet, eine Aufgabe, einen Mangel oder ein Ticket
               </div>
             )}
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar scroll-smooth">
+            <div className="flex-1 overflow-y-auto p-3.5 sm:p-4 space-y-5 custom-scrollbar scroll-smooth overscroll-contain">
               {messages.map((msg) => (
-                <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} group`}>
-                  {msg.role === 'ai' && <div className="w-8 h-8 rounded-full bg-accent-ai/10 border border-accent-ai/20 text-accent-ai flex items-center justify-center shrink-0 mr-3 shadow-sm"><Bot className="w-4 h-4" /></div>}
-                  <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm ${msg.role === 'user' ? 'bg-accent-ai text-white rounded-tr-none' : 'bg-surface border border-border/50 text-text-primary rounded-tl-none'}`}>
-                    {msg.text.split('\n').map((line, i) => <React.Fragment key={i}>{line}{i !== msg.text.split('\n').length - 1 && <br />}</React.Fragment>)}
+                <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} group min-w-0`}>
+                  {msg.role === 'ai' && <div className="w-8 h-8 rounded-full bg-accent-ai/10 border border-accent-ai/20 text-accent-ai flex items-center justify-center shrink-0 mr-2.5 sm:mr-3 shadow-sm"><Bot className="w-4 h-4" /></div>}
+                  <div className={`max-w-[84%] sm:max-w-[80%] min-w-0 break-words rounded-2xl px-3.5 sm:px-4 py-3 text-sm leading-relaxed shadow-sm ${msg.role === 'user' ? 'bg-accent-ai text-white rounded-tr-none' : 'bg-surface border border-border/50 text-text-primary rounded-tl-none'}`}>
+                    {msg.role === 'ai' ? (
+                      <FormattedAiResponse text={msg.text} compact />
+                    ) : (
+                      msg.text.split('\n').map((line, i) => <React.Fragment key={i}>{line}{i !== msg.text.split('\n').length - 1 && <br />}</React.Fragment>)
+                    )}
                   </div>
-                  {msg.role === 'user' && <div className="w-8 h-8 rounded-full bg-surface border border-border/50 text-text-muted flex items-center justify-center shrink-0 ml-3 shadow-sm"><User className="w-4 h-4" /></div>}
+                  {msg.role === 'user' && <div className="w-8 h-8 rounded-full bg-surface border border-border/50 text-text-muted flex items-center justify-center shrink-0 ml-2.5 sm:ml-3 shadow-sm"><User className="w-4 h-4" /></div>}
                 </div>
               ))}
               {isTyping && (
                 <div className="flex justify-start">
-                  <div className="w-8 h-8 rounded-full bg-accent-ai/10 border border-accent-ai/20 text-accent-ai flex items-center justify-center shrink-0 mr-3 shadow-sm"><Bot className="w-4 h-4" /></div>
+                  <div className="w-8 h-8 rounded-full bg-accent-ai/10 border border-accent-ai/20 text-accent-ai flex items-center justify-center shrink-0 mr-2.5 sm:mr-3 shadow-sm"><Bot className="w-4 h-4" /></div>
                   <div className="px-4 py-3 rounded-2xl bg-surface border border-border/50 rounded-tl-none flex items-center gap-1.5 shadow-sm">
                     <div className="w-1.5 h-1.5 rounded-full bg-text-muted animate-bounce" style={{ animationDelay: '0ms' }} />
                     <div className="w-1.5 h-1.5 rounded-full bg-text-muted animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -351,10 +362,10 @@ WICHTIG: Wenn der Nutzer dich bittet, eine Aufgabe, einen Mangel oder ein Ticket
               <div ref={messagesEndRef} />
             </div>
 
-            <div className="p-4 border-t border-border/50 bg-background/50">
+            <div className="p-3.5 sm:p-4 border-t border-border/50 bg-background/50 shrink-0">
               <form onSubmit={handleSend} className="relative">
-                <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder={t('ai_placeholder')} className="w-full bg-surface border border-border/50 rounded-xl pl-4 pr-12 py-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-ai/50 focus:ring-1 focus:ring-accent-ai/50 transition-all font-medium shadow-sm" />
-                <button type="submit" disabled={!input.trim() || isTyping} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-accent-ai text-white rounded-lg hover:bg-accent-ai/90 disabled:opacity-50 disabled:hover:bg-accent-ai transition-colors shadow-sm">
+                <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder={t('ai_placeholder')} className="w-full bg-surface border border-border/50 rounded-xl pl-4 pr-12 py-3 text-base sm:text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-ai/50 focus:ring-1 focus:ring-accent-ai/50 transition-all font-medium shadow-sm" />
+                <button type="submit" disabled={!input.trim() || isTyping} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-accent-ai text-white rounded-lg hover:bg-accent-ai/90 disabled:opacity-50 disabled:hover:bg-accent-ai transition-colors shadow-sm cursor-pointer">
                   <Send className="w-4 h-4" />
                 </button>
               </form>

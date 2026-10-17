@@ -128,8 +128,10 @@ export function useDefectsQuery(companyId?: string | null, projectId?: string | 
 
   return {
     ...query,
-    defects: query.data || [],
+    defects: query.data || EMPTY_DEFECTS,
     isLoadingDefects: query.isLoading,
     invalidateDefects: invalidate,
   };
 }
+
+const EMPTY_DEFECTS: NormalizedDefect[] = [];

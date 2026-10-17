@@ -138,23 +138,70 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   const [planImage, setPlanImage] = useState<string | null>(() => initialCache?.planImage || null);
   const [planName, setPlanName] = useState<string>(() => initialCache?.planName || '');
   
+  const [draftElement, setDraftElement] = useState<PlanElement | null>(null);
+  const [selectedElement, setSelectedElement] = useState<PlanElement | null>(null);
+  const [draggingElementId, setDraggingElementId] = useState<string | null>(null);
+  const [draggingVertex, setDraggingVertex] = useState<{elementId: string, vertexIndex: number} | null>(null);
+
   const [activeTool, setActiveToolRaw] = useState<ToolType>(() => {
     const saved = safeStorage.getItem<Record<string, any>>(cadStorageKey, {});
     return (saved.activeTool as ToolType) || 'pan';
   });
 
-  const setActiveTool = (tool: ToolType) => {
+  const setActiveTool = useCallback((tool: ToolType) => {
+    setDraftElement(null);
     setActiveToolRaw(tool);
     const saved = safeStorage.getItem<Record<string, any>>(cadStorageKey, {});
     safeStorage.setItem(cadStorageKey, { ...saved, activeTool: tool });
-  };
+  }, [cadStorageKey]);
 
   const [paperFormat, setPaperFormat] = useState<string>(() => initialCache?.paperFormat || 'A3');
   const [paperOrientation, setPaperOrientation] = useState<'landscape'|'portrait'>(() => initialCache?.paperOrientation || 'landscape');
   const [planScale, setPlanScale] = useState<number>(() => initialCache?.planScale || 50); 
   const [isCalibrated, setIsCalibrated] = useState<boolean>(() => Boolean(initialCache?.isCalibrated));
-  const [scale, setScale] = useState(0.8); 
-  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [scale, setScaleRaw] = useState<number>(() => {
+    const saved = safeStorage.getItem<Record<string, any>>(cadStorageKey, {});
+    return typeof saved.scale === 'number' && saved.scale >= 0.1 && saved.scale <= 8 ? saved.scale : 0.8;
+  }); 
+  const [pan, setPanRaw] = useState<{ x: number; y: number }>(() => {
+    const saved = safeStorage.getItem<Record<string, any>>(cadStorageKey, {});
+    if (saved.pan && typeof saved.pan.x === 'number' && typeof saved.pan.y === 'number') {
+      return { x: saved.pan.x, y: saved.pan.y };
+    }
+    return { x: 0, y: 0 };
+  });
+  const panRef = useRef(pan);
+  panRef.current = pan;
+  const scaleRef = useRef(scale);
+  scaleRef.current = scale;
+
+  const setScale = useCallback((next: number | ((prev: number) => number)) => {
+    setScaleRaw(prev => {
+      const val = typeof next === 'function' ? next(prev) : next;
+      scaleRef.current = val;
+      const saved = safeStorage.getItem<Record<string, any>>(cadStorageKey, {});
+      safeStorage.setItem(cadStorageKey, { ...saved, scale: val });
+      return val;
+    });
+  }, [cadStorageKey]);
+
+  const setPan = useCallback((next: { x: number; y: number } | ((prev: { x: number; y: number }) => { x: number; y: number })) => {
+    setPanRaw(prev => {
+      const val = typeof next === 'function' ? next(prev) : next;
+      panRef.current = val;
+      return val;
+    });
+  }, []);
+
+  const persistViewportToStorage = useCallback((nextPan?: { x: number; y: number }, nextScale?: number) => {
+    const saved = safeStorage.getItem<Record<string, any>>(cadStorageKey, {});
+    safeStorage.setItem(cadStorageKey, {
+      ...saved,
+      pan: nextPan ?? panRef.current,
+      scale: nextScale ?? scaleRef.current
+    });
+  }, [cadStorageKey]);
+
   const isPanning = useRef(false);
   const startPan = useRef({ x: 0, y: 0 });
   
@@ -166,6 +213,8 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   const [future, setFuture] = useState<PlanElement[][]>([]);
   const elementsBeforeDragRef = useRef<PlanElement[] | null>(null);
   const hasUnsavedChangesRef = useRef(Boolean(initialCache?.hasUnsavedChanges));
+  const lastLocalSaveAtRef = useRef<number>(0);
+  const isSavingToCloudRef = useRef<boolean>(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const commitElements = useCallback((nextElements: PlanElement[]) => {
@@ -176,33 +225,47 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   }, [elements]);
 
   const handleUndo = useCallback(() => {
+    if (history.length === 0) return;
     hasUnsavedChangesRef.current = true;
-    setHistory(prevHistory => {
-      if (prevHistory.length === 0) return prevHistory;
-      const prev = prevHistory[prevHistory.length - 1];
-      setFuture(prevFuture => [elements, ...prevFuture.slice(0, 29)]);
-      setElements(prev);
-      setSelectedElement(null);
-      return prevHistory.slice(0, -1);
-    });
-  }, [elements]);
+    const prev = history[history.length - 1];
+    setHistory(prevHistory => prevHistory.slice(0, -1));
+    setFuture(prevFuture => [elements, ...prevFuture.slice(0, 29)]);
+    setElements(prev);
+    setSelectedElement(null);
+  }, [history, elements]);
 
   const handleRedo = useCallback(() => {
+    if (future.length === 0) return;
     hasUnsavedChangesRef.current = true;
-    setFuture(prevFuture => {
-      if (prevFuture.length === 0) return prevFuture;
-      const next = prevFuture[0];
-      setHistory(prevHistory => [...prevHistory.slice(-29), elements]);
-      setElements(next);
-      setSelectedElement(null);
-      return prevFuture.slice(1);
-    });
-  }, [elements]);
+    const next = future[0];
+    setFuture(prevFuture => prevFuture.slice(1));
+    setHistory(prevHistory => [...prevHistory.slice(-29), elements]);
+    setElements(next);
+    setSelectedElement(null);
+  }, [future, elements]);
 
-  const [draftElement, setDraftElement] = useState<PlanElement | null>(null);
-  const [selectedElement, setSelectedElement] = useState<PlanElement | null>(null);
-  const [draggingElementId, setDraggingElementId] = useState<string | null>(null);
-  const [draggingVertex, setDraggingVertex] = useState<{elementId: string, vertexIndex: number} | null>(null);
+  const draftElementRef = useRef<PlanElement | null>(null);
+  draftElementRef.current = draftElement;
+  const isInteractingRef = useRef<boolean>(false);
+  isInteractingRef.current = Boolean(isPanning.current || draggingElementId || draggingVertex || draftElement);
+
+  const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
+  const [inspectorDock, setInspectorDock] = useState<'top' | 'bottom'>(() => {
+    const saved = safeStorage.getItem<Record<string, any>>(cadStorageKey, {});
+    return saved.inspectorDock === 'bottom' ? 'bottom' : 'top';
+  });
+  const [activeInspectorPopover, setActiveInspectorPopover] = useState<'size' | 'style' | 'details' | null>(null);
+  const inspectorBarRef = useRef<HTMLDivElement>(null);
+
+  const toggleInspectorDock = useCallback(() => {
+    setInspectorDock(prev => {
+      const next = prev === 'top' ? 'bottom' : 'top';
+      const saved = safeStorage.getItem<Record<string, any>>(cadStorageKey, {});
+      safeStorage.setItem(cadStorageKey, { ...saved, inspectorDock: next });
+      return next;
+    });
+  }, [cadStorageKey]);
+
   const lastDragCoordsRef = useRef<{ nx: number; ny: number }>({ nx: 0, ny: 0 });
   const [isSpacePressed, setIsSpacePressed] = useState(false);
   const copiedElementRef = useRef<PlanElement | null>(null);
@@ -303,6 +366,15 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           e.preventDefault();
           handleDuplicateElement(selectedElement);
         }
+      } else if (e.key === 'Enter' && draftElement?.type === 'polygon') {
+        e.preventDefault();
+        const p = draftElement as PolygonMarkup;
+        if (p.points.length >= 3) {
+          const finalPoly: PolygonMarkup = { ...p, showArea: p.showArea !== false };
+          commitElements([...elements, finalPoly]);
+          setSelectedElement(finalPoly);
+        }
+        setDraftElement(null);
       } else if (e.key === 'Escape') {
         if (draftElement) {
           setDraftElement(null);
@@ -320,6 +392,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           commitElements(elements.filter(el => el.id !== targetId));
           setSelectedElement(null);
           if (isDefectPin && targetId && !targetId.startsWith('defect_') && !isDemoMode) {
+            lastLocalSaveAtRef.current = Date.now();
             supabase.from('defects').delete().eq('id', targetId).then(() => {
               queryClient.invalidateQueries({ queryKey: [DEFECTS_QUERY_KEY] });
             });
@@ -329,7 +402,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo, selectedElement, clonePlanElement, commitElements, elements, handleDuplicateElement, draftElement, activeTool, layers, addToast, currentLang, isDemoMode]);
+  }, [handleUndo, handleRedo, selectedElement, clonePlanElement, commitElements, elements, handleDuplicateElement, draftElement, activeTool, setActiveTool, layers, addToast, currentLang, isDemoMode, queryClient]);
 
   const savePlanToCache = useCallback((data: {
     id: string | null;
@@ -435,6 +508,8 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
     const performCloudSave = async () => {
       pendingCloudSaveRef.current = null;
+      isSavingToCloudRef.current = true;
+      lastLocalSaveAtRef.current = Date.now();
       try {
         const metaEl = {
           id: '__plan_meta__',
@@ -460,6 +535,8 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           })
           .eq('id', activePlanId);
 
+        lastLocalSaveAtRef.current = Date.now();
+
         if (!updateErr) {
           hasUnsavedChangesRef.current = false;
           savePlanToCache({
@@ -479,6 +556,9 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         }
       } catch (err) {
         console.warn('CAD auto-save background warning:', err);
+      } finally {
+        lastLocalSaveAtRef.current = Date.now();
+        isSavingToCloudRef.current = false;
       }
     };
 
@@ -549,16 +629,23 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   const planFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    setActiveInspectorPopover(null);
+  }, [selectedElement?.id]);
+
+  useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
         setExportMenuOpen(false);
       }
+      if (inspectorBarRef.current && !inspectorBarRef.current.contains(e.target as Node)) {
+        setActiveInspectorPopover(null);
+      }
     };
-    if (exportMenuOpen) {
+    if (exportMenuOpen || activeInspectorPopover) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [exportMenuOpen]);
+  }, [exportMenuOpen, activeInspectorPopover]);
 
   useEffect(() => {
     if (!planImage || sessionImageCache[planImage]) return;
@@ -613,7 +700,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     const lineDistanceOnPaper_mm = Math.sqrt(dxReal_mm * dxReal_mm + dyReal_mm * dyReal_mm);
 
     if (lineDistanceOnPaper_mm > 0) {
-      const computedScaleRatio = Math.round((knownMeters * 1000) / lineDistanceOnPaper_mm);
+      const computedScaleRatio = Math.max(1, Math.round((knownMeters * 1000) / lineDistanceOnPaper_mm));
       hasUnsavedChangesRef.current = true;
       setPlanScale(computedScaleRatio);
       setIsCalibrated(true);
@@ -797,8 +884,24 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   const calculateRatioForMeters = (meters: number) => { const paper_mm = 1000 / planScale; return (paper_mm * meters) / paperW_mm; };
   const getStrokeDasharray = (style: LineStyle, width: number) => { if(style === 'dashed') return `${width * 4},${width * 4}`; if(style === 'dotted') return `${width},${width * 2}`; return 'none'; };
 
-  const loadPlanDataToEditor = useCallback((planData: any) => {
+  const loadPlanDataToEditor = useCallback((planData: any, options?: { resetView?: boolean }) => {
     if (!planData) return;
+    const isSamePlan = Boolean(planData.id && activePlanIdRef.current && planData.id === activePlanIdRef.current);
+    const shouldResetView = Boolean(options?.resetView || (activePlanIdRef.current && !isSamePlan));
+
+    if (
+      isSamePlan &&
+      !options?.resetView &&
+      (isInteractingRef.current ||
+        isPanning.current ||
+        Boolean(draftElementRef.current) ||
+        hasUnsavedChangesRef.current ||
+        isSavingToCloudRef.current ||
+        Date.now() - lastLocalSaveAtRef.current < 5000)
+    ) {
+      return;
+    }
+
     const cachedForPlan = planData.id ? getCachedPlan(planData.id) : null;
     const preserveUnsaved = Boolean(planData.hasUnsavedChanges || cachedForPlan?.hasUnsavedChanges);
     hasUnsavedChangesRef.current = preserveUnsaved;
@@ -821,16 +924,29 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     setPlanImage(resolvedImage);
     setPlanName(resolvedName);
     setElements(resolvedElements);
-    setHistory([]);
-    setFuture([]);
+    if (!isSamePlan || options?.resetView) {
+      setHistory([]);
+      setFuture([]);
+    }
     setLayers(resolvedLayers);
-    setActiveLayerId(resolvedActiveLayerId);
+    if (!isSamePlan || options?.resetView) {
+      setActiveLayerId(resolvedActiveLayerId);
+    }
     setPaperFormat(resolvedPaperFormat);
     setPaperOrientation(resolvedPaperOrientation);
     setPlanScale(resolvedPlanScale);
     setIsCalibrated(resolvedIsCalibrated);
-    setPan({ x: 0, y: 0 });
-    setSelectedElement(null);
+
+    if (shouldResetView) {
+      setPan({ x: 0, y: 0 });
+      persistViewportToStorage();
+      setSelectedElement(null);
+    } else {
+      setSelectedElement(prev => {
+        if (!prev) return null;
+        return resolvedElements.find((el: PlanElement) => el.id === prev.id) || prev;
+      });
+    }
 
     savePlanToCache({
       id: planData.id,
@@ -846,7 +962,10 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       hasUnsavedChanges: preserveUnsaved,
       updatedAt: cachedForPlan?.updatedAt || Date.now()
     });
-  }, [setActivePlanId, savePlanToCache, getCachedPlan]);
+  }, [setActivePlanId, savePlanToCache, getCachedPlan, setPan, persistViewportToStorage]);
+
+  const userUid = currentUser?.uid;
+  const userCompanyId = currentUser?.companyId || (currentUser as any)?.company_id;
 
   useEffect(() => {
     const isDemoProject = isDemoMode || Boolean(activeProject?.name?.toLowerCase().includes('demo')) || currentProjectId === 'demo-1' || currentProjectId.startsWith('demo');
@@ -903,7 +1022,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
        return; 
     }
 
-    const safeCompanyId = safeStorage.session.getString('admin_preview_company_id') || currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    const safeCompanyId = safeStorage.session.getString('admin_preview_company_id') || userCompanyId || userUid;
 
     const fetchDefectsOnly = async () => {
       try {
@@ -927,10 +1046,11 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           });
 
           dbDefects.forEach((dbDef: any) => {
+            if (dbDef.model_id) return;
             const pos = dbDef.position || {};
             const posX = typeof dbDef.position_x === 'number' ? dbDef.position_x : (typeof pos.x === 'number' ? pos.x : null);
             const posY = typeof dbDef.position_y === 'number' ? dbDef.position_y : (typeof pos.y === 'number' ? pos.y : null);
-            if (posX !== null && posY !== null) {
+            if (posX !== null && posY !== null && posX >= 0 && posX <= 1 && posY >= 0 && posY <= 1) {
               const existingIdx = nextElements.findIndex(e => e.id === dbDef.id);
               const marker: DefectMarker = {
                 id: dbDef.id,
@@ -943,7 +1063,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                 priority: dbDef.severity || dbDef.priority || 'High',
                 trade: dbDef.trade || 'Baumeister',
                 imageUrl: dbDef.image_url || null,
-                layerId: 'default',
+                layerId: existingIdx >= 0 ? (nextElements[existingIdx].layerId || 'default') : 'default',
                 isSynced: true
               };
               if (existingIdx >= 0) {
@@ -1026,10 +1146,11 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
             // Merge / sync defects from Supabase defects table
             dbDefects.forEach(dbDef => {
+              if (dbDef.model_id) return;
               const pos = dbDef.position || {};
               const posX = typeof dbDef.position_x === 'number' ? dbDef.position_x : (typeof pos.x === 'number' ? pos.x : null);
               const posY = typeof dbDef.position_y === 'number' ? dbDef.position_y : (typeof pos.y === 'number' ? pos.y : null);
-              if (posX !== null && posY !== null) {
+              if (posX !== null && posY !== null && posX >= 0 && posX <= 1 && posY >= 0 && posY <= 1) {
                 const existingIdx = mergedElements.findIndex(e => e.id === dbDef.id);
                 const marker: DefectMarker = {
                   id: dbDef.id,
@@ -1042,7 +1163,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                   priority: dbDef.severity || dbDef.priority || 'High',
                   trade: dbDef.trade || 'Baumeister',
                   imageUrl: dbDef.image_url || null,
-                  layerId: 'default',
+                  layerId: existingIdx >= 0 ? (mergedElements[existingIdx].layerId || 'default') : 'default',
                   isSynced: true
                 };
                 if (existingIdx >= 0) {
@@ -1131,9 +1252,16 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         table: 'cad_plans',
         filter: `project_id=eq.${currentProjectId}`
       }, () => {
-        if (!hasUnsavedChangesRef.current) {
-          fetchPlans();
+        if (
+          hasUnsavedChangesRef.current ||
+          isSavingToCloudRef.current ||
+          Date.now() - lastLocalSaveAtRef.current < 5000 ||
+          isInteractingRef.current ||
+          isPanning.current
+        ) {
+          return;
         }
+        fetchPlans();
       })
       .on('postgres_changes', {
         event: '*',
@@ -1141,6 +1269,13 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         table: 'defects',
         filter: `project_id=eq.${currentProjectId}`
       }, () => {
+        if (
+          isSavingToCloudRef.current ||
+          Date.now() - lastLocalSaveAtRef.current < 3500 ||
+          isInteractingRef.current
+        ) {
+          return;
+        }
         fetchDefectsOnly();
       })
       .subscribe();
@@ -1148,7 +1283,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     return () => {
       supabase.removeChannel(cadChannel).catch(() => {});
     };
-  }, [currentProjectId, currentUser, isDemoMode, demoData, activeProject?.name, getCachedPlan, loadPlanDataToEditor, setActivePlanId]);
+  }, [currentProjectId, userUid, userCompanyId, isDemoMode, demoData, activeProject?.name, getCachedPlan, loadPlanDataToEditor, setActivePlanId]);
 
   const handleAddLayer = () => {
     hasUnsavedChangesRef.current = true;
@@ -1458,6 +1593,8 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     }
 
     setIsSaving(true);
+    isSavingToCloudRef.current = true;
+    lastLocalSaveAtRef.current = Date.now();
     try {
       const metaEl = {
         id: '__plan_meta__',
@@ -1488,6 +1625,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
         if (!insertErr && insertedPlan?.id) {
           hasUnsavedChangesRef.current = false;
+          lastLocalSaveAtRef.current = Date.now();
           delete cadMemoryCache[`${cadCacheKey}_plan_${oldTempId}`];
           safeStorage.removeItem(`${cadCacheKey}_plan_${oldTempId}`);
           setActivePlanId(insertedPlan.id);
@@ -1540,6 +1678,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         addToast("Lokal zwischengespeichert (Cloud-Sync: " + updateErr.message + ")", "info");
       } else {
         hasUnsavedChangesRef.current = false;
+        lastLocalSaveAtRef.current = Date.now();
         savePlanToCache({
           id: activePlanId,
           planName,
@@ -1573,6 +1712,8 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       console.error("Fehler beim Speichern:", e);
       addToast("Lokal im Zwischenspeicher gesichert", "info");
     } finally { 
+      lastLocalSaveAtRef.current = Date.now();
+      isSavingToCloudRef.current = false;
       setIsSaving(false); 
     }
   };
@@ -1592,7 +1733,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         safeStorage.removeItem(cadCacheKey);
         safeStorage.removeItem(`${cadCacheKey}_plan_${deletedId}`);
         if (remainingPlans.length > 0) {
-          loadPlanDataToEditor(remainingPlans[0]);
+          loadPlanDataToEditor(remainingPlans[0], { resetView: true });
         } else {
           setPlanImage(null); 
           setActivePlanId(null);
@@ -1615,7 +1756,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   };
 
   const handleMainPointerDown = (e: React.PointerEvent) => {
-    if (isSpacePressed || (!isCalibratingMode && activeTool === 'pan' && planImage && !draggingElementId && !draggingVertex)) {
+    if (isSpacePressed || e.button === 1 || (!isCalibratingMode && activeTool === 'pan' && planImage && !draggingElementId && !draggingVertex)) {
       isPanning.current = true;
       startPan.current = { x: e.clientX - pan.x, y: e.clientY - pan.y };
       try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch(err) { console.error(err); }
@@ -1778,8 +1919,12 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   };
 
   const handleMainPointerUp = (e: React.PointerEvent) => {
+    const wasPanning = isPanning.current;
     isPanning.current = false;
     pendingDragRef.current = null;
+    if (wasPanning) {
+      persistViewportToStorage(panRef.current, scaleRef.current);
+    }
     if (draggingElementId || draggingVertex) {
       if (elementsBeforeDragRef.current && elementsBeforeDragRef.current !== elements) {
         hasUnsavedChangesRef.current = true;
@@ -1805,11 +1950,13 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
   const handleWheel = (e: React.WheelEvent) => {
     if (!planImage) return;
-    setScale(Math.min(Math.max(0.1, scale + e.deltaY * -0.002), 8));
+    const nextScale = Math.min(Math.max(0.1, scale + e.deltaY * -0.002), 8);
+    setScale(nextScale);
+    persistViewportToStorage(panRef.current, nextScale);
   };
 
   const handleElementPointerDown = (e: React.PointerEvent, el: PlanElement) => { 
-    if (activeTool !== 'pan' || isCalibratingMode || isSpacePressed) return; 
+    if (activeTool !== 'pan' || isCalibratingMode || isSpacePressed || e.button === 1) return; 
     e.stopPropagation(); 
     setSelectedElement(el); 
 
@@ -1829,7 +1976,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   };
 
   const handleVertexPointerDown = (e: React.PointerEvent, elId: string, vIndex: number) => { 
-    if (isCalibratingMode || isSpacePressed) return; 
+    if (isCalibratingMode || isSpacePressed || e.button === 1) return; 
     const target = elements.find(el => el.id === elId);
     const layer = layers.find(l => l.id === (target?.layerId || 'default'));
     if (layer?.locked || target?.locked) return;
@@ -1839,17 +1986,27 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     setDraggingVertex({ elementId: elId, vertexIndex: vIndex }); 
   };
 
-  const handleRemoveVertex = (elId: string, vIndex: number) => { 
+  const handleRemoveVertex = (elId: string, vIndex: number) => {
+    let updatedPoly: PolygonMarkup | null = null;
     commitElements(elements.map(e => {
       if (e.id === elId && e.type === 'polygon') {
-         const p = e as PolygonMarkup;
-         if (p.points.length > 3) return { ...p, points: p.points.filter((_, i) => i !== vIndex) };
+        const p = e as PolygonMarkup;
+        if (p.points.length > 3) {
+          updatedPoly = { ...p, points: p.points.filter((_, i) => i !== vIndex) };
+          return updatedPoly;
+        }
       }
       return e;
-    })); 
+    }));
+    if (updatedPoly && selectedElement?.id === elId) {
+      setSelectedElement(updatedPoly);
+    }
   };
 
   const handlePaperPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    // Wenn Leertaste gedrückt oder mittlere Maustaste: Pan-Modus zulassen (auch wenn ein Zeichenwerkzeug aktiv ist)
+    if (isSpacePressed || e.button === 1) return;
+
     const { nx, ny } = getRelativeCoords(e.clientX, e.clientY);
 
     // KALIBRIERUNGS-MODUS: REFERENZLINIE STARTEN
@@ -2057,9 +2214,11 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   const finishPolygon = () => { 
     if (draftElement?.type === 'polygon') { 
       const p = draftElement as PolygonMarkup;
-      const finalPoly: PolygonMarkup = { ...p, showArea: p.showArea !== false };
-      commitElements([...elements, finalPoly]); 
-      setSelectedElement(finalPoly);
+      if (p.points.length >= 3) {
+        const finalPoly: PolygonMarkup = { ...p, showArea: p.showArea !== false };
+        commitElements([...elements, finalPoly]); 
+        setSelectedElement(finalPoly);
+      }
       setDraftElement(null); 
       // Polygon-Werkzeug bleibt aktiv für weitere Polygone
     } 
@@ -2071,6 +2230,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     commitElements(elements.filter(e => e.id !== id)); 
     setSelectedElement(null); 
     if (target?.type === 'defect' && id && !id.startsWith('defect_') && !isDemoMode) {
+      lastLocalSaveAtRef.current = Date.now();
       supabase.from('defects').delete().eq('id', id).then(() => {
         queryClient.invalidateQueries({ queryKey: [DEFECTS_QUERY_KEY] });
       });
@@ -2084,8 +2244,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   const baseLayer = layers.find(l => l.id === 'default') || layers[0];
 
   const allElementsToRender = useMemo(() => {
-    const rawList = draftElement ? [...elements, draftElement] : elements;
-    return rawList
+    return elements
       .filter(el => {
         const layer = layers.find(l => l.id === (el.layerId || 'default'));
         return layer ? layer.visible : true;
@@ -2095,7 +2254,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         const bOrder: number = layerOrderMap.get(b.layerId || 'default') ?? 0;
         return aOrder - bOrder;
       });
-  }, [elements, draftElement, layers, layerOrderMap]);
+  }, [elements, layers, layerOrderMap]);
 
   const renderSvgElements = (elementsToRender: PlanElement[], isPdf: boolean = false) => {
     const invScale = isPdf ? 1 : Math.min(10, Math.max(0.1, 1 / scale));
@@ -3031,11 +3190,15 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           is_calibrated: isCalibrated
         };
         const elementsToPersist = [...updatedElements.filter((el: any) => el?.id !== '__plan_meta__'), metaEl];
+        isSavingToCloudRef.current = true;
+        lastLocalSaveAtRef.current = Date.now();
         supabase.from('cad_plans').update({
           elements: elementsToPersist,
           updated_at: new Date().toISOString()
         }).eq('id', activePlanId).then(() => {
           hasUnsavedChangesRef.current = false;
+          lastLocalSaveAtRef.current = Date.now();
+          isSavingToCloudRef.current = false;
           setProjectPlans(prev => prev.map(p => p.id === activePlanId ? { ...p, elements: elementsToPersist } : p));
         });
       }
@@ -3259,7 +3422,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                     <Layers size={13} className="text-text-muted shrink-0" />
                     <select 
                       value={activePlanId || ''} 
-                      onChange={e => loadPlanDataToEditor(projectPlans.find(p => p.id === e.target.value))} 
+                      onChange={e => loadPlanDataToEditor(projectPlans.find(p => p.id === e.target.value), { resetView: true })} 
                       className="bg-transparent font-bold text-xs outline-none cursor-pointer max-w-[120px] sm:max-w-[170px] md:max-w-[220px] truncate text-text-primary"
                     >
                       {projectPlans.map(p => (
@@ -3544,12 +3707,12 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
            </button>
         </aside>
 
-        {/* EBENEN-FENSTER OBEN ALS POPOVER (Quetscht niemals das Eigenschaften-Werkzeug rechts) */}
+        {/* EBENEN-FENSTER OBEN ALS POPOVER */}
         {planImage && showRightPanel && (
           <div
             className={cn(
-              "absolute top-12 z-40 w-80 max-w-[calc(100vw-2rem)] bg-surface/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-3 flex flex-col pointer-events-auto max-h-[340px] transition-all",
-              selectedElement ? "right-2 sm:right-[348px]" : "right-2 sm:right-4"
+              "absolute right-2 sm:right-4 z-40 w-80 max-w-[calc(100vw-2rem)] bg-surface/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-3 flex flex-col pointer-events-auto max-h-[340px] transition-all",
+              selectedElement && inspectorDock === 'top' && !inspectorCollapsed ? "top-24 sm:top-25" : "top-12"
             )}
           >
             <div className="flex justify-between items-center gap-2 mb-2 border-b border-border pb-1.5 shrink-0">
@@ -3695,202 +3858,720 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           </div>
         )}
 
-        {/* EIGENSCHAFTEN WERKZEUG-PALETTE RECHTS (Kompakt & komplett ohne Scrollen bedienbar) */}
+        {/* KOMPAKTE KONTEXT-EIGENSCHAFTEN-LEISTE (Verdeckt niemals die Zeichnung, oben/unten andockbar & einklappbar) */}
         <AnimatePresence>
-          {planImage && selectedElement && (
-            <motion.aside
-              initial={{ opacity: 0, x: 16 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 16 }}
-              transition={{ duration: 0.15 }}
-              className="absolute right-2 sm:right-3 top-12 sm:top-13 z-30 w-80 sm:w-[336px] max-w-[calc(100vw-1rem)] bg-surface/95 backdrop-blur-xl border border-border rounded-2xl p-3 shadow-2xl flex flex-col gap-2.5 pointer-events-auto max-h-[calc(100%-3.5rem)] overflow-y-auto custom-scrollbar"
-            >
-              {/* KOPFZEILE: WERKZEUG-TITEL + DUPLIZIEREN + SCHLIESSEN */}
-              <div className="flex justify-between items-center gap-1.5 border-b border-border pb-2 shrink-0">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <Settings size={14} className="text-accent-ai shrink-0" />
-                  <span className="font-bold text-xs text-text-primary truncate">
-                    {t('properties')} · {TOOL_LABELS[selectedElement.type as ToolType]?.[currentLang as 'de' | 'en'] || selectedElement.type}
+          {planImage && selectedElement && (() => {
+            const isAreaShape = selectedElement.type === 'rect' || selectedElement.type === 'circle' || selectedElement.type === 'polygon';
+            const areaM2Text = selectedElement.type === 'polygon'
+              ? `${calculatePolygonAreaM2((selectedElement as PolygonMarkup).points)} m²`
+              : selectedElement.type === 'rect'
+              ? `${calculateRectAreaM2((selectedElement as RectMarkup).w, (selectedElement as RectMarkup).h)} m²`
+              : selectedElement.type === 'circle'
+              ? `${(Math.PI * Math.pow((((selectedElement as CircleMarkup).r || 0) * paperW_mm * planScale) / 1000, 2)).toFixed(2)} m²`
+              : null;
+            const perimeterMText = selectedElement.type === 'polygon'
+              ? `${calculatePolygonPerimeterM((selectedElement as PolygonMarkup).points)} m`
+              : selectedElement.type === 'rect'
+              ? `${calculateRectPerimeterM((selectedElement as RectMarkup).w, (selectedElement as RectMarkup).h)} m`
+              : selectedElement.type === 'circle'
+              ? `${(2 * Math.PI * ((((selectedElement as CircleMarkup).r || 0) * paperW_mm * planScale) / 1000)).toFixed(2)} m`
+              : null;
+
+            const hasBorder = (selectedElement as any).borderStyle !== 'none' && ((selectedElement as any).strokeWidth ?? 1.5) > 0;
+            const isWhiteMask = isAreaShape && !hasBorder && (selectedElement.color || '').toLowerCase() === '#ffffff' && (selectedElement.opacity ?? 1) >= 0.99;
+
+            // Eingeklappter Mini-Chip (0% Verdeckung der Zeichnung)
+            if (inspectorCollapsed) {
+              return (
+                <motion.div
+                  key="inspector-collapsed"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.12 }}
+                  className={cn(
+                    "absolute right-2 sm:right-4 z-30 flex items-center gap-1.5 bg-surface/95 backdrop-blur-xl border border-border rounded-2xl px-2.5 py-1.5 shadow-xl pointer-events-auto",
+                    inspectorDock === 'top' ? "top-13 sm:top-14" : "bottom-3"
+                  )}
+                >
+                  <Settings size={13} className="text-accent-ai shrink-0" />
+                  <span className="text-[11px] font-bold text-text-primary">
+                    {TOOL_LABELS[selectedElement.type as ToolType]?.[currentLang as 'de' | 'en'] || selectedElement.type}
                   </span>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
+                  {areaM2Text && (
+                    <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                      {areaM2Text}
+                    </span>
+                  )}
                   <button
                     type="button"
-                    onClick={() => handleDuplicateElement(selectedElement)}
-                    className="flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 border border-blue-500/30 text-[10px] font-bold transition-all cursor-pointer"
-                    title={currentLang === 'de' ? 'Objekt duplizieren (Cmd/Ctrl+D oder Copy & Paste)' : 'Duplicate object (Cmd/Ctrl+D)'}
+                    onClick={() => setInspectorCollapsed(false)}
+                    className="px-2 py-0.5 rounded-lg bg-accent-ai/15 hover:bg-accent-ai/25 text-accent-ai text-[10px] font-bold transition-colors cursor-pointer"
+                    title="Eigenschaften-Leiste ausklappen"
                   >
-                    <Copy size={11} />
-                    <span>{currentLang === 'de' ? 'Duplizieren' : 'Duplicate'}</span>
+                    Eigenschaften öffnen
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => deleteElement(selectedElement.id)}
+                    className="p-1 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                    title={t('delete_element')}
+                  >
+                    <Trash2 size={12} />
                   </button>
                   <button
                     type="button"
                     onClick={() => setSelectedElement(null)}
-                    className="p-1 hover:bg-white/10 rounded-lg text-text-muted hover:text-text-primary cursor-pointer"
-                    title={currentLang === 'de' ? 'Schliessen (ESC)' : 'Close (ESC)'}
+                    className="p-1 text-text-muted hover:text-text-primary hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+                    title="Auswahl aufheben (ESC)"
                   >
-                    <X size={14} />
+                    <X size={13} />
                   </button>
-                </div>
-              </div>
+                </motion.div>
+              );
+            }
 
-              <div className="space-y-2.5">
-                {selectedElement.type === 'defect' && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <MapPin size={14} className="shrink-0" />
-                        <span className="text-[11px] font-bold uppercase tracking-wider truncate">SIA 118 Mangel-Pin</span>
-                      </div>
-                      <span className="text-[10px] text-text-muted font-mono shrink-0">
-                        X {Math.round((selectedElement as DefectMarker).x * 100)}% · Y {Math.round((selectedElement as DefectMarker).y * 100)}%
+            return (
+              <motion.aside
+                key="inspector-bar"
+                ref={inspectorBarRef}
+                initial={{ opacity: 0, y: inspectorDock === 'top' ? -8 : 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: inspectorDock === 'top' ? -8 : 8 }}
+                transition={{ duration: 0.14 }}
+                onPointerDown={e => e.stopPropagation()}
+                className={cn(
+                  "absolute z-30 right-2 sm:right-4 bg-surface/95 backdrop-blur-xl border border-border rounded-2xl px-2.5 py-1.5 shadow-2xl pointer-events-auto flex flex-col",
+                  inspectorDock === 'top'
+                    ? "top-13 sm:top-14 left-14 sm:left-18"
+                    : "bottom-3 left-36 sm:left-40"
+                )}
+              >
+                {/* HAUPTZEILE: SCHLANKE HORIZONTALE WERKZEUGLEISTE */}
+                <div className="flex items-center justify-between gap-2 overflow-x-auto custom-scrollbar py-0.5">
+                  {/* LINKS: OBJEKT-TYP & LIVE-MASSE */}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-background border border-border">
+                      <Settings size={12} className="text-accent-ai shrink-0" />
+                      <span className="font-bold text-[11px] text-text-primary whitespace-nowrap">
+                        {TOOL_LABELS[selectedElement.type as ToolType]?.[currentLang as 'de' | 'en'] || selectedElement.type}
                       </span>
                     </div>
 
-                    <div>
-                      <label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">Titel / Mangel</label>
-                      <input 
-                        type="text" 
-                        value={(selectedElement as DefectMarker).title || ''} 
-                        onChange={(e) => {
-                          const updated = { ...(selectedElement as DefectMarker), title: e.target.value };
-                          updateElement(updated);
-                          if (updated.id && !updated.id.startsWith('defect_') && !isDemoMode) {
-                            supabase.from('defects').update({ prompt: e.target.value }).eq('id', updated.id).then(() => {
-                              queryClient.invalidateQueries({ queryKey: [DEFECTS_QUERY_KEY] });
-                            });
-                          }
-                        }} 
-                        className="w-full bg-background border border-border rounded-lg px-2.5 py-1.5 text-xs font-bold text-text-primary outline-none focus:border-red-500/50" 
-                        placeholder="Mangel-Titel"
-                      />
-                    </div>
+                    {/* SIA 416 FLÄCHE & UMFANG BADGE */}
+                    {isAreaShape && areaM2Text && (
+                      <div className="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-blue-500/10 border border-blue-500/25 text-[11px] whitespace-nowrap">
+                        <Compass size={11} className="text-blue-400 shrink-0" />
+                        <strong className="font-black text-blue-400">{areaM2Text}</strong>
+                        <span className="text-[10px] text-text-muted hidden md:inline">· U: {perimeterMText}</span>
+                      </div>
+                    )}
 
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">Status</label>
-                        <select 
-                          value={(selectedElement as DefectMarker).status || 'To Do'} 
-                          onChange={(e) => {
+                    {/* MESSLINIE DISTANZ BADGE */}
+                    {selectedElement.type === 'measure' && (
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-blue-500/10 border border-blue-500/25 text-xs font-black text-blue-400 whitespace-nowrap">
+                        <Ruler size={12} className="shrink-0" />
+                        <span>{calculateDistance((selectedElement as Measurement).start, (selectedElement as Measurement).end)} m</span>
+                      </div>
+                    )}
+
+                    <div className="w-px h-5 bg-border/70 mx-0.5 hidden sm:block" />
+
+                    {/* MITTE: OBJEKT-SPEZIFISCHE SCHNELLSTEUERUNG INLINE */}
+                    {isAreaShape && (
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {/* Füllfarbe + Schnellfarben */}
+                        <div className="flex items-center gap-1 bg-background border border-border rounded-xl px-1.5 py-1">
+                          <input
+                            type="color"
+                            value={selectedElement.color || '#3b82f6'}
+                            onChange={e => updateElement({ ...selectedElement, color: e.target.value } as any)}
+                            className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent p-0 shrink-0"
+                            title="Füllfarbe wählen"
+                          />
+                          <div className="hidden xl:flex items-center gap-1 pl-0.5">
+                            {[
+                              { hex: '#ffffff', label: 'Weiss' },
+                              { hex: '#3b82f6', label: 'Blau' },
+                              { hex: '#10b981', label: 'Grün' },
+                              { hex: '#f59e0b', label: 'Gelb' },
+                              { hex: '#ef4444', label: 'Rot' }
+                            ].map(sw => (
+                              <button
+                                key={sw.hex}
+                                type="button"
+                                onClick={() => updateElement({ ...selectedElement, color: sw.hex } as any)}
+                                title={sw.label}
+                                className={cn(
+                                  "w-3.5 h-3.5 rounded-full border cursor-pointer transition-transform hover:scale-110",
+                                  (selectedElement.color || '').toLowerCase() === sw.hex
+                                    ? "ring-2 ring-primary border-primary"
+                                    : "border-border"
+                                )}
+                                style={{ backgroundColor: sw.hex }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Rand-Modus (Mit Rand / Ohne Rand / Weisse Abdeckfläche) */}
+                        <div className="flex items-center bg-background border border-border rounded-xl p-0.5 gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => updateElement({
+                              ...selectedElement,
+                              borderStyle: (selectedElement as any).borderStyle === 'none' ? 'solid' : ((selectedElement as any).borderStyle || 'solid'),
+                              strokeWidth: ((selectedElement as any).strokeWidth ?? 1.5) > 0 ? ((selectedElement as any).strokeWidth ?? 1.5) : 1.5
+                            } as any)}
+                            className={cn(
+                              "px-2 py-0.5 rounded-lg text-[10px] font-bold cursor-pointer transition-colors whitespace-nowrap",
+                              hasBorder ? "bg-primary/15 text-primary" : "text-text-muted hover:text-text-primary"
+                            )}
+                          >
+                            Mit Rand
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateElement({
+                              ...selectedElement,
+                              borderStyle: 'none',
+                              strokeWidth: 0
+                            } as any)}
+                            className={cn(
+                              "px-2 py-0.5 rounded-lg text-[10px] font-bold cursor-pointer transition-colors whitespace-nowrap",
+                              !hasBorder && !isWhiteMask ? "bg-primary/15 text-primary" : "text-text-muted hover:text-text-primary"
+                            )}
+                          >
+                            Ohne Rand
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateElement({
+                              ...selectedElement,
+                              color: '#ffffff',
+                              borderStyle: 'none',
+                              strokeWidth: 0,
+                              opacity: 1,
+                              showArea: false
+                            } as any)}
+                            className={cn(
+                              "px-2 py-0.5 rounded-lg text-[10px] font-bold cursor-pointer transition-colors whitespace-nowrap",
+                              isWhiteMask ? "bg-primary/15 text-primary" : "text-text-muted hover:text-text-primary"
+                            )}
+                            title="Weisse Fläche (100% deckend, ohne Rand) zum Abdecken"
+                          >
+                            Weisse Fläche
+                          </button>
+                        </div>
+
+                        {/* Deckkraft Schnellwahl */}
+                        <div className="hidden lg:flex items-center gap-1 bg-background border border-border rounded-xl px-2 py-1">
+                          <span className="text-[9px] font-bold uppercase text-text-muted">Deckkraft</span>
+                          <input
+                            type="range"
+                            min="0.05"
+                            max="1"
+                            step="0.05"
+                            value={selectedElement.opacity ?? 1}
+                            onChange={e => updateElement({ ...selectedElement, opacity: Number(e.target.value) } as any)}
+                            className="w-14 accent-blue-500 h-1 cursor-pointer"
+                          />
+                          <span className="text-[10px] font-mono font-bold text-primary w-8 text-right">
+                            {Math.round((selectedElement.opacity ?? 1) * 100)}%
+                          </span>
+                        </div>
+
+                        {/* Raumstempel direkt in der Leiste */}
+                        <div className="flex items-center gap-1.5 bg-background border border-border rounded-xl px-2 py-1">
+                          <label className="flex items-center gap-1 cursor-pointer select-none shrink-0" title="Flächenstempel auf Plan anzeigen">
+                            <input
+                              type="checkbox"
+                              checked={selectedElement.type === 'polygon' ? (selectedElement as any).showArea !== false : Boolean((selectedElement as any).showArea)}
+                              onChange={e => updateElement({ ...selectedElement, showArea: e.target.checked } as any)}
+                              className="w-3.5 h-3.5 rounded accent-blue-500 cursor-pointer"
+                            />
+                            <span className="text-[10px] font-bold text-text-secondary">Stempel</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={(selectedElement as any).roomName || ''}
+                            placeholder="Raum / Name..."
+                            onChange={e => updateElement({ ...selectedElement, roomName: e.target.value } as any)}
+                            className="w-24 sm:w-28 bg-transparent text-[11px] font-semibold text-text-primary placeholder:text-text-muted outline-none border-l border-border pl-1.5"
+                          />
+                        </div>
+
+                        {/* Popover-Button: Masse & Drehung (für Rechteck & Kreis) */}
+                        {(selectedElement.type === 'rect' || selectedElement.type === 'circle') && (
+                          <button
+                            type="button"
+                            onClick={() => setActiveInspectorPopover(prev => prev === 'size' ? null : 'size')}
+                            className={cn(
+                              "px-2.5 py-1 rounded-xl border text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-all whitespace-nowrap",
+                              activeInspectorPopover === 'size'
+                                ? "bg-accent-ai/15 text-accent-ai border-accent-ai/40"
+                                : "bg-background border-border text-text-secondary hover:text-text-primary"
+                            )}
+                          >
+                            <RotateCw size={11} />
+                            <span>{selectedElement.type === 'rect' ? 'Masse & Drehung' : 'Radius / Ø'}</span>
+                            <ChevronDown size={11} className={cn("transition-transform", activeInspectorPopover === 'size' && "rotate-180")} />
+                          </button>
+                        )}
+
+                        {/* Popover-Button: Kontur & Details */}
+                        <button
+                          type="button"
+                          onClick={() => setActiveInspectorPopover(prev => prev === 'style' ? null : 'style')}
+                          className={cn(
+                            "px-2.5 py-1 rounded-xl border text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-all whitespace-nowrap",
+                            activeInspectorPopover === 'style'
+                              ? "bg-accent-ai/15 text-accent-ai border-accent-ai/40"
+                              : "bg-background border-border text-text-secondary hover:text-text-primary"
+                          )}
+                        >
+                          <SlidersHorizontal size={11} />
+                          <span>Kontur & Stil</span>
+                          <ChevronDown size={11} className={cn("transition-transform", activeInspectorPopover === 'style' && "rotate-180")} />
+                        </button>
+                      </div>
+                    )}
+
+                    {/* MESSLINIE (measure) INLINE */}
+                    {selectedElement.type === 'measure' && (
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex items-center gap-1 bg-background border border-border rounded-xl px-2 py-1">
+                          <span className="text-[9px] font-bold uppercase text-text-muted">{t('color')}</span>
+                          <input
+                            type="color"
+                            value={(selectedElement as Measurement).color || '#3b82f6'}
+                            onChange={e => updateElement({ ...selectedElement, color: e.target.value } as any)}
+                            className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent p-0"
+                          />
+                        </div>
+                        <div className="flex items-center gap-1 bg-background border border-border rounded-xl px-2 py-1">
+                          <span className="text-[9px] font-bold uppercase text-text-muted">Schrift:</span>
+                          {[0.5, 0.75, 1, 1.5].map(sc => (
+                            <button
+                              key={sc}
+                              type="button"
+                              onClick={() => updateElement({ ...selectedElement, textScale: sc } as Measurement)}
+                              className={cn(
+                                "px-1.5 py-0.5 rounded text-[10px] font-bold cursor-pointer",
+                                Math.round(((selectedElement as Measurement).textScale || 1) * 100) === Math.round(sc * 100)
+                                  ? "bg-primary/15 text-primary"
+                                  : "text-text-muted hover:text-text-primary"
+                              )}
+                            >
+                              {Math.round(sc * 100)}%
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* FREIHAND (pen) & PFEIL (arrow) INLINE */}
+                    {(selectedElement.type === 'pen' || selectedElement.type === 'arrow') && (
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex items-center gap-1 bg-background border border-border rounded-xl px-2 py-1">
+                          <input
+                            type="color"
+                            value={(selectedElement as any).color || '#ef4444'}
+                            onChange={e => updateElement({ ...selectedElement, color: e.target.value } as any)}
+                            className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent p-0"
+                            title={t('color')}
+                          />
+                        </div>
+                        {selectedElement.type === 'arrow' && (
+                          <select
+                            value={(selectedElement as ArrowMarkup).borderStyle || 'solid'}
+                            onChange={e => updateElement({ ...selectedElement, borderStyle: e.target.value as LineStyle } as any)}
+                            className="h-7 bg-background border border-border rounded-xl px-2 text-[11px] font-bold outline-none cursor-pointer"
+                          >
+                            <option value="solid">Durchgehend</option>
+                            <option value="dashed">Gestrichelt</option>
+                            <option value="dotted">Gepunktet</option>
+                          </select>
+                        )}
+                        <div className="flex items-center gap-1.5 bg-background border border-border rounded-xl px-2 py-1">
+                          <span className="text-[9px] font-bold uppercase text-text-muted">{t('line_thickness')}</span>
+                          <input
+                            type="range"
+                            min="0.5"
+                            max="8"
+                            step="0.5"
+                            value={selectedElement.type === 'pen' ? ((selectedElement as FreehandLine).thickness ?? 1.5) : ((selectedElement as ArrowMarkup).strokeWidth ?? 2)}
+                            onChange={e => {
+                              const val = Number(e.target.value);
+                              if (selectedElement.type === 'pen') updateElement({ ...selectedElement, thickness: val } as any);
+                              else updateElement({ ...selectedElement, strokeWidth: val } as any);
+                            }}
+                            className="w-16 accent-blue-500 h-1 cursor-pointer"
+                          />
+                          <span className="text-[10px] font-mono font-bold text-primary">
+                            {selectedElement.type === 'pen' ? ((selectedElement as FreehandLine).thickness ?? 1.5) : ((selectedElement as ArrowMarkup).strokeWidth ?? 2)}px
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 bg-background border border-border rounded-xl px-2 py-1">
+                          <span className="text-[9px] font-bold uppercase text-text-muted">Deckkraft</span>
+                          <input
+                            type="range"
+                            min="0.1"
+                            max="1"
+                            step="0.05"
+                            value={selectedElement.opacity ?? 1}
+                            onChange={e => updateElement({ ...selectedElement, opacity: Number(e.target.value) } as any)}
+                            className="w-14 accent-blue-500 h-1 cursor-pointer"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* TEXT (text) INLINE */}
+                    {selectedElement.type === 'text' && (
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <input
+                          type="text"
+                          value={(selectedElement as TextMarkup).text}
+                          onChange={e => updateElement({ ...selectedElement, text: e.target.value } as any)}
+                          placeholder="Text eingeben..."
+                          className="w-44 sm:w-56 h-7 bg-background border border-border rounded-xl px-2.5 text-xs font-bold text-text-primary focus:border-blue-500 outline-none"
+                        />
+                        <div className="flex items-center gap-1 bg-background border border-border rounded-xl px-1.5 py-1">
+                          <input
+                            type="color"
+                            value={(selectedElement as TextMarkup).color || '#000000'}
+                            onChange={e => updateElement({ ...selectedElement, color: e.target.value } as any)}
+                            className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent p-0"
+                          />
+                        </div>
+                        <div className="flex items-center gap-1 bg-background border border-border rounded-xl px-2 h-7">
+                          <span className="text-[9px] font-bold uppercase text-text-muted">Grösse</span>
+                          <input
+                            type="number"
+                            min="1"
+                            max="72"
+                            value={(selectedElement as TextMarkup).size || 5}
+                            onChange={e => updateElement({ ...selectedElement, size: parseFloat(e.target.value) || 5 } as any)}
+                            className="w-11 bg-transparent text-xs font-bold text-center outline-none"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* MASSSTABSLEISTE (scalebar) INLINE */}
+                    {selectedElement.type === 'scalebar' && (
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex items-center gap-1 bg-background border border-border rounded-xl px-2 h-7">
+                          <span className="text-[9px] font-bold uppercase text-text-muted">{t('length_meters')}</span>
+                          <input
+                            type="number"
+                            min="0.1"
+                            step="0.5"
+                            value={(selectedElement as ScaleBarMarkup).lengthMeters || 5}
+                            onChange={e => updateElement({ ...selectedElement, lengthMeters: parseFloat(e.target.value) || 1 } as ScaleBarMarkup)}
+                            className="w-12 bg-transparent text-xs font-bold text-center outline-none"
+                          />
+                        </div>
+                        <div className="flex items-center gap-1 bg-background border border-border rounded-xl px-1.5 py-1">
+                          <input
+                            type="color"
+                            value={(selectedElement as ScaleBarMarkup).color || '#000000'}
+                            onChange={e => updateElement({ ...selectedElement, color: e.target.value } as ScaleBarMarkup)}
+                            className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent p-0"
+                          />
+                        </div>
+                        <div className="flex items-center gap-1 bg-background border border-border rounded-xl px-2 h-7">
+                          <span className="text-[9px] font-bold uppercase text-text-muted">{t('text_size')}</span>
+                          <input
+                            type="number"
+                            min="1"
+                            step="0.5"
+                            value={(selectedElement as ScaleBarMarkup).textSize || 4}
+                            onChange={e => updateElement({ ...selectedElement, textSize: parseFloat(e.target.value) || 4 } as ScaleBarMarkup)}
+                            className="w-10 bg-transparent text-xs font-bold text-center outline-none"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* BILD-OVERLAY (image) INLINE */}
+                    {selectedElement.type === 'image' && (
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-1.5 bg-background border border-border rounded-xl px-2.5 py-1">
+                          <span className="text-[9px] font-bold uppercase text-text-muted">Grösse</span>
+                          <input
+                            type="range"
+                            min="0.1"
+                            max="5"
+                            step="0.05"
+                            value={(selectedElement as ImageMarkup).scale ?? 1}
+                            onChange={e => updateElement({ ...selectedElement, scale: Number(e.target.value) } as any)}
+                            className="w-20 accent-blue-500 h-1 cursor-pointer"
+                          />
+                          <span className="text-[10px] font-mono font-bold text-primary">
+                            {Math.round(((selectedElement as ImageMarkup).scale ?? 1) * 100)}%
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 bg-background border border-border rounded-xl px-2.5 py-1">
+                          <span className="text-[9px] font-bold uppercase text-text-muted">Deckkraft</span>
+                          <input
+                            type="range"
+                            min="0.05"
+                            max="1"
+                            step="0.05"
+                            value={selectedElement.opacity ?? 1}
+                            onChange={e => updateElement({ ...selectedElement, opacity: Number(e.target.value) } as any)}
+                            className="w-20 accent-blue-500 h-1 cursor-pointer"
+                          />
+                          <span className="text-[10px] font-mono font-bold text-primary">
+                            {Math.round((selectedElement.opacity ?? 1) * 100)}%
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* SIA 118 MANGEL-PIN (defect) INLINE */}
+                    {selectedElement.type === 'defect' && (
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <input
+                          type="text"
+                          value={(selectedElement as DefectMarker).title || ''}
+                          onChange={e => {
+                            const updated = { ...(selectedElement as DefectMarker), title: e.target.value };
+                            updateElement(updated);
+                            if (updated.id && !updated.id.startsWith('defect_') && !isDemoMode) {
+                              lastLocalSaveAtRef.current = Date.now();
+                              supabase.from('defects').update({ prompt: e.target.value }).eq('id', updated.id).then(() => {
+                                queryClient.invalidateQueries({ queryKey: [DEFECTS_QUERY_KEY] });
+                              });
+                            }
+                          }}
+                          placeholder="Mangel-Titel..."
+                          className="w-36 sm:w-44 h-7 bg-background border border-border rounded-xl px-2.5 text-xs font-bold text-text-primary outline-none focus:border-red-500/50"
+                        />
+                        <select
+                          value={(selectedElement as DefectMarker).status || 'To Do'}
+                          onChange={e => {
                             const newStatus = e.target.value;
                             const updated = { ...(selectedElement as DefectMarker), status: newStatus };
                             updateElement(updated);
                             if (updated.id && !updated.id.startsWith('defect_') && !isDemoMode) {
+                              lastLocalSaveAtRef.current = Date.now();
                               supabase.from('defects').update({ status: newStatus }).eq('id', updated.id).then(() => {
                                 queryClient.invalidateQueries({ queryKey: [DEFECTS_QUERY_KEY] });
                               });
                             }
                           }}
-                          className="w-full bg-background border border-border rounded-lg px-2 py-1.5 text-[11px] font-bold text-text-primary outline-none cursor-pointer"
+                          className="h-7 bg-background border border-border rounded-xl px-2 text-[11px] font-bold text-text-primary outline-none cursor-pointer"
                         >
                           <option value="To Do">🔴 To Do</option>
                           <option value="In Progress">🟠 In Arbeit</option>
                           <option value="In Review">🔵 Prüfung</option>
                           <option value="Done">🟢 Erledigt</option>
                         </select>
-                      </div>
-
-                      <div>
-                        <label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">Priorität</label>
-                        <select 
-                          value={(selectedElement as DefectMarker).priority || 'High'} 
-                          onChange={(e) => {
+                        <select
+                          value={(selectedElement as DefectMarker).priority || 'High'}
+                          onChange={e => {
                             const newSev = e.target.value;
                             const updated = { ...(selectedElement as DefectMarker), priority: newSev };
                             updateElement(updated);
                             if (updated.id && !updated.id.startsWith('defect_') && !isDemoMode) {
+                              lastLocalSaveAtRef.current = Date.now();
                               supabase.from('defects').update({ severity: newSev }).eq('id', updated.id).then(() => {
                                 queryClient.invalidateQueries({ queryKey: [DEFECTS_QUERY_KEY] });
                               });
                             }
                           }}
-                          className="w-full bg-background border border-border rounded-lg px-2 py-1.5 text-[11px] font-bold text-text-primary outline-none cursor-pointer"
+                          className="h-7 bg-background border border-border rounded-xl px-2 text-[11px] font-bold text-text-primary outline-none cursor-pointer"
                         >
                           <option value="Critical">Kritisch</option>
                           <option value="High">Hoch</option>
                           <option value="Medium">Mittel</option>
                           <option value="Low">Niedrig</option>
                         </select>
+                        <button
+                          type="button"
+                          onClick={() => setActiveInspectorPopover(prev => prev === 'details' ? null : 'details')}
+                          className={cn(
+                            "px-2.5 h-7 rounded-xl border text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-all whitespace-nowrap",
+                            activeInspectorPopover === 'details'
+                              ? "bg-accent-ai/15 text-accent-ai border-accent-ai/40"
+                              : "bg-background border-border text-text-secondary hover:text-text-primary"
+                          )}
+                        >
+                          <span>Gewerk & Details</span>
+                          <ChevronDown size={11} className={cn("transition-transform", activeInspectorPopover === 'details' && "rotate-180")} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/project/${currentProjectId}/defects`)}
+                          className="px-2.5 h-7 bg-accent-ai/10 text-accent-ai hover:bg-accent-ai/20 border border-accent-ai/30 rounded-xl text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                          title="Im Mängel-Modul öffnen"
+                        >
+                          <ExternalLink size={11} />
+                          <span className="hidden xl:inline">Mängel-Modul</span>
+                        </button>
                       </div>
-                    </div>
+                    )}
 
-                    <div>
-                      <label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">Gewerk / Handwerker</label>
-                      <input 
-                        type="text" 
-                        list="cad-swiss-trades-list"
-                        value={(selectedElement as DefectMarker).trade || ''} 
-                        onChange={(e) => {
-                          const updated = { ...(selectedElement as DefectMarker), trade: e.target.value };
-                          updateElement(updated);
-                          if (updated.id && !updated.id.startsWith('defect_') && !isDemoMode) {
-                            supabase.from('defects').update({ trade: e.target.value }).eq('id', updated.id).then(() => {
-                              queryClient.invalidateQueries({ queryKey: [DEFECTS_QUERY_KEY] });
-                            });
-                          }
-                        }} 
-                        className="w-full bg-background border border-border rounded-lg px-2.5 py-1.5 text-xs font-medium text-text-primary outline-none focus:border-red-500/50" 
-                        placeholder="z.B. Baumeister, Gipser, Elektro"
-                      />
-                      <datalist id="cad-swiss-trades-list">
-                        {SWISS_TRADES.map(tr => (
-                          <option key={tr} value={tr} />
-                        ))}
-                      </datalist>
-                    </div>
+                    {/* PLANKOPF (titleblock) INLINE */}
+                    {selectedElement.type === 'titleblock' && (() => {
+                      const tbEl = selectedElement as TitleBlockMarkup;
+                      const activeLogo = tbEl.data.logoUrl !== undefined ? tbEl.data.logoUrl : (companyProfile?.logoUrl || '');
+                      return (
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <div className="flex items-center gap-1.5 bg-background border border-border rounded-xl px-2 py-1">
+                            <span className="text-[9px] font-bold uppercase text-text-muted">{t('scale')}</span>
+                            <input
+                              type="range"
+                              min="0.2"
+                              max="2"
+                              step="0.05"
+                              value={tbEl.scale}
+                              onChange={e => updateElement({ ...tbEl, scale: Number(e.target.value) } as TitleBlockMarkup)}
+                              className="w-16 accent-blue-500 h-1 cursor-pointer"
+                            />
+                            <span className="text-[10px] font-mono font-bold text-primary">
+                              {Math.round((tbEl.scale || 0.7) * 100)}%
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 bg-background border border-border rounded-xl px-1.5 py-1">
+                            <input
+                              type="color"
+                              value={tbEl.textColor || '#000000'}
+                              onChange={e => updateElement({ ...tbEl, textColor: e.target.value } as TitleBlockMarkup)}
+                              className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent p-0"
+                              title={t('color')}
+                            />
+                          </div>
+                          <input
+                            ref={titleBlockLogoInputRef}
+                            type="file"
+                            accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                            onChange={handleTitleBlockLogoUpload}
+                            className="hidden"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => titleBlockLogoInputRef.current?.click()}
+                            className="px-2.5 h-7 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer whitespace-nowrap"
+                          >
+                            <ImagePlus size={11} />
+                            <span>{activeLogo ? 'Logo ändern' : 'Logo'}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setActiveInspectorPopover(prev => prev === 'details' ? null : 'details')}
+                            className={cn(
+                              "px-2.5 h-7 rounded-xl border text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-all whitespace-nowrap",
+                              activeInspectorPopover === 'details'
+                                ? "bg-accent-ai/15 text-accent-ai border-accent-ai/40"
+                                : "bg-background border-border text-text-secondary hover:text-text-primary"
+                            )}
+                          >
+                            <span>Plankopf-Texte</span>
+                            <ChevronDown size={11} className={cn("transition-transform", activeInspectorPopover === 'details' && "rotate-180")} />
+                          </button>
+                        </div>
+                      );
+                    })()}
+                  </div>
 
-                    <div>
-                      <label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">Beschreibung</label>
-                      <textarea 
-                        rows={2} 
-                        value={(selectedElement as DefectMarker).description || ''} 
-                        onChange={(e) => {
-                          const updated = { ...(selectedElement as DefectMarker), description: e.target.value };
-                          updateElement(updated);
-                          if (updated.id && !updated.id.startsWith('defect_') && !isDemoMode) {
-                            supabase.from('defects').update({ description: e.target.value }).eq('id', updated.id).then(() => {
-                              queryClient.invalidateQueries({ queryKey: [DEFECTS_QUERY_KEY] });
-                            });
-                          }
-                        }} 
-                        className="w-full bg-background border border-border rounded-lg px-2.5 py-1.5 text-xs font-medium text-text-primary outline-none focus:border-red-500/50 resize-none" 
-                        placeholder="Beschreibung..."
-                      />
-                    </div>
-
-                    <button 
-                      type="button" 
-                      onClick={() => navigate(`/project/${currentProjectId}/defects`)} 
-                      className="w-full py-1.5 px-3 bg-accent-ai/10 text-accent-ai hover:bg-accent-ai/20 border border-accent-ai/30 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  {/* RECHTS: SCHNELLAKTIONEN (Vorne, Hinten, Sperren, Duplizieren, Löschen, Oben/Unten, Einklappen, Schliessen) */}
+                  <div className="flex items-center gap-1 shrink-0 pl-2 border-l border-border/70">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newEls = elements.filter(e => e.id !== selectedElement.id);
+                        commitElements([...newEls, selectedElement]);
+                      }}
+                      className="p-1.5 bg-background border border-border rounded-xl hover:bg-white/5 cursor-pointer text-text-secondary hover:text-text-primary transition-colors"
+                      title="Nach vorne bringen"
                     >
-                      <ExternalLink size={12} />
-                      Im Mängel-Modul öffnen
+                      <BringToFront size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newEls = elements.filter(e => e.id !== selectedElement.id);
+                        commitElements([selectedElement, ...newEls]);
+                      }}
+                      className="p-1.5 bg-background border border-border rounded-xl hover:bg-white/5 cursor-pointer text-text-secondary hover:text-text-primary transition-colors"
+                      title="Nach hinten senden"
+                    >
+                      <SendToBack size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateElement({ ...selectedElement, locked: !selectedElement.locked } as any)}
+                      className={cn(
+                        "p-1.5 rounded-xl border transition-all cursor-pointer",
+                        selectedElement.locked
+                          ? "bg-amber-500/15 text-amber-500 border-amber-500/30"
+                          : "bg-background border-border text-text-muted hover:text-text-primary"
+                      )}
+                      title={selectedElement.locked ? 'Objekt entsperren' : 'Gegen Verschieben sperren'}
+                    >
+                      {selectedElement.locked ? <Lock size={13} /> : <Unlock size={13} />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDuplicateElement(selectedElement)}
+                      className="p-1.5 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 border border-blue-500/30 transition-all cursor-pointer"
+                      title={currentLang === 'de' ? 'Objekt duplizieren (Cmd/Ctrl+D)' : 'Duplicate object (Cmd/Ctrl+D)'}
+                    >
+                      <Copy size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteElement(selectedElement.id)}
+                      className="p-1.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl hover:bg-red-500/20 transition-colors cursor-pointer"
+                      title={t('delete_element')}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+
+                    <div className="w-px h-4 bg-border/60 mx-0.5" />
+
+                    {/* Oben / Unten andocken */}
+                    <button
+                      type="button"
+                      onClick={toggleInspectorDock}
+                      className="p-1.5 hover:bg-white/10 rounded-xl text-text-muted hover:text-text-primary transition-colors cursor-pointer"
+                      title={inspectorDock === 'top' ? 'Leiste nach unten verschieben' : 'Leiste nach oben verschieben'}
+                    >
+                      {inspectorDock === 'top' ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
+                    </button>
+
+                    {/* Zu Mini-Chip einklappen */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveInspectorPopover(null);
+                        setInspectorCollapsed(true);
+                      }}
+                      className="px-1.5 py-1 hover:bg-white/10 rounded-xl text-[10px] font-bold text-text-muted hover:text-text-primary transition-colors cursor-pointer"
+                      title="Leiste minimieren (freie Sicht auf Plan)"
+                    >
+                      Min.
+                    </button>
+
+                    {/* Schliessen */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedElement(null)}
+                      className="p-1.5 hover:bg-white/10 rounded-xl text-text-muted hover:text-text-primary cursor-pointer"
+                      title={currentLang === 'de' ? 'Auswahl aufheben (ESC)' : 'Deselect (ESC)'}
+                    >
+                      <X size={14} />
                     </button>
                   </div>
-                )}
+                </div>
 
-                {selectedElement.type === 'image' && (
-                  <div className="space-y-2">
-                    <div>
-                      <div className="flex justify-between text-[10px] font-bold uppercase mb-0.5">
-                        <span>Bildgrösse</span>
-                        <span className="text-primary">{Math.round(((selectedElement as ImageMarkup).scale ?? 1) * 100)}%</span>
-                      </div>
-                      <input type="range" min="0.1" max="5" step="0.05" value={(selectedElement as ImageMarkup).scale ?? 1} onChange={e => updateElement({...selectedElement, scale: Number(e.target.value)} as any)} className="w-full accent-blue-500 h-1.5 cursor-pointer" />
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-[10px] font-bold uppercase mb-0.5">
-                        <span>Deckkraft</span>
-                        <span className="text-primary">{Math.round((selectedElement.opacity ?? 1)*100)}%</span>
-                      </div>
-                      <input type="range" min="0" max="1" step="0.05" value={selectedElement.opacity ?? 1} onChange={e => updateElement({...selectedElement, opacity: Number(e.target.value)} as any)} className="w-full accent-blue-500 h-1.5 cursor-pointer" />
-                    </div>
-                  </div>
-                )}
-
-                {(selectedElement.type === 'rect' || selectedElement.type === 'circle' || selectedElement.type === 'polygon') && (
-                  <>
-                    {/* GRÖSSE DIREKT PER KLICK (+/-) ODER EINGABE VERÄNDERN (RECHTECK & KREIS) */}
+                {/* KOMPAKTE AUFKLAPP-POPOVERS FÜR FEINEINSTELLUNGEN (Nur bei Klick geöffnet) */}
+                {activeInspectorPopover === 'size' && (selectedElement.type === 'rect' || selectedElement.type === 'circle') && (
+                  <div className="mt-1.5 pt-2 border-t border-border flex flex-wrap items-center gap-3 text-xs">
                     {selectedElement.type === 'rect' && (() => {
                       const rectEl = selectedElement as RectMarkup;
                       const widthM = Number(((Math.abs(rectEl.w) * paperW_mm * planScale) / 1000).toFixed(2));
@@ -3903,95 +4584,60 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                         updateElement({ ...rectEl, w: nextW, h: nextH });
                       };
                       return (
-                        <div className="p-2 rounded-xl bg-background/80 border border-border space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[9px] font-extrabold uppercase tracking-wider text-text-muted">
-                              Grösse anpassen (Klick oder Ziehpunkte)
-                            </span>
-                            <div className="flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => setRectSizeM(widthM * 0.9, heightM * 0.9)}
-                                className="px-1.5 py-0.5 rounded bg-surface border border-border hover:border-primary/50 text-[9px] font-bold text-text-muted hover:text-text-primary cursor-pointer"
-                                title="10% kleiner"
-                              >
-                                -10%
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setRectSizeM(widthM * 1.1, heightM * 1.1)}
-                                className="px-1.5 py-0.5 rounded bg-surface border border-border hover:border-primary/50 text-[9px] font-bold text-text-muted hover:text-text-primary cursor-pointer"
-                                title="10% grösser"
-                              >
-                                +10%
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setRectSizeM(widthM, widthM)}
-                                className="px-1.5 py-0.5 rounded bg-surface border border-border hover:border-primary/50 text-[9px] font-bold text-text-muted hover:text-text-primary cursor-pointer"
-                                title="Quadratisch angleichen"
-                              >
-                                1:1
-                              </button>
+                        <>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-bold text-text-muted">Breite (m):</span>
+                            <div className="flex items-center bg-background border border-border rounded-lg overflow-hidden h-7">
+                              <button type="button" onClick={() => setRectSizeM(Math.max(0.1, Number((widthM - 0.25).toFixed(2))), heightM)} className="px-2 h-full hover:bg-white/10 text-xs font-black text-text-muted hover:text-text-primary cursor-pointer">−</button>
+                              <input type="number" step="0.1" min="0.1" value={widthM} onChange={e => setRectSizeM(parseFloat(e.target.value) || 0.1, heightM)} className="w-14 bg-transparent text-center text-[11px] font-bold text-text-primary outline-none" />
+                              <button type="button" onClick={() => setRectSizeM(Number((widthM + 0.25).toFixed(2)), heightM)} className="px-2 h-full hover:bg-white/10 text-xs font-black text-text-muted hover:text-text-primary cursor-pointer">+</button>
                             </div>
                           </div>
-                          <div className="grid grid-cols-2 gap-1.5">
-                            <div>
-                              <label className="text-[9px] font-bold text-text-muted block mb-0.5">Breite (m)</label>
-                              <div className="flex items-center bg-surface border border-border rounded-lg overflow-hidden h-7">
-                                <button
-                                  type="button"
-                                  onClick={() => setRectSizeM(Math.max(0.1, Number((widthM - 0.25).toFixed(2))), heightM)}
-                                  className="px-2 h-full hover:bg-white/10 text-xs font-black text-text-muted hover:text-text-primary cursor-pointer"
-                                >
-                                  −
-                                </button>
-                                <input
-                                  type="number"
-                                  step="0.1"
-                                  min="0.1"
-                                  value={widthM}
-                                  onChange={e => setRectSizeM(parseFloat(e.target.value) || 0.1, heightM)}
-                                  className="w-full bg-transparent text-center text-[11px] font-bold text-text-primary outline-none"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => setRectSizeM(Number((widthM + 0.25).toFixed(2)), heightM)}
-                                  className="px-2 h-full hover:bg-white/10 text-xs font-black text-text-muted hover:text-text-primary cursor-pointer"
-                                >
-                                  +
-                                </button>
-                              </div>
-                            </div>
-                            <div>
-                              <label className="text-[9px] font-bold text-text-muted block mb-0.5">Höhe (m)</label>
-                              <div className="flex items-center bg-surface border border-border rounded-lg overflow-hidden h-7">
-                                <button
-                                  type="button"
-                                  onClick={() => setRectSizeM(widthM, Math.max(0.1, Number((heightM - 0.25).toFixed(2))))}
-                                  className="px-2 h-full hover:bg-white/10 text-xs font-black text-text-muted hover:text-text-primary cursor-pointer"
-                                >
-                                  −
-                                </button>
-                                <input
-                                  type="number"
-                                  step="0.1"
-                                  min="0.1"
-                                  value={heightM}
-                                  onChange={e => setRectSizeM(widthM, parseFloat(e.target.value) || 0.1)}
-                                  className="w-full bg-transparent text-center text-[11px] font-bold text-text-primary outline-none"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => setRectSizeM(widthM, Number((heightM + 0.25).toFixed(2)))}
-                                  className="px-2 h-full hover:bg-white/10 text-xs font-black text-text-muted hover:text-text-primary cursor-pointer"
-                                >
-                                  +
-                                </button>
-                              </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-bold text-text-muted">Höhe (m):</span>
+                            <div className="flex items-center bg-background border border-border rounded-lg overflow-hidden h-7">
+                              <button type="button" onClick={() => setRectSizeM(widthM, Math.max(0.1, Number((heightM - 0.25).toFixed(2))))} className="px-2 h-full hover:bg-white/10 text-xs font-black text-text-muted hover:text-text-primary cursor-pointer">−</button>
+                              <input type="number" step="0.1" min="0.1" value={heightM} onChange={e => setRectSizeM(widthM, parseFloat(e.target.value) || 0.1)} className="w-14 bg-transparent text-center text-[11px] font-bold text-text-primary outline-none" />
+                              <button type="button" onClick={() => setRectSizeM(widthM, Number((heightM + 0.25).toFixed(2)))} className="px-2 h-full hover:bg-white/10 text-xs font-black text-text-muted hover:text-text-primary cursor-pointer">+</button>
                             </div>
                           </div>
-                        </div>
+                          <div className="flex items-center gap-1">
+                            <button type="button" onClick={() => setRectSizeM(widthM * 0.9, heightM * 0.9)} className="px-2 py-1 rounded-lg bg-background border border-border text-[10px] font-bold text-text-muted hover:text-text-primary cursor-pointer">-10%</button>
+                            <button type="button" onClick={() => setRectSizeM(widthM * 1.1, heightM * 1.1)} className="px-2 py-1 rounded-lg bg-background border border-border text-[10px] font-bold text-text-muted hover:text-text-primary cursor-pointer">+10%</button>
+                            <button type="button" onClick={() => setRectSizeM(widthM, widthM)} className="px-2 py-1 rounded-lg bg-background border border-border text-[10px] font-bold text-text-muted hover:text-text-primary cursor-pointer">1:1</button>
+                          </div>
+                          <div className="w-px h-5 bg-border/60 hidden sm:block" />
+                          <div className="flex items-center gap-1.5">
+                            <RotateCw size={11} className="text-primary" />
+                            <span className="text-[10px] font-bold text-text-muted">Drehung:</span>
+                            {[0, 45, 90, 180].map(deg => (
+                              <button
+                                key={deg}
+                                type="button"
+                                onClick={() => updateElement({ ...selectedElement, rotation: deg } as any)}
+                                className={cn(
+                                  "px-1.5 py-0.5 rounded border text-[10px] font-bold cursor-pointer",
+                                  Math.round((selectedElement as any).rotation || 0) === deg
+                                    ? "border-primary text-primary bg-primary/10"
+                                    : "border-border bg-background text-text-muted hover:text-text-primary"
+                                )}
+                              >
+                                {deg}°
+                              </button>
+                            ))}
+                            <input
+                              type="number"
+                              min="0"
+                              max="360"
+                              value={Math.round((selectedElement as any).rotation || 0)}
+                              onChange={e => {
+                                const val = (Math.round(Number(e.target.value)) % 360 + 360) % 360;
+                                updateElement({ ...selectedElement, rotation: val } as any);
+                              }}
+                              className="w-12 h-7 bg-background border border-border rounded-lg px-1.5 text-[11px] font-bold text-center text-primary outline-none"
+                            />
+                          </div>
+                        </>
                       );
                     })()}
 
@@ -4005,728 +4651,219 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                         updateElement({ ...circleEl, r: nextR });
                       };
                       return (
-                        <div className="p-2 rounded-xl bg-background/80 border border-border space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[9px] font-extrabold uppercase tracking-wider text-text-muted">
-                              Kreisgrösse (Klick oder Ziehpunkte)
-                            </span>
-                            <div className="flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => setCircleRadiusM(radiusM * 0.9)}
-                                className="px-1.5 py-0.5 rounded bg-surface border border-border hover:border-primary/50 text-[9px] font-bold text-text-muted hover:text-text-primary cursor-pointer"
-                              >
-                                -10%
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setCircleRadiusM(radiusM * 1.1)}
-                                className="px-1.5 py-0.5 rounded bg-surface border border-border hover:border-primary/50 text-[9px] font-bold text-text-muted hover:text-text-primary cursor-pointer"
-                              >
-                                +10%
-                              </button>
+                        <>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-bold text-text-muted">Radius (m):</span>
+                            <div className="flex items-center bg-background border border-border rounded-lg overflow-hidden h-7">
+                              <button type="button" onClick={() => setCircleRadiusM(Math.max(0.05, Number((radiusM - 0.25).toFixed(2))))} className="px-2 h-full hover:bg-white/10 text-xs font-black text-text-muted hover:text-text-primary cursor-pointer">−</button>
+                              <input type="number" step="0.1" min="0.05" value={radiusM} onChange={e => setCircleRadiusM(parseFloat(e.target.value) || 0.05)} className="w-14 bg-transparent text-center text-[11px] font-bold text-text-primary outline-none" />
+                              <button type="button" onClick={() => setCircleRadiusM(Number((radiusM + 0.25).toFixed(2)))} className="px-2 h-full hover:bg-white/10 text-xs font-black text-text-muted hover:text-text-primary cursor-pointer">+</button>
                             </div>
                           </div>
-                          <div className="grid grid-cols-2 gap-1.5">
-                            <div>
-                              <label className="text-[9px] font-bold text-text-muted block mb-0.5">Radius (m)</label>
-                              <div className="flex items-center bg-surface border border-border rounded-lg overflow-hidden h-7">
-                                <button
-                                  type="button"
-                                  onClick={() => setCircleRadiusM(Math.max(0.05, Number((radiusM - 0.25).toFixed(2))))}
-                                  className="px-2 h-full hover:bg-white/10 text-xs font-black text-text-muted hover:text-text-primary cursor-pointer"
-                                >
-                                  −
-                                </button>
-                                <input
-                                  type="number"
-                                  step="0.1"
-                                  min="0.05"
-                                  value={radiusM}
-                                  onChange={e => setCircleRadiusM(parseFloat(e.target.value) || 0.05)}
-                                  className="w-full bg-transparent text-center text-[11px] font-bold text-text-primary outline-none"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => setCircleRadiusM(Number((radiusM + 0.25).toFixed(2)))}
-                                  className="px-2 h-full hover:bg-white/10 text-xs font-black text-text-muted hover:text-text-primary cursor-pointer"
-                                >
-                                  +
-                                </button>
-                              </div>
-                            </div>
-                            <div>
-                              <label className="text-[9px] font-bold text-text-muted block mb-0.5">Durchmesser Ø (m)</label>
-                              <div className="flex items-center bg-surface border border-border rounded-lg overflow-hidden h-7">
-                                <button
-                                  type="button"
-                                  onClick={() => setCircleRadiusM(Math.max(0.05, Number(((diameterM - 0.5) / 2).toFixed(2))))}
-                                  className="px-2 h-full hover:bg-white/10 text-xs font-black text-text-muted hover:text-text-primary cursor-pointer"
-                                >
-                                  −
-                                </button>
-                                <input
-                                  type="number"
-                                  step="0.1"
-                                  min="0.1"
-                                  value={diameterM}
-                                  onChange={e => setCircleRadiusM((parseFloat(e.target.value) || 0.1) / 2)}
-                                  className="w-full bg-transparent text-center text-[11px] font-bold text-text-primary outline-none"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => setCircleRadiusM(Number(((diameterM + 0.5) / 2).toFixed(2)))}
-                                  className="px-2 h-full hover:bg-white/10 text-xs font-black text-text-muted hover:text-text-primary cursor-pointer"
-                                >
-                                  +
-                                </button>
-                              </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-bold text-text-muted">Durchmesser Ø (m):</span>
+                            <div className="flex items-center bg-background border border-border rounded-lg overflow-hidden h-7">
+                              <button type="button" onClick={() => setCircleRadiusM(Math.max(0.05, Number(((diameterM - 0.5) / 2).toFixed(2))))} className="px-2 h-full hover:bg-white/10 text-xs font-black text-text-muted hover:text-text-primary cursor-pointer">−</button>
+                              <input type="number" step="0.1" min="0.1" value={diameterM} onChange={e => setCircleRadiusM((parseFloat(e.target.value) || 0.1) / 2)} className="w-14 bg-transparent text-center text-[11px] font-bold text-text-primary outline-none" />
+                              <button type="button" onClick={() => setCircleRadiusM(Number(((diameterM + 0.5) / 2).toFixed(2)))} className="px-2 h-full hover:bg-white/10 text-xs font-black text-text-muted hover:text-text-primary cursor-pointer">+</button>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })()}
-
-                    {/* SIA 416 FLÄCHENMASS & RAUMSTEMPEL KOMPAKT */}
-                    <div className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/20 space-y-1.5">
-                      <div className="flex items-center justify-between text-[11px]">
-                        <span className="font-bold text-blue-400 flex items-center gap-1">
-                          <Compass size={11} className="text-blue-400 shrink-0" />
-                          SIA 416:
-                          <strong className="text-xs font-black ml-0.5">
-                            {selectedElement.type === 'polygon' 
-                              ? `${calculatePolygonAreaM2((selectedElement as PolygonMarkup).points)} m²`
-                              : selectedElement.type === 'rect'
-                              ? `${calculateRectAreaM2((selectedElement as RectMarkup).w, (selectedElement as RectMarkup).h)} m²`
-                              : `${(Math.PI * Math.pow((((selectedElement as CircleMarkup).r || 0) * paperW_mm * planScale) / 1000, 2)).toFixed(2)} m²`}
-                          </strong>
-                        </span>
-                        <span className="text-[10px] text-text-muted">
-                          U: <strong className="text-text-primary">
-                            {selectedElement.type === 'polygon'
-                              ? `${calculatePolygonPerimeterM((selectedElement as PolygonMarkup).points)} m`
-                              : selectedElement.type === 'rect'
-                              ? `${calculateRectPerimeterM((selectedElement as RectMarkup).w, (selectedElement as RectMarkup).h)} m`
-                              : `${(2 * Math.PI * ((((selectedElement as CircleMarkup).r || 0) * paperW_mm * planScale) / 1000)).toFixed(2)} m`}
-                          </strong>
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2 pt-1 border-t border-blue-500/20">
-                        <label className="flex items-center gap-1.5 cursor-pointer select-none shrink-0" title="Flächenstempel auf Plan anzeigen">
-                          <input
-                            type="checkbox"
-                            checked={selectedElement.type === 'polygon' ? (selectedElement as any).showArea !== false : Boolean((selectedElement as any).showArea)}
-                            onChange={e => updateElement({ ...selectedElement, showArea: e.target.checked } as any)}
-                            className="w-3.5 h-3.5 rounded accent-blue-500 cursor-pointer"
-                          />
-                          <span className="text-[10px] font-bold text-text-secondary">Stempel</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={(selectedElement as any).roomName || ''}
-                          placeholder="Raum / Funktion (z.B. Büro)"
-                          onChange={e => updateElement({ ...selectedElement, roomName: e.target.value } as any)}
-                          className="flex-1 min-w-0 bg-background border border-border rounded-lg px-2 py-1 text-[11px] text-text-primary placeholder:text-text-muted outline-none focus:border-blue-500"
-                        />
-                      </div>
-
-                      {(selectedElement.type === 'polygon' ? (selectedElement as any).showArea !== false : Boolean((selectedElement as any).showArea)) && (
-                        <div className="pt-1 border-t border-blue-500/20">
-                          <div className="flex justify-between items-center mb-0.5">
-                            <label className="text-[9px] font-bold uppercase text-text-muted">Stempel-Grösse</label>
-                            <span className="text-[10px] font-bold text-primary">{Math.round(((selectedElement as any).textScale || 1) * 100)}%</span>
-                          </div>
-                          <input
-                            type="range"
-                            min="0.25"
-                            max="2.5"
-                            step="0.05"
-                            value={(selectedElement as any).textScale || 1}
-                            onChange={e => updateElement({ ...selectedElement, textScale: Number(e.target.value) } as any)}
-                            className="w-full accent-blue-500 h-1.5 cursor-pointer"
-                          />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* RAND-MODUS (MIT RAND / OHNE RAND) & WEISSE ABDECKFLÄCHE */}
-                    {(() => {
-                      const hasBorder = (selectedElement as any).borderStyle !== 'none' && ((selectedElement as any).strokeWidth ?? 1.5) > 0;
-                      const isWhiteMask = !hasBorder && (selectedElement.color || '').toLowerCase() === '#ffffff' && (selectedElement.opacity ?? 1) >= 0.99;
-                      return (
-                        <div className="p-2 rounded-xl bg-background/70 border border-border/80 space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[9px] font-extrabold uppercase tracking-wider text-text-muted">
-                              Umrandung & Abdeckfläche
-                            </span>
-                          </div>
-                          <div className="grid grid-cols-3 gap-1">
-                            <button
-                              type="button"
-                              onClick={() => updateElement({
-                                ...selectedElement,
-                                borderStyle: (selectedElement as any).borderStyle === 'none' ? 'solid' : ((selectedElement as any).borderStyle || 'solid'),
-                                strokeWidth: ((selectedElement as any).strokeWidth ?? 1.5) > 0 ? ((selectedElement as any).strokeWidth ?? 1.5) : 1.5
-                              } as any)}
-                              className={cn(
-                                "py-1 px-1.5 rounded-lg border text-[9px] font-bold cursor-pointer transition-colors",
-                                hasBorder
-                                  ? "border-primary text-primary bg-primary/10"
-                                  : "border-border bg-surface text-text-muted hover:text-text-primary"
-                              )}
-                            >
-                              Mit Rand
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => updateElement({
-                                ...selectedElement,
-                                borderStyle: 'none',
-                                strokeWidth: 0
-                              } as any)}
-                              className={cn(
-                                "py-1 px-1.5 rounded-lg border text-[9px] font-bold cursor-pointer transition-colors",
-                                !hasBorder && !isWhiteMask
-                                  ? "border-primary text-primary bg-primary/10"
-                                  : "border-border bg-surface text-text-muted hover:text-text-primary"
-                              )}
-                            >
-                              Ohne Rand
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => updateElement({
-                                ...selectedElement,
-                                color: '#ffffff',
-                                borderStyle: 'none',
-                                strokeWidth: 0,
-                                opacity: 1,
-                                showArea: false
-                              } as any)}
-                              className={cn(
-                                "py-1 px-1.5 rounded-lg border text-[9px] font-bold cursor-pointer transition-colors",
-                                isWhiteMask
-                                  ? "border-primary text-primary bg-primary/10"
-                                  : "border-border bg-surface text-text-muted hover:text-text-primary"
-                              )}
-                              title="Weisse Fläche ohne Linienumrandung (100% deckend) zum Abdecken von Planbereichen"
-                            >
-                              Weisse Fläche
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })()}
-
-                    {/* FARBEN & LINIENSTIL IN EINER 3-SPALTEN-ZEILE */}
-                    <div className="grid grid-cols-3 gap-1.5">
-                      <div>
-                        <label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">Füllfarbe</label>
-                        <input type="color" value={selectedElement.color || '#3b82f6'} onChange={e => updateElement({...selectedElement, color: e.target.value} as any)} className="w-full h-7 rounded-lg border border-border cursor-pointer bg-background p-0.5" />
-                        <div className="flex items-center justify-between gap-1 mt-1">
-                          {[
-                            { hex: '#ffffff', label: 'Weiss' },
-                            { hex: '#3b82f6', label: 'Blau' },
-                            { hex: '#10b981', label: 'Grün' },
-                            { hex: '#f59e0b', label: 'Gelb' },
-                            { hex: '#ef4444', label: 'Rot' }
-                          ].map(sw => (
-                            <button
-                              key={sw.hex}
-                              type="button"
-                              onClick={() => updateElement({ ...selectedElement, color: sw.hex } as any)}
-                              title={sw.label}
-                              className={cn(
-                                "w-4 h-4 rounded-full border cursor-pointer transition-transform hover:scale-110",
-                                (selectedElement.color || '').toLowerCase() === sw.hex
-                                  ? "ring-2 ring-primary border-primary"
-                                  : "border-border"
-                              )}
-                              style={{ backgroundColor: sw.hex }}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">Linienfarbe</label>
-                        <input type="color" value={(selectedElement as PolygonMarkup).strokeColor || '#2563eb'} onChange={(e) => updateElement({ ...selectedElement, strokeColor: e.target.value } as any)} className="w-full h-7 rounded-lg border border-border cursor-pointer bg-background p-0.5" />
-                      </div>
-                      <div>
-                        <label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">{t('line_style')}</label>
-                        <select
-                          value={((selectedElement as any).strokeWidth ?? 1.5) === 0 ? 'none' : ((selectedElement as PolygonMarkup).borderStyle || 'solid')}
-                          onChange={(e) => {
-                            const nextStyle = e.target.value as LineStyle;
-                            updateElement({
-                              ...selectedElement,
-                              borderStyle: nextStyle,
-                              strokeWidth: nextStyle === 'none' ? 0 : (((selectedElement as any).strokeWidth ?? 1.5) || 1.5)
-                            } as any);
-                          }}
-                          className="w-full h-7 bg-background border border-border rounded-lg px-1.5 text-[11px] font-bold outline-none cursor-pointer"
-                        >
-                          <option value="solid">Linie</option>
-                          <option value="dashed">Strich</option>
-                          <option value="dotted">Punkt</option>
-                          <option value="none">Ohne Rand</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* LINIENDICKE & DECKKRAFT NEBENEINANDER */}
-                    <div className="grid grid-cols-2 gap-2 p-2 rounded-xl bg-background/60 border border-border/70">
-                      <div>
-                        <div className="flex justify-between items-center mb-0.5">
-                          <label className="text-[9px] font-bold uppercase text-text-muted">Kontur</label>
-                          <span className="text-[10px] font-bold text-primary">
-                            {((selectedElement as any).borderStyle === 'none' || ((selectedElement as any).strokeWidth ?? 1.5) === 0)
-                              ? 'Ohne'
-                              : `${(selectedElement as any).strokeWidth ?? 1.5}px`}
-                          </span>
-                        </div>
-                        <input 
-                          type="range" 
-                          min="0" 
-                          max="8" 
-                          step="0.5" 
-                          value={(selectedElement as any).borderStyle === 'none' ? 0 : ((selectedElement as any).strokeWidth ?? 1.5)} 
-                          onChange={e => {
-                            const val = Number(e.target.value);
-                            updateElement({
-                              ...selectedElement,
-                              strokeWidth: val,
-                              borderStyle: val === 0 ? 'none' : ((selectedElement as any).borderStyle === 'none' ? 'solid' : ((selectedElement as any).borderStyle || 'solid'))
-                            } as any);
-                          }} 
-                          className="w-full accent-blue-500 h-1.5 cursor-pointer" 
-                        />
-                        <div className="flex justify-between gap-0.5 mt-1">
-                          {[0, 0.5, 1.5, 3, 6].map(w => {
-                            const currentW = (selectedElement as any).borderStyle === 'none' ? 0 : ((selectedElement as any).strokeWidth ?? 1.5);
-                            return (
-                              <button
-                                key={w}
-                                type="button"
-                                onClick={() => updateElement({
-                                  ...selectedElement,
-                                  strokeWidth: w,
-                                  borderStyle: w === 0 ? 'none' : ((selectedElement as any).borderStyle === 'none' ? 'solid' : ((selectedElement as any).borderStyle || 'solid'))
-                                } as any)}
-                                className={cn(
-                                  "flex-1 py-0.5 rounded border text-[9px] font-bold cursor-pointer",
-                                  currentW === w
-                                    ? "border-primary text-primary bg-primary/10"
-                                    : "border-border bg-background text-text-muted hover:text-text-primary"
-                                )}
-                              >
-                                {w === 0 ? 'Ohne' : w}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between items-center mb-0.5">
-                          <label className="text-[9px] font-bold uppercase text-text-muted">Deckkraft</label>
-                          <span className="text-[10px] font-bold text-primary">{Math.round((selectedElement.opacity ?? 1)*100)}%</span>
-                        </div>
-                        <input
-                          type="range"
-                          min="0"
-                          max="1"
-                          step="0.05"
-                          value={selectedElement.opacity ?? 1}
-                          onChange={e => updateElement({...selectedElement, opacity: Number(e.target.value)} as any)}
-                          className="w-full accent-blue-500 h-1.5 cursor-pointer"
-                        />
-                        <div className="flex justify-between gap-0.5 mt-1">
-                          {[0.25, 0.5, 0.75, 1].map(op => (
-                            <button
-                              key={op}
-                              type="button"
-                              onClick={() => updateElement({...selectedElement, opacity: op} as any)}
-                              className={cn(
-                                "flex-1 py-0.5 rounded border text-[9px] font-bold cursor-pointer",
-                                Math.round((selectedElement.opacity ?? 1) * 100) === Math.round(op * 100)
-                                  ? "border-primary text-primary bg-primary/10"
-                                  : "border-border bg-background text-text-muted hover:text-text-primary"
-                              )}
-                            >
-                              {Math.round(op * 100)}%
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* DREHUNG / AUSRICHTUNG KOMPAKT (FÜR RECHTECKE) */}
-                    {selectedElement.type === 'rect' && (
-                      <div className="p-2 rounded-xl bg-background/60 border border-border/80 space-y-1.5">
-                        <div className="flex justify-between items-center gap-1">
-                          <label className="text-[9px] font-bold uppercase flex items-center gap-1 text-text-muted">
-                            <RotateCw size={11} className="text-primary" />
-                            Drehung
-                          </label>
                           <div className="flex items-center gap-1">
-                            {[0, 45, 90, 180].map(deg => (
-                              <button
-                                key={deg}
-                                type="button"
-                                onClick={() => updateElement({ ...selectedElement, rotation: deg } as any)}
-                                className={cn(
-                                  "px-1.5 py-0.5 rounded border text-[9px] font-bold cursor-pointer",
-                                  Math.round((selectedElement as any).rotation || 0) === deg
-                                    ? "border-primary text-primary bg-primary/10"
-                                    : "border-border bg-background text-text-muted hover:text-text-primary"
-                                )}
-                              >
-                                {deg}°
-                              </button>
-                            ))}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const cur = Math.round((selectedElement as any).rotation || 0);
-                                updateElement({ ...selectedElement, rotation: (cur + 90) % 360 } as any);
-                              }}
-                              className="px-1.5 py-0.5 rounded border border-primary/40 bg-primary/10 text-primary text-[9px] font-bold cursor-pointer"
-                              title="+90° drehen"
-                            >
-                              +90°
-                            </button>
+                            <button type="button" onClick={() => setCircleRadiusM(radiusM * 0.9)} className="px-2 py-1 rounded-lg bg-background border border-border text-[10px] font-bold text-text-muted hover:text-text-primary cursor-pointer">-10%</button>
+                            <button type="button" onClick={() => setCircleRadiusM(radiusM * 1.1)} className="px-2 py-1 rounded-lg bg-background border border-border text-[10px] font-bold text-text-muted hover:text-text-primary cursor-pointer">+10%</button>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <input 
-                            type="range" 
-                            min="0" 
-                            max="360" 
-                            step="1" 
-                            value={(selectedElement as any).rotation || 0} 
-                            onChange={e => updateElement({ ...selectedElement, rotation: Number(e.target.value) } as any)} 
-                            className="flex-1 accent-blue-500 h-1.5 cursor-pointer" 
-                          />
-                          <div className="flex items-center">
-                            <input 
-                              type="number" 
-                              min="0" 
-                              max="360" 
-                              value={Math.round((selectedElement as any).rotation || 0)} 
-                              onChange={e => {
-                                const val = (Math.round(Number(e.target.value)) % 360 + 360) % 360;
-                                updateElement({ ...selectedElement, rotation: val } as any);
-                              }} 
-                              className="w-11 bg-background border border-border rounded px-1 py-0.5 text-[10px] font-bold text-right text-primary outline-none" 
-                            />
-                            <span className="text-[10px] font-bold text-text-muted ml-0.5">°</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {selectedElement.type === 'pen' && (
-                  <div className="space-y-2">
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">{t('color')}</label>
-                        <input type="color" value={(selectedElement as FreehandLine).color || '#ef4444'} onChange={e => updateElement({...selectedElement, color: e.target.value} as any)} className="w-full h-7 rounded-lg border border-border cursor-pointer" />
-                      </div>
-                      <div>
-                        <div className="flex justify-between items-center mb-0.5">
-                          <label className="text-[9px] font-bold uppercase text-text-muted">Deckkraft</label>
-                          <span className="text-[10px] font-bold text-primary">{Math.round((selectedElement.opacity ?? 1)*100)}%</span>
-                        </div>
-                        <input type="range" min="0" max="1" step="0.05" value={selectedElement.opacity ?? 1} onChange={e => updateElement({...selectedElement, opacity: Number(e.target.value)} as any)} className="w-full accent-blue-500 h-1.5 mt-1.5 cursor-pointer" />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex justify-between items-center mb-0.5">
-                        <label className="text-[9px] font-bold uppercase text-text-muted">{t('line_thickness')}</label>
-                        <span className="text-[10px] font-bold text-primary">{((selectedElement as FreehandLine).thickness ?? 1.5)} px</span>
-                      </div>
-                      <input 
-                        type="range" 
-                        min="0.5" 
-                        max="8" 
-                        step="0.5" 
-                        value={((selectedElement as FreehandLine).thickness ?? 1.5)} 
-                        onChange={e => updateElement({...selectedElement, thickness: Number(e.target.value)} as any)} 
-                        className="w-full accent-blue-500 h-1.5 cursor-pointer" 
-                      />
-                    </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 )}
 
-                {selectedElement.type === 'arrow' && (
-                  <div className="space-y-2">
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">Pfeil-Farbe</label>
-                        <input 
-                          type="color" 
-                          value={(selectedElement as ArrowMarkup).color || '#ef4444'} 
-                          onChange={e => updateElement({...selectedElement, color: e.target.value} as any)} 
-                          className="w-full h-7 rounded-lg border border-border cursor-pointer" 
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">{t('line_style')}</label>
-                        <select 
-                          value={(selectedElement as ArrowMarkup).borderStyle || 'solid'} 
-                          onChange={(e) => updateElement({ ...selectedElement, borderStyle: e.target.value as LineStyle } as any)} 
-                          className="w-full h-7 bg-background border border-border rounded-lg px-2 text-[11px] font-bold outline-none"
-                        >
-                          <option value="solid">Durchgehend</option>
-                          <option value="dashed">Gestrichelt</option>
-                          <option value="dotted">Gepunktet</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <div className="flex justify-between items-center mb-0.5">
-                          <label className="text-[9px] font-bold uppercase text-text-muted">{t('line_thickness')}</label>
-                          <span className="text-[10px] font-bold text-primary">{((selectedElement as ArrowMarkup).strokeWidth ?? 2)} px</span>
-                        </div>
-                        <input 
-                          type="range" 
-                          min="0.5" 
-                          max="8" 
-                          step="0.5" 
-                          value={((selectedElement as ArrowMarkup).strokeWidth ?? 2)} 
-                          onChange={e => updateElement({...selectedElement, strokeWidth: Number(e.target.value)} as any)} 
-                          className="w-full accent-blue-500 h-1.5 cursor-pointer" 
-                        />
-                      </div>
-                      <div>
-                        <div className="flex justify-between items-center mb-0.5">
-                          <label className="text-[9px] font-bold uppercase text-text-muted">Deckkraft</label>
-                          <span className="text-[10px] font-bold text-primary">{Math.round((selectedElement.opacity ?? 1)*100)}%</span>
-                        </div>
-                        <input type="range" min="0" max="1" step="0.05" value={selectedElement.opacity ?? 1} onChange={e => updateElement({...selectedElement, opacity: Number(e.target.value)} as any)} className="w-full accent-blue-500 h-1.5 cursor-pointer" />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {selectedElement.type === 'measure' && (
-                  <div className="space-y-2">
-                    <div className="grid grid-cols-2 gap-2 items-end">
-                      <div>
-                        <label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">Distanz</label>
-                        <div className="bg-background border border-border rounded-lg px-2.5 py-1.5 text-xs font-bold text-text-primary">
-                          {calculateDistance((selectedElement as Measurement).start, (selectedElement as Measurement).end)} m
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">{t('color')}</label>
-                        <input type="color" value={(selectedElement as Measurement).color || '#3b82f6'} onChange={e => updateElement({...selectedElement, color: e.target.value} as any)} className="w-full h-8 rounded-lg border border-border cursor-pointer" />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex justify-between items-center mb-0.5">
-                        <label className="text-[9px] font-bold uppercase text-text-muted">Zahlen-Grösse (Skalierung)</label>
-                        <span className="text-[10px] font-bold text-primary">{Math.round(((selectedElement as Measurement).textScale || 1) * 100)}%</span>
-                      </div>
+                {activeInspectorPopover === 'style' && isAreaShape && (
+                  <div className="mt-1.5 pt-2 border-t border-border flex flex-wrap items-center gap-3 text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold text-text-muted">Linienfarbe:</span>
                       <input
-                        type="range"
-                        min="0.25"
-                        max="2.5"
-                        step="0.05"
-                        value={(selectedElement as Measurement).textScale || 1}
-                        onChange={e => updateElement({ ...selectedElement, textScale: Number(e.target.value) } as Measurement)}
-                        className="w-full accent-blue-500 h-1.5 cursor-pointer"
+                        type="color"
+                        value={(selectedElement as PolygonMarkup).strokeColor || '#2563eb'}
+                        onChange={e => updateElement({ ...selectedElement, strokeColor: e.target.value } as any)}
+                        className="w-6 h-6 rounded border border-border cursor-pointer bg-background p-0.5"
                       />
-                      <div className="flex justify-between gap-1 mt-1">
-                        {[0.5, 0.75, 1, 1.5].map(sc => (
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold text-text-muted">{t('line_style')}:</span>
+                      <select
+                        value={((selectedElement as any).strokeWidth ?? 1.5) === 0 ? 'none' : ((selectedElement as PolygonMarkup).borderStyle || 'solid')}
+                        onChange={e => {
+                          const nextStyle = e.target.value as LineStyle;
+                          updateElement({
+                            ...selectedElement,
+                            borderStyle: nextStyle,
+                            strokeWidth: nextStyle === 'none' ? 0 : (((selectedElement as any).strokeWidth ?? 1.5) || 1.5)
+                          } as any);
+                        }}
+                        className="h-7 bg-background border border-border rounded-lg px-2 text-[11px] font-bold outline-none cursor-pointer"
+                      >
+                        <option value="solid">Linie</option>
+                        <option value="dashed">Strich</option>
+                        <option value="dotted">Punkt</option>
+                        <option value="none">Ohne Rand</option>
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] font-bold text-text-muted">Kontur:</span>
+                      {[0, 0.5, 1.5, 3, 6].map(w => {
+                        const currentW = (selectedElement as any).borderStyle === 'none' ? 0 : ((selectedElement as any).strokeWidth ?? 1.5);
+                        return (
                           <button
-                            key={sc}
+                            key={w}
                             type="button"
-                            onClick={() => updateElement({ ...selectedElement, textScale: sc } as Measurement)}
+                            onClick={() => updateElement({
+                              ...selectedElement,
+                              strokeWidth: w,
+                              borderStyle: w === 0 ? 'none' : ((selectedElement as any).borderStyle === 'none' ? 'solid' : ((selectedElement as any).borderStyle || 'solid'))
+                            } as any)}
                             className={cn(
-                              "flex-1 py-0.5 rounded border text-[9px] font-bold cursor-pointer",
-                              Math.round(((selectedElement as Measurement).textScale || 1) * 100) === Math.round(sc * 100)
+                              "px-2 py-0.5 rounded border text-[10px] font-bold cursor-pointer",
+                              currentW === w
                                 ? "border-primary text-primary bg-primary/10"
                                 : "border-border bg-background text-text-muted hover:text-text-primary"
                             )}
                           >
-                            {Math.round(sc * 100)}%
+                            {w === 0 ? 'Ohne' : `${w}px`}
                           </button>
-                        ))}
-                      </div>
+                        );
+                      })}
                     </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] font-bold text-text-muted">Deckkraft:</span>
+                      {[0.25, 0.5, 0.75, 1].map(op => (
+                        <button
+                          key={op}
+                          type="button"
+                          onClick={() => updateElement({ ...selectedElement, opacity: op } as any)}
+                          className={cn(
+                            "px-1.5 py-0.5 rounded border text-[10px] font-bold cursor-pointer",
+                            Math.round((selectedElement.opacity ?? 1) * 100) === Math.round(op * 100)
+                              ? "border-primary text-primary bg-primary/10"
+                              : "border-border bg-background text-text-muted hover:text-text-primary"
+                          )}
+                        >
+                          {Math.round(op * 100)}%
+                        </button>
+                      ))}
+                    </div>
+                    {(selectedElement.type === 'polygon' ? (selectedElement as any).showArea !== false : Boolean((selectedElement as any).showArea)) && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold text-text-muted">Stempel-Grösse:</span>
+                        <input
+                          type="range"
+                          min="0.25"
+                          max="2.5"
+                          step="0.05"
+                          value={(selectedElement as any).textScale || 1}
+                          onChange={e => updateElement({ ...selectedElement, textScale: Number(e.target.value) } as any)}
+                          className="w-20 accent-blue-500 h-1.5 cursor-pointer"
+                        />
+                        <span className="text-[10px] font-mono font-bold text-primary">
+                          {Math.round(((selectedElement as any).textScale || 1) * 100)}%
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {selectedElement.type === 'text' && (
-                  <div className="space-y-2">
+                {activeInspectorPopover === 'details' && selectedElement.type === 'defect' && (
+                  <div className="mt-1.5 pt-2 border-t border-border grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">Textinhalt</label>
-                      <textarea rows={2} value={(selectedElement as TextMarkup).text} onChange={e => updateElement({...selectedElement, text: e.target.value} as any)} className="w-full bg-background border border-border rounded-lg px-2.5 py-1.5 text-xs font-bold focus:border-blue-500 outline-none resize-none" />
+                      <label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">Gewerk / Handwerker</label>
+                      <input
+                        type="text"
+                        list="cad-swiss-trades-list"
+                        value={(selectedElement as DefectMarker).trade || ''}
+                        onChange={e => {
+                          const updated = { ...(selectedElement as DefectMarker), trade: e.target.value };
+                          updateElement(updated);
+                          if (updated.id && !updated.id.startsWith('defect_') && !isDemoMode) {
+                            lastLocalSaveAtRef.current = Date.now();
+                            supabase.from('defects').update({ trade: e.target.value }).eq('id', updated.id).then(() => {
+                              queryClient.invalidateQueries({ queryKey: [DEFECTS_QUERY_KEY] });
+                            });
+                          }
+                        }}
+                        className="w-full bg-background border border-border rounded-lg px-2.5 py-1 text-xs font-medium text-text-primary outline-none focus:border-red-500/50"
+                        placeholder="z.B. Baumeister, Gipser, Elektro"
+                      />
+                      <datalist id="cad-swiss-trades-list">
+                        {SWISS_TRADES.map(tr => (
+                          <option key={tr} value={tr} />
+                        ))}
+                      </datalist>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">{t('color')}</label>
-                        <input type="color" value={(selectedElement as TextMarkup).color || '#3b82f6'} onChange={e => updateElement({...selectedElement, color: e.target.value} as any)} className="w-full h-7 rounded-lg border border-border cursor-pointer" />
-                      </div>
-                      <div>
-                        <label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">Grösse</label>
-                        <input type="number" value={(selectedElement as TextMarkup).size || ''} onChange={e => updateElement({...selectedElement, size: parseFloat(e.target.value) || 12} as any)} className="w-full h-7 bg-background border border-border rounded-lg px-2.5 text-xs font-bold focus:border-blue-500 outline-none" />
-                      </div>
+                    <div>
+                      <label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">Beschreibung</label>
+                      <input
+                        type="text"
+                        value={(selectedElement as DefectMarker).description || ''}
+                        onChange={e => {
+                          const updated = { ...(selectedElement as DefectMarker), description: e.target.value };
+                          updateElement(updated);
+                          if (updated.id && !updated.id.startsWith('defect_') && !isDemoMode) {
+                            lastLocalSaveAtRef.current = Date.now();
+                            supabase.from('defects').update({ description: e.target.value }).eq('id', updated.id).then(() => {
+                              queryClient.invalidateQueries({ queryKey: [DEFECTS_QUERY_KEY] });
+                            });
+                          }
+                        }}
+                        className="w-full bg-background border border-border rounded-lg px-2.5 py-1 text-xs font-medium text-text-primary outline-none focus:border-red-500/50"
+                        placeholder="Beschreibung..."
+                      />
                     </div>
                   </div>
                 )}
 
-                {selectedElement.type === 'scalebar' && (
-                  <div className="space-y-2">
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">{t('length_meters')}</label><input type="number" min="0.1" step="0.1" value={(selectedElement as ScaleBarMarkup).lengthMeters || ''} onChange={(e) => updateElement({ ...selectedElement, lengthMeters: parseFloat(e.target.value) || 1 } as ScaleBarMarkup)} className="w-full bg-background border border-border rounded-lg px-2.5 py-1 text-xs font-bold outline-none" /></div>
-                      <div><label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">{t('color')}</label><input type="color" value={(selectedElement as ScaleBarMarkup).color || '#000000'} onChange={(e) => updateElement({ ...selectedElement, color: e.target.value } as ScaleBarMarkup)} className="w-full h-7 rounded-lg border border-border cursor-pointer" /></div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">{t('line_thickness')}</label><input type="number" min="0.5" step="0.5" value={(selectedElement as ScaleBarMarkup).thickness || 1.5} onChange={(e) => updateElement({ ...selectedElement, thickness: parseFloat(e.target.value) || 1.5 } as ScaleBarMarkup)} className="w-full bg-background border border-border rounded-lg px-2.5 py-1 text-xs font-bold outline-none" /></div>
-                      <div><label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">{t('text_size')}</label><input type="number" min="1" step="0.5" value={(selectedElement as ScaleBarMarkup).textSize || 4} onChange={(e) => updateElement({ ...selectedElement, textSize: parseFloat(e.target.value) || 4 } as ScaleBarMarkup)} className="w-full bg-background border border-border rounded-lg px-2.5 py-1 text-xs font-bold outline-none" /></div>
-                    </div>
-                  </div>
-                )}
-
-                {selectedElement.type === 'titleblock' && (() => {
+                {activeInspectorPopover === 'details' && selectedElement.type === 'titleblock' && (() => {
                   const tbEl = selectedElement as TitleBlockMarkup;
                   const activeLogo = tbEl.data.logoUrl !== undefined ? tbEl.data.logoUrl : (companyProfile?.logoUrl || '');
                   const activeBrandText = tbEl.data.brandText !== undefined
                     ? tbEl.data.brandText
                     : (companyProfile?.agencyName || (tbEl.data.planverfasser && tbEl.data.planverfasser !== 'Kreativ Desk' ? tbEl.data.planverfasser : '') || '');
                   return (
-                    <div className="space-y-2">
-                      <div className="grid grid-cols-2 gap-2 items-center">
-                        <div>
-                          <div className="flex justify-between items-center mb-0.5">
-                            <label className="text-[9px] font-bold uppercase text-text-muted">{t('scale')}</label>
-                            <span className="text-[10px] font-bold text-primary">{Math.round((tbEl.scale || 0.7) * 100)}%</span>
-                          </div>
-                          <input type="range" min="0.2" max="2" step="0.05" value={tbEl.scale} onChange={(e) => updateElement({ ...tbEl, scale: Number(e.target.value) } as TitleBlockMarkup)} className="w-full accent-blue-500 h-1.5 cursor-pointer" />
-                        </div>
-                        <div>
-                          <label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">{t('color')}</label>
-                          <input type="color" value={tbEl.textColor || '#000000'} onChange={(e) => updateElement({ ...tbEl, textColor: e.target.value } as TitleBlockMarkup)} className="w-full h-7 rounded-lg border border-border cursor-pointer" />
-                        </div>
-                      </div>
-
-                      {/* EIGENES FIRMENLOGO & BRANDING OBEN RECHTS */}
-                      <div className="p-2 bg-background/80 border border-border rounded-xl space-y-1.5">
-                        <div className="flex items-center justify-between gap-1.5">
-                          <span className="text-[9px] font-bold uppercase text-text-muted">Firmenlogo / Branding</span>
-                          <div className="flex items-center gap-1">
-                            <input
-                              ref={titleBlockLogoInputRef}
-                              type="file"
-                              accept="image/png,image/jpeg,image/svg+xml,image/webp"
-                              onChange={handleTitleBlockLogoUpload}
-                              className="hidden"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => titleBlockLogoInputRef.current?.click()}
-                              className="px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-md text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
-                            >
-                              <ImagePlus size={11} />
-                              <span>{activeLogo ? 'Logo ändern' : 'Logo hochladen'}</span>
-                            </button>
-                            {activeLogo && (
-                              <button
-                                type="button"
-                                onClick={() => updateElement({ ...tbEl, data: { ...tbEl.data, logoUrl: '' } } as TitleBlockMarkup)}
-                                className="px-1.5 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-md text-[10px] font-bold transition-colors cursor-pointer"
-                                title="Logo ausblenden und Text anzeigen"
-                              >
-                                <X size={11} />
-                              </button>
-                            )}
-                          </div>
-                        </div>
+                    <div className="mt-1.5 pt-2 border-t border-border grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                      <input type="text" value={tbEl.data.projekt} onChange={e => updateElement({...tbEl, data: {...tbEl.data, projekt: e.target.value}} as TitleBlockMarkup)} className="bg-background border border-border rounded-lg px-2 py-1 text-[11px] outline-none focus:border-blue-500" placeholder={t('project')} title={t('project')}/>
+                      <input type="text" value={tbEl.data.adresse} onChange={e => updateElement({...tbEl, data: {...tbEl.data, adresse: e.target.value}} as TitleBlockMarkup)} className="bg-background border border-border rounded-lg px-2 py-1 text-[11px] outline-none focus:border-blue-500" placeholder="Adresse / Ort" title="Adresse / Ort"/>
+                      <input type="text" value={tbEl.data.bauherrschaft} onChange={e => updateElement({...tbEl, data: {...tbEl.data, bauherrschaft: e.target.value}} as TitleBlockMarkup)} className="bg-background border border-border rounded-lg px-2 py-1 text-[11px] outline-none focus:border-blue-500" placeholder={t('client')} title={t('client')}/>
+                      <input type="text" value={tbEl.data.planverfasser} onChange={e => updateElement({...tbEl, data: {...tbEl.data, planverfasser: e.target.value}} as TitleBlockMarkup)} className="bg-background border border-border rounded-lg px-2 py-1 text-[11px] outline-none focus:border-blue-500" placeholder={t('planner')} title={t('planner')}/>
+                      <input type="text" value={tbEl.data.planinhalt} onChange={e => updateElement({...tbEl, data: {...tbEl.data, planinhalt: e.target.value}} as TitleBlockMarkup)} className="bg-background border border-border rounded-lg px-2 py-1 text-[11px] outline-none focus:border-blue-500" placeholder={t('content')} title={t('content')}/>
+                      <input type="text" value={tbEl.data.phase} onChange={e => updateElement({...tbEl, data: {...tbEl.data, phase: e.target.value}} as TitleBlockMarkup)} className="bg-background border border-border rounded-lg px-2 py-1 text-[11px] outline-none focus:border-blue-500" placeholder={t('phase')} title={t('phase')}/>
+                      <input type="text" value={tbEl.data.planNummer} onChange={e => updateElement({...tbEl, data: {...tbEl.data, planNummer: e.target.value}} as TitleBlockMarkup)} className="bg-background border border-border rounded-lg px-2 py-1 text-[11px] outline-none focus:border-blue-500" placeholder={t('plan_no')} title={t('plan_no')}/>
+                      <input type="text" value={tbEl.data.datum} onChange={e => updateElement({...tbEl, data: {...tbEl.data, datum: e.target.value}} as TitleBlockMarkup)} className="bg-background border border-border rounded-lg px-2 py-1 text-[11px] outline-none focus:border-blue-500" placeholder={t('date')} title={t('date')}/>
+                      <input type="text" value={tbEl.data.gez} onChange={e => updateElement({...tbEl, data: {...tbEl.data, gez: e.target.value}} as TitleBlockMarkup)} className="bg-background border border-border rounded-lg px-2 py-1 text-[11px] outline-none focus:border-blue-500" placeholder={t('drawn_by')} title={t('drawn_by')}/>
+                      <div className="flex items-center gap-1">
                         <input
                           type="text"
                           value={activeBrandText}
                           onChange={e => updateElement({ ...tbEl, data: { ...tbEl.data, brandText: e.target.value } } as TitleBlockMarkup)}
-                          className="w-full bg-surface border border-border rounded-lg px-2 py-1 text-[11px] font-semibold placeholder:text-text-muted outline-none focus:border-blue-500"
-                          placeholder="Firmenname oben rechts (wenn kein Bild-Logo)"
+                          className="flex-1 min-w-0 bg-background border border-border rounded-lg px-2 py-1 text-[11px] outline-none focus:border-blue-500"
+                          placeholder="Branding-Text"
+                          title="Firmenname oben rechts (wenn kein Bild-Logo)"
                         />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-1.5">
-                        <input type="text" value={tbEl.data.projekt} onChange={e => updateElement({...tbEl, data: {...tbEl.data, projekt: e.target.value}} as TitleBlockMarkup)} className="w-full bg-background border border-border rounded-lg px-2 py-1 text-[11px] placeholder:text-text-muted outline-none focus:border-blue-500" placeholder={t('project')} title={t('project')}/>
-                        <input type="text" value={tbEl.data.adresse} onChange={e => updateElement({...tbEl, data: {...tbEl.data, adresse: e.target.value}} as TitleBlockMarkup)} className="w-full bg-background border border-border rounded-lg px-2 py-1 text-[11px] placeholder:text-text-muted outline-none focus:border-blue-500" placeholder="Adresse / Ort" title="Adresse / Ort"/>
-                        <input type="text" value={tbEl.data.bauherrschaft} onChange={e => updateElement({...tbEl, data: {...tbEl.data, bauherrschaft: e.target.value}} as TitleBlockMarkup)} className="w-full bg-background border border-border rounded-lg px-2 py-1 text-[11px] placeholder:text-text-muted outline-none focus:border-blue-500" placeholder={t('client')} title={t('client')}/>
-                        <input type="text" value={tbEl.data.planverfasser} onChange={e => updateElement({...tbEl, data: {...tbEl.data, planverfasser: e.target.value}} as TitleBlockMarkup)} className="w-full bg-background border border-border rounded-lg px-2 py-1 text-[11px] placeholder:text-text-muted outline-none focus:border-blue-500" placeholder={t('planner')} title={t('planner')}/>
-                        <input type="text" value={tbEl.data.planinhalt} onChange={e => updateElement({...tbEl, data: {...tbEl.data, planinhalt: e.target.value}} as TitleBlockMarkup)} className="w-full bg-background border border-border rounded-lg px-2 py-1 text-[11px] placeholder:text-text-muted outline-none focus:border-blue-500" placeholder={t('content')} title={t('content')}/>
-                        <input type="text" value={tbEl.data.phase} onChange={e => updateElement({...tbEl, data: {...tbEl.data, phase: e.target.value}} as TitleBlockMarkup)} className="w-full bg-background border border-border rounded-lg px-2 py-1 text-[11px] placeholder:text-text-muted outline-none focus:border-blue-500" placeholder={t('phase')} title={t('phase')}/>
-                        <input type="text" value={tbEl.data.planNummer} onChange={e => updateElement({...tbEl, data: {...tbEl.data, planNummer: e.target.value}} as TitleBlockMarkup)} className="w-full bg-background border border-border rounded-lg px-2 py-1 text-[11px] placeholder:text-text-muted outline-none focus:border-blue-500" placeholder={t('plan_no')} title={t('plan_no')}/>
-                        <div className="grid grid-cols-2 gap-1">
-                          <input type="text" value={tbEl.data.datum} onChange={e => updateElement({...tbEl, data: {...tbEl.data, datum: e.target.value}} as TitleBlockMarkup)} className="w-full bg-background border border-border rounded-lg px-1.5 py-1 text-[11px] placeholder:text-text-muted outline-none focus:border-blue-500" placeholder={t('date')} title={t('date')}/>
-                          <input type="text" value={tbEl.data.gez} onChange={e => updateElement({...tbEl, data: {...tbEl.data, gez: e.target.value}} as TitleBlockMarkup)} className="w-full bg-background border border-border rounded-lg px-1.5 py-1 text-[11px] placeholder:text-text-muted outline-none focus:border-blue-500" placeholder={t('drawn_by')} title={t('drawn_by')}/>
-                        </div>
+                        {activeLogo && (
+                          <button
+                            type="button"
+                            onClick={() => updateElement({ ...tbEl, data: { ...tbEl.data, logoUrl: '' } } as TitleBlockMarkup)}
+                            className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-lg text-[10px] font-bold cursor-pointer shrink-0"
+                            title="Logo ausblenden"
+                          >
+                            <X size={11} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
                 })()}
-
-                {/* KOMPAKTE WERKZEUG-FUSSZEILE: REIHENFOLGE, SPERREN, DUPLIZIEREN, LÖSCHEN */}
-                <div className="pt-1.5 border-t border-border flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const newEls = elements.filter(e => e.id !== selectedElement.id);
-                      commitElements([...newEls, selectedElement]);
-                    }}
-                    className="px-2 py-1.5 bg-background border border-border rounded-lg text-[10px] font-bold hover:bg-white/5 flex items-center gap-1 cursor-pointer text-text-secondary hover:text-text-primary"
-                    title="Nach vorne bringen"
-                  >
-                    <BringToFront size={12} />
-                    <span>Vorne</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const newEls = elements.filter(e => e.id !== selectedElement.id);
-                      commitElements([selectedElement, ...newEls]);
-                    }}
-                    className="px-2 py-1.5 bg-background border border-border rounded-lg text-[10px] font-bold hover:bg-white/5 flex items-center gap-1 cursor-pointer text-text-secondary hover:text-text-primary"
-                    title="Nach hinten senden"
-                  >
-                    <SendToBack size={12} />
-                    <span>Hinten</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => updateElement({ ...selectedElement, locked: !selectedElement.locked } as any)}
-                    className={cn(
-                      "flex-1 py-1.5 px-2 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1 border",
-                      selectedElement.locked
-                        ? "bg-amber-500/15 text-amber-500 border-amber-500/30 hover:bg-amber-500/25"
-                        : "bg-background border-border text-text-muted hover:text-text-primary"
-                    )}
-                    title={selectedElement.locked ? 'Objekt entsperren' : 'Gegen Verschieben sperren'}
-                  >
-                    {selectedElement.locked ? <Lock size={11} /> : <Unlock size={11} />}
-                    <span>{selectedElement.locked ? 'Gesperrt' : 'Sperren'}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => deleteElement(selectedElement.id)}
-                    className="px-2.5 py-1.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-lg text-[10px] font-bold hover:bg-red-500/20 transition-colors cursor-pointer flex items-center gap-1 shrink-0"
-                    title={t('delete_element')}
-                  >
-                    <Trash2 size={12} />
-                    <span>Löschen</span>
-                  </button>
-                </div>
-              </div>
-            </motion.aside>
-          )}
+              </motion.aside>
+            );
+          })()}
         </AnimatePresence>
 
         <main 
@@ -4734,7 +4871,6 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           onPointerDown={handleMainPointerDown} 
           onPointerMove={handleMainPointerMove} 
           onPointerUp={handleMainPointerUp}
-          onPointerLeave={handleMainPointerUp}
           onPointerCancel={handleMainPointerUp}
           onWheel={handleWheel}
         >
@@ -4930,6 +5066,25 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                   {activeTool === 'pen' && draftElement && (
                     <polyline points={(draftElement as FreehandLine).points.map(p => `${p.x * internalW},${p.y * internalH}`).join(' ')} fill="none" stroke="#ef4444" strokeWidth={((draftElement as FreehandLine).thickness || 1.5) * (1 / scale)} strokeLinecap="round" strokeLinejoin="round" />
                   )}
+                  {activeTool === 'arrow' && draftElement && (() => {
+                    const arr = draftElement as ArrowMarkup;
+                    const sx = arr.start.x * internalW; const sy = arr.start.y * internalH;
+                    const ex = arr.end.x * internalW; const ey = arr.end.y * internalH;
+                    const strokeW = (arr.strokeWidth || 2) * (1 / scale);
+                    const angle = Math.atan2(ey - sy, ex - sx);
+                    const headLen = 10 * (1 / scale);
+                    const headAngle = Math.PI / 6;
+                    const x1 = ex - headLen * Math.cos(angle - headAngle);
+                    const y1 = ey - headLen * Math.sin(angle - headAngle);
+                    const x2 = ex - headLen * Math.cos(angle + headAngle);
+                    const y2 = ey - headLen * Math.sin(angle + headAngle);
+                    return (
+                      <g>
+                        <line x1={sx} y1={sy} x2={ex} y2={ey} stroke={arr.color || '#ef4444'} strokeWidth={strokeW} />
+                        <polygon points={`${ex},${ey} ${x1},${y1} ${x2},${y2}`} fill={arr.color || '#ef4444'} />
+                      </g>
+                    );
+                  })()}
                   {activeTool === 'measure' && draftElement && (() => {
                     const m = draftElement as Measurement;
                     const sx = m.start.x * internalW; const sy = m.start.y * internalH;
@@ -4992,7 +5147,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
         {/* KALIBRIERUNGS-MODUS BANNER */}
         {isCalibratingMode && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 bg-purple-600/95 backdrop-blur-md text-white px-4 md:px-6 py-2.5 rounded-2xl shadow-2xl border border-purple-400/40 text-xs md:text-sm font-bold animate-in fade-in slide-in-from-top-2">
+          <div className="absolute top-14 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 bg-purple-600/95 backdrop-blur-md text-white px-4 md:px-6 py-2.5 rounded-2xl shadow-2xl border border-purple-400/40 text-xs md:text-sm font-bold animate-in fade-in slide-in-from-top-2">
              <Ruler size={16} className="text-purple-200 animate-pulse shrink-0" />
              <span>{currentLang === 'de' ? 'TrueScale™: Klicke und ziehe eine Referenzlinie auf dem Plan (z.B. über eine bekannte Wand)' : 'TrueScale™: Click & drag a reference line on the plan (e.g. across a known wall)'}</span>
              <button onClick={() => { setIsCalibratingMode(false); setCalibrationLine(null); }} className="ml-2 px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-xs font-bold transition-colors cursor-pointer">{t('cancel')}</button>
@@ -5000,7 +5155,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         )}
 
         {activeTool === 'polygon' && draftElement && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 md:gap-4 bg-blue-600 text-white px-4 md:px-6 py-2 md:py-3 rounded-2xl shadow-2xl whitespace-nowrap">
+          <div className="absolute top-14 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 md:gap-4 bg-blue-600 text-white px-4 md:px-6 py-2 md:py-3 rounded-2xl shadow-2xl whitespace-nowrap">
              <span className="text-xs md:text-sm font-bold">{t('polygon_click_corners')}</span>
              <button onClick={finishPolygon} className="flex items-center gap-1 md:gap-2 bg-white/20 hover:bg-white/30 px-2 md:px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"><Check size={14}/> <span className="hidden sm:inline">{t('close_shape')}</span></button>
           </div>
@@ -5011,7 +5166,11 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           <div className="absolute left-2 sm:left-4 bottom-3 z-30 flex items-center bg-surface/95 backdrop-blur-xl border border-border rounded-xl shadow-lg p-1 gap-1 text-xs">
             <button 
               type="button"
-              onClick={() => setScale(s => Math.max(0.1, +(s - 0.15).toFixed(2)))} 
+              onClick={() => {
+                const nextS = Math.max(0.1, +(scale - 0.15).toFixed(2));
+                setScale(nextS);
+                persistViewportToStorage(panRef.current, nextS);
+              }} 
               title="Zoom Out (-)"
               className="p-1.5 hover:bg-white/10 rounded-lg text-text-muted hover:text-text-primary transition-colors cursor-pointer"
             >
@@ -5019,7 +5178,11 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
             </button>
             <button 
               type="button"
-              onClick={() => { setScale(0.8); setPan({ x: 0, y: 0 }); }} 
+              onClick={() => {
+                setScale(0.8);
+                setPan({ x: 0, y: 0 });
+                persistViewportToStorage({ x: 0, y: 0 }, 0.8);
+              }} 
               title="Zoom zurücksetzen (100%)"
               className="px-2 py-1 hover:bg-white/10 rounded-lg text-text-muted hover:text-text-primary font-mono text-[11px] font-bold transition-colors cursor-pointer"
             >
@@ -5027,7 +5190,11 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
             </button>
             <button 
               type="button"
-              onClick={() => setScale(s => Math.min(8, +(s + 0.15).toFixed(2)))} 
+              onClick={() => {
+                const nextS = Math.min(8, +(scale + 0.15).toFixed(2));
+                setScale(nextS);
+                persistViewportToStorage(panRef.current, nextS);
+              }} 
               title="Zoom In (+)"
               className="p-1.5 hover:bg-white/10 rounded-lg text-text-muted hover:text-text-primary transition-colors cursor-pointer"
             >

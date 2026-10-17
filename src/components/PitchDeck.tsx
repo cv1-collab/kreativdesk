@@ -393,8 +393,12 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeSlideId, slides, isFullscreen, goNextSlide, goPrevSlide]);
 
-  const activeProject = projects.find((p: any) => p.id === currentProjectId);
-  const cachedSettings = safeStorage.getItem<any>(`pitch_deckSettings_${currentProjectId || 'global'}`, null) || safeStorage.getItem<any>('pitch_deckSettings_global', null);
+  const activeProject = projects?.find((p: any) => p.id === currentProjectId);
+  const cachedSettings =
+    safeStorage.getItem<any>(`pitch_deckSettings_${currentProjectId || 'global'}`, null) ||
+    safeStorage.getItem<any>(`pitch_deck_settings_${currentProjectId || 'global'}`, null) ||
+    safeStorage.getItem<any>('pitch_deckSettings_global', null) ||
+    safeStorage.getItem<any>('pitch_deck_settings_global', null);
   const rawDeckSettings = {
     logoUrl: '', footerText: 'Vertraulich – Projekt Status Report', themeColor: '#3b82f6', themeStyle: 'scenography', transitionEffect: 'slide',
     ...(activeProject?.deckSettings || {}),
@@ -690,15 +694,26 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                     {(() => {
                       const milestones = slide.dataPayload.milestones;
                       if (!milestones || milestones.length === 0) return null;
-                      const minDate = Math.min(...milestones.map((m:any) => new Date(m.start).getTime()));
-                      const maxDate = Math.max(...milestones.map((m:any) => new Date(m.end).getTime()));
+                      const nowMs = Date.now();
+                      const startTimes = milestones.map((m: any) => {
+                        const t = new Date(m.start).getTime();
+                        return Number.isFinite(t) ? t : nowMs;
+                      });
+                      const endTimes = milestones.map((m: any) => {
+                        const t = new Date(m.end).getTime();
+                        return Number.isFinite(t) ? t : nowMs + 86400000;
+                      });
+                      const minDate = Math.min(...startTimes);
+                      const maxDate = Math.max(...endTimes);
                       const totalDuration = Math.max(maxDate - minDate, 1);
 
                       return milestones.map((ms:any, idx:number) => {
-                        const startT = new Date(ms.start).getTime();
-                        const endT = new Date(ms.end).getTime();
-                        const left = ((startT - minDate) / totalDuration) * 100;
-                        const width = Math.max(((endT - startT) / totalDuration) * 100, 2); 
+                        const rawStart = new Date(ms.start).getTime();
+                        const rawEnd = new Date(ms.end).getTime();
+                        const startT = Number.isFinite(rawStart) ? rawStart : minDate;
+                        const endT = Number.isFinite(rawEnd) ? rawEnd : Math.max(startT + 86400000, maxDate);
+                        const left = Math.max(0, Math.min(98, ((startT - minDate) / totalDuration) * 100));
+                        const width = Math.max(Math.min(100 - left, ((endT - startT) / totalDuration) * 100), 2); 
                         return (
                           <div key={idx} className="flex flex-row items-center relative z-10">
                             <div className="w-1/3 pr-4">
@@ -1293,7 +1308,9 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
       <div ref={containerRef} onPointerMove={handlePointerMove} className={cn("tour-pitch-stage flex-1 relative flex items-center justify-center overflow-hidden cursor-crosshair", isFullscreen ? "fixed inset-0 z-[9999] bg-black rounded-none border-none" : "bg-zinc-950")}>
         
         {/* MULTIPLAYER REALTIME LASER POINTERS */}
-        {Object.entries(remoteCursors).map(([id, cursor]) => (
+        {Object.entries(remoteCursors)
+          .filter(([, cursor]) => cursor.slideIndex === undefined || cursor.slideIndex === currentSlideIndex)
+          .map(([id, cursor]) => (
           <div
             key={id}
             className="absolute z-[200] pointer-events-none transition-all duration-75 ease-out"

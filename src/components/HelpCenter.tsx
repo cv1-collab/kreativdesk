@@ -25,6 +25,7 @@ import { useTour } from '../contexts/TourContext';
 import { supabase } from '../lib/supabase';
 import { cn } from '../utils';
 import { callGeminiAPI } from '../utils/geminiClient';
+import { FormattedAiResponse, getLandingAiFallbackAnswer } from '../utils/formatAiResponse';
 import { getAllModulesKnowledge, ModuleKnowledgeEntry } from '../data/moduleKnowledgeBase';
 import { ModuleHandbookDrawer } from './ModuleGuideButton';
 
@@ -489,9 +490,9 @@ export default function HelpCenter() {
                           typeof res === 'string'
                             ? res
                             : res?.text || res?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-                        setAiAnswer(text || 'Keine Antwort generiert.');
+                        setAiAnswer(text.trim() || getLandingAiFallbackAnswer(searchQuery, isGerman ? 'de' : 'en'));
                       } catch {
-                        setAiAnswer('Die KI-Antwort konnte momentan nicht geladen werden.');
+                        setAiAnswer(getLandingAiFallbackAnswer(searchQuery, isGerman ? 'de' : 'en'));
                       } finally {
                         setIsAskingAI(false);
                       }
@@ -499,7 +500,7 @@ export default function HelpCenter() {
                     disabled={isAskingAI}
                     className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl flex items-center gap-2 mx-auto shadow-lg transition-all disabled:opacity-50 cursor-pointer text-xs sm:text-sm"
                   >
-                    <Sparkles size={16} />
+                    <Sparkles size={16} className="shrink-0" />
                     <span>
                       {isAskingAI
                         ? isGerman
@@ -512,11 +513,11 @@ export default function HelpCenter() {
                   </button>
 
                   {aiAnswer && (
-                    <div className="mt-4 p-5 bg-blue-500/5 border border-blue-500/25 rounded-2xl text-left font-medium text-text-primary">
-                      <div className="flex items-center gap-2 font-bold text-blue-500 mb-2 text-xs uppercase tracking-wider">
-                        <Sparkles size={15} /> KI-Concierge Antwort:
+                    <div className="mt-4 p-4 sm:p-5 bg-blue-500/5 border border-blue-500/25 rounded-2xl text-left font-medium text-text-primary">
+                      <div className="flex items-center gap-2 font-bold text-blue-500 mb-2.5 text-xs uppercase tracking-wider">
+                        <Sparkles size={15} className="shrink-0" /> KI-Concierge Antwort:
                       </div>
-                      <p className="whitespace-pre-wrap text-xs sm:text-sm leading-relaxed">{aiAnswer}</p>
+                      <FormattedAiResponse text={aiAnswer} compact />
                     </div>
                   )}
                 </div>

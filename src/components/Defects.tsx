@@ -333,7 +333,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
   const wasDragged = useRef(false);
 
   // === MULTI-TENANT FILTERUNG MIT TANSTACK QUERY & REALTIME SYNC ===
-  const { defects: queryDefects, isLoading: isLoadingDefects, invalidateDefects } = useDefectsQuery(
+  const { defects: queryDefects, isLoading: isLoadingDefects, isError: isDefectsError, invalidateDefects } = useDefectsQuery(
     isDemo ? null : safeCompanyId,
     isDemo ? null : currentProjectId
   );
@@ -355,7 +355,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
       }
       return;
     }
-    if (!isLoadingDefects && Array.isArray(queryDefects)) {
+    if (!isLoadingDefects && !isDefectsError && Array.isArray(queryDefects)) {
       if (queryDefects.length > 0) {
         setDefects(queryDefects as any);
         safeStorage.setItem(cacheKey, queryDefects);
@@ -369,7 +369,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
         setDefects(cached);
       }
     }
-  }, [isDemo, isLoadingDefects, queryDefects, currentProjectId]);
+  }, [isDemo, isLoadingDefects, isDefectsError, queryDefects, currentProjectId]);
 
   // Zero-Leakage Filtered Defects:
   // If user is a Field Guest / external contractor, they ONLY see defects matching their trade, assignee, or created by them!

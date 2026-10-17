@@ -1023,6 +1023,7 @@ export default function Finance() {
       .channel(`finance-changes-${safeCompanyId}-${currentProjectId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `company_id=eq.${safeCompanyId}` }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'documents', filter: `company_id=eq.${safeCompanyId}` }, (payload) => {
+        if (Date.now() - lastLocalFinanceSaveAtRef.current < 4000) return;
         const docRow = payload.new as any;
         if (docRow && docRow.name === `finance_${currentProjectId}`) {
           try {
@@ -1053,6 +1054,7 @@ export default function Finance() {
   }, [currentUser, currentProjectId, isDemoMode, demoData, activeProject, canViewFinance]);
 
   const skipNextAutoSaveRef = useRef(true);
+  const lastLocalFinanceSaveAtRef = useRef<number>(0);
   const pendingFinanceCloudSaveRef = useRef<{ key: string; saveData: any; safeCompanyId: string; uid: string; localCacheKey: string } | null>(null);
 
   // AUTO-SAVE TO LOCAL STORAGE & SUPABASE DOCUMENTS ON BUDGET CHANGES
@@ -1096,7 +1098,9 @@ export default function Finance() {
       pendingFinanceCloudSaveRef.current = null;
       if (!pending) return;
       try {
+        lastLocalFinanceSaveAtRef.current = Date.now();
         await saveSystemConfigJSON(pending.key, pending.saveData, pending.safeCompanyId, pending.uid);
+        lastLocalFinanceSaveAtRef.current = Date.now();
         safeStorage.setItem(pending.localCacheKey, { ...pending.saveData, hasPendingSync: false });
       } catch (e) { }
     }, 600);

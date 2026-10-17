@@ -103,29 +103,34 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   } = useProjectTeam();
   const { timeEntries, fetchTimeEntries, addTimeEntry: addTimeEntryInternal } = useProjectTimeEntries();
 
+  const userUid = currentUser?.uid || '';
+  const userCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || '';
+  const userRoleStr = currentUser?.role || '';
+  const userEmail = currentUser?.email || '';
+
   const getSafeCompanyId = useCallback(() => {
-    if (!currentUser) return '';
-    const isSuper = checkIsSuperAdmin(currentUser.email) || currentUser.role === 'super_admin';
+    if (!userUid) return '';
+    const isSuper = checkIsSuperAdmin(userEmail) || userRoleStr === 'super_admin';
     const previewCompanyId = isSuper ? safeStorage.session.getString('admin_preview_company_id') : '';
-    return previewCompanyId || currentUser.companyId || (currentUser as any)?.company_id || currentUser.uid || '';
-  }, [currentUser]);
+    return previewCompanyId || userCompanyId || userUid || '';
+  }, [userUid, userCompanyId, userRoleStr, userEmail]);
 
   const fetchProjects = useCallback(async () => {
-    if (!currentUser || !currentUser.uid) return;
+    if (!userUid) return;
     const safeCompanyId = getSafeCompanyId();
-    const roleLower = String(currentUser.role || '').toLowerCase().trim();
+    const roleLower = String(userRoleStr || '').toLowerCase().trim();
     const isExternalUser = ['guest', 'client', 'external', 'partner', 'subcontractor', 'handwerker', 'bauherr', 'field guest', 'external planner'].includes(roleLower);
 
     try {
       if (!isExternalUser) {
-        await ensureDefaultCompanyFolders(safeCompanyId, currentUser.uid);
+        await ensureDefaultCompanyFolders(safeCompanyId, userUid);
       }
 
       let projQuery = supabase.from('projects').select('*');
-      if (safeCompanyId && safeCompanyId !== currentUser.uid) {
+      if (safeCompanyId && safeCompanyId !== userUid) {
         projQuery = projQuery.eq('company_id', safeCompanyId);
       } else {
-        projQuery = projQuery.or(`company_id.eq.${safeCompanyId},owner_id.eq.${currentUser.uid}`);
+        projQuery = projQuery.or(`company_id.eq."${safeCompanyId}",owner_id.eq."${userUid}"`);
       }
       const { data } = await projQuery.order('created_at', { ascending: false });
 
@@ -137,7 +142,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
           status: (p.status as any) || 'planning',
           role: 'owner',
           createdAt: p.created_at || new Date().toISOString(),
-          ownerId: p.owner_id || currentUser.uid,
+          ownerId: p.owner_id || userUid,
           companyId: p.company_id,
           siteLocation: p.site_location || p.siteLocation || '',
           site_location: p.site_location || p.siteLocation || '',
@@ -156,7 +161,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         if (isExternalUser && safeCompanyId) {
           try {
             const assignedProjectIds = new Set<string>();
-            const userEmailLower = (currentUser.email || '').toLowerCase().trim();
+            const userEmailLower = (userEmail || '').toLowerCase().trim();
             const [{ data: mems }, { data: crmRows }] = await Promise.all([
               supabase.from('project_members').select('project_id, user_id, project_role').eq('company_id', safeCompanyId),
               userEmailLower
@@ -164,7 +169,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
                 : Promise.resolve({ data: [] as any[] })
             ]);
 
-            const myIds = new Set<string>([currentUser.uid]);
+            const myIds = new Set<string>([userUid]);
             (crmRows || []).forEach((cu: any) => {
               if (cu.id) myIds.add(String(cu.id));
               if (cu.user_id) myIds.add(String(cu.user_id));
@@ -188,7 +193,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
               }
             });
 
-            mappedProjects = mappedProjects.filter(p => assignedProjectIds.has(p.id) || p.ownerId === currentUser.uid);
+            mappedProjects = mappedProjects.filter(p => assignedProjectIds.has(p.id) || p.ownerId === userUid);
           } catch (_) {}
         }
 
@@ -203,7 +208,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.error("Error fetching projects:", err);
     }
-  }, [currentUser, getSafeCompanyId, setActiveProjectId]);
+  }, [userUid, userRoleStr, userEmail, getSafeCompanyId, setActiveProjectId]);
 
   const fetchCompanyUsers = useCallback(async () => {
     const safeCompanyId = getSafeCompanyId();
@@ -212,23 +217,23 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   }, [getSafeCompanyId, fetchTeamUsers]);
 
   const fetchProjectDetails = useCallback(async () => {
-    if (!currentUser || !currentUser.uid) return;
+    if (!userUid) return;
     const safeCompanyId = getSafeCompanyId();
     if (!safeCompanyId) return;
 
     try {
       await Promise.all([
         fetchProjectMembers(safeCompanyId),
-        fetchDefects(safeCompanyId, currentUser.uid),
-        fetchTimeEntries(safeCompanyId, currentUser.uid)
+        fetchDefects(safeCompanyId, userUid),
+        fetchTimeEntries(safeCompanyId, userUid)
       ]);
     } catch (err) {
       console.error("Error fetching project details in ProjectContext:", err);
     }
-  }, [currentUser, getSafeCompanyId, fetchProjectMembers, fetchDefects, fetchTimeEntries]);
+  }, [userUid, getSafeCompanyId, fetchProjectMembers, fetchDefects, fetchTimeEntries]);
 
   useEffect(() => {
-    if (!currentUser) {
+    if (!userUid) {
       setProjects([]);
       setActiveProjectId(null);
       return;
@@ -250,7 +255,13 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         fetchCompanyUsers();
         fetchProjectDetails();
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: companyFilter }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: companyFilter }, (payload: any) => {
+        if (payload?.eventType === 'UPDATE' && payload?.old && payload?.new) {
+          const changedKeys = Object.keys(payload.new).filter(
+            k => k !== 'updated_at' && k !== 'active_session_id_desktop' && k !== 'active_session_id_mobile' && payload.new[k] !== payload.old[k]
+          );
+          if (changedKeys.length === 0) return;
+        }
         fetchCompanyUsers();
         fetchProjectDetails();
       })
@@ -275,7 +286,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         supabase.removeChannel(channel).catch(() => {});
       }
     };
-  }, [currentUser, getSafeCompanyId, fetchProjects, fetchCompanyUsers, fetchProjectDetails]);
+  }, [userUid, getSafeCompanyId, fetchProjects, fetchCompanyUsers, fetchProjectDetails]);
 
   const refreshAllData = useCallback(async () => {
     await Promise.all([

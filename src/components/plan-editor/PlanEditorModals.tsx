@@ -252,7 +252,7 @@ export const PlanEditorCalibrationModal = ({
           </div>
           {calibPaperDistMm > 0 && parseFloat(calibrationMetersInput) > 0 && (
             <p className="text-[11px] text-text-muted pt-1">
-              {currentLang === 'de' ? 'Berechneter Massstab:' : 'Calculated scale:'} <strong className="text-purple-400 font-mono font-bold text-xs">1:{Math.round((parseFloat(calibrationMetersInput) * 1000) / calibPaperDistMm)}</strong>
+              {currentLang === 'de' ? 'Berechneter Massstab:' : 'Calculated scale:'} <strong className="text-purple-400 font-mono font-bold text-xs">1:{Math.max(1, Math.round((parseFloat(calibrationMetersInput) * 1000) / calibPaperDistMm))}</strong>
             </p>
           )}
         </div>

@@ -20,12 +20,14 @@ function checkPublicRateLimit(ip: string, maxPerMinute = 10): boolean {
 function isAllowedPublicPrompt(contents: any): boolean {
   try {
     const serialized = typeof contents === 'string' ? contents : JSON.stringify(contents || '');
-    // Only allow the 2 legitimate public features:
-    // 1. Landing Page Kreativ-Desk OS FAQ Concierge
+    // Only allow legitimate public features:
+    // 1. Landing Page & Help Center Kreativ-Desk OS FAQ Concierge
     // 2. Public Lead Form / Mobile Upload Business Card OCR
     const isLandingFaq =
-      serialized.includes('Du bist der offizielle KI-Assistent von Kreativ-Desk OS') &&
-      serialized.length <= 6000;
+      (serialized.includes('Du bist der offizielle KI-Assistent von Kreativ-Desk OS') ||
+        serialized.includes('Du bist der offizielle Support-Experte für Kreativ Desk OS') ||
+        serialized.includes('You are the official support expert for Kreativ Desk OS')) &&
+      serialized.length <= 8000;
     const isBusinessCardOcr =
       serialized.includes('Analysiere diese Visitenkarte') &&
       serialized.length <= 2_500_000; // base64 image + short OCR prompt
@@ -93,7 +95,11 @@ export default async function handler(req: any, res: any) {
     }
 
     const safeConfig = !user
-      ? { temperature: 0.2, maxOutputTokens: 600 }
+      ? {
+          temperature: 0.2,
+          maxOutputTokens: 1500,
+          thinkingConfig: { thinkingBudget: 0 },
+        }
       : config;
 
     const response = await ai.models.generateContent({
@@ -102,7 +108,17 @@ export default async function handler(req: any, res: any) {
       config: safeConfig
     });
 
-    const generatedText = typeof response.text === 'function' ? (response as any).text() : (response.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || '');
+    const parts = response?.candidates?.[0]?.content?.parts || [];
+    const nonThoughtText = Array.isArray(parts)
+      ? parts
+          .filter((p: any) => !p?.thought && typeof p?.text === 'string')
+          .map((p: any) => p.text)
+          .join('')
+      : '';
+    const generatedText =
+      typeof response.text === 'function'
+        ? (response as any).text()
+        : response.text || nonThoughtText || parts?.[0]?.text || '';
     
     res.status(200).json({
       text: generatedText,

@@ -1,4 +1,4 @@
-import React, { useState, Suspense, useRef, useEffect } from 'react';
+import React, { useState, Suspense, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { resolve3DModelFormat } from '../utils/documentClassifier';
@@ -238,7 +238,7 @@ const BIMReportPDFDocument = ({ settings, docHeader, snapshotImage, auditReport,
                   <View key={idx} style={pdfStyles.defectItem}>
                     <Text style={pdfStyles.defectTitle}>Mangel #{idx + 1}</Text>
                     <Text style={pdfStyles.defectDesc}>{pin.title && !pin.title.startsWith('Erfasst im 3D-Viewer') ? (pin.description && !pin.description.startsWith('Erfasst im 3D-Viewer') ? `${pin.title}: ${pin.description}` : pin.title) : pin.description}</Text>
-                    <Text style={pdfStyles.defectMeta}>Position: X:{pin.position.x?.toFixed(1) || 0} Y:{pin.position.y?.toFixed(1) || 0} Z:{pin.position.z?.toFixed(1) || 0}</Text>
+                    <Text style={pdfStyles.defectMeta}>Position: X:{pin.position?.x?.toFixed(1) || 0} Y:{pin.position?.y?.toFixed(1) || 0} Z:{pin.position?.z?.toFixed(1) || 0}</Text>
                   </View>
                 ))}
               </View>
@@ -261,12 +261,17 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
   const { projects, isDemoMode, demoData, activeProjectId } = useProject() as any;
   const projectId = propProjectId || routeProjectId || routeId || activeProjectId || 'default';
   const { language, t: globalT } = useLanguage();
-  const t = (key: string) => (localTranslations as any)[language]?.[key] || localTranslations['de']?.[key] || globalT(key);
+  const t = useCallback(
+    (key: string) => (localTranslations as any)[language]?.[key] || localTranslations['de']?.[key] || globalT(key),
+    [language, globalT]
+  );
 
   const [portalNode, setPortalNode] = useState<HTMLElement | null>(null);
   useEffect(() => { setPortalNode(document.body); }, []);
 
   const { currentUser } = useAuth();
+  const userUid = currentUser?.uid || null;
+  const userCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || null;
   const navigate = useNavigate();
   
   const { theme } = useTheme(); 
@@ -519,7 +524,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
 
     isBimCacheHydratedRef.current = true;
 
-    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    const safeCompanyId = userCompanyId || userUid;
     if (isDemoMode || projectId === 'demo-1' || projectId?.startsWith('demo-') || !safeCompanyId) return;
 
     const fetchDefects = async () => {
@@ -527,14 +532,19 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
       if (data) {
         const loadedPins: any[] = [];
         data.forEach((d: any) => {
-          const pinTitle = d.title || d.prompt;
+          const pinTitle = d.prompt || d.title || d.description || '';
           if (d.model_id === activeModelId && pinTitle) {
+             const normVec = d.normal && typeof d.normal.x === 'number'
+               ? new THREE.Vector3(d.normal.x, d.normal.y, d.normal.z)
+               : Array.isArray(d.normal)
+               ? new THREE.Vector3(d.normal[0] || 0, d.normal[1] || 1, d.normal[2] || 0)
+               : new THREE.Vector3(0, 1, 0);
              loadedPins.push({
                id: d.id,
                position: new THREE.Vector3(d.pos_x || d.position?.x || 0, d.pos_y || d.position?.y || 0, d.pos_z || d.position?.z || 0),
-               normal: new THREE.Vector3(0, 1, 0),
+               normal: normVec,
                title: pinTitle,
-               description: d.description || '',
+               description: d.prompt || d.description || '',
                status: d.status || 'To Do',
                modelId: d.model_id 
              });
@@ -569,7 +579,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
     return () => {
       supabase.removeChannel(channel).catch(() => {});
     };
-  }, [projectId, activeModelId, currentUser, isDemoMode]);
+  }, [projectId, activeModelId, userUid, userCompanyId, isDemoMode]);
 
   useEffect(() => {
     if (!isBimCacheHydratedRef.current || !projectId || !activeModelId) return;
@@ -623,7 +633,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
       return;
     }
 
-    const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+    const safeCompanyId = userCompanyId || userUid;
     if (!safeCompanyId) return;
 
     const fetchModels = async () => {
@@ -660,7 +670,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
       }
     };
     fetchModels();
-  }, [projectId, currentUser, isDemoMode, bimModelStorageKey, bimCustomModelsCacheKey, queryModelId]);
+  }, [projectId, userUid, userCompanyId, isDemoMode, bimModelStorageKey, bimCustomModelsCacheKey, queryModelId]);
 
   const ensureFolder = async (folderName: string, docCategory: string, targetProjId: string = projectId || 'global') => {
     const safeCompanyId = currentUser?.companyId || currentUser?.uid;
@@ -907,7 +917,8 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
         input: { image_url: generatedImageUrl, scale: 2 },
         logs: true
       });
-      const upscaledUrl = result.data ? result.data.image.url : result.image.url;
+      const upscaledUrl = result?.data?.image?.url || result?.image?.url;
+      if (!upscaledUrl) throw new Error('Kein Bild vom Upscaler erhalten');
       
       const imageRes = await fetch(upscaledUrl);
       const blob = await imageRes.blob();

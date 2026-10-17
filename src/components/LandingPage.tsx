@@ -14,6 +14,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { checkIsSuperAdmin } from '../config/admins';
 import { callGeminiAPI } from '../utils/geminiClient';
+import { FormattedAiResponse, getLandingAiFallbackAnswer } from '../utils/formatAiResponse';
 const DemoLayout = lazy(() => import('../components/DemoLayout'));
 import { cn } from '../utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -756,13 +757,23 @@ export default function LandingPage() {
     setIsMenuOpen(false);
   };
 
+  const aiResponseRef = useRef<HTMLDivElement>(null);
+  const helpInputRef = useRef<HTMLInputElement>(null);
+
   // AI Concierge Question Handler
   const handleAskAI = async (customQuery?: string) => {
     const query = (customQuery || helpSearch).trim();
     if (!query) return;
     
+    // Dismiss mobile virtual keyboard so the AI response card is immediately visible
+    helpInputRef.current?.blur();
+
     setIsAiLoading(true);
     setAiAnswer('');
+
+    setTimeout(() => {
+      aiResponseRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 100);
     
     try {
       const prompt = `Du bist der offizielle KI-Assistent von Kreativ-Desk OS (kreativdesk.ch), dem Schweizer Projekt- und Betriebssystem für Architektur, Bau, Agenturen und Generalplanung.
@@ -783,16 +794,25 @@ Offizielle Fakten & Wirtschaftliche Logik von Kreativ-Desk:
 
 Frage des Interessenten: "${query}"
 
-Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und freundlich. Formatiere wichtige Zahlen und Begriffe fett. Verwende für deutsche Antworten ausschliesslich Schweizer Rechtschreibung (immer "ss", niemals "ß"). Antworte in der Sprache der Anfrage (${currentLang === 'de' ? 'Deutsch' : 'Englisch'}).`;
+Beantworte die Frage präzise, professionell, klar formuliert, strukturiert (gerne mit kurzen Aufzählungspunkten) und freundlich. Formatiere wichtige Zahlen und Begriffe fett (**Begriff**). Verwende für deutsche Antworten ausschliesslich Schweizer Rechtschreibung (immer "ss", niemals "ß"). Antworte in der Sprache der Anfrage (${currentLang === 'de' ? 'Deutsch' : 'Englisch'}).`;
 
       const res = await callGeminiAPI('gemini-2.5-flash', [{ text: prompt }]);
-      const text = typeof res === 'string' ? res : (res?.text || res?.candidates?.[0]?.content?.parts?.[0]?.text || 'Keine Antwort erhalten.');
-      setAiAnswer(text);
+      const parts = res?.candidates?.[0]?.content?.parts || [];
+      const nonThoughtText = Array.isArray(parts)
+        ? parts
+            .filter((p: any) => !p?.thought && typeof p?.text === 'string')
+            .map((p: any) => p.text)
+            .join('')
+        : '';
+      const rawText =
+        typeof res === 'string'
+          ? res
+          : res?.text || nonThoughtText || parts?.[0]?.text || '';
+      const finalAnswer = rawText.trim() || getLandingAiFallbackAnswer(query, currentLang);
+      setAiAnswer(finalAnswer);
     } catch (err: any) {
-      console.error("AI Concierge error:", err);
-      setAiAnswer(currentLang === 'de' 
-        ? "Entschuldigung, der KI-Concierge ist im Moment kurz ausgelastet. Bitte stelle deine Frage erneut oder wähle eines der Themen oben."
-        : "Sorry, the AI Concierge is temporarily busy. Please ask again or select one of the topics above.");
+      console.error("AI Concierge error, using verified knowledge fallback:", err);
+      setAiAnswer(getLandingAiFallbackAnswer(query, currentLang));
     } finally {
       setIsAiLoading(false);
     }
@@ -2073,30 +2093,36 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
         </section>
 
         {/* 7. HILFE-CENTER & INTELLIGENTER KI-CONCIERGE */}
-        <section id="help-center" className="py-24 px-6 bg-surface/30 border-t border-border">
+        <section id="help-center" className="py-16 sm:py-24 px-4 sm:px-6 bg-surface/30 border-t border-border">
           <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-12">
+            <div className="text-center mb-8 sm:mb-12">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-500 text-xs font-bold uppercase tracking-wider mb-4">
-                <Bot size={14} /> Knowledge Hub & AI Concierge
+                <Bot size={14} className="shrink-0" /> Knowledge Hub & AI Concierge
               </div>
-              <h2 className="text-4xl md:text-5xl font-semibold tracking-tight mb-4">{t('help_title')}</h2>
-              <p className="text-lg text-text-muted font-medium max-w-2xl mx-auto">{t('help_subtitle')}</p>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight mb-3 sm:mb-4">{t('help_title')}</h2>
+              <p className="text-base sm:text-lg text-text-muted font-medium max-w-2xl mx-auto">{t('help_subtitle')}</p>
             </div>
 
-            {/* Suchleiste mit KI-Button */}
+            {/* Suchleiste mit KI-Button (Mobile: gestapelt mit voller Eingabebreite; Desktop: nebeneinander) */}
             <div className="max-w-3xl mx-auto mb-8 relative">
-              <form onSubmit={(e) => { e.preventDefault(); handleAskAI(); }} className="relative flex items-center gap-2">
-                <div className="relative flex-1 flex items-center">
-                  <Search className="absolute left-5 text-text-muted" size={20} />
+              <form onSubmit={(e) => { e.preventDefault(); handleAskAI(); }} className="relative flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-2">
+                <div className="relative flex-1 flex items-center min-w-0">
+                  <Search className="absolute left-4 sm:left-5 text-text-muted pointer-events-none shrink-0" size={20} />
                   <input 
+                    ref={helpInputRef}
                     type="text" 
                     value={helpSearch} 
                     onChange={(e) => setHelpSearch(e.target.value)} 
                     placeholder={t('help_search_placeholder')} 
-                    className="w-full pl-14 pr-12 py-4 bg-background border border-border rounded-2xl font-medium text-sm sm:text-base focus:outline-none focus:border-blue-500 shadow-lg transition-all"
+                    className="w-full pl-11 sm:pl-14 pr-10 sm:pr-12 py-3.5 sm:py-4 bg-background border border-border rounded-2xl font-medium text-base text-text-primary placeholder:text-text-muted focus:outline-none focus:border-blue-500 shadow-lg transition-all"
                   />
                   {helpSearch && (
-                    <button type="button" onClick={() => setHelpSearch('')} className="absolute right-4 p-1.5 text-text-muted hover:text-text-primary rounded-lg">
+                    <button
+                      type="button"
+                      onClick={() => { setHelpSearch(''); setAiAnswer(''); }}
+                      aria-label={t('ai_clear')}
+                      className="absolute right-3 sm:right-4 p-1.5 text-text-muted hover:text-text-primary rounded-lg cursor-pointer"
+                    >
                       <X size={16} />
                     </button>
                   )}
@@ -2104,16 +2130,16 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                 <button 
                   type="submit"
                   disabled={isAiLoading || !helpSearch.trim()}
-                  className="px-6 py-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold rounded-2xl shadow-lg shadow-blue-500/20 flex items-center gap-2 shrink-0 transition-all active:scale-95 text-sm sm:text-base"
+                  className="w-full sm:w-auto px-6 py-3.5 sm:py-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold rounded-2xl shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 shrink-0 transition-all active:scale-95 text-sm sm:text-base cursor-pointer"
                 >
-                  {isAiLoading ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
+                  {isAiLoading ? <Loader2 size={18} className="animate-spin shrink-0" /> : <Sparkles size={18} className="shrink-0" />}
                   <span>{t('ai_ask_btn')}</span>
                 </button>
               </form>
 
               {/* Quick Questions Pills */}
               <div className="mt-4 flex flex-wrap items-center gap-2">
-                <span className="text-xs font-semibold text-text-muted mr-1">{t('ai_suggested_label')}</span>
+                <span className="text-xs font-semibold text-text-muted w-full sm:w-auto mb-0.5 sm:mb-0 mr-1">{t('ai_suggested_label')}</span>
                 {[t('ai_q1'), t('ai_q2'), t('ai_q3'), t('ai_q4')].map((q, idx) => (
                   <button
                     key={idx}
@@ -2122,68 +2148,71 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                       setHelpSearch(q);
                       handleAskAI(q);
                     }}
-                    className="text-xs bg-surface hover:bg-blue-500/10 border border-border hover:border-blue-500/30 text-text-muted hover:text-blue-500 font-medium px-3 py-1.5 rounded-xl transition-all shadow-sm flex items-center gap-1.5"
+                    className="text-xs bg-surface hover:bg-blue-500/10 border border-border hover:border-blue-500/30 text-text-muted hover:text-blue-500 font-medium px-3 py-2 sm:py-1.5 rounded-xl transition-all shadow-sm flex items-start sm:items-center gap-1.5 text-left cursor-pointer"
                   >
-                    <Sparkles size={12} className="text-blue-500" />
-                    <span>{q}</span>
+                    <Sparkles size={12} className="text-blue-500 shrink-0 mt-0.5 sm:mt-0" />
+                    <span className="leading-snug">{q}</span>
                   </button>
                 ))}
               </div>
             </div>
 
             {/* AI Response Glassmorphic Card */}
-            <AnimatePresence>
-              {(isAiLoading || aiAnswer) && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 15 }} 
-                  animate={{ opacity: 1, y: 0 }} 
-                  exit={{ opacity: 0, y: 15 }} 
-                  className="max-w-3xl mx-auto mb-16 p-6 sm:p-8 bg-gradient-to-br from-blue-950/30 via-surface to-background border-2 border-blue-500/40 rounded-3xl shadow-2xl relative overflow-hidden"
-                >
-                  <div className="flex items-center justify-between border-b border-border/50 pb-4 mb-4">
-                    <div className="flex items-center gap-2.5 font-bold text-sm text-blue-400">
-                      <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md">
-                        <Bot size={18} />
+            <div ref={aiResponseRef} className="scroll-mt-24">
+              <AnimatePresence>
+                {(isAiLoading || aiAnswer) && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 15 }} 
+                    animate={{ opacity: 1, y: 0 }} 
+                    exit={{ opacity: 0, y: 15 }} 
+                    className="max-w-3xl mx-auto mb-10 sm:mb-16 p-4 sm:p-8 bg-gradient-to-br from-blue-500/10 via-surface to-background border-2 border-blue-500/40 rounded-2xl sm:rounded-3xl shadow-2xl relative overflow-hidden"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-border/60 pb-3.5 mb-4">
+                      <div className="flex items-center gap-2.5 font-bold text-xs sm:text-sm text-blue-500 min-w-0 flex-1">
+                        <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shrink-0">
+                          <Bot size={18} />
+                        </div>
+                        <span className="leading-snug break-words">{t('ai_badge')}</span>
                       </div>
-                      <span>{t('ai_badge')}</span>
-                    </div>
 
-                    <div className="flex items-center gap-2">
-                      {aiAnswer && (
+                      <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+                        {aiAnswer && (
+                          <button 
+                            type="button"
+                            onClick={handleCopyAnswer} 
+                            className="px-2.5 sm:px-3 py-1.5 bg-surface hover:bg-white/10 border border-border text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+                          >
+                            {aiCopied ? <CheckCheck size={14} className="text-emerald-400 shrink-0" /> : <Copy size={14} className="shrink-0" />}
+                            <span>{aiCopied ? t('ai_copied') : t('ai_copy')}</span>
+                          </button>
+                        )}
                         <button 
-                          onClick={handleCopyAnswer} 
-                          className="px-3 py-1.5 bg-surface hover:bg-white/10 border border-border text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors"
+                          type="button"
+                          onClick={() => { setAiAnswer(''); setHelpSearch(''); }} 
+                          aria-label={t('ai_clear')}
+                          className="p-1.5 text-text-muted hover:text-text-primary rounded-lg cursor-pointer"
                         >
-                          {aiCopied ? <CheckCheck size={14} className="text-emerald-400" /> : <Copy size={14} />}
-                          <span>{aiCopied ? t('ai_copied') : t('ai_copy')}</span>
+                          <X size={16} />
                         </button>
-                      )}
-                      <button 
-                        onClick={() => { setAiAnswer(''); setHelpSearch(''); }} 
-                        className="p-1.5 text-text-muted hover:text-text-primary rounded-lg"
-                      >
-                        <X size={16} />
-                      </button>
+                      </div>
                     </div>
-                  </div>
 
-                  {isAiLoading ? (
-                    <div className="py-8 flex flex-col items-center justify-center gap-3 text-text-muted">
-                      <Loader2 size={28} className="animate-spin text-blue-500" />
-                      <p className="text-sm font-medium animate-pulse">{t('ai_generating')}</p>
-                    </div>
-                  ) : (
-                    <div className="text-sm sm:text-base leading-relaxed text-text-primary font-medium whitespace-pre-wrap">
-                      {aiAnswer}
-                    </div>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
+                    {isAiLoading ? (
+                      <div className="py-6 sm:py-8 flex flex-col items-center justify-center gap-3 text-text-muted">
+                        <Loader2 size={28} className="animate-spin text-blue-500" />
+                        <p className="text-xs sm:text-sm font-medium animate-pulse text-center">{t('ai_generating')}</p>
+                      </div>
+                    ) : (
+                      <FormattedAiResponse text={aiAnswer} className="font-medium" />
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
             {/* 3 Standard Themenkarten */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {filteredHelpTopics.map((topic) => (
+              {(filteredHelpTopics.length > 0 ? filteredHelpTopics : (aiAnswer ? helpTopics : [])).map((topic) => (
                 <div key={topic.id} className="p-6 bg-background border border-border hover:border-blue-500/40 rounded-3xl transition-all flex flex-col justify-between group shadow-sm">
                   <div>
                     <div className="w-12 h-12 rounded-2xl bg-surface border border-border flex items-center justify-center mb-5 group-hover:scale-105 transition-transform">
@@ -2194,7 +2223,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                       {topic.desc}
                     </p>
                   </div>
-                  <button onClick={topic.action} className="w-full py-2.5 px-4 bg-surface hover:bg-blue-600 hover:text-white border border-border hover:border-blue-600 text-text-primary rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all">
+                  <button onClick={topic.action} className="w-full py-2.5 px-4 bg-surface hover:bg-blue-600 hover:text-white border border-border hover:border-blue-600 text-text-primary rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer">
                     {topic.cta} <ArrowRight size={14} />
                   </button>
                 </div>
@@ -2202,8 +2231,24 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
             </div>
 
             {filteredHelpTopics.length === 0 && !aiAnswer && !isAiLoading && (
-              <div className="text-center py-12 text-text-muted font-medium">
-                {t('help_no_results')}
+              <div className="text-center py-8 px-4 bg-background/60 border border-dashed border-border rounded-2xl space-y-3 max-w-xl mx-auto">
+                <p className="text-sm text-text-muted font-medium">
+                  {t('help_no_results')}
+                </p>
+                {helpSearch.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => handleAskAI()}
+                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-bold rounded-xl shadow-md transition-all cursor-pointer"
+                  >
+                    <Sparkles size={15} className="shrink-0" />
+                    <span>
+                      {currentLang === 'de'
+                        ? `KI-Concierge zu «${helpSearch}» fragen`
+                        : `Ask AI Concierge about "${helpSearch}"`}
+                    </span>
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -2217,10 +2262,11 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
         aria-label={t('floating_ai_btn')}
         onClick={() => {
           scrollTo('help-center');
-          const input = document.querySelector('#help-center input') as HTMLInputElement;
-          if (input) input.focus();
+          setTimeout(() => {
+            helpInputRef.current?.focus({ preventScroll: true });
+          }, 450);
         }}
-        className="fixed bottom-6 right-6 z-40 px-4 py-2.5 sm:px-5 sm:py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-xl shadow-blue-600/30 flex items-center gap-2.5 font-bold text-xs sm:text-sm border border-blue-400/30 transition-all hover:scale-105 active:scale-95 group backdrop-blur-md cursor-pointer"
+        className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 px-4 py-2.5 sm:px-5 sm:py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-xl shadow-blue-600/30 flex items-center gap-2.5 font-bold text-xs sm:text-sm border border-blue-400/30 transition-all hover:scale-105 active:scale-95 group backdrop-blur-md cursor-pointer"
         title={t('floating_ai_title')}
       >
         <Sparkles size={16} className="text-yellow-300 animate-pulse shrink-0" />
