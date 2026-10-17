@@ -268,6 +268,7 @@ function getDeterministicUUID(str: string): string {
           .eq('company_id', realCompanyId)
           .eq('project_id', projId)
           .eq('user_id', demoUserId)
+          .limit(1)
           .maybeSingle();
 
         if (!existingMem) {
@@ -292,6 +293,7 @@ function getDeterministicUUID(str: string): string {
         .eq('company_id', realCompanyId)
         .eq('project_id', projId)
         .eq('name', doc.name)
+        .limit(1)
         .maybeSingle();
 
       if (!existingDoc) {

@@ -60,8 +60,11 @@ export default function AdminSupportTab() {
     };
   }, []);
 
+  const isTicketResolved = (status?: string) =>
+    ['done', 'gelöst', 'closed', 'resolved'].includes(String(status || '').toLowerCase().trim());
+
   const handleToggleTicketStatus = async (ticket: any) => {
-    const isDone = ticket.status === 'Done' || ticket.status === 'Gelöst';
+    const isDone = isTicketResolved(ticket.status);
     const nextStatus = isDone ? 'Open' : 'Done';
     const updated = tickets.map(tk => tk.id === ticket.id ? { ...tk, status: nextStatus } : tk);
     setTickets(updated);
@@ -109,8 +112,8 @@ export default function AdminSupportTab() {
     }
   };
 
-  const openTickets = tickets.filter(t => t.status !== 'Done' && t.status !== 'Gelöst').length;
-  const closedTickets = tickets.filter(t => t.status === 'Done' || t.status === 'Gelöst').length;
+  const openTickets = tickets.filter(tk => !isTicketResolved(tk.status)).length;
+  const closedTickets = tickets.filter(tk => isTicketResolved(tk.status)).length;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -147,13 +150,36 @@ export default function AdminSupportTab() {
             <div className="p-8 text-center text-text-muted">{t('no_support_tickets')}</div>
           ) : (
             tickets.map((ticket) => {
-              const isDone = ticket.status === 'Done' || ticket.status === 'Gelöst';
+              const isDone = isTicketResolved(ticket.status);
+              const prio = String(ticket.priority || 'normal').toLowerCase();
               return (
                 <div key={ticket.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-surface-hover/50 transition-colors">
                   <div className="space-y-1">
-                    <div className="font-semibold text-sm text-text-primary">{ticket.subject || t('no_subject')}</div>
-                    <div className="text-xs text-text-muted">{ticket.user_email || ticket.email}</div>
-                    {ticket.message && <p className="text-xs text-text-muted/90 mt-1">{ticket.message}</p>}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold text-sm text-text-primary">{ticket.subject || t('no_subject')}</span>
+                      {ticket.category && (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-surface-hover border border-border text-text-muted">
+                          {ticket.category}
+                        </span>
+                      )}
+                      {(prio === 'urgent' || prio === 'critical') && (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-red-500/10 border border-red-500/20 text-red-500">
+                          {t('tickets_urgent')}
+                        </span>
+                      )}
+                      {prio === 'high' && (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 border border-amber-500/20 text-amber-500">
+                          HOCH
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-text-muted flex flex-wrap items-center gap-2">
+                      <span>{ticket.user_name ? `${ticket.user_name} (${ticket.user_email || ticket.email || ''})` : (ticket.user_email || ticket.email)}</span>
+                      {ticket.created_at && (
+                        <span>• {new Date(ticket.created_at).toLocaleString('de-CH')}</span>
+                      )}
+                    </div>
+                    {ticket.message && <p className="text-xs text-text-muted/90 mt-1 whitespace-pre-line">{ticket.message}</p>}
                   </div>
                   <div className="flex items-center gap-2 self-end sm:self-center">
                     <button
@@ -166,7 +192,7 @@ export default function AdminSupportTab() {
                       )}
                       title={isDone ? t('reopen') : t('mark_resolved')}
                     >
-                      {isDone ? t('status_done') : (ticket.status || t('status_open'))}
+                      {isDone ? t('status_done') : t('status_open')}
                     </button>
                     <button
                       onClick={() => handleDeleteTicket(ticket)}

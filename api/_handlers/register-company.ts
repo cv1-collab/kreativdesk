@@ -83,6 +83,7 @@ export default async function handler(req: any, res: any) {
             .select('id, status, is_external')
             .eq('company_id', assignedCompanyId)
             .ilike('email', verifiedEmail)
+            .limit(1)
             .maybeSingle();
 
           if (comp) {
@@ -172,6 +173,8 @@ export default async function handler(req: any, res: any) {
         .from('companies')
         .select('id')
         .eq('owner_id', uid)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
 
       if (existingComp) {

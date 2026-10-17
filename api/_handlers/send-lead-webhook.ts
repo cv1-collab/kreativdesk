@@ -74,7 +74,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .from('documents')
         .select('url, file_url')
         .eq('category', 'system_config')
+        .eq('company_id', companyId)
         .eq('name', `kreativdesk_webhooks_${companyId}`)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
       const rawDocUrl = doc?.url || doc?.file_url;
       if (rawDocUrl) {

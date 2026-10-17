@@ -48,6 +48,8 @@ export default async function handler(req: any, res: any) {
           .eq('company_id', companyId)
           .eq('email', user.email?.toLowerCase())
           .eq('status', 'pending')
+          .order('created_at', { ascending: false })
+          .limit(1)
           .maybeSingle();
 
         if (!invite) {

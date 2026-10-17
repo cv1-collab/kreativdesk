@@ -399,7 +399,7 @@ export default function MeetChat() {
       try {
         const safeComp = currentUser?.companyId || currentUser?.uid;
         if (safeComp) {
-          const { data } = await supabase.from('company_settings').select('screensaver_image').eq('company_id', safeComp).maybeSingle();
+          const { data } = await supabase.from('company_settings').select('screensaver_image').eq('company_id', safeComp).limit(1).maybeSingle();
           if (data?.screensaver_image) {
             setScreensaverBg(data.screensaver_image);
             safeStorage.setItem('ws_screensaver_bg', data.screensaver_image);

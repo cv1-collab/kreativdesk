@@ -64,11 +64,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       created_at: now
     });
 
-    // 3. Pre-seed Default 9 Folders
+    // 3. Pre-seed Default 11 Folders
     const defaultFolders = [
       '01_FINANZEN', '02_RECHTLICHES', '03_HR_MITARBEITER',
       '04_SALES', '05_MARKETING', '06_OPERATIONS',
-      '07_ASSETS', '08_PLÄNE', '09_DOKUMENTATION'
+      '07_ASSETS', '08_PLÄNE', '09_DOKUMENTATION',
+      '10_KI_STUDIO', '11_WHITEBOARD_3D'
     ];
 
     const folderRecords = defaultFolders.map(name => ({
