@@ -42,7 +42,7 @@ const pdfStyles = StyleSheet.create({
   subtitle: { fontSize: 12, fontWeight: 'bold', color: '#6b7280', textTransform: 'uppercase' },
   metaRow: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 4 },
   metaLabel: { fontSize: 9, color: '#6b7280', marginRight: 10 },
-  metaValue: { fontSize: 9, color: '#000000', fontWeight: 'bold', width: 80, textAlign: 'right' },
+  metaValue: { fontSize: 9, color: '#000000', fontWeight: 'bold', width: 130, textAlign: 'right' },
   tableHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000', paddingBottom: 5, marginBottom: 5 },
   tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', paddingVertical: 6, alignItems: 'flex-start' },
   col1: { width: '30%', paddingTop: 1 }, col2: { width: '50%', paddingRight: 8 }, col3: { width: '20%', textAlign: 'right', paddingTop: 1 },
@@ -54,17 +54,19 @@ const pdfStyles = StyleSheet.create({
   receiptImage: { width: 200, height: 200, objectFit: 'contain', backgroundColor: '#f9fafb', border: '1px solid #d1d5db', padding: 5, marginRight: 10, marginBottom: 10 }
 });
 
-const ExpensePDFDocument = ({ settings, headerData, positions, totalAmount, receipts, currency = 'CHF', t, companyUsers, projects }: any) => {
+const ExpensePDFDocument = ({ settings, headerData, positions, totalAmount, receipts, currency = 'CHF', t, companyUsers, projects, currentUser }: any) => {
   const isEn = settings?.language === 'en';
-  const user = Array.isArray(companyUsers) ? companyUsers.find((u:any) => u.id === headerData.userId) : null;
+  const user = Array.isArray(companyUsers) ? companyUsers.find((u:any) => (u.id || u.uid) === headerData.userId) : null;
+  const empName = user?.name || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || currentUser?.displayName || (isEn ? 'Employee' : 'Mitarbeiter');
   const project = Array.isArray(projects) ? projects.find((p:any) => p.id === headerData.projectId) : null;
   return (
     <Document>
       <Page size={settings.format} orientation={settings.orientation} style={pdfStyles.page}>
         <View style={[pdfStyles.headerContainer, { borderBottomColor: settings.accentColor || '#f97316' }]} fixed>
           <View style={pdfStyles.headerLeft}><Text style={[pdfStyles.title, { color: settings.accentColor || '#f97316' }]}>{isEn ? 'EXPENSE' : 'SPESEN'}</Text><Text style={pdfStyles.subtitle}>{isEn ? 'REPORT' : 'ABRECHNUNG'}</Text></View>
-          <View>
-            <View style={pdfStyles.metaRow}><Text style={pdfStyles.metaLabel}>{t('employee')}:</Text><Text style={pdfStyles.metaValue}>{user?.firstName} {user?.lastName}</Text></View>
+          <View style={{ alignItems: 'flex-end' }}>
+            {settings.logo && <PDFImage src={settings.logo} style={{ width: 90, height: 32, objectFit: 'contain', marginBottom: 6 }} />}
+            <View style={pdfStyles.metaRow}><Text style={pdfStyles.metaLabel}>{t('employee')}:</Text><Text style={pdfStyles.metaValue}>{empName}</Text></View>
             <View style={pdfStyles.metaRow}><Text style={pdfStyles.metaLabel}>{t('date')}:</Text><Text style={pdfStyles.metaValue}>{new Date(headerData.date).toLocaleDateString(isEn ? 'en-US' : 'de-CH')}</Text></View>
             <View style={pdfStyles.metaRow}><Text style={pdfStyles.metaLabel}>{isEn ? 'Project:' : 'Projekt:'}</Text><Text style={pdfStyles.metaValue}>{project?.name || (isEn ? 'Internal' : 'Intern')}</Text></View>
           </View>
@@ -648,7 +650,7 @@ export default function ExpenseReport({ onClose, onSave, initialCurrency }: Expe
         fileName={`${currentLang === 'en' ? 'Expenses' : 'Spesen'}_${Date.now()}`} 
         onSaveCloud={handleSaveToCloud}
       >
-        {(settings) => <ExpensePDFDocument settings={settings} headerData={headerData} positions={positions} totalAmount={totalAmount} receipts={receipts} currency={currency} t={t} companyUsers={companyUsers} projects={projects} />}
+        {(settings) => <ExpensePDFDocument settings={settings} headerData={headerData} positions={positions} totalAmount={totalAmount} receipts={receipts} currency={currency} t={t} companyUsers={allEmployees} projects={projects} currentUser={currentUser} />}
       </UniversalPDFStudio>
     </div>
   );

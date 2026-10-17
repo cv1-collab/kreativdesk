@@ -433,17 +433,32 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
   const [future, setFuture] = useState<LayerData[][]>([]);
   const layersBeforeActionRef = useRef<LayerData[] | null>(null);
 
-  const commitSnapshot = useCallback((customSnapshot?: LayerData[]) => {
+  const [activeLayerId, setActiveLayerId] = useState<string>(initialDraft?.activeLayerId || initialCache.activeLayerId);
+  const [showLayersPanel, setShowLayersPanel] = useState(false);
+
+  const [stageScale, setStageScale] = useState(initialDraft?.stageScale || initialCache.stageScale);
+  const [stagePos, setStagePos] = useState(initialDraft?.stagePos || initialCache.stagePos);
+  const [bgImagePos, setBgImagePos] = useState(initialDraft?.bgImagePos || initialCache.bgImagePos);
+  const [bgImageSrc, setBgImageSrc] = useState<string | null>(initialDraft?.bgImageSrc || initialCache.bgImageSrc);
+  const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
+  const bgImageProps = bgImagePos;
+
+  const bgHistoryRef = useRef<{ bgImageSrc: string | null; bgImagePos: { x: number; y: number } }[]>([]);
+  const bgFutureRef = useRef<{ bgImageSrc: string | null; bgImagePos: { x: number; y: number } }[]>([]);
+
+  const commitSnapshot = useCallback((customSnapshot?: LayerData[], _activeLayerId?: string, _nextBgSrc?: string | null, _nextBgProps?: any) => {
     const snap = customSnapshot || layersBeforeActionRef.current || layers;
     try {
       const clonedSnap: LayerData[] = JSON.parse(JSON.stringify(snap));
       setHistory(prev => [...prev.slice(-29), clonedSnap]);
       setFuture([]);
+      bgHistoryRef.current = [...bgHistoryRef.current.slice(-29), { bgImageSrc, bgImagePos }];
+      bgFutureRef.current = [];
     } catch (e) {
       console.warn("Failed to clone snapshot for history:", e);
     }
     layersBeforeActionRef.current = null;
-  }, [layers]);
+  }, [layers, bgImageSrc, bgImagePos]);
 
   const handleUndo = useCallback(() => {
     setHistory(prevHistory => {
@@ -456,10 +471,17 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
         } catch (e) {}
         return prev;
       });
+      if (bgHistoryRef.current.length > 0) {
+        const prevBg = bgHistoryRef.current[bgHistoryRef.current.length - 1];
+        bgHistoryRef.current = bgHistoryRef.current.slice(0, -1);
+        bgFutureRef.current = [{ bgImageSrc, bgImagePos }, ...bgFutureRef.current.slice(0, 29)];
+        setBgImageSrc(prevBg.bgImageSrc);
+        setBgImagePos(prevBg.bgImagePos);
+      }
       setSelectedShapeId(null);
       return prevHistory.slice(0, -1);
     });
-  }, []);
+  }, [bgImageSrc, bgImagePos]);
 
   const handleRedo = useCallback(() => {
     setFuture(prevFuture => {
@@ -472,18 +494,17 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
         } catch (e) {}
         return next;
       });
+      if (bgFutureRef.current.length > 0) {
+        const nextBg = bgFutureRef.current[0];
+        bgFutureRef.current = bgFutureRef.current.slice(1);
+        bgHistoryRef.current = [...bgHistoryRef.current.slice(-29), { bgImageSrc, bgImagePos }];
+        setBgImageSrc(nextBg.bgImageSrc);
+        setBgImagePos(nextBg.bgImagePos);
+      }
       setSelectedShapeId(null);
       return prevFuture.slice(1);
     });
-  }, []);
-  const [activeLayerId, setActiveLayerId] = useState<string>(initialDraft?.activeLayerId || initialCache.activeLayerId);
-  const [showLayersPanel, setShowLayersPanel] = useState(false);
-
-  const [stageScale, setStageScale] = useState(initialDraft?.stageScale || initialCache.stageScale);
-  const [stagePos, setStagePos] = useState(initialDraft?.stagePos || initialCache.stagePos);
-  const [bgImagePos, setBgImagePos] = useState(initialDraft?.bgImagePos || initialCache.bgImagePos);
-  const [bgImageSrc, setBgImageSrc] = useState<string | null>(initialDraft?.bgImageSrc || initialCache.bgImageSrc);
-  const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
+  }, [bgImageSrc, bgImagePos]);
 
   const wbChannelRef = useRef<any>(null);
   const isReceivingRemoteRef = useRef<boolean>(false);
@@ -2216,7 +2237,17 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
   };
 
   const addRenderToCanvas = () => {
-    if (renderedImage) { setBgImageSrc(renderedImage); setStageScale(1); setStagePos({ x: 0, y: 0 }); setShowAiRender(false); setRenderedImage(null); setRenderPrompt(''); addToast('Rendering als Basis-Ebene eingefügt.', 'success'); }
+    if (renderedImage) {
+      commitSnapshot(layers, activeLayerId, renderedImage, bgImageProps);
+      setBgImageSrc(renderedImage);
+      setStageScale(1);
+      setStagePos({ x: 0, y: 0 });
+      setShowAiRender(false);
+      setRenderedImage(null);
+      setRenderPrompt('');
+      broadcastCanvasUpdate(layers, renderedImage, bgImageProps);
+      addToast('Rendering als Basis-Ebene eingefügt.', 'success');
+    }
   };
 
   const ensureFolder = async (folderName: string, docCategory: string) => {
@@ -2562,7 +2593,8 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
                 aiSummary: summary,
                 transcription: transcription,
                 audio_data: base64Audio,
-                audioData: base64Audio
+                audioData: base64Audio,
+                mimeType: cleanMime || 'audio/webm'
               };
 
               const safeAudioProjectId = (projectId && projectId !== 'global') ? projectId : ((activeProjectId && activeProjectId !== 'global') ? activeProjectId : null);
@@ -3358,7 +3390,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
                                   x={item.x || 0} 
                                   y={item.y || 0} 
                                   stroke={item.color} 
-                                  strokeWidth={item.tool === 'eraser' ? 20 / stageScale : 3 / stageScale} 
+                                  strokeWidth={(item as any).strokeWidth || (item.tool === 'eraser' ? 20 : 3)} 
                                   tension={item.points && item.points.length > 4 ? 0.3 : 0} 
                                   lineCap="round" 
                                   lineJoin="round" 
@@ -3432,11 +3464,11 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
                                 />
                                 {item.text && (
                                   <KonvaText 
-                                    x={10 / stageScale} 
-                                    y={10 / stageScale} 
-                                    width={Math.max(20, item.width - 20) / stageScale} 
+                                    x={10} 
+                                    y={10} 
+                                    width={Math.max(20, (item.width || 200) - 20)} 
                                     text={item.text} 
-                                    fontSize={13 / stageScale} 
+                                    fontSize={item.fontSize || 14} 
                                     fill="#1e293b" 
                                     fontStyle="bold" 
                                     wrap="word" 
@@ -3543,7 +3575,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
                               >
                                 <KonvaText 
                                   text={item.text} 
-                                  fontSize={24 / stageScale} 
+                                  fontSize={item.fontSize || 24} 
                                   fill={item.color} 
                                   fontStyle="bold" 
                                 />
@@ -3707,7 +3739,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
                       <span className="text-xs font-sans font-bold text-accent-ai bg-accent-ai/10 px-2.5 py-1 rounded-lg border border-accent-ai/20">{note.duration}</span>
                     </div>
                   </div>
-                  {note.audioData && <div className="mb-3" onClick={(e) => e.stopPropagation()}><audio controls src={`data:audio/webm;base64,${note.audioData}`} className="w-full h-8 outline-none grayscale" /></div>}
+                  {note.audioData && <div className="mb-3" onClick={(e) => e.stopPropagation()}><audio controls src={note.audioData.startsWith('data:') ? note.audioData : `data:${(note as any).mimeType || 'audio/webm'};base64,${note.audioData}`} className="w-full h-8 outline-none grayscale" /></div>}
                   {activeNoteId === note.id && (
                     <div className="mt-4 pt-4 border-t border-border/50 space-y-4 animate-in fade-in slide-in-from-top-2">
                       <div className="bg-accent-ai/10 border border-accent-ai/20 rounded-xl p-4">

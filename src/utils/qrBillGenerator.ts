@@ -59,7 +59,7 @@ export function generateSwissQRPayload(data: SwissQRBillData): string {
     hasDebtor ? (data.debtor?.country || 'CH') : '',      // Debtor Country
     refType,                                     // Reference Type (NON = Without Reference, QRR = QR Reference)
     data.reference || '',                        // Reference Number
-    data.unstructuredMessage || 'Rechnung Kreativ Desk', // Unstructured Message
+    data.unstructuredMessage || 'Rechnung', // Unstructured Message
     'EPD'                                        // Trailer
   ];
 

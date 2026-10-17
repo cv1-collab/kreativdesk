@@ -128,7 +128,7 @@ export const SmartProposalLegalDocModal: React.FC<LegalDocModalProps> = ({
               <div className={cn("grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl text-xs border", isLight ? "bg-slate-100/80 border-slate-200" : "bg-zinc-950/60 border-white/10")}>
                 <div>
                   <span className={cn("font-bold text-[10px] uppercase tracking-wider block mb-1", isLight ? "text-slate-500" : "text-zinc-400")}>{lt.clientHeader}</span>
-                  <p className={cn("font-semibold", isLight ? "text-slate-900" : "text-white")}>{companySettings?.companyName || 'Kreativ Desk Studio AG'}</p>
+                  <p className={cn("font-semibold", isLight ? "text-slate-900" : "text-white")}>{companySettings?.companyName || 'Architektur & Planung'}</p>
                   <p className={cn("text-[11px]", isLight ? "text-slate-500" : "text-zinc-400")}>{lt.clientSub}</p>
                   <p className={cn("text-[11px]", isLight ? "text-slate-500" : "text-zinc-400")}>
                     {companySettings?.street
@@ -232,7 +232,7 @@ export const SmartProposalLegalDocModal: React.FC<LegalDocModalProps> = ({
                   <span className={cn("text-[10px] font-bold uppercase tracking-wider block", isLight ? "text-slate-500" : "text-zinc-400")}>{lt.clientSignLabel}</span>
                   <div className={cn("h-14 border border-dashed rounded-lg flex items-center px-3", isLight ? "bg-slate-50 border-slate-300" : "bg-zinc-950/50 border-white/20")}>
                     <span className="text-xs font-serif italic text-emerald-500 font-bold">
-                      ✓ {(proposal as any).team?.[0]?.name ? `${(proposal as any).team[0].name} (${companySettings?.companyName || 'Projektleitung'})` : (companySettings?.companyName || 'Kreativ Desk Studio AG')}
+                      ✓ {(proposal as any).team?.[0]?.name ? `${(proposal as any).team[0].name} (${companySettings?.companyName || 'Projektleitung'})` : (companySettings?.companyName || 'Architektur & Planung')}
                     </span>
                   </div>
                   <span className={cn("text-[10px]", isLight ? "text-slate-400" : "text-zinc-500")}>{lt.clientSignSub}</span>
@@ -774,6 +774,7 @@ interface ShareModalProps {
   showDemoBlockedToast: () => void;
   copiedShareToast: boolean;
   setCopiedShareToast: (val: boolean) => void;
+  companySettings?: CompanySettings;
 }
 
 export const SmartProposalShareModal: React.FC<ShareModalProps> = ({
@@ -789,7 +790,8 @@ export const SmartProposalShareModal: React.FC<ShareModalProps> = ({
   isDemo,
   showDemoBlockedToast,
   copiedShareToast,
-  setCopiedShareToast
+  setCopiedShareToast,
+  companySettings
 }) => {
   return (
     <AnimatePresence>
@@ -883,6 +885,7 @@ export const SmartProposalShareModal: React.FC<ShareModalProps> = ({
               })();
 
               const localizedProposalTitle = getTranslatedProposalTitle(proposalTitle);
+              const senderDisplayName = companySettings?.companyName || 'Architektur & Planung';
               const whatsappShareMsg = proposalLang === 'fr'
                 ? `Bonjour, voici l'offre interactive "${localizedProposalTitle}": ${calculatedShareUrl}`
                 : proposalLang === 'en'
@@ -896,10 +899,10 @@ export const SmartProposalShareModal: React.FC<ShareModalProps> = ({
                 : `Angebot: ${localizedProposalTitle}`;
 
               const emailBody = proposalLang === 'fr'
-                ? `Bonjour,\n\nvoici le lien vers votre offre interactive :\n${calculatedShareUrl}\n\nMeilleures salutations,\nKreativ Desk & interacTV`
+                ? `Bonjour,\n\nvoici le lien vers votre offre interactive :\n${calculatedShareUrl}\n\nMeilleures salutations,\n${senderDisplayName}`
                 : proposalLang === 'en'
-                ? `Hello,\n\nhere is the link to your interactive proposal:\n${calculatedShareUrl}\n\nBest regards,\nKreativ Desk & interacTV`
-                : `Guten Tag,\n\nhier ist der Link zu Ihrem interaktiven Angebot:\n${calculatedShareUrl}\n\nFreundliche Grüsse,\nKreativ Desk & interacTV`;
+                ? `Hello,\n\nhere is the link to your interactive proposal:\n${calculatedShareUrl}\n\nBest regards,\n${senderDisplayName}`
+                : `Guten Tag,\n\nhier ist der Link zu Ihrem interaktiven Angebot:\n${calculatedShareUrl}\n\nFreundliche Grüsse,\n${senderDisplayName}`;
 
               return (
                 <>
@@ -1283,12 +1286,12 @@ export const SmartProposalPdfStudioModal: React.FC<PdfStudioModalProps> = ({
         }}
         defaultOrientation="portrait"
         defaultAccentColor="#059669"
-        defaultFooterText={`${companySettings.companyName || (proposal as any).companyName || 'Kreativ Desk Workspace'} • ${companySettings.street || ''} ${companySettings.buildingNumber || ''} • ${companySettings.postalCode || ''} ${companySettings.city || ''} • ${companySettings.website || 'www.kreativdesk.ch'}`}
+        defaultFooterText={`${companySettings?.companyName || (proposal as any).companyName || 'Architektur & Planung'} • ${companySettings.street || ''} ${companySettings.buildingNumber || ''} • ${companySettings.postalCode || ''} ${companySettings.city || ''}${companySettings.website ? ` • ${companySettings.website}` : ''}`}
       >
         {(settings) => (
           <MesseOffertePDFDocument
             settings={settings}
-            companyName={companySettings.companyName || (proposal as any).companyName || 'Kreativ Desk Workspace'}
+            companyName={companySettings?.companyName || (proposal as any).companyName || 'Architektur & Planung'}
             companySubtitle={(proposal as any).subtitle || 'Architektur-, Planungs- & Werkvertragsofferte'}
             companyAddress={`${companySettings.street || ''} ${companySettings.buildingNumber || ''} • ${companySettings.postalCode || ''} ${companySettings.city || ''}`.trim()}
             companyContact={`${companySettings.contactEmail || ''} • ${companySettings.contactPhone || ''}`.trim()}

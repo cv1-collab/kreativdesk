@@ -7,7 +7,8 @@ export function generateSignedProposalPdfDoc(
   proposalData: SmartProposal,
   acceptance: any,
   total: number,
-  getTranslatedProposalTitle: (title?: string) => string
+  getTranslatedProposalTitle: (title?: string) => string,
+  companySettings?: CompanySettings
 ) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
@@ -21,7 +22,7 @@ export function generateSignedProposalPdfDoc(
   doc.text('RECHTSVERBINDLICHE AUFTRAGSBESTÄTIGUNG', 15, 18);
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.text('Kreativ Desk • Smart Proposal & SIA 102/118 Digitale Freigabe', 15, 26);
+  doc.text(`${companySettings?.companyName || (proposalData as any)?.companyName || 'Architektur & Planung'} • Smart Proposal & SIA 102/118 Digitale Freigabe`, 15, 26);
 
   // Project Info
   doc.setTextColor(30, 41, 59);
@@ -87,18 +88,24 @@ export function generateSignedProposalPdfDoc(
     styles: { fontSize: 8, cellPadding: 2.2 }
   });
 
-  const signY = (doc as any).lastAutoTable.finalY + 10;
+  let signY = (doc as any).lastAutoTable.finalY + 10;
+  if (signY > 235) {
+    doc.addPage();
+    signY = 25;
+  }
 
   // Legal Confirmation & Signature Stamp
   doc.setFontSize(7.5);
   doc.setFont('helvetica', 'normal');
-  doc.text('Rechtliche Bestätigung: Der Auftraggeber bestätigt die Annahme der Offerte inklusive der Allgemeinen Geschäftsbedingungen (AGB) und SIA 118 Werkvertrags-Konditionen.', 15, signY);
-  doc.text(`Signatur-Zeitstempel: ${new Date().toISOString()} | Signatur-ID: KD-SIG-${Date.now().toString(36).toUpperCase()}`, 15, signY + 5);
+  const legalLines = doc.splitTextToSize('Mit der digitalen Signatur bestätigt die Bauherrschaft die verbindliche Annahme des vorliegenden Angebots.', 170);
+  doc.text(legalLines, 20, signY);
+  const stampY = signY + legalLines.length * 4 + 2;
+  doc.text(`Signatur-Zeitstempel: ${new Date().toISOString()} | Signatur-ID: KD-SIG-${Date.now().toString(36).toUpperCase()}`, 20, stampY);
 
   if (acceptance.signatureDataUrl) {
     try {
-      doc.addImage(acceptance.signatureDataUrl, 'PNG', 15, signY + 8, 45, 18);
-      doc.text(`Digital unterzeichnet von: ${acceptance.name}`, 15, signY + 30);
+      doc.addImage(acceptance.signatureDataUrl, 'PNG', 20, stampY + 4, 45, 18);
+      doc.text(`Digital unterzeichnet von: ${acceptance.name}`, 20, stampY + 26);
     } catch (e) {}
   }
 
@@ -117,7 +124,7 @@ export function downloadProposalQRBillPdf(
   const depositPercent = Math.round(depositRatio * 100);
   const depositAmount = Math.round(total * depositRatio);
 
-  const issuerName = companySettings.companyName || (proposal as any).companyName || 'Kreativ Desk Workspace';
+  const issuerName = companySettings.companyName || (proposal as any).companyName || 'Architektur & Planung';
   const issuerAddress = [
     [companySettings.street, companySettings.buildingNumber].filter(Boolean).join(' '),
     [companySettings.postalCode, companySettings.city].filter(Boolean).join(' ')

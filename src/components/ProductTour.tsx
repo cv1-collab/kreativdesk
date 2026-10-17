@@ -117,6 +117,7 @@ export default function ProductTour() {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
+              stopTour();
               window.dispatchEvent(new CustomEvent('open-system-handbook'));
             }}
             className="inline-flex items-center gap-1.5 font-bold text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors cursor-pointer"
@@ -259,7 +260,7 @@ export default function ProductTour() {
       } else if (activeModuleTour === 'plans' || activeModuleTour === 'cad') {
         candidateDefs = [
           {
-            target: '.tour-plan-toolbar, aside, body',
+            target: '.tour-cad-tools, .tour-plan-viewport, .tour-plan-toolbar, body',
             title: isGerman ? 'TrueScale 2D-Grundrisse & Massstab 1:50' : 'TrueScale 2D Plans & 1:50 Scale',
             content: isGerman
               ? 'Prüfe 2D-Architekturpläne in echten SIA-Massstäben (1:50, 1:100). Nutze das Messwerkzeug in der linken Werkzeugleiste zur zentimetergenauen Distanz- und Wandstärkenprüfung.'
@@ -270,7 +271,7 @@ export default function ProductTour() {
             placement: 'right'
           },
           {
-            target: '.tour-plan-toolbar, aside, body',
+            target: '.tour-plan-toolbar, .tour-cad-tools, body',
             title: isGerman ? 'Farbcodierte Mängel-Pins (SIA 118)' : 'Color-coded Defect Pins (SIA 118)',
             content: isGerman
               ? 'Platziere Mängel zentimetergenau mit farbcodierten Pins: Rot (Offen), Gelb (In Arbeit), Blau (Zur Abnahme) und Grün (Behoben). Jeder Pin speichert Gewerk, Frist und Fotos.'
@@ -549,7 +550,7 @@ export default function ProductTour() {
       } else if (activeModuleTour === 'meet') {
         candidateDefs = [
           {
-            target: '.tour-meet-modes, .tour-meet-video, body',
+            target: '.tour-meet-modes, body',
             title: isGerman ? 'Integrierte HD-Videokonferenzen' : 'Integrated HD Video Meetings',
             content: isGerman
               ? 'Führe Bau- und Planungsbesprechungen direkt im Web-Browser durch – ohne Software-Download. Externe Fachplaner und Bauherren treten per Einladungs-Link sofort bei.'
@@ -560,7 +561,7 @@ export default function ProductTour() {
             placement: 'bottom'
           },
           {
-            target: '.tour-meet-modes, body',
+            target: '.tour-meet-video, .tour-meet-chat, body',
             title: isGerman ? 'Kollaboratives Live-Whiteboard' : 'Collaborative Live Whiteboard',
             content: isGerman
               ? 'Schalte während des Gesprächs nahtlos auf das interaktive Whiteboard um, um 2D-Pläne und 3D-Bildausschnitte gemeinsam live zu annotieren und Details abzustimmen.'
@@ -644,7 +645,7 @@ export default function ProductTour() {
               placement: 'bottom'
             },
             {
-              target: '.tour-team-table, table, body',
+              target: '.tour-team-roles, .tour-team-add-btn, .tour-team-table, body',
               title: isGerman ? 'Revisionssichere Zugriffs-Protokollierung' : 'Audit Logs & DSG Compliance',
               content: isGerman
                 ? 'Jeder Zugriff und jede Rollenänderung wird im Audit-Trail dokumentiert – konform mit dem Schweizer Datenschutzgesetz (DSG) und der SIA-Norm.'
@@ -1151,7 +1152,7 @@ export default function ProductTour() {
         disableScrolling: false, // Allow smooth scrolling to keep target in view
         disableScrollParentFix: true,
         isFixed: false,
-        zIndex: 250000, // ✅ Ensure Joyride floats over all full-screen modals (PitchDeckStudio z-[100000])
+        zIndex: 1100000, // ✅ Ensure Joyride floats over all full-screen modals (PitchDeckStudio z-[100000])
         floatingOptions: {
           strategy: 'fixed',
           hideArrow: isCenter,
@@ -1237,7 +1238,7 @@ export default function ProductTour() {
         options: {
           skipBeacon: true,
           overlayClickAction: 'close',
-          zIndex: 250000,
+          zIndex: 1100000,
         },
         locale: {
           back: isGerman ? 'Zurück' : 'Back',
@@ -1254,7 +1255,7 @@ export default function ProductTour() {
             textColor: isDark ? '#ffffff' : '#0f172a',
             arrowColor: isDark ? '#0f172a' : '#ffffff',
             overlayColor: isDark ? 'rgba(0, 0, 0, 0.75)' : 'rgba(15, 23, 42, 0.45)',
-            zIndex: 250000,
+            zIndex: 1100000,
             beaconSize: 36,
           },
           tooltip: {

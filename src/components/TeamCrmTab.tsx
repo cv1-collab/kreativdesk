@@ -378,7 +378,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
   const [printSettings, setPrintSettings] = useState({ format: 'a4', orientation: 'portrait', scale: 0.85 });
   const [pdfLogo, setPdfLogo] = useState<string | null>(null);
   const [themeColor, setThemeColor] = useState<string>('#3b82f6');
-  const [docHeader, setDocHeader] = useState({ title: 'Contact Report', project: 'Kreativ-Desk', date: new Date().toISOString().split('T')[0], version: 'v1.0' });
+  const [docHeader, setDocHeader] = useState({ title: 'Contact Report', project: 'CRM & Kontakte', date: new Date().toISOString().split('T')[0], version: 'v1.0' });
   const [isUploadingToCloud, setIsUploadingToCloud] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 

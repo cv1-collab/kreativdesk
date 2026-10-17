@@ -237,7 +237,7 @@ const BIMReportPDFDocument = ({ settings, docHeader, snapshotImage, auditReport,
                 {defectPins.map((pin: any, idx: number) => (
                   <View key={idx} style={pdfStyles.defectItem}>
                     <Text style={pdfStyles.defectTitle}>Mangel #{idx + 1}</Text>
-                    <Text style={pdfStyles.defectDesc}>{pin.description}</Text>
+                    <Text style={pdfStyles.defectDesc}>{pin.title && !pin.title.startsWith('Erfasst im 3D-Viewer') ? (pin.description && !pin.description.startsWith('Erfasst im 3D-Viewer') ? `${pin.title}: ${pin.description}` : pin.title) : pin.description}</Text>
                     <Text style={pdfStyles.defectMeta}>Position: X:{pin.position.x?.toFixed(1) || 0} Y:{pin.position.y?.toFixed(1) || 0} Z:{pin.position.z?.toFixed(1) || 0}</Text>
                   </View>
                 ))}

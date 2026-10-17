@@ -27,6 +27,7 @@ import { uploadPdfBlobWithFallback, uploadFileWithFallback } from '../utils/clou
 import { notifyNewDocument } from '../utils/documentNotificationHelper';
 import { saveSmartProposal, SmartProposal, ProposalConfigOption } from '../services/proposalService';
 import { fetchSystemConfigJSON } from '../utils/configHelper';
+import { getCompanyProfileConfig } from '../utils/companySettings';
 import { safeStorage } from '../utils/safeStorage';
 import { serializeSlideForDb, deserializeSlideFromDb, type Slide } from '../utils/pitchDeckHelpers';
 import ModuleGuideButton from './ModuleGuideButton';
@@ -148,20 +149,43 @@ export default function PitchDeckStudio({
 
   const isMobile = windowDimensions.w < 1024;
   const [canvasScale, setCanvasScale] = useState(0.7);
+  const canvasViewportRef = useRef<HTMLDivElement>(null);
+  const hasUserZoomedRef = useRef(false);
 
-  useEffect(() => {
+  const computeAutoScale = useCallback(() => {
     if (isMobile) {
       const availableWidth = windowDimensions.w;
       const availableHeight = isPreviewMode ? (windowDimensions.h - 56) : (windowDimensions.h * 0.45);
       const scaleW = availableWidth / 1000;
       const scaleH = availableHeight / 562;
-      setCanvasScale(Math.min(scaleW, scaleH) * 0.95);
-    } else {
-      if (windowDimensions.w >= 1024) {
-        setCanvasScale(prev => prev < 0.4 ? 0.7 : prev);
+      return Math.min(scaleW, scaleH) * 0.95;
+    }
+    if (canvasViewportRef.current) {
+      const rect = canvasViewportRef.current.getBoundingClientRect();
+      if (rect.width > 100 && rect.height > 100) {
+        const fitScale = Math.min((rect.width - 64) / 1000, (rect.height - 48) / 562);
+        return Math.max(0.4, Math.min(1.1, Number(fitScale.toFixed(2))));
       }
     }
+    return 0.7;
   }, [isMobile, windowDimensions.w, windowDimensions.h, isPreviewMode]);
+
+  useEffect(() => {
+    if (hasUserZoomedRef.current) return;
+    setCanvasScale(computeAutoScale());
+  }, [computeAutoScale]);
+
+  useEffect(() => {
+    const el = canvasViewportRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => {
+      if (!hasUserZoomedRef.current) {
+        setCanvasScale(computeAutoScale());
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [computeAutoScale]);
 
   const [localTitle, setLocalTitle] = useState('');
   const [localContent, setLocalContent] = useState('');
@@ -730,7 +754,7 @@ export default function PitchDeckStudio({
     const newMember = {
       name: 'Neues Mitglied',
       role: 'Projekt-Spezialist',
-      email: 'kontakt@kreativdesk.ch',
+      email: '',
       phone: '+41 44 000 00 00',
       photoURL: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80'
     };
@@ -1130,6 +1154,21 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
       return updated;
     });
   }, [settingsCacheKey]);
+
+  useEffect(() => {
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    getCompanyProfileConfig(safeCompanyId).then((cfg: any) => {
+      if (cfg) {
+        setDeckSettings((prev: DeckSettings) => ({
+          ...prev,
+          logoUrl: prev.logoUrl || cfg.logoUrl || cfg.logo_url || '',
+          footerText: (!prev.footerText || prev.footerText === 'Vertraulich – Projekt Status Report')
+            ? (cfg.agencyName || cfg.name || prev.footerText)
+            : prev.footerText
+        }));
+      }
+    }).catch(() => {});
+  }, [currentUser, setDeckSettings]);
 
   const activeProject = projects.find((p: any) => p.id === targetId);
   const activeSlide = slides.find(s => s.id === activeSlideId) || slides[0] || null;
@@ -2540,9 +2579,9 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
     if (teamMembers.length === 0) {
       teamMembers = [
         { 
-          name: currentUser?.name || currentUser?.displayName || 'Carlo Vescio', 
+          name: currentUser?.name || currentUser?.displayName || 'Teammitglied', 
           role: 'Projektleitung & Gesamtsteuerung', 
-          email: currentUser?.email || 'kontakt@kreativdesk.ch', 
+          email: currentUser?.email || '', 
           phone: '', 
           photoURL: currentUser?.photoURL || '' 
         }
@@ -6419,12 +6458,12 @@ Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array!`;
             )}
             
             <div className="absolute bottom-6 right-6 bg-surface border border-border/50 rounded-full shadow-2xl flex flex-row items-center p-1 z-[100]">
-               <button type="button" onClick={() => setCanvasScale(s => Math.max(0.2, s - 0.1))} className="p-2 hover:bg-white/10 rounded-full text-text-muted hover:text-text-primary transition-colors"><ZoomOut size={18}/></button>
-               <span className="text-xs font-bold w-12 text-center text-text-primary">{Math.round(canvasScale * 100)}%</span>
-               <button type="button" onClick={() => setCanvasScale(s => Math.min(2.0, s + 0.1))} className="p-2 hover:bg-white/10 rounded-full text-text-muted hover:text-text-primary transition-colors"><ZoomIn size={18}/></button>
+               <button type="button" onClick={() => { hasUserZoomedRef.current = true; setCanvasScale(s => Math.max(0.2, Number((s - 0.1).toFixed(2)))); }} className="p-2 hover:bg-white/10 rounded-full text-text-muted hover:text-text-primary transition-colors"><ZoomOut size={18}/></button>
+               <button type="button" onClick={() => { hasUserZoomedRef.current = false; setCanvasScale(computeAutoScale()); }} title="Zoom zurücksetzen" className="text-xs font-bold w-12 text-center text-text-primary hover:text-purple-400 transition-colors cursor-pointer">{Math.round(canvasScale * 100)}%</button>
+               <button type="button" onClick={() => { hasUserZoomedRef.current = true; setCanvasScale(s => Math.min(2.0, Number((s + 0.1).toFixed(2)))); }} className="p-2 hover:bg-white/10 rounded-full text-text-muted hover:text-text-primary transition-colors"><ZoomIn size={18}/></button>
             </div>
 
-            <div className="w-full flex-1 flex items-center justify-center">
+            <div ref={canvasViewportRef} className="w-full flex-1 flex items-center justify-center">
               {activeSlide ? (
                 <div className="flex items-center justify-center shrink-0" style={{ transform: `scale(${canvasScale})`, transformOrigin: 'center' }}>
                   <AnimatePresence mode="wait">

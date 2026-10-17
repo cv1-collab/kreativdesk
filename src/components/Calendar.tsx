@@ -85,7 +85,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 interface GanttTask { id: string; title: string; start: string; end: string; color: string; status: string; barText?: string; }
 interface SmartMarker { id: string; date: string; label: string; color: string; style: 'dashed' | 'solid'; offsetY?: number; }
 interface Shape { id: string; type: 'rect' | 'circle' | 'line' | 'text' | 'note'; startX: number; startY: number; endX: number; endY: number; text?: string; color?: string; }
-interface Schedule { id: string; name: string; targetYear: number; ganttTasks: GanttTask[]; smartMarkers: SmartMarker[]; shapes: Shape[]; }
+interface Schedule { id: string; name: string; targetYear: number; ganttTasks: GanttTask[]; smartMarkers: SmartMarker[]; shapes: Shape[]; docHeader?: { title: string; project: string; version: string; date: string }; }
 
 const DEFAULT_TASKS: GanttTask[] = [
   { id: '1', title: 'Planungsphase', start: '2026-01-01', end: '2026-02-15', color: '#3b82f6', status: 'completed' },
@@ -527,7 +527,7 @@ const CalendarPDFDocument = ({
   
   const UI_HEADER_H = 44;
   const UI_PAD_TOP = 4;
-  const UI_ROW_H = 48;
+  const UI_ROW_H = 54;
 
   const isLandscape = settings.orientation === 'landscape';
   const isA3 = settings.format === 'A3';
@@ -553,6 +553,7 @@ const CalendarPDFDocument = ({
   const getXPt = (pct: number) => LEFT_COL_W + ((pct / 100) * RIGHT_COL_W);
   const getFullXPt = (pct: number) => (pct / 100) * PDF_W;
   const getYPt = (px: number) => px * SCALE;
+  const getShapeYPt = (pct: number) => getYPt(UI_HEADER_H) + ((pct / 100) * PDF_H);
 
   return (
     <Document>
@@ -640,15 +641,16 @@ const CalendarPDFDocument = ({
           {/* LAYER 7: SHAPES (NATIVE SVG VECTORS) */}
           <Svg viewBox={`0 0 ${PDF_W} ${PDF_H}`} style={{ position: 'absolute', top: 0, left: 0, width: PDF_W, height: PDF_H }}>
             {(shapes || []).map((s: any) => {
+              const sCol = s.color || '#ef4444';
               if (s.type === 'line') {
-                 return <Line key={`line-${s.id}`} x1={getFullXPt(s.startX)} y1={(s.startY / 100) * PDF_H} x2={getFullXPt(s.endX)} y2={(s.endY / 100) * PDF_H} stroke="#ef4444" strokeWidth={2 * SCALE} />;
+                 return <Line key={`line-${s.id}`} x1={getFullXPt(s.startX)} y1={getShapeYPt(s.startY)} x2={getFullXPt(s.endX)} y2={getShapeYPt(s.endY)} stroke={sCol} strokeWidth={2 * SCALE} />;
               }
               if (s.type === 'rect') {
                  const left = Math.min(s.startX, s.endX);
                  const top = Math.min(s.startY, s.endY);
                  const w = Math.abs(s.endX - s.startX);
                  const h = Math.abs(s.endY - s.startY);
-                 return <Rect key={`rect-${s.id}`} x={getFullXPt(left)} y={(top / 100) * PDF_H} width={getFullXPt(w)} height={(h / 100) * PDF_H} stroke="#ef4444" strokeWidth={2 * SCALE} fill="#ef4444" fillOpacity={0.1} rx={2 * SCALE} ry={2 * SCALE} />;
+                 return <Rect key={`rect-${s.id}`} x={getFullXPt(left)} y={getShapeYPt(top)} width={getFullXPt(w)} height={(h / 100) * PDF_H} stroke={sCol} strokeWidth={2 * SCALE} fill={sCol} fillOpacity={0.1} rx={2 * SCALE} ry={2 * SCALE} />;
               }
               if (s.type === 'circle') {
                  const left = Math.min(s.startX, s.endX);
@@ -656,10 +658,10 @@ const CalendarPDFDocument = ({
                  const w = Math.abs(s.endX - s.startX);
                  const h = Math.abs(s.endY - s.startY);
                  const cx = getFullXPt(left) + (getFullXPt(w) / 2);
-                 const cy = (top / 100) * PDF_H + (((h / 100) * PDF_H) / 2);
+                 const cy = getShapeYPt(top) + (((h / 100) * PDF_H) / 2);
                  const rx = getFullXPt(w) / 2;
                  const ry = ((h / 100) * PDF_H) / 2;
-                 return <Ellipse key={`circle-${s.id}`} cx={cx} cy={cy} rx={rx} ry={ry} stroke="#ef4444" strokeWidth={2 * SCALE} fill="#ef4444" fillOpacity={0.1} />;
+                 return <Ellipse key={`circle-${s.id}`} cx={cx} cy={cy} rx={rx} ry={ry} stroke={sCol} strokeWidth={2 * SCALE} fill={sCol} fillOpacity={0.1} />;
               }
               return null;
             })}
@@ -667,7 +669,7 @@ const CalendarPDFDocument = ({
 
           {/* LAYER 8: NOTIZEN (TEXT OVERLAYS) */}
           {(shapes || []).filter((s:any) => s.type === 'note' || s.type === 'text').map((s:any) => (
-            <View key={`note-${s.id}`} style={{ position: 'absolute', left: getFullXPt(s.startX), top: (s.startY / 100) * PDF_H, backgroundColor: s.type === 'note' ? '#fef08a' : 'transparent', padding: 4 * fontScale, minWidth: 40 * fontScale }}>
+            <View key={`note-${s.id}`} style={{ position: 'absolute', left: getFullXPt(s.startX), top: getShapeYPt(s.startY), backgroundColor: s.type === 'note' ? '#fef08a' : 'transparent', padding: 4 * fontScale, minWidth: 40 * fontScale }}>
                <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 10 * fontScale, color: s.type === 'note' ? '#713f12' : '#000' }}>{s.text}</Text>
             </View>
           ))}
@@ -819,6 +821,8 @@ export default function Calendar() {
           setSmartMarkers(target.smartMarkers || []);
           setShapes(target.shapes || []);
           setTargetYear(target.targetYear || new Date().getFullYear());
+          if (target.docHeader) setDocHeader(prev => ({ ...prev, ...target.docHeader }));
+          else if (cachedDemo.docHeader) setDocHeader(prev => ({ ...prev, ...cachedDemo.docHeader }));
           hasLoadedInitial.current = true;
           setIsInitialLoad(false);
           return;
@@ -882,6 +886,8 @@ export default function Calendar() {
           setSmartMarkers(target.smartMarkers || []);
           setShapes(target.shapes || []);
           setTargetYear(target.targetYear || new Date().getFullYear());
+          if (target.docHeader) setDocHeader(prev => ({ ...prev, ...target.docHeader }));
+          else if (cachedData.docHeader) setDocHeader(prev => ({ ...prev, ...cachedData.docHeader }));
           hasLoadedInitial.current = true;
         }
 
@@ -934,6 +940,8 @@ export default function Calendar() {
             setSmartMarkers(target.smartMarkers || []);
             setShapes(target.shapes || []);
             setTargetYear(target.targetYear || new Date().getFullYear());
+            if (target.docHeader) setDocHeader(prev => ({ ...prev, ...target.docHeader }));
+            else if (configData.docHeader) setDocHeader(prev => ({ ...prev, ...configData.docHeader }));
             hasLoadedInitial.current = true;
           }
         } else {
@@ -956,11 +964,11 @@ export default function Calendar() {
           setGanttTasks(initTasks);
           setSmartMarkers(initMarkers);
           setShapes([]);
-          const initialSchedule: Schedule = { id: `s-${Date.now()}`, name: 'Masterplan', targetYear: today.getFullYear(), ganttTasks: initTasks, smartMarkers: initMarkers, shapes: [] };
+          const initialSchedule: Schedule = { id: `s-${Date.now()}`, name: 'Masterplan', targetYear: today.getFullYear(), ganttTasks: initTasks, smartMarkers: initMarkers, shapes: [], docHeader };
           setSchedules([initialSchedule]);
           setActiveScheduleId(initialSchedule.id);
           
-          const schedPayload = { schedules: [initialSchedule], activeScheduleId: initialSchedule.id, companyId: safeCompanyId, projectId: currentProjectId, updatedAt: Date.now() };
+          const schedPayload = { schedules: [initialSchedule], activeScheduleId: initialSchedule.id, docHeader, companyId: safeCompanyId, projectId: currentProjectId, updatedAt: Date.now() };
           safeStorage.setItem(localCacheKey, schedPayload);
 
           try {
@@ -1003,6 +1011,7 @@ export default function Calendar() {
           setSmartMarkers(target.smartMarkers || []);
           setShapes(target.shapes || []);
           setTargetYear(target.targetYear || new Date().getFullYear());
+          if (target.docHeader) setDocHeader(prev => ({ ...prev, ...target.docHeader }));
         }
       })
       .subscribe();
@@ -1026,12 +1035,13 @@ export default function Calendar() {
     const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid || 'demo';
     const effectiveProjectId = currentProjectId || activeProjectId || 'demo-1';
     const scheduleDocId = isDemo ? effectiveProjectId : (effectiveProjectId === 'global' ? `global_${safeCompanyId}` : effectiveProjectId);
-    const updated = schedules.map(s => s.id === activeScheduleId ? { ...s, ganttTasks, smartMarkers, shapes, targetYear } : s);
+    const updated = schedules.map(s => s.id === activeScheduleId ? { ...s, ganttTasks, smartMarkers, shapes, targetYear, docHeader } : s);
 
     // 1. Sofort synchron im lokalen Zwischenspeicher sichern (verhindert Datenverlust bei sofortigem Modulwechsel)
     safeStorage.setItem(`schedule_cache_${scheduleDocId}`, {
       schedules: updated,
       activeScheduleId,
+      docHeader,
       companyId: safeCompanyId,
       projectId: effectiveProjectId,
       updatedAt: Date.now(),
@@ -1065,6 +1075,7 @@ export default function Calendar() {
         safeStorage.setItem(`schedule_cache_${pending.scheduleDocId}`, {
           schedules: pending.updated,
           activeScheduleId: pending.activeScheduleId,
+          docHeader,
           companyId: pending.safeCompanyId,
           projectId: pending.currentProjectId,
           updatedAt: Date.now(),
@@ -1080,7 +1091,7 @@ export default function Calendar() {
         autoSaveTimeout.current = null;
       }
     };
-  }, [ganttTasks, smartMarkers, shapes, targetYear, activeScheduleId, isInitialLoad, currentUser, currentProjectId, activeProjectId, isDemoMode, projectIsDemoMode, schedules]);
+  }, [ganttTasks, smartMarkers, shapes, targetYear, docHeader, activeScheduleId, isInitialLoad, currentUser, currentProjectId, activeProjectId, isDemoMode, projectIsDemoMode, schedules]);
 
   // Unmount-Flush: Offene Terminplan-Änderungen beim Modulwechsel noch an Supabase senden
   useEffect(() => {
@@ -1112,6 +1123,11 @@ export default function Calendar() {
       setSmartMarkers(Array.isArray(target.smartMarkers) ? target.smartMarkers : DEFAULT_MARKERS);
       setShapes(target.shapes || []);
       setTargetYear(target.targetYear || new Date().getFullYear());
+      if (target.docHeader) {
+        setDocHeader(prev => ({ ...prev, ...target.docHeader }));
+      } else {
+        setDocHeader(prev => ({ ...prev, title: target.name || t('master_plan') }));
+      }
     }
   };
 
@@ -1890,7 +1906,7 @@ export default function Calendar() {
                   <div 
                     className="absolute"
                     style={{
-                      transform: `scale(${zoomLevel}) translate(${pan.x}px, ${pan.y}px)`,
+                      transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoomLevel})`,
                       transformOrigin: '0 0',
                       width: `${chartWidth}px`,
                       height: `${chartMinHeight}px`
@@ -2207,6 +2223,7 @@ export default function Calendar() {
 
                           {[...shapes, currentShape].filter(s => s?.type === 'line').map((shape, i) => {
                             if (!shape) return null;
+                            const sCol = shape.color || '#ef4444';
                             return (
                               <g key={shape.id || i} className={activeTool === 'cursor' ? 'pointer-events-auto cursor-pointer group/line' : ''} onPointerDown={(e) => { 
                                   if(activeTool === 'cursor'){ 
@@ -2216,8 +2233,8 @@ export default function Calendar() {
                                   }
                                 }}>
                                 <line x1={`${shape.startX}%`} y1={`${shape.startY}%`} x2={`${shape.endX}%`} y2={`${shape.endY}%`} stroke="transparent" strokeWidth="20" style={{ pointerEvents: 'stroke' }} />
-                                <line x1={`${shape.startX}%`} y1={`${shape.startY}%`} x2={`${shape.endX}%`} y2={`${shape.endY}%`} stroke="#ef4444" strokeWidth="3" />
-                                {activeTool === 'cursor' && shape.id && <circle cx={`${shape.endX}%`} cy={`${shape.endY}%`} r="6" fill="#ef4444" className="opacity-0 group-hover/line:opacity-100 transition-opacity cursor-pointer" onPointerDown={(e) => { e.stopPropagation(); setShapes(prev => prev.filter(s=>s.id!==shape.id)); }} />}
+                                <line x1={`${shape.startX}%`} y1={`${shape.startY}%`} x2={`${shape.endX}%`} y2={`${shape.endY}%`} stroke={sCol} strokeWidth="3" />
+                                {activeTool === 'cursor' && shape.id && <circle cx={`${shape.endX}%`} cy={`${shape.endY}%`} r="6" fill={sCol} className="opacity-0 group-hover/line:opacity-100 transition-opacity cursor-pointer" onPointerDown={(e) => { e.stopPropagation(); setShapes(prev => prev.filter(s=>s.id!==shape.id)); }} />}
                               </g>
                             );
                           })}
@@ -2302,15 +2319,16 @@ export default function Calendar() {
                           const top = Math.min(shape.startY!, shape.endY!);
                           const width = Math.abs(shape.endX! - shape.startX!);
                           const height = Math.abs(shape.endY! - shape.startY!);
+                          const sCol = shape.color || '#ef4444';
 
                           return (
-                            <div key={shape.id || i} style={{ left: `${left}%`, top: `${top}%`, width: `${width}%`, height: `${height}%` }} onPointerDown={(e) => { 
+                            <div key={shape.id || i} style={{ left: `${left}%`, top: `${top}%`, width: `${width}%`, height: `${height}%`, borderColor: sCol, backgroundColor: `${sCol}1A` }} onPointerDown={(e) => { 
                                 if(activeTool === 'cursor'){ 
                                   e.stopPropagation(); 
                                   (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
                                   setDragContext({type: 'shape', id: shape.id!, action: 'move', startX: e.clientX, startY: e.clientY, initialShape: shape as Shape}); 
                                 }
-                              }} className={cn("absolute z-[60] group/shape border-2 border-red-500 bg-red-500/10", activeTool === 'cursor' ? 'pointer-events-auto cursor-move' : 'pointer-events-none', shape.type === 'circle' ? 'rounded-full' : 'rounded-sm')}>
+                              }} className={cn("absolute z-[60] group/shape border-2", activeTool === 'cursor' ? 'pointer-events-auto cursor-move' : 'pointer-events-none', shape.type === 'circle' ? 'rounded-full' : 'rounded-sm')}>
                                {activeTool === 'cursor' && shape.id && <button onPointerDown={(e) => { e.stopPropagation(); setShapes(prev => prev.filter(s=>s.id!==shape.id)); }} className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover/shape:opacity-100 shadow-lg print:hidden cursor-pointer"><X size={12}/></button>}
                             </div>
                           );

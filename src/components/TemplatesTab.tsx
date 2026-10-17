@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   FileSignature, FileText, Receipt, Landmark, 
   QrCode, Megaphone, MonitorPlay, LayoutTemplate, ArrowRight, Sparkles, 
@@ -19,7 +19,7 @@ import { safeStorage } from '../utils/safeStorage';
 import { queryClient } from '../lib/queryClient';
 import { DOCUMENTS_QUERY_KEY } from '../hooks/queries/useDocumentsQuery';
 import { MASTER_TEMPLATES, TEMPLATE_CATEGORIES, MasterTemplate } from '../data/masterTemplates';
-import { bindTemplateVariables, getCachedCompanyProfile } from '../utils/templateVariableEngine';
+import { bindTemplateVariables, getCachedCompanyProfile, fetchCompanyProfileAsync } from '../utils/templateVariableEngine';
 import ModuleGuideButton from './ModuleGuideButton';
 
 const TAG_TRANSLATIONS: Record<string, string> = {
@@ -254,6 +254,13 @@ export default function TemplatesTab({
 
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
+
+  useEffect(() => {
+    const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+    if (safeCompanyId) {
+      fetchCompanyProfileAsync(safeCompanyId).catch(() => {});
+    }
+  }, [currentUser]);
 
   const aiDraftKey = `templates_ai_draft_${currentUser?.companyId || currentUser?.uid || 'global'}`;
   const initialAiDraft = useMemo(() => {

@@ -336,7 +336,7 @@ export default function LeadsTab() {
 
   // PDF STUDIO STATES
   const [isPdfStudioOpen, setIsPdfStudioOpen] = useState(false);
-  const [docHeader, setDocHeader] = useState({ title: 'Leads Report', project: 'Kreativ-Desk', date: new Date().toISOString().split('T')[0], version: 'v1.0' });
+  const [docHeader, setDocHeader] = useState({ title: 'Leads Report', project: 'CRM & Kontakte', date: new Date().toISOString().split('T')[0], version: 'v1.0' });
 
   // iPad & Smartphone Erkennung
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);

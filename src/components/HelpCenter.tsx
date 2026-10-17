@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Search,
   Book,
@@ -124,6 +125,7 @@ export default function HelpCenter() {
   const { currentUser } = useAuth();
   const { addToast } = useToast();
   const { startTour } = useTour();
+  const navigate = useNavigate();
 
   const currentLang: 'de' | 'en' =
     typeof language === 'string' && language.toLowerCase().startsWith('en') ? 'en' : 'de';
@@ -287,7 +289,10 @@ export default function HelpCenter() {
                 <div className="shrink-0 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                   <button
                     type="button"
-                    onClick={() => startTour()}
+                    onClick={() => {
+                      navigate('/');
+                      setTimeout(() => startTour(), 250);
+                    }}
                     className="flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-surface hover:bg-white/10 text-text-primary border border-border font-bold text-xs sm:text-sm shadow-sm transition-all cursor-pointer"
                   >
                     <PlayCircle size={18} className="text-blue-500" />

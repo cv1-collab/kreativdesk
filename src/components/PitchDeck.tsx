@@ -14,6 +14,7 @@ import { deserializeSlideFromDb } from '../utils/pitchDeckHelpers';
 import { demoTemplates } from '../utils/demoTemplates';
 import { exportDeckToPptx } from '../utils/pptxExportHelper';
 import { safeStorage } from '../utils/safeStorage';
+import { getCompanyProfileConfig } from '../utils/companySettings';
 import ModuleGuideButton from './ModuleGuideButton';
 
 interface Slide { 
@@ -347,6 +348,19 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
   }, [currentUser, currentProjectId, showStudio, isDemoMode]);
 
   const [cloudDeckSettings, setCloudDeckSettings] = useState<any>(null);
+  const [companyBranding, setCompanyBranding] = useState<{ logoUrl?: string; footerText?: string }>({});
+
+  useEffect(() => {
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    getCompanyProfileConfig(safeCompanyId).then((cfg: any) => {
+      if (cfg) {
+        setCompanyBranding({
+          logoUrl: cfg.logoUrl || cfg.logo_url || '',
+          footerText: cfg.agencyName || cfg.name || ''
+        });
+      }
+    }).catch(() => {});
+  }, [currentUser]);
 
   useEffect(() => {
     const cleanup = addFullscreenChangeListener(() => {
@@ -381,11 +395,18 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
 
   const activeProject = projects.find((p: any) => p.id === currentProjectId);
   const cachedSettings = safeStorage.getItem<any>(`pitch_deckSettings_${currentProjectId || 'global'}`, null) || safeStorage.getItem<any>('pitch_deckSettings_global', null);
-  const deckSettings = {
+  const rawDeckSettings = {
     logoUrl: '', footerText: 'Vertraulich – Projekt Status Report', themeColor: '#3b82f6', themeStyle: 'scenography', transitionEffect: 'slide',
     ...(activeProject?.deckSettings || {}),
     ...(cachedSettings || {}),
     ...(cloudDeckSettings || {})
+  };
+  const deckSettings = {
+    ...rawDeckSettings,
+    logoUrl: rawDeckSettings.logoUrl || companyBranding.logoUrl || '',
+    footerText: (!rawDeckSettings.footerText || rawDeckSettings.footerText === 'Vertraulich – Projekt Status Report')
+      ? (companyBranding.footerText || rawDeckSettings.footerText)
+      : rawDeckSettings.footerText
   };
 
   const getThemeClasses = () => {
@@ -583,7 +604,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                 </p>
               ) : (
                 <p className="text-sm md:text-base text-zinc-400 font-medium pt-1">
-                  Kreativ Desk OS • Schweizer Architektur- & Projekt-Präsentation
+                  {deckSettings.footerText || activeProject?.name || ''}
                 </p>
               )}
             </div>

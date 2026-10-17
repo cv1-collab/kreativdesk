@@ -616,7 +616,7 @@ function DocumentStudioPDFDocument({
             <PDFImage src={logoUrl} style={pdfStyles.logo} />
           ) : (
             <View style={[pdfStyles.logoFallback, { backgroundColor: primaryColor }]}>
-              <Text style={pdfStyles.logoFallbackText}>K</Text>
+              <Text style={pdfStyles.logoFallbackText}>{((companyData?.name || 'A').trim().charAt(0) || 'A').toUpperCase()}</Text>
             </View>
           )}
         </View>
@@ -1172,6 +1172,26 @@ export default function DocumentStudioModal({
           if (profile.primaryColor) setAccentColor(profile.primaryColor);
           if (profile.vatNumber || profile.iban) {
             setFooterText(`${profile.name} • ${profile.vatNumber} • IBAN: ${profile.iban}`);
+          }
+          if (profile.name && profile.name !== 'Kreativ Desk Studio') {
+            setDocContent(prev => {
+              if (!prev) return prev;
+              let next = prev;
+              next = next.replace(/(<mark[^>]*data-var="company\.name"[^>]*>)Kreativ Desk Studio(<\/mark>)/gi, `$1${profile.name}$2`);
+              if (profile.address) {
+                next = next.replace(/(<mark[^>]*data-var="company\.street"[^>]*>)[^<]*(<\/mark>)/gi, `$1${profile.address}$2`);
+              }
+              if (profile.zipCity) {
+                next = next.replace(/(<mark[^>]*data-var="company\.zipCity"[^>]*>)[^<]*(<\/mark>)/gi, `$1${profile.zipCity}$2`);
+              }
+              if (profile.email) {
+                next = next.replace(/(<mark[^>]*data-var="company\.email"[^>]*>)[^<]*(<\/mark>)/gi, `$1${profile.email}$2`);
+              }
+              if (profile.website) {
+                next = next.replace(/(<mark[^>]*data-var="company\.website"[^>]*>)[^<]*(<\/mark>)/gi, `$1${profile.website}$2`);
+              }
+              return next;
+            });
           }
         }
       } catch (e) {
@@ -2464,7 +2484,7 @@ ${footerText}
                         className="w-11 h-11 rounded-xl text-white font-black flex items-center justify-center text-xl shadow-md"
                         style={{ backgroundColor: accentColor }}
                       >
-                        K
+                        {((companyData?.name || 'A').trim().charAt(0) || 'A').toUpperCase()}
                       </div>
                     )}
                   </div>
@@ -2646,7 +2666,7 @@ ${footerText}
                                 className="w-11 h-11 rounded-xl text-white font-black flex items-center justify-center text-xl shadow-md"
                                 style={{ backgroundColor: accentColor }}
                               >
-                                K
+                                {((companyData?.name || 'A').trim().charAt(0) || 'A').toUpperCase()}
                               </div>
                             )}
                           </div>

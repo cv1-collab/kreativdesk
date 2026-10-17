@@ -302,7 +302,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
 
   const handleEscalateToDefects = async () => {
     if (isDemo) {
-      addToast(t('demo_disabled'), 'info');
+      addToast('Sicherheitsverstoss als SIA-Mangel-Ticket eskaliert (Demo-Vorschau)', 'success');
       return;
     }
     try {
@@ -706,13 +706,18 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
                            </button>
                          </>
                        ) : (
-                         <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-start gap-3">
-                           <CheckCircle2 size={18} className="text-emerald-400 shrink-0 mt-0.5" />
-                           <div>
-                             <h4 className="font-bold text-emerald-400 text-sm mb-1">KI-Sicherheitsanalyse bereit</h4>
-                             <p className="text-xs text-text-primary">Live-Kamerafeed aktiv. Aktuell sind keine Sicherheitsverstösse gemeldet.</p>
+                         <>
+                           <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-start gap-3">
+                             <CheckCircle2 size={18} className="text-emerald-400 shrink-0 mt-0.5" />
+                             <div>
+                               <h4 className="font-bold text-emerald-400 text-sm mb-1">KI-Sicherheitsanalyse bereit</h4>
+                               <p className="text-xs text-text-primary">Live-Kamerafeed aktiv. Aktuell sind keine Sicherheitsverstösse gemeldet.</p>
+                             </div>
                            </div>
-                         </div>
+                           <button onClick={handleEscalateToDefects} className="w-full py-3 bg-background border border-border text-text-primary rounded-lg font-bold text-sm hover:bg-white/5 transition-colors flex items-center justify-center gap-2 shadow-sm">
+                             Sicherheits-Vorfall als Mangel-Ticket erfassen <ArrowRightLeft size={16} />
+                           </button>
+                         </>
                        )}
 
                        <div className="p-3 bg-background/50 border border-border/50 rounded-xl space-y-1">

@@ -5,9 +5,45 @@ import { cn } from '../utils';
 import { useProject } from '../contexts/ProjectContext';
 import { useToast } from '../contexts/ToastContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
+import { getCompanyProfileConfig } from '../utils/companySettings';
 
 // 🚀 NATIVE PDF ENGINE (Kein html2canvas, kein jspdf mehr!)
 import { PDFViewer, pdf } from '@react-pdf/renderer';
+
+async function ensurePdfCompatibleImage(src: string): Promise<string> {
+  if (!src || typeof document === 'undefined') return src;
+  const lower = src.toLowerCase();
+  const isSvgOrWebp =
+    lower.startsWith('data:image/svg') ||
+    lower.startsWith('data:image/webp') ||
+    /\.(svg|webp)(\?|#|$)/i.test(lower);
+  if (!isSvgOrWebp) return src;
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const w = img.naturalWidth || img.width || 400;
+        const h = img.naturalHeight || img.height || 160;
+        const canvas = document.createElement('canvas');
+        canvas.width = w * 2;
+        canvas.height = h * 2;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.scale(2, 2);
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/png'));
+          return;
+        }
+      } catch {}
+      resolve(src);
+    };
+    img.onerror = () => resolve(src);
+    img.src = src;
+  });
+}
 
 export interface PDFSettings {
   format: 'A4' | 'A3';
@@ -151,6 +187,7 @@ export default function UniversalPDFStudio({
   defaultOrientation = 'portrait', sidebarControls, children, 
   defaultAccentColor = '#3b82f6', defaultLogo, defaultFooterText
 }: UniversalPDFStudioProps) {
+  const { currentUser } = useAuth();
   const { isDemoMode } = (useProject?.() || {}) as any;
   const { addToast } = useToast();
   const { language } = useLanguage();
@@ -185,7 +222,9 @@ export default function UniversalPDFStudio({
   }, []);
 
   useEffect(() => {
-    if (defaultLogo) setLogo(defaultLogo);
+    if (defaultLogo) {
+      ensurePdfCompatibleImage(defaultLogo).then(setLogo);
+    }
   }, [defaultLogo]);
 
   useEffect(() => {
@@ -199,6 +238,29 @@ export default function UniversalPDFStudio({
       );
     }
   }, [defaultFooterText, currentLang]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (!safeCompanyId) return;
+    if (!defaultLogo || !defaultFooterText || defaultAccentColor === '#3b82f6') {
+      getCompanyProfileConfig(safeCompanyId).then(async (cfg) => {
+        if (cfg.logoUrl && !defaultLogo) {
+          const safeLogo = await ensurePdfCompatibleImage(cfg.logoUrl);
+          setLogo(prev => prev || safeLogo);
+        }
+        if (cfg.primaryColor && defaultAccentColor === '#3b82f6') {
+          setAccentColor(cfg.primaryColor);
+        }
+        if (cfg.agencyName && !defaultFooterText) {
+          const dateStr = currentLang === 'en'
+            ? ('Confidential | Created on ' + new Date().toLocaleDateString('en-GB'))
+            : ('Vertraulich | Erstellt am ' + new Date().toLocaleDateString('de-CH'));
+          setFooterText(`${cfg.agencyName} • ${dateStr}`);
+        }
+      }).catch(() => {});
+    }
+  }, [isOpen, currentUser, defaultLogo, defaultFooterText, defaultAccentColor, currentLang]);
 
   // Loading animation overlay while @react-pdf/renderer synthesizes layout & fonts
   useEffect(() => {
@@ -227,7 +289,10 @@ export default function UniversalPDFStudio({
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => setLogo(reader.result as string);
+      reader.onloadend = async () => {
+        const safeLogo = await ensurePdfCompatibleImage(reader.result as string);
+        setLogo(safeLogo);
+      };
       reader.readAsDataURL(file);
     }
   };

@@ -35,6 +35,7 @@ import AiBudgetImportModal from './AiBudgetImportModal';
 import ModuleGuideButton from './ModuleGuideButton';
 import { queryClient } from '../lib/queryClient';
 import { FINANCIAL_QUERY_KEY } from '../hooks/queries/useFinancialQuery';
+import { TIME_ENTRIES_QUERY_KEY } from '../hooks/queries/useTimeEntriesQuery';
 import { DOCUMENTS_QUERY_KEY } from '../hooks/queries/useDocumentsQuery';
 import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 import { notifyNewDocument } from '../utils/documentNotificationHelper';
@@ -181,11 +182,12 @@ const pdfStyles = StyleSheet.create({
   tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', paddingVertical: 6, alignItems: 'flex-start' },
   groupRow: { flexDirection: 'row', backgroundColor: '#f9fafb', borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#e5e7eb', paddingVertical: 8, marginTop: 10, alignItems: 'flex-start' },
   hrRow: { flexDirection: 'row', backgroundColor: '#fff7ed', borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#fdba74', paddingVertical: 6, marginTop: 5, alignItems: 'flex-start' },
+  totalRow: { flexDirection: 'row', borderTopWidth: 2, borderColor: '#9ca3af', paddingTop: 8, marginTop: 5, alignItems: 'center' },
   col1: { width: '10%', paddingTop: 1 },
-  col2: { width: '40%', paddingRight: 10 },
-  col3: { width: '10%', textAlign: 'right', paddingTop: 1 },
-  col4: { width: '10%', paddingLeft: 10, paddingTop: 1 },
-  col5: { width: '15%', textAlign: 'right', paddingTop: 1 },
+  col2: { width: '34%', paddingRight: 10 },
+  col3: { width: '18%', textAlign: 'right', paddingTop: 1 },
+  col4: { width: '18%', textAlign: 'right', paddingTop: 1 },
+  col5: { width: '20%', textAlign: 'right', paddingTop: 1 },
   col6: { width: '15%', textAlign: 'right', paddingTop: 1 },
   textBold: { fontWeight: 'bold', color: '#000000' },
   footer: { position: 'absolute', bottom: 30, left: 40, right: 40, flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 10 },
@@ -204,8 +206,12 @@ const isExpenseTx = (tx: any) =>
   )) ||
   (tx.category !== 'Debitorenrechnung' && tx.category !== 'Outgoing Invoice' && tx.category !== 'Offerte' && tx.category !== 'Quote' && tx.type !== 'income' && Number(tx.amount) < 0);
 
-const FinancePDFDocument = ({ settings, activeTab, t, projectHeader, budgetGroups, approvedVersions, allTimeHours, allTimeHoursCost, displayLedger, getBudgetDetails, overviewTotalBudget, totalActualCostsIncludingHoursAllTime, totalBudget, vatRate, formatCHF, calculateGroupTotal, getAllTimeActualCostForGroup, getAllTimeActualCostForItem, currency = 'CHF' }: any) => {
-  const title = activeTab === 'budget' ? t('budget_plan') : activeTab === 'control' ? t('payment_control') : t('cashflow');
+const FinancePDFDocument = ({ settings, activeTab, t, projectHeader, budgetGroups, budgetData, approvedVersions, allTimeHours, allTimeHoursCost, displayLedger, getBudgetDetails, overviewTotalBudget, totalActualCostsIncludingHoursAllTime, totalBudget, vatRate, formatCHF, calculateGroupTotal, getAllTimeActualCostForGroup, getAllTimeActualCostForItem, currency = 'CHF' }: any) => {
+  const title = activeTab === 'overview' ? 'FINANZ-COCKPIT & MANAGEMENT SUMMARY' : activeTab === 'budget' ? t('budget_plan') : activeTab === 'control' ? t('payment_control') : t('cashflow');
+  const effectiveBudgetGroups = budgetData || budgetGroups || [];
+  const approvedTotal = approvedVersions && approvedVersions.length > 0 ? overviewTotalBudget : 0;
+  const remainingBudget = Math.max(0, overviewTotalBudget - totalActualCostsIncludingHoursAllTime);
+
   return (
     <Document>
       <Page size={settings.format} orientation={settings.orientation} style={pdfStyles.page}>
@@ -222,38 +228,108 @@ const FinancePDFDocument = ({ settings, activeTab, t, projectHeader, budgetGroup
           {settings.logo && <PDFImage src={settings.logo} style={pdfStyles.logo} />}
         </View>
 
+        {activeTab === 'overview' && (
+          <View>
+            {/* 1) 4-column KPI summary row */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 10, marginBottom: 20 }}>
+              <View style={{ flex: 1, backgroundColor: '#f9fafb', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 6, padding: 10 }}>
+                <Text style={{ fontSize: 7.5, color: '#6b7280', textTransform: 'uppercase', marginBottom: 4 }}>Gesamtbudget</Text>
+                <Text style={[pdfStyles.textBold, { fontSize: 12 }]}>{formatCHF(overviewTotalBudget)}</Text>
+              </View>
+              <View style={{ flex: 1, backgroundColor: '#f9fafb', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 6, padding: 10 }}>
+                <Text style={{ fontSize: 7.5, color: '#6b7280', textTransform: 'uppercase', marginBottom: 4 }}>Freigegeben</Text>
+                <Text style={[pdfStyles.textBold, { fontSize: 12, color: '#10b981' }]}>{formatCHF(approvedTotal)}</Text>
+              </View>
+              <View style={{ flex: 1, backgroundColor: '#f9fafb', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 6, padding: 10 }}>
+                <Text style={{ fontSize: 7.5, color: '#6b7280', textTransform: 'uppercase', marginBottom: 4 }}>Ist-Kosten (Total)</Text>
+                <Text style={[pdfStyles.textBold, { fontSize: 12, color: '#ef4444' }]}>{formatCHF(totalActualCostsIncludingHoursAllTime)}</Text>
+              </View>
+              <View style={{ flex: 1, backgroundColor: '#f9fafb', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 6, padding: 10 }}>
+                <Text style={{ fontSize: 7.5, color: '#6b7280', textTransform: 'uppercase', marginBottom: 4 }}>Verbleibendes Budget</Text>
+                <Text style={[pdfStyles.textBold, { fontSize: 12, color: settings.accentColor || '#3b82f6' }]}>{formatCHF(remainingBudget)}</Text>
+              </View>
+            </View>
+
+            {/* 2) Compact BKP Phase / Group summary table */}
+            <Text style={[pdfStyles.textBold, { fontSize: 11, marginBottom: 6, textTransform: 'uppercase', color: settings.accentColor }]}>BKP-Phasen & Budgetübersicht</Text>
+            <View style={pdfStyles.tableHeader}>
+              <Text style={[{ width: '50%' }, pdfStyles.textBold]}>BKP-Gruppe</Text>
+              <Text style={[{ width: '25%', textAlign: 'right' }, pdfStyles.textBold]}>Budget</Text>
+              <Text style={[{ width: '25%', textAlign: 'right' }, pdfStyles.textBold]}>Freigegeben</Text>
+            </View>
+            {effectiveBudgetGroups.map((g: any) => {
+              const gTotal = calculateGroupTotal(g);
+              const isGroupApproved = approvedVersions && approvedVersions.length > 0;
+              return (
+                <View style={pdfStyles.tableRow} key={g.id} wrap={false}>
+                  <Text style={[{ width: '50%' }, pdfStyles.textBold]}>{g.pos ? `${g.pos} — ${g.title}` : g.title}</Text>
+                  <Text style={{ width: '25%', textAlign: 'right' }}>{formatCHF(gTotal)}</Text>
+                  <Text style={[{ width: '25%', textAlign: 'right', color: isGroupApproved ? '#10b981' : '#6b7280' }, pdfStyles.textBold]}>
+                    {formatCHF(isGroupApproved ? gTotal : 0)}
+                  </Text>
+                </View>
+              );
+            })}
+
+            {/* 3) Most recent 15 ledger transactions */}
+            <Text style={[pdfStyles.textBold, { fontSize: 11, marginTop: 20, marginBottom: 6, textTransform: 'uppercase', color: settings.accentColor }]}>Letzte Buchungen (Top 15)</Text>
+            <View style={pdfStyles.tableHeader}>
+              <Text style={[{ width: '15%' }, pdfStyles.textBold]}>Datum</Text>
+              <Text style={[{ width: '45%' }, pdfStyles.textBold]}>Beschreibung</Text>
+              <Text style={[{ width: '20%' }, pdfStyles.textBold]}>Kategorie</Text>
+              <Text style={[{ width: '20%', textAlign: 'right' }, pdfStyles.textBold]}>Betrag</Text>
+            </View>
+            {(displayLedger || []).slice(0, 15).map((tx: any) => {
+              const isQuote = tx.category === 'Offerte' || tx.category === 'Quote' || (tx as any).type === 'quote';
+              const isTime = !!tx.isTimeEntry;
+              const isRevenue = tx.category === 'Debitorenrechnung' || tx.category === 'Outgoing Invoice' || (!isQuote && !isTime && !isExpenseTx(tx) && tx.amount > 0);
+              const displayAmount = tx.amount === 0 ? 0 : Math.abs(tx.amount);
+              return (
+                <View style={pdfStyles.tableRow} key={tx.id} wrap={false}>
+                  <Text style={{ width: '15%', color: '#6b7280', fontSize: 8.5 }}>{tx.date}</Text>
+                  <Text style={[{ width: '45%', paddingRight: 8, fontSize: 8.5 }, pdfStyles.textBold]}>{tx.description}</Text>
+                  <Text style={{ width: '20%', color: '#6b7280', fontSize: 8.5 }}>{tx.category || '-'}</Text>
+                  <Text style={[{ width: '20%', textAlign: 'right', fontSize: 8.5, color: isQuote ? '#6b7280' : (isRevenue ? '#10b981' : '#ef4444') }, pdfStyles.textBold]}>
+                    {isQuote ? `(${formatCHF(displayAmount)})` : `${isRevenue ? '+' : '-'}${formatCHF(displayAmount)}`}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
         {activeTab === 'budget' && (
           <View>
             <View style={pdfStyles.tableHeader} fixed>
-              <Text style={[pdfStyles.col1, pdfStyles.textBold]}>{t('pos')}</Text>
-              <Text style={[pdfStyles.col2, pdfStyles.textBold]}>{t('description')}</Text>
-              <Text style={[pdfStyles.col3, pdfStyles.textBold]}>{t('qty')}</Text>
-              <Text style={[pdfStyles.col4, pdfStyles.textBold]}>{t('unit')}</Text>
-              <Text style={[pdfStyles.col5, pdfStyles.textBold]}>{t('unit_price')}</Text>
-              <Text style={[pdfStyles.col6, pdfStyles.textBold]}>{t('total')}</Text>
+              <Text style={[{ width: '10%', paddingTop: 1 }, pdfStyles.textBold]}>{t('pos')}</Text>
+              <Text style={[{ width: '40%', paddingRight: 10 }, pdfStyles.textBold]}>{t('description')}</Text>
+              <Text style={[{ width: '10%', textAlign: 'right', paddingTop: 1 }, pdfStyles.textBold]}>{t('qty')}</Text>
+              <Text style={[{ width: '10%', paddingLeft: 10, paddingTop: 1 }, pdfStyles.textBold]}>{t('unit')}</Text>
+              <Text style={[{ width: '15%', textAlign: 'right', paddingTop: 1 }, pdfStyles.textBold]}>{t('unit_price')}</Text>
+              <Text style={[{ width: '15%', textAlign: 'right', paddingTop: 1 }, pdfStyles.textBold]}>{t('total')}</Text>
             </View>
             {budgetGroups.map((group: any) => (
               <React.Fragment key={group.id}>
                 <View style={pdfStyles.groupRow} wrap={false}>
-                  <Text style={[pdfStyles.col1, pdfStyles.textBold, { color: settings.accentColor }]}>{group.pos}</Text>
-                  <View style={pdfStyles.col2}>
+                  <Text style={[{ width: '10%', paddingTop: 1 }, pdfStyles.textBold, { color: settings.accentColor }]}>{group.pos}</Text>
+                  <View style={{ width: '40%', paddingRight: 10 }}>
                     <Text style={[pdfStyles.textBold, { color: settings.accentColor, fontSize: 9.5, lineHeight: 1.35 }]}>{group.title}</Text>
                   </View>
-                  <Text style={pdfStyles.col3}></Text>
-                  <Text style={pdfStyles.col4}></Text>
-                  <Text style={pdfStyles.col5}></Text>
-                  <Text style={[pdfStyles.col6, pdfStyles.textBold, { color: settings.accentColor }]}>{formatCHF(calculateGroupTotal(group))}</Text>
+                  <Text style={{ width: '10%' }}></Text>
+                  <Text style={{ width: '10%' }}></Text>
+                  <Text style={{ width: '15%' }}></Text>
+                  <Text style={[{ width: '15%', textAlign: 'right', paddingTop: 1 }, pdfStyles.textBold, { color: settings.accentColor }]}>{formatCHF(calculateGroupTotal(group))}</Text>
                 </View>
                 {group.items.map((item: any) => (
                   <View style={pdfStyles.tableRow} key={item.id} wrap={false}>
-                    <Text style={[pdfStyles.col1, { fontSize: 8, color: '#6b7280' }]}>{item.pos}</Text>
-                    <View style={pdfStyles.col2}>
+                    <Text style={[{ width: '10%', paddingTop: 1, fontSize: 8, color: '#6b7280' }]}>{item.pos}</Text>
+                    <View style={{ width: '40%', paddingRight: 10 }}>
                       <Text style={[pdfStyles.textBold, { fontSize: 9, lineHeight: 1.35 }]}>{item.description}</Text>
                     </View>
-                    <Text style={pdfStyles.col3}>{item.qty}</Text>
-                    <Text style={pdfStyles.col4}>{item.unit}</Text>
-                    <Text style={pdfStyles.col5}>{formatCHF(item.unitPrice)}</Text>
-                    <Text style={[pdfStyles.col6, pdfStyles.textBold]}>{formatCHF(item.total)}</Text>
+                    <Text style={{ width: '10%', textAlign: 'right', paddingTop: 1 }}>{item.qty}</Text>
+                    <Text style={{ width: '10%', paddingLeft: 10, paddingTop: 1 }}>{item.unit}</Text>
+                    <Text style={{ width: '15%', textAlign: 'right', paddingTop: 1 }}>{formatCHF(item.unitPrice)}</Text>
+                    <Text style={[{ width: '15%', textAlign: 'right', paddingTop: 1 }, pdfStyles.textBold]}>{formatCHF(item.total)}</Text>
                   </View>
                 ))}
               </React.Fragment>
@@ -278,9 +354,9 @@ const FinancePDFDocument = ({ settings, activeTab, t, projectHeader, budgetGroup
             <View style={pdfStyles.tableHeader} fixed>
               <Text style={[pdfStyles.col1, pdfStyles.textBold]}>{t('pos')}</Text>
               <Text style={[pdfStyles.col2, pdfStyles.textBold]}>{t('description')}</Text>
-              <Text style={[pdfStyles.col5, pdfStyles.textBold]}>{t('planned')}</Text>
-              <Text style={[pdfStyles.col6, pdfStyles.textBold, { color: '#ef4444' }]}>{t('actual_costs')}</Text>
-              <Text style={[pdfStyles.col6, pdfStyles.textBold]}>{t('variance')}</Text>
+              <Text style={[pdfStyles.col3, pdfStyles.textBold]}>{t('planned')}</Text>
+              <Text style={[pdfStyles.col4, pdfStyles.textBold, { color: '#ef4444' }]}>{t('actual_costs')}</Text>
+              <Text style={[pdfStyles.col5, pdfStyles.textBold]}>{t('variance')}</Text>
             </View>
             {approvedVersions.map((v: any) => (
               <React.Fragment key={v.id}>
@@ -298,9 +374,9 @@ const FinancePDFDocument = ({ settings, activeTab, t, projectHeader, budgetGroup
                         <View style={pdfStyles.col2}>
                           <Text style={[pdfStyles.textBold, { color: settings.accentColor, fontSize: 9.5, lineHeight: 1.35 }]}>{g.title}</Text>
                         </View>
-                        <Text style={[pdfStyles.col5, pdfStyles.textBold]}>{formatCHF(plan)}</Text>
-                        <Text style={[pdfStyles.col6, pdfStyles.textBold, { color: '#ef4444' }]}>{formatCHF(actual)}</Text>
-                        <Text style={[pdfStyles.col6, pdfStyles.textBold, { color: diff < 0 ? '#ef4444' : '#10b981' }]}>{(diff >= 0 ? '+' : '')}{formatCHF(diff)}</Text>
+                        <Text style={[pdfStyles.col3, pdfStyles.textBold]}>{formatCHF(plan)}</Text>
+                        <Text style={[pdfStyles.col4, pdfStyles.textBold, { color: '#ef4444' }]}>{formatCHF(actual)}</Text>
+                        <Text style={[pdfStyles.col5, pdfStyles.textBold, { color: diff < 0 ? '#ef4444' : '#10b981' }]}>{(diff >= 0 ? '+' : '')}{formatCHF(diff)}</Text>
                       </View>
                       {g.items.map((i: any) => {
                         const itemActual = getAllTimeActualCostForItem(i.id);
@@ -311,9 +387,9 @@ const FinancePDFDocument = ({ settings, activeTab, t, projectHeader, budgetGroup
                             <View style={pdfStyles.col2}>
                               <Text style={[pdfStyles.textBold, { fontSize: 9, lineHeight: 1.35 }]}>{i.description}</Text>
                             </View>
-                            <Text style={pdfStyles.col5}>{formatCHF(i.total)}</Text>
-                            <Text style={[pdfStyles.col6, { color: '#ef4444' }]}>{itemActual > 0 ? formatCHF(itemActual) : '-'}</Text>
-                            <Text style={[pdfStyles.col6, pdfStyles.textBold, { color: itemDiff < 0 ? '#ef4444' : '#10b981' }]}>{(itemDiff >= 0 ? '+' : '')}{formatCHF(itemDiff)}</Text>
+                            <Text style={pdfStyles.col3}>{formatCHF(i.total)}</Text>
+                            <Text style={[pdfStyles.col4, { color: '#ef4444' }]}>{itemActual > 0 ? formatCHF(itemActual) : '-'}</Text>
+                            <Text style={[pdfStyles.col5, pdfStyles.textBold, { color: itemDiff < 0 ? '#ef4444' : '#10b981' }]}>{(itemDiff >= 0 ? '+' : '')}{formatCHF(itemDiff)}</Text>
                           </View>
                         )
                       })}
@@ -325,20 +401,18 @@ const FinancePDFDocument = ({ settings, activeTab, t, projectHeader, budgetGroup
             <View style={pdfStyles.hrRow} wrap={false}>
               <Text style={[pdfStyles.col1, pdfStyles.textBold, { color: '#ea580c' }]}>HR</Text>
               <Text style={[pdfStyles.col2, pdfStyles.textBold, { color: '#ea580c' }]}>{t('internal_hours_time_tracking')} ({allTimeHours} h)</Text>
-              <Text style={pdfStyles.col5}>-</Text>
-              <Text style={[pdfStyles.col6, pdfStyles.textBold, { color: '#ef4444' }]}>{formatCHF(allTimeHoursCost)}</Text>
-              <Text style={[pdfStyles.col6, pdfStyles.textBold, { color: '#ef4444' }]}>-{formatCHF(allTimeHoursCost)}</Text>
+              <Text style={pdfStyles.col3}>-</Text>
+              <Text style={[pdfStyles.col4, pdfStyles.textBold, { color: '#ef4444' }]}>{formatCHF(allTimeHoursCost)}</Text>
+              <Text style={[pdfStyles.col5, pdfStyles.textBold, { color: '#ef4444' }]}>-{formatCHF(allTimeHoursCost)}</Text>
             </View>
-            <View style={{ marginTop: 20, alignItems: 'flex-end' }} wrap={false}>
-              <View style={{ flexDirection: 'row', width: 350, justifyContent: 'space-between', borderTopWidth: 2, borderColor: '#9ca3af', paddingTop: 8, marginTop: 5 }}>
-                <Text style={[pdfStyles.textBold, { fontSize: 12 }]}>{t('total_project_excl_vat')}</Text>
-                <View style={{ flexDirection: 'row', gap: 15 }}>
-                  <Text style={[pdfStyles.textBold, { fontSize: 12 }]}>{formatCHF(overviewTotalBudget)}</Text>
-                  <Text style={[pdfStyles.textBold, { fontSize: 12, color: '#ef4444' }]}>{formatCHF(totalActualCostsIncludingHoursAllTime)}</Text>
-                  <Text style={[pdfStyles.textBold, { fontSize: 12, color: (overviewTotalBudget - totalActualCostsIncludingHoursAllTime) < 0 ? '#ef4444' : '#10b981' }]}>
-                    {((overviewTotalBudget - totalActualCostsIncludingHoursAllTime) >= 0 ? '+' : '')}{formatCHF(overviewTotalBudget - totalActualCostsIncludingHoursAllTime)}
-                  </Text>
-                </View>
+            <View style={{ marginTop: 20, width: '100%' }} wrap={false}>
+              <View style={[pdfStyles.totalRow, { width: '100%', justifyContent: 'flex-end', gap: 12 }]}>
+                <Text style={[pdfStyles.textBold, { fontSize: 11, flex: 1 }]}>{t('total_project_excl_vat')}</Text>
+                <Text style={[pdfStyles.textBold, { fontSize: 10.5, width: '18%', textAlign: 'right' }]}>{formatCHF(overviewTotalBudget)}</Text>
+                <Text style={[pdfStyles.textBold, { fontSize: 10.5, width: '18%', textAlign: 'right', color: '#ef4444' }]}>{formatCHF(totalActualCostsIncludingHoursAllTime)}</Text>
+                <Text style={[pdfStyles.textBold, { fontSize: 10.5, width: '20%', textAlign: 'right', color: (overviewTotalBudget - totalActualCostsIncludingHoursAllTime) < 0 ? '#ef4444' : '#10b981' }]}>
+                  {((overviewTotalBudget - totalActualCostsIncludingHoursAllTime) >= 0 ? '+' : '')}{formatCHF(overviewTotalBudget - totalActualCostsIncludingHoursAllTime)}
+                </Text>
               </View>
             </View>
           </View>
@@ -350,9 +424,9 @@ const FinancePDFDocument = ({ settings, activeTab, t, projectHeader, budgetGroup
               <Text style={[pdfStyles.col1, pdfStyles.textBold, { width: '15%' }]}>{t('date')}</Text>
               <Text style={[pdfStyles.col2, pdfStyles.textBold, { width: '35%' }]}>{t('description')}</Text>
               <Text style={[pdfStyles.col5, pdfStyles.textBold, { width: '20%', textAlign: 'left' }]}>{t('budget_assignment')}</Text>
-              <Text style={[pdfStyles.col4, pdfStyles.textBold, { textAlign: 'right' }]}>Haben</Text>
-              <Text style={[pdfStyles.col4, pdfStyles.textBold, { textAlign: 'right' }]}>Soll</Text>
-              <Text style={[pdfStyles.col4, pdfStyles.textBold, { textAlign: 'right' }]}>Saldo</Text>
+              <Text style={[{ width: '10%', paddingLeft: 10, paddingTop: 1 }, pdfStyles.textBold, { textAlign: 'right' }]}>Haben</Text>
+              <Text style={[{ width: '10%', paddingLeft: 10, paddingTop: 1 }, pdfStyles.textBold, { textAlign: 'right' }]}>Soll</Text>
+              <Text style={[{ width: '10%', paddingLeft: 10, paddingTop: 1 }, pdfStyles.textBold, { textAlign: 'right' }]}>Saldo</Text>
             </View>
             {displayLedger.map((tx: any) => {
               const isQuote = tx.category === 'Offerte' || tx.category === 'Quote' || (tx as any).type === 'quote';
@@ -369,7 +443,7 @@ const FinancePDFDocument = ({ settings, activeTab, t, projectHeader, budgetGroup
                     <Text style={[pdfStyles.textBold, { fontSize: 9, lineHeight: 1.35 }]}>{tx.description}</Text>
                   </View>
                   <View style={{ width: '20%', paddingRight: 5 }}>
-                    <Text style={[{ fontSize: 8.5, color: '#6b7280', lineHeight: 1.3 }]}>{bdDetails ? `${bdDetails.phase} - ${bdDetails.item}` : t('free_booking')}</Text>
+                    <Text style={[{ fontSize: 8.5, color: '#6b7280', lineHeight: 1.3 }]}>{bdDetails ? `${bdDetails.phase || bdDetails.code} - ${bdDetails.item || bdDetails.title}` : t('free_booking')}</Text>
                   </View>
                   <Text style={[{ width: '10%', textAlign: 'right', paddingTop: 1 }, pdfStyles.textBold, { color: '#10b981' }]}>{isQuote ? `(${formatCHF(displayAmount)})` : (isRevenue && displayAmount > 0 ? `+${formatCHF(displayAmount)}` : '')}</Text>
                   <Text style={[{ width: '10%', textAlign: 'right', paddingTop: 1 }, pdfStyles.textBold, { color: '#ef4444' }]}>{!isQuote && !isRevenue && displayAmount > 0 ? `-${formatCHF(displayAmount)}` : ''}</Text>
@@ -405,9 +479,10 @@ const ReceiptPDFDocument = ({ settings, incomingData, incomingReceipts, formatCH
             </Text>
           </View>
           <View style={{ textAlign: 'right', alignItems: 'flex-end' }}>
+            {settings?.logo && <PDFImage src={settings.logo} style={{ width: 85, height: 30, objectFit: 'contain', marginBottom: 6 }} />}
             <Text style={{ fontSize: 9, color: '#6b7280', marginBottom: 2 }}>{isEn ? 'Date:' : 'Datum:'} <Text style={{ color: '#000', fontWeight: 'bold' }}>{new Date(incomingData.date).toLocaleDateString(isEn ? 'en-US' : 'de-CH')}</Text></Text>
             <Text style={{ fontSize: 9, color: '#6b7280', marginBottom: 2 }}>{isEn ? 'Project:' : 'Projekt:'} <Text style={{ color: '#000', fontWeight: 'bold' }}>{projectHeader.project}</Text></Text>
-            {budgetDetails && <Text style={{ fontSize: 9, color: '#6b7280' }}>{isEn ? 'Assignment:' : 'Zuweisung:'} <Text style={{ color: '#000', fontWeight: 'bold' }}>{budgetDetails.phase}</Text></Text>}
+            {budgetDetails && <Text style={{ fontSize: 9, color: '#6b7280' }}>{isEn ? 'Assignment:' : 'Zuweisung:'} <Text style={{ color: '#000', fontWeight: 'bold' }}>{budgetDetails.phase || budgetDetails.code}</Text></Text>}
           </View>
         </View>
 
@@ -1149,7 +1224,13 @@ export default function Finance() {
 
   const filteredTransactions = getFilteredTransactions();
 
-  const allTimeEntriesCombined = [...(timeEntries || []), ...localTimeEntries];
+  const queryTimeEntries = timeEntries;
+  const safeCompIdForTime = currentUser?.companyId || currentUser?.uid || '';
+  const deletedTimeIdsSet = new Set<string>([
+    ...(safeStorage.getItem<string[]>(`deleted_time_entries_${safeCompIdForTime}`, []) || []),
+    ...(safeStorage.getItem<string[]>(`time_deleted_${safeCompIdForTime}`, []) || []),
+  ]);
+  const allTimeEntriesCombined = [...(timeEntries || []), ...localTimeEntries].filter((t: any) => t && !deletedTimeIdsSet.has(t.id));
   const combinedMap = new Map();
   allTimeEntriesCombined.forEach((t: any) => combinedMap.set(t.id || `time-${t.date}-${t.hours}`, t));
   const effectiveTimeEntries = Array.from(combinedMap.values());
@@ -1207,11 +1288,17 @@ export default function Finance() {
   const allTimeHoursCost = allTimeTimeEntries.reduce((sum: number, e: any) => sum + ((Number(e.hours) || 0) * (e.hourlyRate || 0)), 0);
   const allTimeHours = allTimeTimeEntries.reduce((sum: number, e: any) => sum + (Number(e.hours) || 0), 0);
 
-  const getFilteredActualCostForItem = (itemId: string) => filteredTransactions.filter(tx => tx.budgetPosId === itemId && isExpenseTx(tx)).reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
-  const getFilteredActualCostForGroup = (group: BudgetGroup) => group.items.reduce((sum, item) => sum + getFilteredActualCostForItem(item.id), 0);
+  const getFilteredActualCostForItem = (itemId: string) =>
+    filteredTransactions.filter(tx => tx.budgetPosId === itemId && (isExpenseTx(tx) || tx.isTimeEntry)).reduce((sum, tx) => sum + Math.abs(tx.amount), 0) +
+    filteredTimeEntries.filter((e: any) => e.budgetPosId === itemId).reduce((sum: number, e: any) => sum + ((Number(e.hours) || 0) * (Number(e.rate || e.hourlyRate) || 0)), 0);
+  const getFilteredActualCostForGroup = (group: BudgetGroup) =>
+    group.items.reduce((sum, item) => sum + getFilteredActualCostForItem(item.id), 0) + getFilteredActualCostForItem(group.id);
 
-  const getAllTimeActualCostForItem = (itemId: string) => transactions.filter(tx => tx.budgetPosId === itemId && isExpenseTx(tx)).reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
-  const getAllTimeActualCostForGroup = (group: BudgetGroup) => group.items.reduce((sum, item) => sum + getAllTimeActualCostForItem(item.id), 0);
+  const getAllTimeActualCostForItem = (itemId: string) =>
+    transactions.filter(tx => tx.budgetPosId === itemId && (isExpenseTx(tx) || tx.isTimeEntry)).reduce((sum, tx) => sum + Math.abs(tx.amount), 0) +
+    effectiveTimeEntries.filter((e: any) => (e.projectId === currentProjectId || !e.projectId) && e.budgetPosId === itemId).reduce((sum: number, e: any) => sum + ((Number(e.hours) || 0) * (Number(e.rate || e.hourlyRate) || 0)), 0);
+  const getAllTimeActualCostForGroup = (group: BudgetGroup) =>
+    group.items.reduce((sum, item) => sum + getAllTimeActualCostForItem(item.id), 0) + getAllTimeActualCostForItem(group.id);
 
   const overviewTotalBudget = approvedVersions.length > 0
     ? approvedVersions.reduce((sum, v) => sum + v.groups.reduce((s, g) => s + calculateGroupTotal(g), 0), 0)
@@ -1219,7 +1306,7 @@ export default function Finance() {
 
   const globalExtSpent = transactions.filter(isExpenseTx).reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
   const globalSpent = globalExtSpent + allTimeHoursCost;
-  const totalActualCostsIncludingHoursAllTime = approvedVersions.reduce((sum, v) => sum + v.groups.reduce((s, g) => s + getAllTimeActualCostForGroup(g), 0), 0) + allTimeHoursCost;
+  const totalActualCostsIncludingHoursAllTime = globalSpent;
   const budgetRemaining = Math.max(0, overviewTotalBudget - filteredSpent);
 
   const formatCHF = (val: number) => formatCurrency(val, currency, currencyMode, 'CHF', exchangeRates);
@@ -1268,8 +1355,16 @@ export default function Finance() {
     for (const v of versions) {
       for (const g of v.groups) {
         const item = g.items.find(i => i.id === posId);
-        if (item) return { phase: g.title, item: `${item.pos} ${item.description}`, versionName: v.name };
+        if (item) return { phase: g.title, item: `${item.pos} ${item.description}`, versionName: v.name, code: item.pos, title: item.description };
+        if (g.id === posId) {
+          const code = (g as any).code || g.pos;
+          return { phase: `${code} ${g.title}`, item: g.title, versionName: v.name, code, title: g.title };
+        }
       }
+    }
+    if (/^sia_\d+/i.test(posId)) {
+      const code = posId.toUpperCase().replace('_', ' ');
+      return { phase: code, item: 'SIA Honorarphase', code, title: 'SIA Honorarphase' };
     }
     return null;
   };
@@ -1452,6 +1547,26 @@ export default function Finance() {
     if (window.confirm(t('delete_confirm'))) {
       try {
         const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+        const isTime = localTimeEntries.some((e: any) => e.id === id) || (queryTimeEntries || []).some((e: any) => e.id === id);
+        if (isTime) {
+          let timeQuery = supabase.from('time_entries').delete().eq('id', id);
+          if (safeCompanyId) timeQuery = timeQuery.eq('company_id', safeCompanyId);
+          await timeQuery;
+          const updatedLocal = localTimeEntries.filter((e: any) => e.id !== id);
+          setLocalTimeEntries(updatedLocal);
+          safeStorage.setItem(`time_entries_${currentProjectId}`, updatedLocal);
+          if (safeCompanyId) {
+            safeStorage.setItem(`time_entries_cache_${safeCompanyId}`, updatedLocal);
+            const delList = safeStorage.getItem<string[]>(`deleted_time_entries_${safeCompanyId}`, []) || [];
+            if (!delList.includes(id)) {
+              safeStorage.setItem(`deleted_time_entries_${safeCompanyId}`, [...delList, id]);
+            }
+          }
+          queryClient.invalidateQueries({ queryKey: [TIME_ENTRIES_QUERY_KEY] });
+          queryClient.invalidateQueries({ queryKey: [FINANCIAL_QUERY_KEY] });
+          addToast(t('hours_deleted') || t('booking_deleted'), 'success');
+          return;
+        }
         let query = supabase.from('transactions').delete().eq('id', id);
         if (safeCompanyId) query = query.eq('company_id', safeCompanyId);
         await query;
@@ -2827,26 +2942,26 @@ export default function Finance() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-surface border border-border rounded-xl p-5 shadow-sm">
                 <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">{t('total_budget')}</h3>
-                <p className="text-2xl font-bold text-text-primary font-medium">CHF {formatCHF(overviewTotalBudget)}</p>
+                <p className="text-2xl font-bold text-text-primary font-medium">{formatCHF(overviewTotalBudget)}</p>
               </div>
               <div className="bg-surface border border-border rounded-xl p-5 shadow-sm">
                 <div className="flex items-center gap-1.5 mb-1">
                   <ArrowUpRight className="text-emerald-400" size={13} />
                   <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{t('revenue')}</h3>
                 </div>
-                <p className="text-2xl font-bold text-emerald-400 font-medium">CHF {formatCHF(filteredInvoiced)}</p>
+                <p className="text-2xl font-bold text-emerald-400 font-medium">{formatCHF(filteredInvoiced)}</p>
               </div>
               <div className="bg-surface border border-border rounded-xl p-5 shadow-sm">
                 <div className="flex items-center gap-1.5 mb-1">
                   <ArrowDownRight className="text-red-400" size={13} />
                   <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{t('costs')}</h3>
                 </div>
-                <p className="text-2xl font-bold text-red-400 font-medium">CHF {formatCHF(filteredSpent)}</p>
+                <p className="text-2xl font-bold text-red-400 font-medium">{formatCHF(filteredSpent)}</p>
               </div>
               <div className="tour-finance-profit bg-gradient-to-br from-surface to-accent-ai/5 border border-border rounded-xl p-5 shadow-sm">
                 <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">{t('project_profit')}</h3>
                 <p className={cn("text-2xl font-bold font-medium", 0 > filteredProfit ? "text-red-500" : "text-emerald-400")}>
-                  CHF {formatCHF(filteredProfit)}
+                  {formatCHF(filteredProfit)}
                 </p>
               </div>
             </div>
@@ -2860,7 +2975,7 @@ export default function Finance() {
                         <Pie data={pieData} cx="50%" cy="50%" innerRadius={70} outerRadius={90} paddingAngle={5} dataKey="value" stroke="none">
                           {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
                         </Pie>
-                        <RechartsTooltip contentStyle={tooltipContentStyle} formatter={(value: number) => `CHF ${formatCHF(value)}`} />
+                        <RechartsTooltip contentStyle={tooltipContentStyle} formatter={(value: number) => formatCHF(value)} />
                       </PieChart>
                     </ResponsiveContainer>
                   ) : (
@@ -2888,8 +3003,8 @@ export default function Finance() {
                     <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? "#27272a" : "#e4e4e7"} vertical={false} />
                       <XAxis dataKey="name" stroke="#a1a1aa" fontSize={10} tickMargin={10} />
-                      <YAxis stroke="#a1a1aa" fontSize={10} tickFormatter={(value) => `CHF ${value.toLocaleString()}`} />
-                      <RechartsTooltip cursor={{ fill: theme === 'dark' ? '#27272a' : '#f4f4f5' }} contentStyle={tooltipContentStyle} />
+                      <YAxis stroke="#a1a1aa" fontSize={10} tickFormatter={(value) => formatCHF(Number(value))} />
+                      <RechartsTooltip cursor={{ fill: theme === 'dark' ? '#27272a' : '#f4f4f5' }} contentStyle={tooltipContentStyle} formatter={(value: any) => formatCHF(Number(value))} />
                       <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
                       <Bar dataKey={t('planned')} fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={40} />
                       <Bar dataKey={t('actual_costs')} fill="#f87171" radius={[4, 4, 0, 0]} maxBarSize={40} />
@@ -3552,6 +3667,7 @@ export default function Finance() {
             t={t}
             projectHeader={projectHeader}
             budgetGroups={budgetGroups}
+            budgetData={budgetGroups}
             approvedVersions={approvedVersions}
             allTimeHours={allTimeHours}
             allTimeHoursCost={allTimeHoursCost}

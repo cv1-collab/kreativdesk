@@ -126,7 +126,7 @@ const AgendaRapportPDFDocument = ({ settings, printType, t, currentLang, company
         <View style={[pdfStyles.headerContainer, { borderBottomColor: settings.accentColor }]} fixed>
           <View style={pdfStyles.headerLeft}>
             <Text style={[pdfStyles.title, { color: settings.accentColor }]}>{isRapport ? t('rapport') : t('agenda')}</Text>
-            <Text style={pdfStyles.metaText}>{companyProfile?.name || ''}</Text>
+            <Text style={pdfStyles.metaText}>{companyProfile?.agencyName || companyProfile?.name || ''}</Text>
             <Text style={pdfStyles.metaText}>{t('date')}: {new Date().toLocaleDateString(currentLang === 'de' ? 'de-CH' : 'en-US')}</Text>
           </View>
           {settings.logo && <PDFImage src={settings.logo} style={pdfStyles.logo} />}
@@ -2194,6 +2194,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
             fileName={`${printType === 'rapport' ? (currentLang === 'en' ? 'Report' : 'Rapport') : 'Agenda'}`}
             onSaveCloud={handleSavePdfToCloud}
             defaultOrientation="portrait"
+            defaultLogo={companyProfile?.logoUrl}
           >
             {(settings) => (
               <AgendaRapportPDFDocument

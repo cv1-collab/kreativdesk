@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
   HelpCircle,
   X,
@@ -63,6 +64,9 @@ export const ModuleHandbookDrawer: React.FC<ModuleHandbookDrawerProps> = ({
 }) => {
   const { startTour } = useTour();
   const { language } = useLanguage();
+  const navigate = useNavigate();
+  const { projectId } = useParams<{ projectId: string }>();
+  const location = useLocation();
   const isGerman = language !== 'en';
   const langKey = isGerman ? 'de' : 'en';
 
@@ -125,7 +129,7 @@ export const ModuleHandbookDrawer: React.FC<ModuleHandbookDrawerProps> = ({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[250000] flex justify-end bg-black/60 backdrop-blur-xs overflow-hidden overscroll-contain animate-in fade-in duration-200"
+      className="fixed inset-0 z-[1100000] flex justify-end bg-black/60 backdrop-blur-xs overflow-hidden overscroll-contain animate-in fade-in duration-200"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -191,9 +195,49 @@ export const ModuleHandbookDrawer: React.FC<ModuleHandbookDrawerProps> = ({
               onClick={() => {
                 const targetModule = selectedModuleId;
                 onClose();
+                if (targetModule !== initialModuleId) {
+                  const projectMatch = location.pathname.match(/^\/project\/([^/]+)/);
+                  const activeProjId = projectId || (projectMatch ? projectMatch[1] : null);
+                  const projectRouteMap: Record<string, string> = {
+                    overview: 'overview',
+                    dashboard: 'overview',
+                    finance: 'finance',
+                    calendar: 'calendar',
+                    bim: 'bim',
+                    plans: 'plans',
+                    cad: 'plans',
+                    defects: 'defects',
+                    camera: 'camera',
+                    whiteboard: 'whiteboard',
+                    meet: 'meet',
+                    documents: 'documents',
+                    pitch: 'pitch',
+                    team: 'team'
+                  };
+                  const companyTabMap: Record<string, string> = {
+                    projects: 'projects',
+                    proposals: 'proposals',
+                    finance: 'finance',
+                    documents: 'documents',
+                    templates: 'templates',
+                    leads: 'leads',
+                    crm: 'crm',
+                    team: 'crm',
+                    meet: 'meet',
+                    agenda: 'agenda',
+                    calendar: 'agenda',
+                    settings: 'settings',
+                    audit: 'audit'
+                  };
+                  if (activeProjId && projectRouteMap[targetModule]) {
+                    navigate(`/project/${activeProjId}/${projectRouteMap[targetModule]}`);
+                  } else if (companyTabMap[targetModule]) {
+                    navigate(`/?tab=${companyTabMap[targetModule]}`);
+                  }
+                }
                 setTimeout(() => {
                   startTour(targetModule);
-                }, 120);
+                }, 250);
               }}
               className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-md shadow-blue-600/25 transition-all cursor-pointer active:scale-95"
             >

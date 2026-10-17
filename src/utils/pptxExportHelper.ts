@@ -101,8 +101,8 @@ export async function exportDeckToPptx(
 
   // Standard 16:9 Widescreen Layout (13.33 x 7.5 inches)
   pptx.layout = 'LAYOUT_16x9';
-  pptx.author = 'Kreativ Desk OS';
-  pptx.company = 'Kreativ Desk';
+  pptx.author = settings?.footerText || 'Pitch Deck Studio';
+  pptx.company = settings?.footerText || 'Architektur & Planung';
   pptx.revision = '2.0';
 
   const themeStyle = settings.themeStyle || 'scenography';

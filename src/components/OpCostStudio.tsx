@@ -80,6 +80,7 @@ const OpCostPDFDocument = ({ settings, opCostData, opCostReceipts, projectName, 
             <Text style={pdfStyles.subtitle}>{isEn ? 'ACCOUNTS PAYABLE & EXTERNAL EXPENSES (SWITZERLAND)' : 'KREDITOREN & EXTERNE KOSTEN (SCHWEIZ)'}</Text>
           </View>
           <View style={pdfStyles.metaContainer}>
+            {settings.logo && <PDFImage src={settings.logo} style={{ width: 90, height: 32, objectFit: 'contain', marginBottom: 6, alignSelf: 'flex-end' }} />}
             <View style={pdfStyles.metaRow}>
               <Text style={pdfStyles.metaLabel}>{isEn ? 'Receipt / Invoice No:' : 'Beleg- / Rechnungs-Nr:'}</Text>
               <Text style={pdfStyles.metaValue}>{opCostData.invoiceNumber || (isEn ? 'NO-NUMBER' : 'OHNE-NUMMER')}</Text>
@@ -186,7 +187,7 @@ const OpCostPDFDocument = ({ settings, opCostData, opCostReceipts, projectName, 
         )}
 
         <View style={pdfStyles.footer} fixed>
-          <Text style={pdfStyles.footerText}>{settings.footerText || (isEn ? 'Kreativ Desk OS · Audit-proof Document Archival' : 'Kreativ Desk OS · Revisionssichere Belegablage')}</Text>
+          <Text style={pdfStyles.footerText}>{settings.footerText || (isEn ? 'Audit-proof Document Archival' : 'Revisionssichere Belegablage')}</Text>
           <Text style={pdfStyles.footerText} render={({ pageNumber, totalPages }) => isEn ? `Page ${pageNumber} of ${totalPages}` : `Seite ${pageNumber} von ${totalPages}`} />
         </View>
       </Page>

@@ -244,17 +244,19 @@ export async function generatePitchDeckPdfBlob(
     }
     docPdf.setTextColor(titleTextColor[0], titleTextColor[1], titleTextColor[2]);
 
+    let titleLns: string[] = [];
     if (slide.layout === 'title-only') {
       docPdf.setFont(pdfFont, titleFontWeight);
       docPdf.setFontSize(slide.titleFontSize ? Math.round(slide.titleFontSize * 0.9) : 38);
-      const tw = docPdf.getTextWidth(slide.title || '');
-      docPdf.text(slide.title || '', (pw - tw) / 2, ph / 2 - 5);
+      const tLines = docPdf.splitTextToSize(slide.title || '', pw - 40);
+      const titleOffsetY = (tLines.length - 1) * 6;
+      docPdf.text(tLines, pw / 2, ph / 2 - 5 - titleOffsetY, { align: 'center' });
       if (slide.content) {
         docPdf.setFont(pdfFont, contentFontWeight);
         docPdf.setFontSize(slide.fontSize || 16);
         docPdf.setTextColor(isDarkTheme ? 200 : 70);
         const cLines = docPdf.splitTextToSize(slide.content, pw - 60);
-        docPdf.text(cLines, pw / 2, ph / 2 + 12, { align: 'center' });
+        docPdf.text(cLines, pw / 2, ph / 2 + 12 + titleOffsetY, { align: 'center' });
       }
     } else if (slide.layout === 'full-image' || slide.layout === 'full-image-clean') {
       const isClean = slide.layout === 'full-image-clean' || !!slide.dataPayload?.hideTextOverlay;
@@ -294,18 +296,20 @@ export async function generatePitchDeckPdfBlob(
         docPdf.setFont(pdfFont, titleFontWeight);
         docPdf.setFontSize(slide.titleFontSize ? Math.round(slide.titleFontSize * 0.8) : 32);
         docPdf.setTextColor(255, 255, 255);
+        const tLines = docPdf.splitTextToSize(slide.title, pw - 40);
         if (textPos === 'center') {
-          const tw = docPdf.getTextWidth(slide.title);
-          docPdf.text(slide.title, (pw - tw) / 2, ph / 2 - 5);
+          const titleOffsetY = (tLines.length - 1) * 5;
+          docPdf.text(tLines, pw / 2, ph / 2 - 5 - titleOffsetY, { align: 'center' });
           if (slide.content && slide.content.trim().length > 0 && slide.content !== t('type_text_here')) {
             docPdf.setFont(pdfFont, contentFontWeight);
             docPdf.setFontSize(slide.fontSize || 16);
             docPdf.setTextColor(240, 240, 240);
             const cLines = docPdf.splitTextToSize(slide.content, pw - 60);
-            docPdf.text(cLines, pw / 2, ph / 2 + 14, { align: 'center' });
+            docPdf.text(cLines, pw / 2, ph / 2 + 14 + titleOffsetY, { align: 'center' });
           }
         } else {
-          docPdf.text(slide.title, 20, ph - 38);
+          const extraTitleH = Math.max(0, tLines.length - 1) * 10;
+          docPdf.text(tLines, 20, ph - 38 - extraTitleH);
           if (slide.content && slide.content.trim().length > 0 && slide.content !== t('type_text_here')) {
             docPdf.setFont(pdfFont, contentFontWeight);
             docPdf.setFontSize(slide.fontSize || 16);
@@ -320,7 +324,7 @@ export async function generatePitchDeckPdfBlob(
         docPdf.setFont(pdfFont, titleFontWeight);
         docPdf.setFontSize(slide.titleFontSize ? Math.round(slide.titleFontSize * 0.7) : 26);
         const maxTitleW = (themeStyle === 'neo-brutalism' || themeStyle === 'swiss') ? pw - 60 : pw - 30;
-        const titleLns = docPdf.splitTextToSize(slide.title, maxTitleW);
+        titleLns = docPdf.splitTextToSize(slide.title, maxTitleW);
         docPdf.text(titleLns, 15, 22);
       }
     }
@@ -335,7 +339,7 @@ export async function generatePitchDeckPdfBlob(
     docPdf.setFont(pdfFont, contentFontWeight);
     docPdf.setFontSize(slide.fontSize || 16);
     docPdf.setTextColor(isDarkTheme ? 220 : 50);
-    const cy = 36;
+    const cy = Math.max(36, 22 + Math.max(0, titleLns.length - 1) * 9.5 + 14);
 
     if (slide.layout === 'full-image' || slide.layout === 'full-image-clean') {
       // Full bleed background already drawn
@@ -652,10 +656,201 @@ export async function generatePitchDeckPdfBlob(
           }
         }
       }
+    } else if (slide.layout === 'defect-grid') {
+      const defs = (slide.dataPayload?.defects || []).slice(0, 4);
+      const colW = (pw - 36) / 2;
+      const rowH = Math.min(48, (ph - cy - 28) / 2);
+      for (let dIdx = 0; dIdx < defs.length; dIdx++) {
+        const d = defs[dIdx];
+        const col = dIdx % 2;
+        const row = Math.floor(dIdx / 2);
+        const dx = 15 + col * (colW + 6);
+        const dy = cy + row * (rowH + 6);
+        docPdf.setFillColor(isDarkTheme ? 28 : 248, isDarkTheme ? 28 : 249, isDarkTheme ? 34 : 252);
+        docPdf.setDrawColor(isDarkTheme ? 55 : 220, isDarkTheme ? 55 : 225, isDarkTheme ? 65 : 235);
+        docPdf.setLineWidth(0.3);
+        docPdf.roundedRect(dx, dy, colW, rowH, 2.5, 2.5, 'FD');
+
+        let textX = dx + 5;
+        if (d.imageUrl) {
+          await addSafeImage(d.imageUrl, dx + 3, dy + 3, 28, rowH - 6, true);
+          textX = dx + 34;
+        }
+        const availTextW = colW - (textX - dx) - 5;
+        docPdf.setFont(pdfFont, 'bold');
+        docPdf.setFontSize(10);
+        docPdf.setTextColor(isDarkTheme ? 255 : 20);
+        const dTitleLines = docPdf.splitTextToSize(d.title || 'Mangel / Pendenz', availTextW).slice(0, 2);
+        docPdf.text(dTitleLines, textX, dy + 9);
+
+        docPdf.setFont(pdfFont, 'normal');
+        docPdf.setFontSize(8);
+        docPdf.setTextColor(isDarkTheme ? 170 : 100);
+        const locLines = docPdf.splitTextToSize(d.location || '', availTextW).slice(0, 2);
+        docPdf.text(locLines, textX, dy + 9 + dTitleLines.length * 4.5 + 1);
+
+        const statusStr = String(d.status || 'offen').toUpperCase();
+        const prioStr = d.priority ? ` • ${String(d.priority).toUpperCase()}` : '';
+        docPdf.setFont(pdfFont, 'bold');
+        docPdf.setFontSize(7.5);
+        if (statusStr.includes('ERLEDIGT') || statusStr.includes('DONE')) {
+          docPdf.setTextColor(16, 185, 129);
+        } else {
+          docPdf.setTextColor(239, 68, 68);
+        }
+        docPdf.text(`${statusStr}${prioStr}`, textX, dy + rowH - 4);
+      }
+    } else if (slide.layout === 'cards-grid') {
+      let curY = cy;
+      if (slide.dataPayload?.keyMetric?.value) {
+        docPdf.setFillColor(isDarkTheme ? 28 : 244, isDarkTheme ? 30 : 246, isDarkTheme ? 42 : 254);
+        docPdf.setDrawColor(accentRgb.r, accentRgb.g, accentRgb.b);
+        docPdf.setLineWidth(0.4);
+        docPdf.roundedRect(15, curY, pw - 30, 18, 2.5, 2.5, 'FD');
+
+        docPdf.setFont(pdfFont, 'bold');
+        docPdf.setFontSize(16);
+        docPdf.setTextColor(accentRgb.r, accentRgb.g, accentRgb.b);
+        const valStr = String(slide.dataPayload.keyMetric.value);
+        docPdf.text(valStr, 21, curY + 11.5);
+        const valW = docPdf.getTextWidth(valStr);
+
+        docPdf.setFont(pdfFont, 'bold');
+        docPdf.setFontSize(9.5);
+        docPdf.setTextColor(isDarkTheme ? 230 : 30);
+        const lblLines = docPdf.splitTextToSize(String(slide.dataPayload.keyMetric.label || ''), pw - 45 - valW);
+        docPdf.text(lblLines[0] || '', 26 + valW, curY + 11);
+        curY += 23;
+      }
+
+      const cards = (slide.dataPayload?.cards || []).slice(0, 4);
+      if (cards.length > 0) {
+        const isTwoByTwo = cards.length === 4;
+        const cols = isTwoByTwo ? 2 : Math.min(cards.length, 3);
+        const rows = isTwoByTwo ? 2 : 1;
+        const gap = 5;
+        const cardW = (pw - 30 - (cols - 1) * gap) / cols;
+        const availH = ph - curY - 22;
+        const cardH = (availH - (rows - 1) * gap) / rows;
+
+        cards.forEach((c: any, cIdx: number) => {
+          const col = cIdx % cols;
+          const row = Math.floor(cIdx / cols);
+          const cx = 15 + col * (cardW + gap);
+          const cTop = curY + row * (cardH + gap);
+
+          docPdf.setFillColor(isDarkTheme ? 26 : 248, isDarkTheme ? 26 : 249, isDarkTheme ? 32 : 252);
+          docPdf.setDrawColor(isDarkTheme ? 55 : 220, isDarkTheme ? 55 : 225, isDarkTheme ? 65 : 235);
+          docPdf.setLineWidth(0.3);
+          docPdf.roundedRect(cx, cTop, cardW, cardH, 2.5, 2.5, 'FD');
+
+          let innerY = cTop + 7;
+          if (c.badge) {
+            docPdf.setFont(pdfFont, 'bold');
+            docPdf.setFontSize(7.5);
+            docPdf.setTextColor(accentRgb.r, accentRgb.g, accentRgb.b);
+            docPdf.text(String(c.badge).toUpperCase(), cx + 5, innerY);
+            innerY += 6;
+          }
+          if (c.title) {
+            docPdf.setFont(pdfFont, 'bold');
+            docPdf.setFontSize(11);
+            docPdf.setTextColor(isDarkTheme ? 255 : 15);
+            const ctLines = docPdf.splitTextToSize(String(c.title), cardW - 10).slice(0, 2);
+            docPdf.text(ctLines, cx + 5, innerY);
+            innerY += ctLines.length * 5 + 2;
+          }
+          if (c.description) {
+            docPdf.setFont(pdfFont, 'normal');
+            docPdf.setFontSize(8.5);
+            docPdf.setTextColor(isDarkTheme ? 195 : 70);
+            const maxDescLines = Math.max(1, Math.floor((cTop + cardH - innerY - 3) / 4.2));
+            const cdLines = docPdf.splitTextToSize(String(c.description), cardW - 10).slice(0, maxDescLines);
+            docPdf.text(cdLines, cx + 5, innerY);
+          }
+        });
+      }
+    } else if (slide.layout === 'stat-callout') {
+      const centerY = cy + (ph - cy - 22) / 2;
+      if (slide.dataPayload?.kicker) {
+        docPdf.setFont(pdfFont, 'bold');
+        docPdf.setFontSize(9);
+        docPdf.setTextColor(accentRgb.r, accentRgb.g, accentRgb.b);
+        docPdf.text(String(slide.dataPayload.kicker).toUpperCase(), pw / 2, centerY - 24, { align: 'center' });
+      }
+      if (slide.dataPayload?.keyMetric?.value) {
+        docPdf.setFont(pdfFont, 'bold');
+        docPdf.setFontSize(46);
+        docPdf.setTextColor(accentRgb.r, accentRgb.g, accentRgb.b);
+        docPdf.text(String(slide.dataPayload.keyMetric.value), pw / 2, centerY - 4, { align: 'center' });
+      }
+      if (slide.dataPayload?.keyMetric?.label) {
+        docPdf.setFont(pdfFont, 'bold');
+        docPdf.setFontSize(15);
+        docPdf.setTextColor(isDarkTheme ? 255 : 20);
+        const lblLns = docPdf.splitTextToSize(String(slide.dataPayload.keyMetric.label), pw - 50).slice(0, 2);
+        docPdf.text(lblLns, pw / 2, centerY + 10, { align: 'center' });
+      }
+      if (slide.content) {
+        docPdf.setFont(pdfFont, 'normal');
+        docPdf.setFontSize(11);
+        docPdf.setTextColor(isDarkTheme ? 195 : 75);
+        const bodyLns = docPdf.splitTextToSize(String(slide.content), pw - 60).slice(0, 3);
+        docPdf.text(bodyLns, pw / 2, centerY + 24, { align: 'center' });
+      }
+    } else if (slide.layout === 'quote-statement') {
+      const quoteText = slide.dataPayload?.quote?.text || slide.content || '';
+      const quoteAuthor = slide.dataPayload?.quote?.author || '';
+      const quoteRole = slide.dataPayload?.quote?.role || '';
+      const centerY = cy + (ph - cy - 22) / 2;
+
+      docPdf.setFont(pdfFont, 'bold');
+      docPdf.setFontSize(18);
+      docPdf.setTextColor(isDarkTheme ? 245 : 20);
+      const qLines = docPdf.splitTextToSize(`"${quoteText}"`, pw - 50).slice(0, 5);
+      const blockH = qLines.length * 8;
+      const startY = centerY - blockH / 2;
+      docPdf.text(qLines, pw / 2, startY, { align: 'center' });
+
+      if (quoteAuthor || quoteRole) {
+        docPdf.setFont(pdfFont, 'normal');
+        docPdf.setFontSize(10);
+        docPdf.setTextColor(accentRgb.r, accentRgb.g, accentRgb.b);
+        const authorLine = [quoteAuthor, quoteRole ? `(${quoteRole})` : ''].filter(Boolean).join(' ');
+        docPdf.text(`— ${authorLine}`, pw / 2, startY + blockH + 8, { align: 'center' });
+      }
+    } else if (slide.layout === 'video-focus') {
+      if (slide.imageUrl) {
+        await addSafeImage(slide.imageUrl, 15, cy - 3, pw - 30, ph - cy - 22, true);
+      } else {
+        const boxH = ph - cy - 24;
+        docPdf.setFillColor(isDarkTheme ? 24 : 242, isDarkTheme ? 24 : 244, isDarkTheme ? 30 : 248);
+        docPdf.setDrawColor(accentRgb.r, accentRgb.g, accentRgb.b);
+        docPdf.setLineWidth(0.4);
+        docPdf.roundedRect(15, cy, pw - 30, boxH, 3, 3, 'FD');
+
+        docPdf.setFont(pdfFont, 'bold');
+        docPdf.setFontSize(14);
+        docPdf.setTextColor(isDarkTheme ? 240 : 30);
+        docPdf.text('VIDEO-PRÄSENTATION', pw / 2, cy + boxH / 2 - 4, { align: 'center' });
+
+        if (slide.videoUrl || slide.content) {
+          docPdf.setFont(pdfFont, 'normal');
+          docPdf.setFontSize(9.5);
+          docPdf.setTextColor(isDarkTheme ? 175 : 90);
+          const vLines = docPdf.splitTextToSize(slide.videoUrl || slide.content || '', pw - 60).slice(0, 3);
+          docPdf.text(vLines, pw / 2, cy + boxH / 2 + 6, { align: 'center' });
+        }
+      }
     }
 
     // 5. Footer Text, Logo & Page Number
     const isFullBleedSlide = slide.layout === 'full-image' || slide.layout === 'full-image-clean';
+    const rawFooter = deckSettings.footerText || 'Vertraulich – Projekt Status Report';
+    docPdf.setFont(pdfFont, "normal");
+    docPdf.setFontSize(8);
+    const safeFooter = docPdf.splitTextToSize(rawFooter, pw - 85)[0] || rawFooter;
+
     if (isFullBleedSlide) {
       docPdf.saveGraphicsState();
       try {
@@ -668,7 +863,7 @@ export async function generatePitchDeckPdfBlob(
       docPdf.setFont(pdfFont, "normal");
       docPdf.setFontSize(8);
       docPdf.setTextColor(245, 245, 245);
-      docPdf.text(deckSettings.footerText || 'Vertraulich – Projekt Status Report', 15, ph - 5.5);
+      docPdf.text(safeFooter, 15, ph - 5.5);
       docPdf.text(`${i + 1} / ${slides.length}`, pw - 25, ph - 5.5);
       if (deckSettings.logoUrl) {
         await addSafeImage(deckSettings.logoUrl, pw - 65, ph - 12, 35, 8.5, true);
@@ -677,7 +872,7 @@ export async function generatePitchDeckPdfBlob(
       docPdf.setFont(pdfFont, "normal");
       docPdf.setFontSize(8);
       docPdf.setTextColor(isDarkTheme ? 160 : 110);
-      docPdf.text(deckSettings.footerText || 'Vertraulich – Projekt Status Report', 15, ph - 10);
+      docPdf.text(safeFooter, 15, ph - 10);
       docPdf.text(`${i + 1} / ${slides.length}`, pw - 25, ph - 10);
       if (deckSettings.logoUrl) {
         await addSafeImage(deckSettings.logoUrl, pw - 65, ph - 18, 35, 10, true);

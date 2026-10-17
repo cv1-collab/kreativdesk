@@ -560,6 +560,29 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [exportMenuOpen]);
 
+  useEffect(() => {
+    if (!planImage || sessionImageCache[planImage]) return;
+    if (planImage.startsWith('data:image/svg+xml') || /\.(svg|webp)(\?|$)/i.test(planImage)) {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth || 1600;
+          canvas.height = img.naturalHeight || 1131;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            sessionImageCache[planImage] = canvas.toDataURL('image/png');
+          }
+        } catch {}
+      };
+      img.src = planImage;
+    }
+  }, [planImage]);
+
   const handleStartCalibration = () => {
     if (isDemoMode || currentProjectId === 'demo-1') {
       addToast(t('truescale_demo_info'), 'info');
@@ -2430,6 +2453,11 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         const badgeRx = 3.5 * tScale;
         return (
           <g key={el.id} style={{ opacity: totalOpacity, cursor: isInteractive ? (isElLocked ? 'default' : 'move') : 'crosshair', pointerEvents: isInteractive ? 'auto' : 'none' }} onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, el); }}>
+            <line 
+              x1={`${sx}px`} y1={`${sy}px`} x2={`${ex}px`} y2={`${ey}px`} 
+              stroke="transparent" 
+              strokeWidth={`${Math.max(14 * invScale, strokeW + 10)}px`} 
+            />
             {/* Bemassungslinie (skaliert proportional beim Ein- und Auszoomen) */}
             <line 
               x1={`${sx}px`} y1={`${sy}px`} x2={`${ex}px`} y2={`${ey}px`} 
@@ -4822,6 +4850,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         isOpen={isPdfStudioOpen} onClose={() => setIsPdfStudioOpen(false)} 
         title={t('pdf_export')} fileName={`PlanExport_${planName}`}
         onSaveCloud={handleSavePdfToCloud} defaultOrientation={paperOrientation}
+        defaultLogo={companyProfile?.logoUrl}
       >
         {(settings) => (
           <CADPlanPDFDocument 

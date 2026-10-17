@@ -205,7 +205,7 @@ export const CADPlanPDFDocument = ({ settings, docHeader, planImage, elements, l
           </View>
           
           <View style={{ position: 'absolute', top: 0, left: 0, width: SAFE_W, height: SAFE_H }}>
-            {elements.map((el: any) => {
+            {sortedElements.map((el: any) => {
               const layer = layers.find((l:any) => l.id === (el.layerId || 'default'));
               if (layer && !layer.visible) return null;
               const totalOpacity = (layer?.opacity ?? 1) * (el.opacity ?? 1);
@@ -277,11 +277,19 @@ export const CADPlanPDFDocument = ({ settings, docHeader, planImage, elements, l
               if (el.type === 'scalebar') {
                  const relW = (1000 / planScale * el.lengthMeters) / origW_mm; const w_pdf = relW * SAFE_W;
                  const x = el.x * SAFE_W; const y = el.y * SAFE_H; const textPx = (el.textSize || 4) * MM_TO_PX * SCALE_AVG;
+                 const boxW = Math.max(30, textPx * 4);
+                 const topPos = y - Math.max(3.5 * MM_TO_PX * SCALE_Y, textPx * 1.15);
                  return (
-                   <View key={el.id} style={{ position: 'absolute', left: x, top: y - (3.5 * MM_TO_PX * SCALE_Y), width: w_pdf, opacity: totalOpacity }}>
-                     <Text style={{ position: 'absolute', left: 0, color: el.color, fontSize: textPx, fontFamily: 'Helvetica-Bold', transform: 'translateX(-50%)' }}>0</Text>
-                     <Text style={{ position: 'absolute', left: w_pdf/2, color: el.color, fontSize: textPx, fontFamily: 'Helvetica-Bold', transform: 'translateX(-50%)' }}>{+(el.lengthMeters / 2).toFixed(2)}</Text>
-                     <Text style={{ position: 'absolute', left: w_pdf, color: el.color, fontSize: textPx, fontFamily: 'Helvetica-Bold', transform: 'translateX(-50%)' }}>{el.lengthMeters} m</Text>
+                   <View key={el.id} style={{ position: 'absolute', left: x, top: topPos, width: w_pdf, opacity: totalOpacity }}>
+                     <View style={{ position: 'absolute', left: -boxW / 2, width: boxW, alignItems: 'center' }}>
+                       <Text style={{ color: el.color, fontSize: textPx, fontFamily: 'Helvetica-Bold', textAlign: 'center' }}>0</Text>
+                     </View>
+                     <View style={{ position: 'absolute', left: w_pdf / 2 - boxW / 2, width: boxW, alignItems: 'center' }}>
+                       <Text style={{ color: el.color, fontSize: textPx, fontFamily: 'Helvetica-Bold', textAlign: 'center' }}>{+(el.lengthMeters / 2).toFixed(2)}</Text>
+                     </View>
+                     <View style={{ position: 'absolute', left: w_pdf - boxW / 2, width: boxW, alignItems: 'center' }}>
+                       <Text style={{ color: el.color, fontSize: textPx, fontFamily: 'Helvetica-Bold', textAlign: 'center' }}>{el.lengthMeters} m</Text>
+                     </View>
                    </View>
                  );
               }
@@ -302,8 +310,8 @@ export const CADPlanPDFDocument = ({ settings, docHeader, planImage, elements, l
                       {/* ZEILE 1 LINKS: Projekt & Adresse */}
                       <View style={{ position: 'absolute', left: 4 * SCALE_X, top: h * (4/162), width: tbWidth * 0.66 - 8 * SCALE_X, height: h * (46/162), overflow: 'hidden' }}>
                         <Text style={{ color: tCol, fontSize: 2.3 * MM_TO_PX * SCALE_AVG * el.scale, opacity: 0.6, fontFamily: 'Helvetica' }}>{t('project')}</Text>
-                        <Text style={{ color: tCol, fontSize: projFontMm * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold', marginTop: 1 }}>{el.data.projekt}</Text>
-                        <Text style={{ color: tCol, fontSize: 3.1 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica', marginTop: 1 }}>{el.data.adresse}</Text>
+                        <Text style={{ color: tCol, fontSize: projFontMm * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold', marginTop: 1, maxLines: 1 } as any}>{el.data.projekt}</Text>
+                        <Text style={{ color: tCol, fontSize: 3.1 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica', marginTop: 1, maxLines: 1 } as any}>{el.data.adresse}</Text>
                       </View>
 
                       {/* ZEILE 1 RECHTS: Eigenes Logo oder Firmenname */}
@@ -336,24 +344,24 @@ export const CADPlanPDFDocument = ({ settings, docHeader, planImage, elements, l
                       </View>
 
                       {/* ZEILE 4: Format, Massstab, Datum, Gez., Plannummer */}
-                      <View style={{ position: 'absolute', left: 4 * SCALE_X, top: h * (130/162) }}>
+                      <View style={{ position: 'absolute', left: 4 * SCALE_X, top: h * (130/162), width: tbWidth * 0.2 - 6 * SCALE_X, overflow: 'hidden' }}>
                         <Text style={{ color: tCol, fontSize: 2.3 * MM_TO_PX * SCALE_AVG * el.scale, opacity: 0.6, fontFamily: 'Helvetica' }}>{t('format')}</Text>
-                        <Text style={{ color: tCol, fontSize: 3.5 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold', marginTop: 1 }}>{originalFormat}</Text>
+                        <Text style={{ color: tCol, fontSize: 3.5 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold', marginTop: 1, maxLines: 1 } as any}>{originalFormat}</Text>
                       </View>
 
-                      <View style={{ position: 'absolute', left: tbWidth*0.2 + 4 * SCALE_X, top: h * (130/162) }}>
+                      <View style={{ position: 'absolute', left: tbWidth*0.2 + 4 * SCALE_X, top: h * (130/162), width: tbWidth * 0.2 - 6 * SCALE_X, overflow: 'hidden' }}>
                         <Text style={{ color: tCol, fontSize: 2.3 * MM_TO_PX * SCALE_AVG * el.scale, opacity: 0.6, fontFamily: 'Helvetica' }}>{t('scale')}</Text>
-                        <Text style={{ color: tCol, fontSize: 3.5 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold', marginTop: 1 }}>1:{planScale}</Text>
+                        <Text style={{ color: tCol, fontSize: 3.5 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold', marginTop: 1, maxLines: 1 } as any}>1:{planScale}</Text>
                       </View>
 
-                      <View style={{ position: 'absolute', left: tbWidth*0.4 + 4 * SCALE_X, top: h * (130/162) }}>
+                      <View style={{ position: 'absolute', left: tbWidth*0.4 + 4 * SCALE_X, top: h * (130/162), width: tbWidth * 0.2 - 6 * SCALE_X, overflow: 'hidden' }}>
                         <Text style={{ color: tCol, fontSize: 2.3 * MM_TO_PX * SCALE_AVG * el.scale, opacity: 0.6, fontFamily: 'Helvetica' }}>{t('date')}</Text>
-                        <Text style={{ color: tCol, fontSize: 3.5 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold', marginTop: 1 }}>{el.data.datum}</Text>
+                        <Text style={{ color: tCol, fontSize: 3.5 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold', marginTop: 1, maxLines: 1 } as any}>{el.data.datum}</Text>
                       </View>
 
-                      <View style={{ position: 'absolute', left: tbWidth*0.6 + 4 * SCALE_X, top: h * (130/162) }}>
+                      <View style={{ position: 'absolute', left: tbWidth*0.6 + 4 * SCALE_X, top: h * (130/162), width: tbWidth * 0.2 - 6 * SCALE_X, overflow: 'hidden' }}>
                         <Text style={{ color: tCol, fontSize: 2.3 * MM_TO_PX * SCALE_AVG * el.scale, opacity: 0.6, fontFamily: 'Helvetica' }}>{t('drawn_by')}</Text>
-                        <Text style={{ color: tCol, fontSize: 3.5 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold', marginTop: 1 }}>{el.data.gez}</Text>
+                        <Text style={{ color: tCol, fontSize: 3.5 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold', marginTop: 1, maxLines: 1 } as any}>{el.data.gez}</Text>
                       </View>
 
                       <View style={{ position: 'absolute', left: tbWidth * 0.8, top: h * (126/162), width: tbWidth * 0.2, height: h * (36/162), backgroundColor: tCol, justifyContent: 'center', alignItems: 'flex-end', paddingRight: 4 * SCALE_X }}>

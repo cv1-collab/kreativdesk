@@ -49,7 +49,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 const formatAmount = (val: number, cur: Currency = 'CHF') => formatCurrency(val, cur, 'display', cur);
 
 const pdfStyles = StyleSheet.create({
-  page: { padding: '15mm', fontFamily: 'Helvetica', fontSize: 10, color: '#374151', backgroundColor: '#ffffff' },
+  page: { padding: '15mm', paddingBottom: '22mm', fontFamily: 'Helvetica', fontSize: 10, color: '#374151', backgroundColor: '#ffffff' },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 30 },
   senderText: { fontSize: 8, color: '#6b7280', borderBottomWidth: 1, borderBottomColor: '#d1d5db', paddingBottom: 4, marginBottom: 8, width: 250 },
   recipientText: { fontSize: 11, color: '#000000', lineHeight: 1.4 },
@@ -60,7 +60,7 @@ const pdfStyles = StyleSheet.create({
   title: { fontSize: 24, fontWeight: 'bold', textTransform: 'uppercase', marginBottom: 20, letterSpacing: 2 },
   tableHeader: { flexDirection: 'row', borderBottomWidth: 2, borderBottomColor: '#000000', paddingBottom: 5, marginBottom: 5 },
   tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', paddingVertical: 8, alignItems: 'flex-start' },
-  col1: { width: '10%', paddingTop: 1 }, col2: { width: '45%', paddingRight: 10 }, col3: { width: '15%', textAlign: 'right', paddingTop: 1 }, col4: { width: '15%', textAlign: 'right', paddingTop: 1 }, col5: { width: '15%', textAlign: 'right', paddingTop: 1 },
+  col1: { width: '8%', paddingTop: 1 }, col2: { width: '44%', paddingRight: 10 }, col3: { width: '18%', textAlign: 'right', paddingTop: 1 }, col4: { width: '15%', textAlign: 'right', paddingTop: 1 }, col5: { width: '15%', textAlign: 'right', paddingTop: 1 },
   textBold: { fontWeight: 'bold', color: '#000000' }, textMuted: { color: '#6b7280', fontSize: 9, marginTop: 3 },
   totalsContainer: { alignItems: 'flex-end', marginTop: 15 },
   totalsRow: { flexDirection: 'row', width: 220, justifyContent: 'space-between', paddingVertical: 4 },
@@ -78,7 +78,7 @@ const InvoicePDFDocument = ({ settings, type, formData, positions, subtotal, vat
   return (
     <Document>
       <Page size={settings.format} orientation={settings.orientation} style={pdfStyles.page}>
-        <View style={pdfStyles.headerRow} fixed>
+        <View style={pdfStyles.headerRow}>
           <View>
             <Text style={pdfStyles.senderText}>{formData.sender.replace(/\n/g, ' • ')}</Text>
             <Text style={pdfStyles.recipientText}>{formData.recipient}</Text>
@@ -200,25 +200,30 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
   }, [draftCacheKey]);
 
   const [currency, setCurrency] = useState<Currency>(() => initialDraft?.currency || propCurrency || getCurrencyPreference().currency || 'CHF');
+  const [companyLogo, setCompanyLogo] = useState<string | null>(null);
 
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => { 
     setTimeout(() => setIsMounted(true), 0);
-    if (initialDraft?.formData) return;
     const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
     if (!safeCompanyId) return;
     getCompanyProfileConfig(safeCompanyId).then(cfg => {
+      if (cfg.logoUrl) setCompanyLogo(cfg.logoUrl);
       const senderLines = [cfg.agencyName, cfg.address, `${cfg.zipCode || ''} ${cfg.city || ''}`.trim()].filter(Boolean).join('\n');
-      setFormData(prev => ({
-        ...prev,
-        vatRate: cfg.vatRate !== undefined ? cfg.vatRate : 8.1,
-        sender: senderLines || prev.sender,
-        paymentInfo: type === 'invoice'
-          ? `Bitte überweisen Sie den Betrag innerhalb von ${cfg.paymentTermsDays || 30} Tagen auf folgendes Konto:\nIBAN: ${cfg.iban || 'CH00 0000 0000 0000 0000 0'}\n${cfg.agencyName || 'Kreativ-Desk Studio'}`
-          : `Wir freuen uns auf Ihre Auftragserteilung.\nGültigkeit der Offerte: ${cfg.paymentTermsDays || 30} Tage`
-      }));
+      setFormData(prev => {
+        const isDefaultSender = !prev.sender || prev.sender.startsWith('Kreativ-Desk Studio') || prev.sender.startsWith('Dein Studio');
+        if (!isDefaultSender) return prev;
+        return {
+          ...prev,
+          vatRate: cfg.vatRate !== undefined ? cfg.vatRate : prev.vatRate,
+          sender: senderLines || prev.sender,
+          paymentInfo: type === 'invoice'
+            ? `Bitte überweisen Sie den Betrag innerhalb von ${cfg.paymentTermsDays || 30} Tagen auf folgendes Konto:\nIBAN: ${cfg.iban || 'CH00 0000 0000 0000 0000 0'}\n${cfg.agencyName || 'Kreativ-Desk Studio'}`
+            : `Wir freuen uns auf Ihre Auftragserteilung.\nGültigkeit der Offerte: ${cfg.paymentTermsDays || 30} Tage`
+        };
+      });
     });
-  }, [currentUser, type, initialDraft]);
+  }, [currentUser, type]);
 
   const [activeProjectId, setActiveProjectId] = useState<string>(() => initialDraft?.activeProjectId || 'global');
   const [formData, setFormData] = useState(() => initialDraft?.formData || ({ 
@@ -491,6 +496,7 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
         title={type === 'invoice' ? (currentLang === 'en' ? 'Invoice' : 'Rechnung') : (currentLang === 'en' ? 'Quote' : 'Offerte')} 
         fileName={formData.invoiceNumber} 
         onSaveCloud={handleSaveToCloud}
+        defaultLogo={companyLogo}
       >
         {(settings) => <InvoicePDFDocument settings={settings} type={type} formData={formData} positions={positions} subtotal={subtotal} vatAmount={vatAmount} total={total} currency={currency} t={t} />}
       </UniversalPDFStudio>

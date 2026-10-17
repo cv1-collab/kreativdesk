@@ -333,7 +333,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
   const wasDragged = useRef(false);
 
   // === MULTI-TENANT FILTERUNG MIT TANSTACK QUERY & REALTIME SYNC ===
-  const { defects: queryDefects, invalidateDefects } = useDefectsQuery(
+  const { defects: queryDefects, isLoading: isLoadingDefects, invalidateDefects } = useDefectsQuery(
     isDemo ? null : safeCompanyId,
     isDemo ? null : currentProjectId
   );
@@ -355,18 +355,21 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
       }
       return;
     }
-    if (queryDefects && queryDefects.length > 0) {
-      setDefects(queryDefects as any);
-      safeStorage.setItem(cacheKey, queryDefects);
+    if (!isLoadingDefects && Array.isArray(queryDefects)) {
+      if (queryDefects.length > 0) {
+        setDefects(queryDefects as any);
+        safeStorage.setItem(cacheKey, queryDefects);
+      } else if (currentProjectId !== 'demo-1') {
+        setDefects([]);
+        safeStorage.setItem(cacheKey, []);
+      }
     } else {
       const cached = safeStorage.getItem<Defect[] | null>(cacheKey, null);
       if (cached && Array.isArray(cached) && cached.length > 0) {
         setDefects(cached);
-      } else if (queryDefects) {
-        setDefects(queryDefects as any);
       }
     }
-  }, [isDemo, queryDefects, currentProjectId]);
+  }, [isDemo, isLoadingDefects, queryDefects, currentProjectId]);
 
   // Zero-Leakage Filtered Defects:
   // If user is a Field Guest / external contractor, they ONLY see defects matching their trade, assignee, or created by them!
@@ -698,7 +701,9 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
       return;
     }
 
-    setDefects(prev => prev.filter(d => d.id !== id));
+    const updated = defects.filter(d => d.id !== id);
+    setDefects(updated);
+    safeStorage.setItem(`defects_cache_${currentProjectId}`, updated);
 
     try { 
       await supabase.from('defects').delete().eq('id', id); 
@@ -739,7 +744,8 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
       const dataStr = JSON.stringify(defects.map(d => ({ title: d.title, priority: d.priority, trade: d.trade, status: d.status, location: d.location })));
       const prompt = language === 'de' ? `Analysiere diese Mängelliste. Welche Gewerke machen Probleme? Sind kritische Dinge offen? Antworte in 2 Sätzen auf Deutsch. Verwende ausschliesslich Schweizer Rechtschreibung (immer "ss", niemals "ß"). \nDaten: ${dataStr}` : `Analyze this defect list. Identify patterns. Answer in 2 short sentences in English. \nData: ${dataStr}`;
       const response = await callGeminiAPI('gemini-2.5-flash', [{ text: prompt }]);
-      setAiInsights(response.text || t('analysis_completed'));
+      const textOut = typeof response === 'string' ? response : (response?.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || '');
+      setAiInsights(textOut || t('analysis_completed'));
     } catch (error) { addToast(t('error_ai_analysis'), "error"); } 
     finally { setIsAnalyzing(false); }
   };
