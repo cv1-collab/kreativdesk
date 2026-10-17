@@ -138,15 +138,15 @@ export interface DefectMarker extends BaseElement {
 }
 export interface TextMarkup extends BaseElement { type: 'text'; text: string; color: string; size: number; }
 export interface FreehandLine extends BaseElement { type: 'pen'; points: {x: number, y: number}[]; color: string; thickness: number; }
-export interface Measurement extends BaseElement { type: 'measure'; start: {x: number, y: number}; end: {x: number, y: number}; color: string; }
-export interface PolygonMarkup extends BaseElement { type: 'polygon'; points: {x: number, y: number}[]; color: string; strokeColor: string; borderStyle: LineStyle; strokeWidth?: number; showArea?: boolean; roomName?: string; }
-export interface RectMarkup extends BaseElement { type: 'rect'; w: number; h: number; color: string; strokeColor: string; borderStyle: LineStyle; strokeWidth?: number; rotation?: number; showArea?: boolean; roomName?: string; }
-export interface CircleMarkup extends BaseElement { type: 'circle'; r: number; color: string; strokeColor: string; borderStyle: LineStyle; strokeWidth?: number; showArea?: boolean; roomName?: string; }
+export interface Measurement extends BaseElement { type: 'measure'; start: {x: number, y: number}; end: {x: number, y: number}; color: string; textScale?: number; }
+export interface PolygonMarkup extends BaseElement { type: 'polygon'; points: {x: number, y: number}[]; color: string; strokeColor: string; borderStyle: LineStyle; strokeWidth?: number; showArea?: boolean; roomName?: string; textScale?: number; }
+export interface RectMarkup extends BaseElement { type: 'rect'; w: number; h: number; color: string; strokeColor: string; borderStyle: LineStyle; strokeWidth?: number; rotation?: number; showArea?: boolean; roomName?: string; textScale?: number; }
+export interface CircleMarkup extends BaseElement { type: 'circle'; r: number; color: string; strokeColor: string; borderStyle: LineStyle; strokeWidth?: number; showArea?: boolean; roomName?: string; textScale?: number; }
 export interface ArrowMarkup extends BaseElement { type: 'arrow'; start: {x: number, y: number}; end: {x: number, y: number}; color: string; strokeWidth?: number; borderStyle?: LineStyle; }
 export interface ScaleBarMarkup extends BaseElement { type: 'scalebar'; lengthMeters: number; color: string; thickness: number; textSize: number; }
 export interface TitleBlockMarkup extends BaseElement { 
   type: 'titleblock'; scale: number; textColor: string;
-  data: { projekt: string; adresse: string; bauherrschaft: string; planverfasser: string; phase: string; planinhalt: string; planNummer: string; datum: string; gez: string; }
+  data: { projekt: string; adresse: string; bauherrschaft: string; planverfasser: string; phase: string; planinhalt: string; planNummer: string; datum: string; gez: string; logoUrl?: string; brandText?: string; }
 }
 export interface ImageMarkup extends BaseElement { type: 'image'; url: string; scale: number; color?: string; }
 

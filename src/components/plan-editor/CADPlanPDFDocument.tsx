@@ -15,7 +15,7 @@ import {
 } from '@react-pdf/renderer';
 import { PAPER_DIMENSIONS, MM_TO_PX, sessionImageCache } from './planEditorConfig';
 
-export const CADPlanPDFDocument = ({ settings, docHeader, planImage, elements, layers, planScale, originalFormat, originalOrientation, t }: any) => {
+export const CADPlanPDFDocument = ({ settings, docHeader, planImage, elements, layers, planScale, originalFormat, originalOrientation, companyProfile, t }: any) => {
   const isLandscape = settings.orientation === 'landscape';
   const isA3 = settings.format === 'A3';
   
@@ -143,11 +143,12 @@ export const CADPlanPDFDocument = ({ settings, docHeader, planImage, elements, l
                 if (el.type === 'measure') {
                    const sx = el.start.x * SAFE_W; const sy = el.start.y * SAFE_H;
                    const ex = el.end.x * SAFE_W; const ey = el.end.y * SAFE_H;
+                   const tScale = el.textScale || 1;
                    return (
                      <G key={el.id} opacity={totalOpacity}>
-                       <Line x1={sx} y1={sy} x2={ex} y2={ey} stroke={el.color || '#3b82f6'} strokeWidth={0.5 * MM_TO_PX * SCALE_AVG} />
-                       <PDFCircle cx={sx} cy={sy} r={1.2 * MM_TO_PX * SCALE_AVG} fill="#000000" />
-                       <PDFCircle cx={ex} cy={ey} r={1.2 * MM_TO_PX * SCALE_AVG} fill="#000000" />
+                       <Line x1={sx} y1={sy} x2={ex} y2={ey} stroke={el.color || '#3b82f6'} strokeWidth={0.5 * MM_TO_PX * SCALE_AVG * tScale} />
+                       <PDFCircle cx={sx} cy={sy} r={1.2 * MM_TO_PX * SCALE_AVG * tScale} fill="#000000" />
+                       <PDFCircle cx={ex} cy={ey} r={1.2 * MM_TO_PX * SCALE_AVG * tScale} fill="#000000" />
                      </G>
                    );
                 }
@@ -157,7 +158,7 @@ export const CADPlanPDFDocument = ({ settings, docHeader, planImage, elements, l
                    return (
                      <G key={el.id} opacity={totalOpacity}>
                        <Rect x={x} y={y} width={w_pdf/2} height={thick} fill={el.color} />
-                       <Rect x={x + w_pdf/2} y={y} width={w_pdf/2} height={thick} fill="none" stroke={el.color} strokeWidth={thick/3} />
+                       <Rect x={x + w_pdf/2} y={y} width={w_pdf/2} height={thick} fill="#ffffff" stroke={el.color} strokeWidth={thick/3} />
                      </G>
                    );
                 }
@@ -178,20 +179,23 @@ export const CADPlanPDFDocument = ({ settings, docHeader, planImage, elements, l
                 }
                 if (el.type === 'titleblock') {
                    const x = el.x * SAFE_W; const y = el.y * SAFE_H;
-                   const tbWidth = 170 * MM_TO_PX * SCALE_X * el.scale; const h = 45 * MM_TO_PX * SCALE_Y * el.scale;
+                   const tbWidth = 170 * MM_TO_PX * SCALE_X * el.scale; const h = 54 * MM_TO_PX * SCALE_Y * el.scale;
                    const tCol = el.textColor || '#000000';
                    return (
                      <G key={el.id} opacity={totalOpacity}>
                         <Rect x={x} y={y} width={tbWidth} height={h} fill="#ffffff" stroke={tCol} strokeWidth={1 * SCALE_AVG} />
-                        <Line x1={x} y1={y + h*0.444} x2={x + tbWidth} y2={y + h*0.444} stroke={tCol} strokeWidth={0.5 * SCALE_AVG} />
-                        <Line x1={x} y1={y + h*0.777} x2={x + tbWidth} y2={y + h*0.777} stroke={tCol} strokeWidth={0.5 * SCALE_AVG} />
-                        <Line x1={x + tbWidth*0.6} y1={y + h*0.444} x2={x + tbWidth*0.6} y2={y + h*0.777} stroke={tCol} strokeWidth={0.5 * SCALE_AVG} />
-                        <Line x1={x + tbWidth*0.2} y1={y + h*0.777} x2={x + tbWidth*0.2} y2={y + h} stroke={tCol} strokeWidth={0.5 * SCALE_AVG} />
-                        <Line x1={x + tbWidth*0.4} y1={y + h*0.777} x2={x + tbWidth*0.4} y2={y + h} stroke={tCol} strokeWidth={0.5 * SCALE_AVG} />
-                        <Line x1={x + tbWidth*0.6} y1={y + h*0.777} x2={x + tbWidth*0.6} y2={y + h} stroke={tCol} strokeWidth={0.5 * SCALE_AVG} />
-                        <Line x1={x + tbWidth*0.8} y1={y + h*0.777} x2={x + tbWidth*0.8} y2={y + h} stroke={tCol} strokeWidth={0.5 * SCALE_AVG} />
-                        <Rect x={x + tbWidth*0.6} y={y + h*0.444} width={tbWidth*0.4} height={h*0.333} fill="#000000" fillOpacity={0.05} />
-                        <Rect x={x + tbWidth*0.8} y={y + h*0.777} width={tbWidth*0.2} height={h*0.222} fill={tCol} />
+                        <Line x1={x} y1={y + h*(54/162)} x2={x + tbWidth} y2={y + h*(54/162)} stroke={tCol} strokeWidth={0.5 * SCALE_AVG} />
+                        <Line x1={x} y1={y + h*(90/162)} x2={x + tbWidth} y2={y + h*(90/162)} stroke={tCol} strokeWidth={0.5 * SCALE_AVG} />
+                        <Line x1={x} y1={y + h*(126/162)} x2={x + tbWidth} y2={y + h*(126/162)} stroke={tCol} strokeWidth={0.5 * SCALE_AVG} />
+
+                        <Line x1={x + tbWidth*0.66} y1={y} x2={x + tbWidth*0.66} y2={y + h*(54/162)} stroke={tCol} strokeWidth={0.5 * SCALE_AVG} />
+                        <Line x1={x + tbWidth*0.6} y1={y + h*(54/162)} x2={x + tbWidth*0.6} y2={y + h*(126/162)} stroke={tCol} strokeWidth={0.5 * SCALE_AVG} />
+                        <Line x1={x + tbWidth*0.2} y1={y + h*(126/162)} x2={x + tbWidth*0.2} y2={y + h} stroke={tCol} strokeWidth={0.5 * SCALE_AVG} />
+                        <Line x1={x + tbWidth*0.4} y1={y + h*(126/162)} x2={x + tbWidth*0.4} y2={y + h} stroke={tCol} strokeWidth={0.5 * SCALE_AVG} />
+                        <Line x1={x + tbWidth*0.6} y1={y + h*(126/162)} x2={x + tbWidth*0.6} y2={y + h} stroke={tCol} strokeWidth={0.5 * SCALE_AVG} />
+                        <Line x1={x + tbWidth*0.8} y1={y + h*(126/162)} x2={x + tbWidth*0.8} y2={y + h} stroke={tCol} strokeWidth={0.5 * SCALE_AVG} />
+                        <Rect x={x + tbWidth*0.6} y={y + h*(54/162)} width={tbWidth*0.4} height={h*(72/162)} fill="#000000" fillOpacity={0.04} />
+                        <Rect x={x + tbWidth*0.8} y={y + h*(126/162)} width={tbWidth*0.2} height={h*(36/162)} fill={tCol} />
                      </G>
                    );
                 }
@@ -218,9 +222,12 @@ export const CADPlanPDFDocument = ({ settings, docHeader, planImage, elements, l
                  const distMeters = ((Math.sqrt(dxReal_mm * dxReal_mm + dyReal_mm * dyReal_mm) * planScale) / 1000).toFixed(2);
                  const mx = (el.start.x * SAFE_W + el.end.x * SAFE_W) / 2;
                  const my = (el.start.y * SAFE_H + el.end.y * SAFE_H) / 2;
+                 const tScale = el.textScale || 1;
+                 const wBadge = 16 * MM_TO_PX * SCALE_X * tScale;
+                 const hBadge = 5 * MM_TO_PX * SCALE_Y * tScale;
                  return (
-                   <View key={el.id} style={{ position: 'absolute', left: mx - (8 * MM_TO_PX * SCALE_X), top: my - (2.5 * MM_TO_PX * SCALE_Y), width: 16 * MM_TO_PX * SCALE_X, height: 5 * MM_TO_PX * SCALE_Y, backgroundColor: '#ffffff', border: `0.6px solid ${el.color || '#3b82f6'}`, borderRadius: 1 * MM_TO_PX * SCALE_AVG, justifyContent: 'center', alignItems: 'center', opacity: totalOpacity }}>
-                     <Text style={{ color: '#000000', fontSize: 2.8 * MM_TO_PX * SCALE_AVG, fontFamily: 'Helvetica-Bold' }}>{distMeters} m</Text>
+                   <View key={el.id} style={{ position: 'absolute', left: mx - wBadge / 2, top: my - hBadge / 2, width: wBadge, height: hBadge, backgroundColor: '#ffffff', border: `0.6px solid ${el.color || '#3b82f6'}`, borderRadius: 1 * MM_TO_PX * SCALE_AVG * tScale, justifyContent: 'center', alignItems: 'center', opacity: totalOpacity }}>
+                     <Text style={{ color: '#000000', fontSize: 2.8 * MM_TO_PX * SCALE_AVG * tScale, fontFamily: 'Helvetica-Bold' }}>{distMeters} m</Text>
                    </View>
                  );
               }
@@ -241,11 +248,12 @@ export const CADPlanPDFDocument = ({ settings, docHeader, planImage, elements, l
                  const areaM2 = (Math.abs(area) / 2).toFixed(2);
                  const rName = (el as any).roomName;
                  const label = rName ? `${rName}: ${areaM2} m²` : `${areaM2} m²`;
-                 const badgeW = Math.max(30 * MM_TO_PX * SCALE_AVG, (label.length * 2.2 + 6) * MM_TO_PX * SCALE_AVG);
-                 const badgeH = 5 * MM_TO_PX * SCALE_AVG;
+                 const tScale = el.textScale || 1;
+                 const badgeW = Math.max(30 * MM_TO_PX * SCALE_AVG, (label.length * 2.2 + 6) * MM_TO_PX * SCALE_AVG) * tScale;
+                 const badgeH = 5 * MM_TO_PX * SCALE_AVG * tScale;
                  return (
-                   <View key={`${el.id}-badge`} style={{ position: 'absolute', left: cx - badgeW / 2, top: cy - badgeH / 2, width: badgeW, height: badgeH, backgroundColor: '#ffffff', border: `0.8px solid ${el.strokeColor || '#2563eb'}`, borderRadius: 1 * MM_TO_PX * SCALE_AVG, justifyContent: 'center', alignItems: 'center', opacity: totalOpacity }}>
-                     <Text style={{ color: '#0f172a', fontSize: 2.6 * MM_TO_PX * SCALE_AVG, fontFamily: 'Helvetica-Bold' }}>{label}</Text>
+                   <View key={`${el.id}-badge`} style={{ position: 'absolute', left: cx - badgeW / 2, top: cy - badgeH / 2, width: badgeW, height: badgeH, backgroundColor: '#ffffff', border: `0.8px solid ${el.strokeColor || '#2563eb'}`, borderRadius: 1 * MM_TO_PX * SCALE_AVG * tScale, justifyContent: 'center', alignItems: 'center', opacity: totalOpacity }}>
+                     <Text style={{ color: '#0f172a', fontSize: 2.6 * MM_TO_PX * SCALE_AVG * tScale, fontFamily: 'Helvetica-Bold' }}>{label}</Text>
                    </View>
                  );
               }
@@ -257,11 +265,12 @@ export const CADPlanPDFDocument = ({ settings, docHeader, planImage, elements, l
                  const areaM2 = (w_m * h_m).toFixed(2);
                  const rName = (el as any).roomName;
                  const label = rName ? `${rName}: ${areaM2} m²` : `${areaM2} m²`;
-                 const badgeW = Math.max(30 * MM_TO_PX * SCALE_AVG, (label.length * 2.2 + 6) * MM_TO_PX * SCALE_AVG);
-                 const badgeH = 5 * MM_TO_PX * SCALE_AVG;
+                 const tScale = el.textScale || 1;
+                 const badgeW = Math.max(30 * MM_TO_PX * SCALE_AVG, (label.length * 2.2 + 6) * MM_TO_PX * SCALE_AVG) * tScale;
+                 const badgeH = 5 * MM_TO_PX * SCALE_AVG * tScale;
                  return (
-                   <View key={`${el.id}-badge`} style={{ position: 'absolute', left: cx - badgeW / 2, top: cy - badgeH / 2, width: badgeW, height: badgeH, backgroundColor: '#ffffff', border: `0.8px solid ${el.strokeColor || '#2563eb'}`, borderRadius: 1 * MM_TO_PX * SCALE_AVG, justifyContent: 'center', alignItems: 'center', opacity: totalOpacity }}>
-                     <Text style={{ color: '#0f172a', fontSize: 2.6 * MM_TO_PX * SCALE_AVG, fontFamily: 'Helvetica-Bold' }}>{label}</Text>
+                   <View key={`${el.id}-badge`} style={{ position: 'absolute', left: cx - badgeW / 2, top: cy - badgeH / 2, width: badgeW, height: badgeH, backgroundColor: '#ffffff', border: `0.8px solid ${el.strokeColor || '#2563eb'}`, borderRadius: 1 * MM_TO_PX * SCALE_AVG * tScale, justifyContent: 'center', alignItems: 'center', opacity: totalOpacity }}>
+                     <Text style={{ color: '#0f172a', fontSize: 2.6 * MM_TO_PX * SCALE_AVG * tScale, fontFamily: 'Helvetica-Bold' }}>{label}</Text>
                    </View>
                  );
               }
@@ -269,50 +278,86 @@ export const CADPlanPDFDocument = ({ settings, docHeader, planImage, elements, l
                  const relW = (1000 / planScale * el.lengthMeters) / origW_mm; const w_pdf = relW * SAFE_W;
                  const x = el.x * SAFE_W; const y = el.y * SAFE_H; const textPx = (el.textSize || 4) * MM_TO_PX * SCALE_AVG;
                  return (
-                   <View key={el.id} style={{ position: 'absolute', left: x, top: y - (3 * MM_TO_PX * SCALE_Y), width: w_pdf, opacity: totalOpacity }}>
+                   <View key={el.id} style={{ position: 'absolute', left: x, top: y - (3.5 * MM_TO_PX * SCALE_Y), width: w_pdf, opacity: totalOpacity }}>
                      <Text style={{ position: 'absolute', left: 0, color: el.color, fontSize: textPx, fontFamily: 'Helvetica-Bold', transform: 'translateX(-50%)' }}>0</Text>
-                     <Text style={{ position: 'absolute', left: w_pdf/2, color: el.color, fontSize: textPx, fontFamily: 'Helvetica-Bold', transform: 'translateX(-50%)' }}>{el.lengthMeters / 2}</Text>
-                     <Text style={{ position: 'absolute', left: w_pdf, color: el.color, fontSize: textPx, fontFamily: 'Helvetica-Bold', transform: 'translateX(-50%)' }}>{el.lengthMeters}m</Text>
+                     <Text style={{ position: 'absolute', left: w_pdf/2, color: el.color, fontSize: textPx, fontFamily: 'Helvetica-Bold', transform: 'translateX(-50%)' }}>{+(el.lengthMeters / 2).toFixed(2)}</Text>
+                     <Text style={{ position: 'absolute', left: w_pdf, color: el.color, fontSize: textPx, fontFamily: 'Helvetica-Bold', transform: 'translateX(-50%)' }}>{el.lengthMeters} m</Text>
                    </View>
                  );
               }
               if (el.type === 'titleblock') {
                  const x = el.x * SAFE_W; const y = el.y * SAFE_H;
-                 const tbWidth = 170 * MM_TO_PX * SCALE_X * el.scale; const h = 45 * MM_TO_PX * SCALE_Y * el.scale;
+                 const tbWidth = 170 * MM_TO_PX * SCALE_X * el.scale; const h = 54 * MM_TO_PX * SCALE_Y * el.scale;
                  const tCol = el.textColor || '#000000';
+                 const resolvedLogoUrl = el.data?.logoUrl !== undefined ? el.data.logoUrl : (companyProfile?.logoUrl || settings?.logo || '');
+                 const fallbackBrand = companyProfile?.agencyName
+                   || (el.data?.planverfasser && el.data.planverfasser !== 'Kreativ Desk' ? el.data.planverfasser : '')
+                   || 'PLANVERFASSER';
+                 const rawBrand = (el.data?.brandText !== undefined ? el.data.brandText : fallbackBrand).trim() || fallbackBrand;
+                 const projTitle = el.data?.projekt || '';
+                 const projFontMm = projTitle.length > 34 ? 3.5 : projTitle.length > 24 ? 4.2 : 5.0;
+
                  return (
                    <View key={el.id} style={{ position: 'absolute', left: x, top: y, width: tbWidth, height: h, opacity: totalOpacity }}>
-                      <Text style={{ position: 'absolute', left: 4 * SCALE_X, top: h*0.13, color: tCol, fontSize: 2.5 * MM_TO_PX * SCALE_AVG * el.scale, opacity: 0.6, fontFamily: 'Helvetica' }}>{t('project')}</Text>
-                      <Text style={{ position: 'absolute', left: 4 * SCALE_X, top: h*0.26, color: tCol, fontSize: 6 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold' }}>{el.data.projekt}</Text>
-                      <Text style={{ position: 'absolute', left: 4 * SCALE_X, top: h*0.37, color: tCol, fontSize: 3.5 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica' }}>{el.data.adresse}</Text>
+                      {/* ZEILE 1 LINKS: Projekt & Adresse */}
+                      <View style={{ position: 'absolute', left: 4 * SCALE_X, top: h * (4/162), width: tbWidth * 0.66 - 8 * SCALE_X, height: h * (46/162), overflow: 'hidden' }}>
+                        <Text style={{ color: tCol, fontSize: 2.3 * MM_TO_PX * SCALE_AVG * el.scale, opacity: 0.6, fontFamily: 'Helvetica' }}>{t('project')}</Text>
+                        <Text style={{ color: tCol, fontSize: projFontMm * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold', marginTop: 1 }}>{el.data.projekt}</Text>
+                        <Text style={{ color: tCol, fontSize: 3.1 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica', marginTop: 1 }}>{el.data.adresse}</Text>
+                      </View>
 
-                      <Text style={{ position: 'absolute', right: 4 * SCALE_X, top: h*0.22, color: tCol, fontSize: 8 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold' }}>KREATIV</Text>
-                      <Text style={{ position: 'absolute', right: 4 * SCALE_X, top: h*0.37, color: tCol, fontSize: 8 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold' }}>DESK</Text>
+                      {/* ZEILE 1 RECHTS: Eigenes Logo oder Firmenname */}
+                      <View style={{ position: 'absolute', left: tbWidth * 0.66 + 4 * SCALE_X, top: h * (4/162), width: tbWidth * 0.34 - 8 * SCALE_X, height: h * (46/162), justifyContent: 'center', alignItems: 'flex-end', overflow: 'hidden' }}>
+                        {resolvedLogoUrl ? (
+                          <PDFImage src={resolvedLogoUrl} style={{ width: tbWidth * 0.34 - 12 * SCALE_X, height: h * (40/162), objectFit: 'contain' }} />
+                        ) : (
+                          <Text style={{ color: tCol, fontSize: 4.5 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold', textAlign: 'right' }}>{rawBrand}</Text>
+                        )}
+                      </View>
 
-                      <Text style={{ position: 'absolute', left: 4 * SCALE_X, top: h*0.53, color: tCol, fontSize: 2.5 * MM_TO_PX * SCALE_AVG * el.scale, opacity: 0.6, fontFamily: 'Helvetica' }}>{t('client')}</Text>
-                      <Text style={{ position: 'absolute', left: 4 * SCALE_X, top: h*0.64, color: tCol, fontSize: 3.5 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold' }}>{el.data.bauherrschaft}</Text>
-                      <Text style={{ position: 'absolute', left: 4 * SCALE_X, top: h*0.71, color: tCol, fontSize: 2.5 * MM_TO_PX * SCALE_AVG * el.scale, opacity: 0.6, fontFamily: 'Helvetica' }}>{t('planner')}</Text>
-                      <Text style={{ position: 'absolute', left: 4 * SCALE_X, top: h*0.75, color: tCol, fontSize: 3.5 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold' }}>{el.data.planverfasser}</Text>
+                      {/* ZEILE 2: Bauherrschaft & Planinhalt */}
+                      <View style={{ position: 'absolute', left: 4 * SCALE_X, top: h * (58/162), width: tbWidth * 0.6 - 8 * SCALE_X, height: h * (30/162), overflow: 'hidden' }}>
+                        <Text style={{ color: tCol, fontSize: 2.3 * MM_TO_PX * SCALE_AVG * el.scale, opacity: 0.6, fontFamily: 'Helvetica' }}>{t('client')}</Text>
+                        <Text style={{ color: tCol, fontSize: 3.5 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold', marginTop: 1 }}>{el.data.bauherrschaft}</Text>
+                      </View>
+                      <View style={{ position: 'absolute', left: tbWidth * 0.6 + 4 * SCALE_X, top: h * (58/162), width: tbWidth * 0.4 - 8 * SCALE_X, height: h * (30/162), overflow: 'hidden' }}>
+                        <Text style={{ color: tCol, fontSize: 2.3 * MM_TO_PX * SCALE_AVG * el.scale, opacity: 0.6, fontFamily: 'Helvetica' }}>{t('content')}</Text>
+                        <Text style={{ color: tCol, fontSize: 4.0 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold', marginTop: 1 }}>{el.data.planinhalt}</Text>
+                      </View>
 
-                      <Text style={{ position: 'absolute', left: tbWidth*0.6 + 4 * SCALE_X, top: h*0.53, color: tCol, fontSize: 2.5 * MM_TO_PX * SCALE_AVG * el.scale, opacity: 0.6, fontFamily: 'Helvetica' }}>{t('content')}</Text>
-                      <Text style={{ position: 'absolute', left: tbWidth*0.6 + 4 * SCALE_X, top: h*0.64, color: tCol, fontSize: 4.5 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold' }}>{el.data.planinhalt}</Text>
-                      <Text style={{ position: 'absolute', left: tbWidth*0.6 + 4 * SCALE_X, top: h*0.71, color: tCol, fontSize: 2.5 * MM_TO_PX * SCALE_AVG * el.scale, opacity: 0.6, fontFamily: 'Helvetica' }}>{t('phase')}</Text>
-                      <Text style={{ position: 'absolute', left: tbWidth*0.6 + 4 * SCALE_X, top: h*0.75, color: tCol, fontSize: 3 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold' }}>{el.data.phase}</Text>
+                      {/* ZEILE 3: Planverfasser & Phase */}
+                      <View style={{ position: 'absolute', left: 4 * SCALE_X, top: h * (94/162), width: tbWidth * 0.6 - 8 * SCALE_X, height: h * (30/162), overflow: 'hidden' }}>
+                        <Text style={{ color: tCol, fontSize: 2.3 * MM_TO_PX * SCALE_AVG * el.scale, opacity: 0.6, fontFamily: 'Helvetica' }}>{t('planner')}</Text>
+                        <Text style={{ color: tCol, fontSize: 3.5 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold', marginTop: 1 }}>{el.data.planverfasser}</Text>
+                      </View>
+                      <View style={{ position: 'absolute', left: tbWidth * 0.6 + 4 * SCALE_X, top: h * (94/162), width: tbWidth * 0.4 - 8 * SCALE_X, height: h * (30/162), overflow: 'hidden' }}>
+                        <Text style={{ color: tCol, fontSize: 2.3 * MM_TO_PX * SCALE_AVG * el.scale, opacity: 0.6, fontFamily: 'Helvetica' }}>{t('phase')}</Text>
+                        <Text style={{ color: tCol, fontSize: 3.3 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold', marginTop: 1 }}>{el.data.phase}</Text>
+                      </View>
 
-                      <Text style={{ position: 'absolute', left: 4 * SCALE_X, top: h*0.86, color: tCol, fontSize: 2.5 * MM_TO_PX * SCALE_AVG * el.scale, opacity: 0.6, fontFamily: 'Helvetica' }}>{t('format')}</Text>
-                      <Text style={{ position: 'absolute', left: 4 * SCALE_X, top: h*0.95, color: tCol, fontSize: 3.5 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold' }}>{originalFormat}</Text>
+                      {/* ZEILE 4: Format, Massstab, Datum, Gez., Plannummer */}
+                      <View style={{ position: 'absolute', left: 4 * SCALE_X, top: h * (130/162) }}>
+                        <Text style={{ color: tCol, fontSize: 2.3 * MM_TO_PX * SCALE_AVG * el.scale, opacity: 0.6, fontFamily: 'Helvetica' }}>{t('format')}</Text>
+                        <Text style={{ color: tCol, fontSize: 3.5 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold', marginTop: 1 }}>{originalFormat}</Text>
+                      </View>
 
-                      <Text style={{ position: 'absolute', left: tbWidth*0.2 + 4 * SCALE_X, top: h*0.86, color: tCol, fontSize: 2.5 * MM_TO_PX * SCALE_AVG * el.scale, opacity: 0.6, fontFamily: 'Helvetica' }}>{t('scale')}</Text>
-                      <Text style={{ position: 'absolute', left: tbWidth*0.2 + 4 * SCALE_X, top: h*0.95, color: tCol, fontSize: 3.5 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold' }}>1:{planScale}</Text>
+                      <View style={{ position: 'absolute', left: tbWidth*0.2 + 4 * SCALE_X, top: h * (130/162) }}>
+                        <Text style={{ color: tCol, fontSize: 2.3 * MM_TO_PX * SCALE_AVG * el.scale, opacity: 0.6, fontFamily: 'Helvetica' }}>{t('scale')}</Text>
+                        <Text style={{ color: tCol, fontSize: 3.5 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold', marginTop: 1 }}>1:{planScale}</Text>
+                      </View>
 
-                      <Text style={{ position: 'absolute', left: tbWidth*0.4 + 4 * SCALE_X, top: h*0.86, color: tCol, fontSize: 2.5 * MM_TO_PX * SCALE_AVG * el.scale, opacity: 0.6, fontFamily: 'Helvetica' }}>{t('date')}</Text>
-                      <Text style={{ position: 'absolute', left: tbWidth*0.4 + 4 * SCALE_X, top: h*0.95, color: tCol, fontSize: 3.5 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold' }}>{el.data.datum}</Text>
+                      <View style={{ position: 'absolute', left: tbWidth*0.4 + 4 * SCALE_X, top: h * (130/162) }}>
+                        <Text style={{ color: tCol, fontSize: 2.3 * MM_TO_PX * SCALE_AVG * el.scale, opacity: 0.6, fontFamily: 'Helvetica' }}>{t('date')}</Text>
+                        <Text style={{ color: tCol, fontSize: 3.5 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold', marginTop: 1 }}>{el.data.datum}</Text>
+                      </View>
 
-                      <Text style={{ position: 'absolute', left: tbWidth*0.6 + 4 * SCALE_X, top: h*0.86, color: tCol, fontSize: 2.5 * MM_TO_PX * SCALE_AVG * el.scale, opacity: 0.6, fontFamily: 'Helvetica' }}>{t('drawn_by')}</Text>
-                      <Text style={{ position: 'absolute', left: tbWidth*0.6 + 4 * SCALE_X, top: h*0.95, color: tCol, fontSize: 3.5 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold' }}>{el.data.gez}</Text>
+                      <View style={{ position: 'absolute', left: tbWidth*0.6 + 4 * SCALE_X, top: h * (130/162) }}>
+                        <Text style={{ color: tCol, fontSize: 2.3 * MM_TO_PX * SCALE_AVG * el.scale, opacity: 0.6, fontFamily: 'Helvetica' }}>{t('drawn_by')}</Text>
+                        <Text style={{ color: tCol, fontSize: 3.5 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold', marginTop: 1 }}>{el.data.gez}</Text>
+                      </View>
 
-                      <View style={{ position: 'absolute', left: tbWidth * 0.8, top: h * 0.78, width: tbWidth * 0.2, height: h * 0.22, backgroundColor: tCol, justifyContent: 'center', paddingLeft: 4 * SCALE_X }}>
-                        <Text style={{ color: '#ffffff', fontSize: 2 * MM_TO_PX * SCALE_AVG * el.scale, opacity: 0.8, fontFamily: 'Helvetica' }}>{t('plan_no')}</Text>
+                      <View style={{ position: 'absolute', left: tbWidth * 0.8, top: h * (126/162), width: tbWidth * 0.2, height: h * (36/162), backgroundColor: tCol, justifyContent: 'center', alignItems: 'flex-end', paddingRight: 4 * SCALE_X }}>
+                        <Text style={{ color: '#ffffff', fontSize: 2.2 * MM_TO_PX * SCALE_AVG * el.scale, opacity: 0.8, fontFamily: 'Helvetica' }}>{t('plan_no')}</Text>
                         <Text style={{ color: '#ffffff', fontSize: 4 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold', marginTop: 1 }}>{el.data.planNummer}</Text>
                       </View>
                    </View>

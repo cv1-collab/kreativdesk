@@ -24,6 +24,7 @@ import { dummySvgPlan } from '../utils/cadDemoPlan';
 import { queryClient } from '../lib/queryClient';
 import { DEFECTS_QUERY_KEY } from '../hooks/queries/useDefectsQuery';
 import { DOCUMENTS_QUERY_KEY } from '../hooks/queries/useDocumentsQuery';
+import { getCompanyProfileConfig, type CompanyProfileConfig } from '../utils/companySettings';
 
 // NATIVE PDF ENGINE IMPORTS
 import UniversalPDFStudio from './UniversalPDFStudio';
@@ -73,6 +74,16 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => setIsMounted(true), []);
+
+  const [companyProfile, setCompanyProfile] = useState<CompanyProfileConfig | null>(null);
+  const titleBlockLogoInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const compId = currentUser?.companyId || currentUser?.uid;
+    if (compId && !isDemoMode) {
+      getCompanyProfileConfig(compId).then(cfg => setCompanyProfile(cfg)).catch(() => {});
+    }
+  }, [currentUser?.companyId, currentUser?.uid, isDemoMode]);
 
   const tenantScopeId = currentUser?.companyId || currentUser?.uid || 'global';
   const cadCacheKey = `kreativdesk_cad_cache_${tenantScopeId}_${currentProjectId}`;
@@ -1874,17 +1885,87 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     } else if (activeTool === 'pen') {
       setDraftElement({ id: `pen_${Date.now()}`, type: 'pen', x: nx, y: ny, points: [{x: nx, y: ny}, {x: nx, y: ny}], color: '#ef4444', thickness: 1.5, opacity: 1, layerId: activeLayerId });
     } else if (activeTool === 'measure') {
-      setDraftElement({ id: `measure_${Date.now()}`, type: 'measure', x: nx, y: ny, start: {x: nx, y: ny}, end: {x: nx, y: ny}, color: '#3b82f6', layerId: activeLayerId });
+      setDraftElement({ id: `measure_${Date.now()}`, type: 'measure', x: nx, y: ny, start: {x: nx, y: ny}, end: {x: nx, y: ny}, color: '#3b82f6', textScale: 1, layerId: activeLayerId });
     } else if (activeTool === 'scalebar') {
       const sb: ScaleBarMarkup = { id: `sb_${Date.now()}`, type: 'scalebar', x: nx, y: ny, lengthMeters: 5, color: '#000000', thickness: 1.5, textSize: 4, layerId: activeLayerId };
       commitElements([...elements, sb]); setSelectedElement(sb);
     } else if (activeTool === 'titleblock') {
+      const defaultPlanner = companyProfile?.agencyName || (currentUser as any)?.companyName || currentUser?.displayName || 'Architektur & Planung';
+      const defaultAddress = activeProject?.location || [companyProfile?.zipCode, companyProfile?.city].filter(Boolean).join(' ') || 'Baustelle';
+      const defaultInitials = (currentUser?.displayName || currentUser?.email || 'PL').split(/[\s@.]+/).map((p: string) => p[0]).join('').slice(0, 3).toUpperCase() || 'PL';
       const tb: TitleBlockMarkup = { 
         id: `tb_${Date.now()}`, type: 'titleblock', x: nx, y: ny, scale: 0.7, textColor: '#000000', layerId: activeLayerId,
-        data: { projekt: activeProject?.name || 'PROJEKTNAME', adresse: 'Baustelle', bauherrschaft: 'Auftraggeber', planverfasser: 'Kreativ Desk', phase: 'AUSFÜHRUNG', planinhalt: 'GRUNDRISS', planNummer: '001', datum: new Date().toLocaleDateString('de-CH'), gez: 'AI' } 
+        data: {
+          projekt: activeProject?.name || 'PROJEKTNAME',
+          adresse: defaultAddress,
+          bauherrschaft: activeProject?.client || 'Auftraggeber',
+          planverfasser: defaultPlanner,
+          phase: 'AUSFÜHRUNG',
+          planinhalt: 'GRUNDRISS',
+          planNummer: '001',
+          datum: new Date().toLocaleDateString('de-CH'),
+          gez: defaultInitials,
+          logoUrl: companyProfile?.logoUrl || undefined,
+          brandText: defaultPlanner
+        } 
       };
       commitElements([...elements, tb]); setSelectedElement(tb);
     }
+  };
+
+  const handleTitleBlockLogoUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedElement || selectedElement.type !== 'titleblock') return;
+    if (isDemoMode) {
+      addToast(currentLang === 'de' ? 'Logo-Upload ist in der Demo-Vorschau geschützt.' : 'Logo upload is protected in demo preview.', 'info');
+      e.target.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      if (!dataUrl) return;
+      const img = new Image();
+      img.onload = () => {
+        const maxW = 360;
+        const maxH = 140;
+        let w = img.width || maxW;
+        let h = img.height || maxH;
+        if (w > maxW) {
+          h = Math.round((h * maxW) / w);
+          w = maxW;
+        }
+        if (h > maxH) {
+          w = Math.round((w * maxH) / h);
+          h = maxH;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.clearRect(0, 0, w, h);
+          ctx.drawImage(img, 0, 0, w, h);
+          const optimizedUrl = canvas.toDataURL('image/png');
+          const tb = selectedElement as TitleBlockMarkup;
+          updateElement({
+            ...tb,
+            data: { ...tb.data, logoUrl: optimizedUrl }
+          } as TitleBlockMarkup);
+          addToast(currentLang === 'de' ? 'Firmenlogo im Plankopf aktualisiert!' : 'Company logo updated in title block!', 'success');
+        }
+      };
+      img.onerror = () => {
+        const tb = selectedElement as TitleBlockMarkup;
+        updateElement({
+          ...tb,
+          data: { ...tb.data, logoUrl: dataUrl }
+        } as TitleBlockMarkup);
+      };
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   const handlePaperPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
@@ -2076,33 +2157,38 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
               }} 
               onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, el); }}
             />
-            {showBadge && (
-              <g pointerEvents="none">
-                <rect 
-                  x={`${cx - Math.max(34 * invScale, (labelText.length * 6 + 12) * invScale) / 2}px`} 
-                  y={`${cy - 9 * invScale}px`} 
-                  width={`${Math.max(34 * invScale, (labelText.length * 6 + 12) * invScale)}px`} 
-                  height={`${18 * invScale}px`} 
-                  fill="#ffffff" 
-                  stroke={isSelected ? '#2563eb' : (el.strokeColor || '#2563eb')} 
-                  strokeWidth={`${1.2 * invScale}px`} 
-                  rx={`${3.5 * invScale}px`} 
-                  opacity={0.96}
-                />
-                <text 
-                  x={`${cx}px`} 
-                  y={`${cy}px`} 
-                  fill="#0f172a" 
-                  fontSize={`${9.5 * invScale}px`} 
-                  fontFamily="Inter, sans-serif" 
-                  fontWeight="700" 
-                  textAnchor="middle" 
-                  dominantBaseline="central"
-                >
-                  {labelText}
-                </text>
-              </g>
-            )}
+            {showBadge && (() => {
+              const tScale = (el as any).textScale || 1;
+              const bw = Math.max(34, labelText.length * 6 + 12) * tScale;
+              const bh = 18 * tScale;
+              return (
+                <g pointerEvents="none">
+                  <rect 
+                    x={`${cx - bw / 2}px`} 
+                    y={`${cy - bh / 2}px`} 
+                    width={`${bw}px`} 
+                    height={`${bh}px`} 
+                    fill="#ffffff" 
+                    stroke={isSelected ? '#2563eb' : (el.strokeColor || '#2563eb')} 
+                    strokeWidth={`${1.2 * tScale}px`} 
+                    rx={`${3.5 * tScale}px`} 
+                    opacity={0.96}
+                  />
+                  <text 
+                    x={`${cx}px`} 
+                    y={`${cy}px`} 
+                    fill="#0f172a" 
+                    fontSize={`${9.5 * tScale}px`} 
+                    fontFamily="Inter, sans-serif" 
+                    fontWeight="700" 
+                    textAnchor="middle" 
+                    dominantBaseline="central"
+                  >
+                    {labelText}
+                  </text>
+                </g>
+              );
+            })()}
             {isSelected && !isPdf && !isElLocked && rectHandles.map((pt, i) => (
               <circle
                 key={i}
@@ -2202,33 +2288,38 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
               }} 
               onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, el); }} 
             />
-            {showBadge && (
-              <g pointerEvents="none">
-                <rect 
-                  x={`${centroid.x * internalW - Math.max(34 * invScale, (labelText.length * 6 + 12) * invScale) / 2}px`} 
-                  y={`${centroid.y * internalH - 9 * invScale}px`} 
-                  width={`${Math.max(34 * invScale, (labelText.length * 6 + 12) * invScale)}px`} 
-                  height={`${18 * invScale}px`} 
-                  fill="#ffffff" 
-                  stroke={isSelected ? '#2563eb' : (el.strokeColor || '#2563eb')} 
-                  strokeWidth={`${1.2 * invScale}px`} 
-                  rx={`${3.5 * invScale}px`} 
-                  opacity={0.96}
-                />
-                <text 
-                  x={`${centroid.x * internalW}px`} 
-                  y={`${centroid.y * internalH}px`} 
-                  fill="#0f172a" 
-                  fontSize={`${9.5 * invScale}px`} 
-                  fontFamily="Inter, sans-serif" 
-                  fontWeight="700" 
-                  textAnchor="middle" 
-                  dominantBaseline="central"
-                >
-                  {labelText}
-                </text>
-              </g>
-            )}
+            {showBadge && (() => {
+              const tScale = (el as any).textScale || 1;
+              const bw = Math.max(34, labelText.length * 6 + 12) * tScale;
+              const bh = 18 * tScale;
+              return (
+                <g pointerEvents="none">
+                  <rect 
+                    x={`${centroid.x * internalW - bw / 2}px`} 
+                    y={`${centroid.y * internalH - bh / 2}px`} 
+                    width={`${bw}px`} 
+                    height={`${bh}px`} 
+                    fill="#ffffff" 
+                    stroke={isSelected ? '#2563eb' : (el.strokeColor || '#2563eb')} 
+                    strokeWidth={`${1.2 * tScale}px`} 
+                    rx={`${3.5 * tScale}px`} 
+                    opacity={0.96}
+                  />
+                  <text 
+                    x={`${centroid.x * internalW}px`} 
+                    y={`${centroid.y * internalH}px`} 
+                    fill="#0f172a" 
+                    fontSize={`${9.5 * tScale}px`} 
+                    fontFamily="Inter, sans-serif" 
+                    fontWeight="700" 
+                    textAnchor="middle" 
+                    dominantBaseline="central"
+                  >
+                    {labelText}
+                  </text>
+                </g>
+              );
+            })()}
             {isSelected && !isPdf && !isElLocked && el.points.map((pt, i) => (
               <circle key={i} cx={`${pt.x * internalW}px`} cy={`${pt.y * internalH}px`} r={`${5 * invScale}px`} fill="white" stroke="#ef4444" strokeWidth={`${1.8 * invScale}px`}
                 style={{ cursor: 'crosshair', pointerEvents: 'auto' }} 
@@ -2329,16 +2420,17 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         const ex = el.end.x * internalW; const ey = el.end.y * internalH;
         const mx = (sx + ex) / 2; const my = (sy + ey) / 2;
         const distMeters = calculateDistance(el.start, el.end);
-        const strokeW = isPdf ? 1.5 : (1.5 * invScale);
-        const rCircle = isPdf ? 3.5 : (3.5 * invScale);
-        const fontSize = isPdf ? 11 : (11 * invScale);
+        const tScale = (el as Measurement).textScale || 1;
+        const strokeW = 1.5 * tScale;
+        const rCircle = 3.5 * tScale;
+        const fontSize = 11 * tScale;
         const textStr = `${distMeters} m`;
-        const badgeW = isPdf ? 60 : Math.max(30 * invScale, (textStr.length * 6.5 + 14) * invScale);
-        const badgeH = isPdf ? 18 : (18 * invScale);
-        const badgeRx = isPdf ? 3.5 : (3.5 * invScale);
+        const badgeW = Math.max(32, textStr.length * 6.5 + 14) * tScale;
+        const badgeH = 18 * tScale;
+        const badgeRx = 3.5 * tScale;
         return (
           <g key={el.id} style={{ opacity: totalOpacity, cursor: isInteractive ? (isElLocked ? 'default' : 'move') : 'crosshair', pointerEvents: isInteractive ? 'auto' : 'none' }} onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, el); }}>
-            {/* Bemassungslinie (präzise durchgezogen) */}
+            {/* Bemassungslinie (skaliert proportional beim Ein- und Auszoomen) */}
             <line 
               x1={`${sx}px`} y1={`${sy}px`} x2={`${ex}px`} y2={`${ey}px`} 
               stroke={el.color || '#3b82f6'} 
@@ -2346,7 +2438,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
             />
             {/* Endpunkt Start */}
             <circle 
-              cx={`${sx}px`} cy={`${sy}px`} r={rCircle} 
+              cx={`${sx}px`} cy={`${sy}px`} r={isSelected ? Math.max(rCircle, 4.5 * invScale) : rCircle} 
               fill="#000000" 
               stroke="#000000" 
               strokeWidth={strokeW} 
@@ -2359,7 +2451,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
             />
             {/* Endpunkt Ende */}
             <circle 
-              cx={`${ex}px`} cy={`${ey}px`} r={rCircle} 
+              cx={`${ex}px`} cy={`${ey}px`} r={isSelected ? Math.max(rCircle, 4.5 * invScale) : rCircle} 
               fill="#000000" 
               stroke="#000000" 
               strokeWidth={strokeW} 
@@ -2381,7 +2473,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
               strokeWidth={isSelected ? (strokeW * 1.3) : strokeW} 
               rx={`${badgeRx}px`} 
             />
-            {/* Schrift */}
+            {/* Masszahl (skaliert synchron mit dem Plan-Zoom) */}
             <text 
               x={`${mx}px`} 
               y={`${my}px`} 
@@ -2412,10 +2504,10 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         return (
           <g key={el.id} style={{ opacity: totalOpacity, cursor: isInteractive ? (isElLocked ? 'default' : 'move') : 'crosshair', pointerEvents: isInteractive ? 'auto' : 'none', filter: isSelected ? 'drop-shadow(0px 0px 4px rgba(0,0,0,0.5))' : 'none' }} transform={`translate(${el.x * internalW}, ${el.y * internalH})`} onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, el); }}>
              <rect x="0" y="0" width={`${w_px/2}px`} height={`${thickPx}px`} fill={el.color} />
-             <rect x={`${w_px/2}px`} y="0" width={`${w_px/2}px`} height={`${thickPx}px`} fill="transparent" stroke={el.color} strokeWidth={`${thickPx/3}px`} />
-             <text x="0" y={`${-2 * MM_TO_PX}px`} fill={el.color} fontSize={`${textPx}px`} fontFamily="sans-serif" fontWeight="bold" textAnchor="middle">0</text>
-             <text x={`${w_px/2}px`} y={`${-2 * MM_TO_PX}px`} fill={el.color} fontSize={`${textPx}px`} fontFamily="sans-serif" fontWeight="bold" textAnchor="middle">{el.lengthMeters / 2}</text>
-             <text x={`${w_px}px`} y={`${-2 * MM_TO_PX}px`} fill={el.color} fontSize={`${textPx}px`} fontFamily="sans-serif" fontWeight="bold" textAnchor="middle">{el.lengthMeters}m</text>
+             <rect x={`${w_px/2}px`} y="0" width={`${w_px/2}px`} height={`${thickPx}px`} fill="#ffffff" stroke={el.color} strokeWidth={`${Math.max(1, thickPx/3)}px`} />
+             <text x="0" y={`${-Math.max(5, textPx * 0.45)}px`} fill={el.color} fontSize={`${textPx}px`} fontFamily="Inter, sans-serif" fontWeight="700" textAnchor="middle">0</text>
+             <text x={`${w_px/2}px`} y={`${-Math.max(5, textPx * 0.45)}px`} fill={el.color} fontSize={`${textPx}px`} fontFamily="Inter, sans-serif" fontWeight="700" textAnchor="middle">{+(el.lengthMeters / 2).toFixed(2)}</text>
+             <text x={`${w_px}px`} y={`${-Math.max(5, textPx * 0.45)}px`} fill={el.color} fontSize={`${textPx}px`} fontFamily="Inter, sans-serif" fontWeight="700" textAnchor="middle">{el.lengthMeters} m</text>
              {isSelected && isElLocked && !isPdf && (
                <g transform={`translate(${w_px + 8 * invScale}, 0)`} pointerEvents="none">
                  <rect x={-2 * invScale} y={-2 * invScale} width={16 * invScale} height={16 * invScale} rx={3 * invScale} fill="#f59e0b" />
@@ -2428,56 +2520,128 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
       if (el.type === 'titleblock') {
         const tb = el as TitleBlockMarkup;
-        const tbWidth = 170 * MM_TO_PX; 
-        const h = 45 * MM_TO_PX;
+        const tbWidth = 170 * MM_TO_PX; // 510px
+        const h = 54 * MM_TO_PX; // 162px (4 saubere SIA-Zeilen ohne Überlappung)
         const tCol = tb.textColor || '#000000';
+        const resolvedLogoUrl = tb.data.logoUrl !== undefined ? tb.data.logoUrl : (companyProfile?.logoUrl || '');
+        const fallbackBrand = companyProfile?.agencyName
+          || (tb.data.planverfasser && tb.data.planverfasser !== 'Kreativ Desk' ? tb.data.planverfasser : '')
+          || (currentUser as any)?.companyName
+          || 'PLANVERFASSER';
+        const rawBrand = (tb.data.brandText !== undefined ? tb.data.brandText : fallbackBrand).trim() || fallbackBrand;
+
+        const projTitle = tb.data.projekt || '';
+        const projFontSize = projTitle.length > 34 ? 11 : projTitle.length > 24 ? 12.5 : 15;
+
+        const words = rawBrand.split(/\s+/).filter(Boolean);
+        let brandLine1 = rawBrand;
+        let brandLine2 = '';
+        if (rawBrand.length > 13 && words.length > 1) {
+          const mid = Math.ceil(words.length / 2);
+          brandLine1 = words.slice(0, mid).join(' ');
+          brandLine2 = words.slice(mid).join(' ');
+        }
+        const brandMaxLen = Math.max(brandLine1.length, brandLine2.length, 1);
+        const brandFontSize = brandMaxLen > 16 ? 11.5 : brandMaxLen > 12 ? 13 : 15.5;
+
+        const clipPrefix = `tb_clip_${tb.id.replace(/[^a-zA-Z0-9_-]/g, '')}`;
+
         return (
           <g key={tb.id} style={{ opacity: totalOpacity, cursor: isInteractive ? (isElLocked ? 'default' : 'move') : 'pointer', pointerEvents: isInteractive ? 'auto' : 'none' }} transform={`translate(${tb.x * internalW}, ${tb.y * internalH}) scale(${tb.scale})`} onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, tb); }}>
+            <defs>
+              <clipPath id={`${clipPrefix}_proj`}><rect x="6" y="2" width={`${tbWidth * 0.66 - 12}px`} height="50px" /></clipPath>
+              <clipPath id={`${clipPrefix}_brand`}><rect x={`${tbWidth * 0.66 + 4}px`} y="2" width={`${tbWidth * 0.34 - 8}px`} height="50px" /></clipPath>
+              <clipPath id={`${clipPrefix}_r2l`}><rect x="6" y="55" width={`${tbWidth * 0.6 - 12}px`} height="34px" /></clipPath>
+              <clipPath id={`${clipPrefix}_r2r`}><rect x={`${tbWidth * 0.6 + 6}px`} y="55" width={`${tbWidth * 0.4 - 12}px`} height="34px" /></clipPath>
+              <clipPath id={`${clipPrefix}_r3l`}><rect x="6" y="91" width={`${tbWidth * 0.6 - 12}px`} height="34px" /></clipPath>
+              <clipPath id={`${clipPrefix}_r3r`}><rect x={`${tbWidth * 0.6 + 6}px`} y="91" width={`${tbWidth * 0.4 - 12}px`} height="34px" /></clipPath>
+            </defs>
+
+            {/* Aussenrahmen */}
             <rect x="0" y="0" width={`${tbWidth}px`} height={`${h}px`} fill="#ffffff" stroke={tCol} strokeWidth="2" />
-            
-            <line x1="0" y1="60" x2={`${tbWidth}px`} y2="60" stroke={tCol} strokeWidth="1" />
-            <line x1="0" y1="105" x2={`${tbWidth}px`} y2="105" stroke={tCol} strokeWidth="1" />
-            
-            <line x1={`${tbWidth * 0.6}px`} y1="60" x2={`${tbWidth * 0.6}px`} y2="105" stroke={tCol} strokeWidth="1" />
-            <line x1={`${tbWidth * 0.2}px`} y1="105" x2={`${tbWidth * 0.2}px`} y2="135" stroke={tCol} strokeWidth="1" />
-            <line x1={`${tbWidth * 0.4}px`} y1="105" x2={`${tbWidth * 0.4}px`} y2="135" stroke={tCol} strokeWidth="1" />
-            <line x1={`${tbWidth * 0.6}px`} y1="105" x2={`${tbWidth * 0.6}px`} y2="135" stroke={tCol} strokeWidth="1" />
-            <line x1={`${tbWidth * 0.8}px`} y1="105" x2={`${tbWidth * 0.8}px`} y2="135" stroke={tCol} strokeWidth="1" />
-            
-            <text x="10" y="18" fill={tCol} fontSize="8px" opacity={0.6} fontFamily="sans-serif">{t('project')}</text>
-            <text x="10" y="35" fill={tCol} fontSize="16px" fontWeight="bold" fontFamily="sans-serif">{tb.data.projekt}</text>
-            <text x="10" y="50" fill={tCol} fontSize="10px" fontFamily="sans-serif">{tb.data.adresse}</text>
-            
-            <text x={`${tbWidth - 10}px`} y="30" fill={tCol} fontSize="20px" fontWeight="900" fontFamily="sans-serif" textAnchor="end">KREATIV</text>
-            <text x={`${tbWidth - 10}px`} y="50" fill={tCol} fontSize="20px" fontWeight="900" fontFamily="sans-serif" textAnchor="end">DESK</text>
-            <rect x={`${tbWidth - 60}px`} y="55" width="50px" height="5px" fill="#ef4444" />
 
-            <text x="10" y="75" fill={tCol} fontSize="8px" opacity={0.6} fontFamily="sans-serif">{t('client')}</text>
-            <text x="10" y="88" fill={tCol} fontSize="11px" fontFamily="sans-serif" fontWeight="bold">{tb.data.bauherrschaft}</text>
-            <text x="10" y="98" fill={tCol} fontSize="8px" opacity={0.6} fontFamily="sans-serif">{t('planner')}</text>
-            <text x="10" y="103" fill={tCol} fontSize="11px" fontFamily="sans-serif" fontWeight="bold">{tb.data.planverfasser}</text>
+            {/* Horizontale SIA-Trennlinien (y=54, y=90, y=126) */}
+            <line x1="0" y1="54" x2={`${tbWidth}px`} y2="54" stroke={tCol} strokeWidth="1" />
+            <line x1="0" y1="90" x2={`${tbWidth}px`} y2="90" stroke={tCol} strokeWidth="1" />
+            <line x1="0" y1="126" x2={`${tbWidth}px`} y2="126" stroke={tCol} strokeWidth="1" />
 
-            <rect x={`${tbWidth * 0.6}px`} y="60" width={`${tbWidth * 0.4}px`} height="45px" fill="#000000" fillOpacity={0.05} />
-            <text x={`${tbWidth * 0.6 + 10}px`} y="75" fill={tCol} fontSize="8px" opacity={0.6} fontFamily="sans-serif">{t('content')}</text>
-            <text x={`${tbWidth * 0.6 + 10}px`} y="88" fill={tCol} fontSize="14px" fontWeight="bold" fontFamily="sans-serif">{tb.data.planinhalt}</text>
-            <text x={`${tbWidth * 0.6 + 10}px`} y="98" fill={tCol} fontSize="8px" opacity={0.6} fontFamily="sans-serif">{t('phase')}</text>
-            <text x={`${tbWidth * 0.6 + 10}px`} y="103" fill={tCol} fontSize="10px" fontFamily="sans-serif" fontWeight="bold">{tb.data.phase}</text>
+            {/* Vertikale Trennlinien */}
+            <line x1={`${tbWidth * 0.66}px`} y1="0" x2={`${tbWidth * 0.66}px`} y2="54" stroke={tCol} strokeWidth="1" />
+            <line x1={`${tbWidth * 0.6}px`} y1="54" x2={`${tbWidth * 0.6}px`} y2="126" stroke={tCol} strokeWidth="1" />
+            <line x1={`${tbWidth * 0.2}px`} y1="126" x2={`${tbWidth * 0.2}px`} y2={`${h}px`} stroke={tCol} strokeWidth="1" />
+            <line x1={`${tbWidth * 0.4}px`} y1="126" x2={`${tbWidth * 0.4}px`} y2={`${h}px`} stroke={tCol} strokeWidth="1" />
+            <line x1={`${tbWidth * 0.6}px`} y1="126" x2={`${tbWidth * 0.6}px`} y2={`${h}px`} stroke={tCol} strokeWidth="1" />
+            <line x1={`${tbWidth * 0.8}px`} y1="126" x2={`${tbWidth * 0.8}px`} y2={`${h}px`} stroke={tCol} strokeWidth="1" />
 
-            <text x="10" y="118" fill={tCol} fontSize="8px" opacity={0.6} fontFamily="sans-serif">{t('format')}</text>
-            <text x="10" y="130" fill={tCol} fontSize="11px" fontFamily="sans-serif" fontWeight="bold">{paperFormat}</text>
+            {/* ZEILE 1 LINKS: Projekt & Adresse */}
+            <g clipPath={`url(#${clipPrefix}_proj)`}>
+              <text x="10" y="14" fill={tCol} fontSize="7.5px" opacity={0.6} fontFamily="Inter, sans-serif" fontWeight="600">{t('project')}</text>
+              <text x="10" y="31" fill={tCol} fontSize={`${projFontSize}px`} fontWeight="800" fontFamily="Inter, sans-serif">{tb.data.projekt}</text>
+              <text x="10" y="46" fill={tCol} fontSize="9.5px" opacity={0.85} fontFamily="Inter, sans-serif">{tb.data.adresse}</text>
+            </g>
 
-            <text x={`${tbWidth * 0.2 + 10}px`} y="118" fill={tCol} fontSize="8px" opacity={0.6} fontFamily="sans-serif">{t('scale')}</text>
-            <text x={`${tbWidth * 0.2 + 10}px`} y="130" fill={tCol} fontSize="11px" fontFamily="sans-serif" fontWeight="bold">1:{planScale}</text>
+            {/* ZEILE 1 RECHTS: Eigenes Firmenlogo oder Firmenname */}
+            <g clipPath={`url(#${clipPrefix}_brand)`}>
+              {resolvedLogoUrl ? (
+                <image
+                  href={resolvedLogoUrl}
+                  x={`${tbWidth * 0.66 + 10}`}
+                  y="6"
+                  width={`${tbWidth * 0.34 - 20}`}
+                  height="42"
+                  preserveAspectRatio="xMidYMid meet"
+                />
+              ) : brandLine2 ? (
+                <>
+                  <text x={`${tbWidth - 10}px`} y="23" fill={tCol} fontSize={`${brandFontSize}px`} fontWeight="900" fontFamily="Inter, sans-serif" textAnchor="end">{brandLine1}</text>
+                  <text x={`${tbWidth - 10}px`} y="40" fill={tCol} fontSize={`${brandFontSize}px`} fontWeight="900" fontFamily="Inter, sans-serif" textAnchor="end">{brandLine2}</text>
+                  <rect x={`${tbWidth - 56}px`} y="46" width="46px" height="4px" fill="#2563eb" />
+                </>
+              ) : (
+                <>
+                  <text x={`${tbWidth - 10}px`} y="32" fill={tCol} fontSize={`${brandFontSize}px`} fontWeight="900" fontFamily="Inter, sans-serif" textAnchor="end">{brandLine1}</text>
+                  <rect x={`${tbWidth - 56}px`} y="44" width="46px" height="4px" fill="#2563eb" />
+                </>
+              )}
+            </g>
 
-            <text x={`${tbWidth * 0.4 + 10}px`} y="118" fill={tCol} fontSize="8px" opacity={0.6} fontFamily="sans-serif">{t('date')}</text>
-            <text x={`${tbWidth * 0.4 + 10}px`} y="130" fill={tCol} fontSize="11px" fontFamily="sans-serif" fontWeight="bold">{tb.data.datum}</text>
+            {/* ZEILE 2: Bauherrschaft (links) & Planinhalt (rechts) */}
+            <rect x={`${tbWidth * 0.6}px`} y="54" width={`${tbWidth * 0.4}px`} height="72px" fill="#000000" fillOpacity={0.04} />
+            <g clipPath={`url(#${clipPrefix}_r2l)`}>
+              <text x="10" y="67" fill={tCol} fontSize="7.5px" opacity={0.6} fontFamily="Inter, sans-serif" fontWeight="600">{t('client')}</text>
+              <text x="10" y="82" fill={tCol} fontSize="11px" fontFamily="Inter, sans-serif" fontWeight="700">{tb.data.bauherrschaft}</text>
+            </g>
+            <g clipPath={`url(#${clipPrefix}_r2r)`}>
+              <text x={`${tbWidth * 0.6 + 10}px`} y="67" fill={tCol} fontSize="7.5px" opacity={0.6} fontFamily="Inter, sans-serif" fontWeight="600">{t('content')}</text>
+              <text x={`${tbWidth * 0.6 + 10}px`} y="83" fill={tCol} fontSize="12.5px" fontWeight="800" fontFamily="Inter, sans-serif">{tb.data.planinhalt}</text>
+            </g>
 
-            <text x={`${tbWidth * 0.6 + 10}px`} y="118" fill={tCol} fontSize="8px" opacity={0.6} fontFamily="sans-serif">{t('drawn_by')}</text>
-            <text x={`${tbWidth * 0.6 + 10}px`} y="130" fill={tCol} fontSize="11px" fontFamily="sans-serif" fontWeight="bold">{tb.data.gez}</text>
+            {/* ZEILE 3: Planverfasser (links) & Phase (rechts) */}
+            <g clipPath={`url(#${clipPrefix}_r3l)`}>
+              <text x="10" y="103" fill={tCol} fontSize="7.5px" opacity={0.6} fontFamily="Inter, sans-serif" fontWeight="600">{t('planner')}</text>
+              <text x="10" y="118" fill={tCol} fontSize="11px" fontFamily="Inter, sans-serif" fontWeight="700">{tb.data.planverfasser}</text>
+            </g>
+            <g clipPath={`url(#${clipPrefix}_r3r)`}>
+              <text x={`${tbWidth * 0.6 + 10}px`} y="103" fill={tCol} fontSize="7.5px" opacity={0.6} fontFamily="Inter, sans-serif" fontWeight="600">{t('phase')}</text>
+              <text x={`${tbWidth * 0.6 + 10}px`} y="118" fill={tCol} fontSize="10.5px" fontFamily="Inter, sans-serif" fontWeight="700">{tb.data.phase}</text>
+            </g>
 
-            <rect x={`${tbWidth * 0.8}px`} y="105" width={`${tbWidth * 0.2}px`} height="30px" fill={tCol} />
-            <text x={`${tbWidth - 10}px`} y="118" fill="#ffffff" fontSize="8px" opacity={0.8} fontFamily="sans-serif" textAnchor="end">{t('plan_no')}</text>
-            <text x={`${tbWidth - 10}px`} y="130" fill="#ffffff" fontSize="12px" fontWeight="900" fontFamily="sans-serif" textAnchor="end">{tb.data.planNummer}</text>
+            {/* ZEILE 4: Format, Massstab, Datum, Gez., Plannummer */}
+            <text x="10" y="139" fill={tCol} fontSize="7.5px" opacity={0.6} fontFamily="Inter, sans-serif" fontWeight="600">{t('format')}</text>
+            <text x="10" y="154" fill={tCol} fontSize="11px" fontFamily="Inter, sans-serif" fontWeight="700">{paperFormat}</text>
+
+            <text x={`${tbWidth * 0.2 + 10}px`} y="139" fill={tCol} fontSize="7.5px" opacity={0.6} fontFamily="Inter, sans-serif" fontWeight="600">{t('scale')}</text>
+            <text x={`${tbWidth * 0.2 + 10}px`} y="154" fill={tCol} fontSize="11px" fontFamily="Inter, sans-serif" fontWeight="700">1:{planScale}</text>
+
+            <text x={`${tbWidth * 0.4 + 10}px`} y="139" fill={tCol} fontSize="7.5px" opacity={0.6} fontFamily="Inter, sans-serif" fontWeight="600">{t('date')}</text>
+            <text x={`${tbWidth * 0.4 + 10}px`} y="154" fill={tCol} fontSize="11px" fontFamily="Inter, sans-serif" fontWeight="700">{tb.data.datum}</text>
+
+            <text x={`${tbWidth * 0.6 + 10}px`} y="139" fill={tCol} fontSize="7.5px" opacity={0.6} fontFamily="Inter, sans-serif" fontWeight="600">{t('drawn_by')}</text>
+            <text x={`${tbWidth * 0.6 + 10}px`} y="154" fill={tCol} fontSize="11px" fontFamily="Inter, sans-serif" fontWeight="700">{tb.data.gez}</text>
+
+            <rect x={`${tbWidth * 0.8}px`} y="126" width={`${tbWidth * 0.2}px`} height="36px" fill={tCol} />
+            <text x={`${tbWidth - 10}px`} y="139" fill="#ffffff" fontSize="7.5px" opacity={0.8} fontFamily="Inter, sans-serif" fontWeight="600" textAnchor="end">{t('plan_no')}</text>
+            <text x={`${tbWidth - 10}px`} y="155" fill="#ffffff" fontSize="12.5px" fontWeight="900" fontFamily="Inter, sans-serif" textAnchor="end">{tb.data.planNummer}</text>
 
             {isSelected && !isPdf && <rect x="0" y="0" width={`${tbWidth}px`} height={`${h}px`} fill="none" stroke="#3b82f6" strokeWidth="2" strokeDasharray="4,4" pointerEvents="none" />}
             {isSelected && isElLocked && !isPdf && (
@@ -4137,16 +4301,33 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                 )}
 
                 {selectedElement.type === 'measure' && (
-                  <div className="grid grid-cols-2 gap-2 items-end">
-                    <div>
-                      <label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">Distanz</label>
-                      <div className="bg-background border border-border rounded-lg px-2.5 py-1.5 text-xs font-bold text-text-primary">
-                        {calculateDistance((selectedElement as Measurement).start, (selectedElement as Measurement).end)} m
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2 items-end">
+                      <div>
+                        <label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">Distanz</label>
+                        <div className="bg-background border border-border rounded-lg px-2.5 py-1.5 text-xs font-bold text-text-primary">
+                          {calculateDistance((selectedElement as Measurement).start, (selectedElement as Measurement).end)} m
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">{t('color')}</label>
+                        <input type="color" value={(selectedElement as Measurement).color || '#3b82f6'} onChange={e => updateElement({...selectedElement, color: e.target.value} as any)} className="w-full h-8 rounded-lg border border-border cursor-pointer" />
                       </div>
                     </div>
                     <div>
-                      <label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">{t('color')}</label>
-                      <input type="color" value={(selectedElement as Measurement).color || '#3b82f6'} onChange={e => updateElement({...selectedElement, color: e.target.value} as any)} className="w-full h-8 rounded-lg border border-border cursor-pointer" />
+                      <div className="flex justify-between items-center mb-0.5">
+                        <label className="text-[9px] font-bold uppercase text-text-muted">Zahlen-Grösse (Skalierung)</label>
+                        <span className="text-[10px] font-bold text-primary">{Math.round(((selectedElement as Measurement).textScale || 1) * 100)}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0.5"
+                        max="2.5"
+                        step="0.1"
+                        value={(selectedElement as Measurement).textScale || 1}
+                        onChange={e => updateElement({ ...selectedElement, textScale: Number(e.target.value) } as Measurement)}
+                        className="w-full accent-blue-500 h-1.5 cursor-pointer"
+                      />
                     </div>
                   </div>
                 )}
@@ -4183,24 +4364,85 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                   </div>
                 )}
 
-                {selectedElement.type === 'titleblock' && (
-                  <div className="space-y-1.5">
-                    <div className="grid grid-cols-2 gap-2 items-center">
-                      <div><label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">{t('scale')}</label><input type="range" min="0.2" max="2" step="0.1" value={(selectedElement as TitleBlockMarkup).scale} onChange={(e) => updateElement({ ...selectedElement, scale: Number(e.target.value) } as TitleBlockMarkup)} className="w-full accent-blue-500 h-1.5" /></div>
-                      <div><label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">{t('color')}</label><input type="color" value={(selectedElement as TitleBlockMarkup).textColor || '#000000'} onChange={(e) => updateElement({ ...selectedElement, textColor: e.target.value } as TitleBlockMarkup)} className="w-full h-7 rounded-lg border border-border cursor-pointer" /></div>
+                {selectedElement.type === 'titleblock' && (() => {
+                  const tbEl = selectedElement as TitleBlockMarkup;
+                  const activeLogo = tbEl.data.logoUrl !== undefined ? tbEl.data.logoUrl : (companyProfile?.logoUrl || '');
+                  const activeBrandText = tbEl.data.brandText !== undefined
+                    ? tbEl.data.brandText
+                    : (companyProfile?.agencyName || (tbEl.data.planverfasser && tbEl.data.planverfasser !== 'Kreativ Desk' ? tbEl.data.planverfasser : '') || '');
+                  return (
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-2 items-center">
+                        <div>
+                          <div className="flex justify-between items-center mb-0.5">
+                            <label className="text-[9px] font-bold uppercase text-text-muted">{t('scale')}</label>
+                            <span className="text-[10px] font-bold text-primary">{Math.round((tbEl.scale || 0.7) * 100)}%</span>
+                          </div>
+                          <input type="range" min="0.2" max="2" step="0.05" value={tbEl.scale} onChange={(e) => updateElement({ ...tbEl, scale: Number(e.target.value) } as TitleBlockMarkup)} className="w-full accent-blue-500 h-1.5 cursor-pointer" />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-bold uppercase text-text-muted mb-0.5 block">{t('color')}</label>
+                          <input type="color" value={tbEl.textColor || '#000000'} onChange={(e) => updateElement({ ...tbEl, textColor: e.target.value } as TitleBlockMarkup)} className="w-full h-7 rounded-lg border border-border cursor-pointer" />
+                        </div>
+                      </div>
+
+                      {/* EIGENES FIRMENLOGO & BRANDING OBEN RECHTS */}
+                      <div className="p-2 bg-background/80 border border-border rounded-xl space-y-1.5">
+                        <div className="flex items-center justify-between gap-1.5">
+                          <span className="text-[9px] font-bold uppercase text-text-muted">Firmenlogo / Branding</span>
+                          <div className="flex items-center gap-1">
+                            <input
+                              ref={titleBlockLogoInputRef}
+                              type="file"
+                              accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                              onChange={handleTitleBlockLogoUpload}
+                              className="hidden"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => titleBlockLogoInputRef.current?.click()}
+                              className="px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-md text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                            >
+                              <ImagePlus size={11} />
+                              <span>{activeLogo ? 'Logo ändern' : 'Logo hochladen'}</span>
+                            </button>
+                            {activeLogo && (
+                              <button
+                                type="button"
+                                onClick={() => updateElement({ ...tbEl, data: { ...tbEl.data, logoUrl: '' } } as TitleBlockMarkup)}
+                                className="px-1.5 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-md text-[10px] font-bold transition-colors cursor-pointer"
+                                title="Logo ausblenden und Text anzeigen"
+                              >
+                                <X size={11} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <input
+                          type="text"
+                          value={activeBrandText}
+                          onChange={e => updateElement({ ...tbEl, data: { ...tbEl.data, brandText: e.target.value } } as TitleBlockMarkup)}
+                          className="w-full bg-surface border border-border rounded-lg px-2 py-1 text-[11px] font-semibold placeholder:text-text-muted outline-none focus:border-blue-500"
+                          placeholder="Firmenname oben rechts (wenn kein Bild-Logo)"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <input type="text" value={tbEl.data.projekt} onChange={e => updateElement({...tbEl, data: {...tbEl.data, projekt: e.target.value}} as TitleBlockMarkup)} className="w-full bg-background border border-border rounded-lg px-2 py-1 text-[11px] placeholder:text-text-muted outline-none focus:border-blue-500" placeholder={t('project')} title={t('project')}/>
+                        <input type="text" value={tbEl.data.adresse} onChange={e => updateElement({...tbEl, data: {...tbEl.data, adresse: e.target.value}} as TitleBlockMarkup)} className="w-full bg-background border border-border rounded-lg px-2 py-1 text-[11px] placeholder:text-text-muted outline-none focus:border-blue-500" placeholder="Adresse / Ort" title="Adresse / Ort"/>
+                        <input type="text" value={tbEl.data.bauherrschaft} onChange={e => updateElement({...tbEl, data: {...tbEl.data, bauherrschaft: e.target.value}} as TitleBlockMarkup)} className="w-full bg-background border border-border rounded-lg px-2 py-1 text-[11px] placeholder:text-text-muted outline-none focus:border-blue-500" placeholder={t('client')} title={t('client')}/>
+                        <input type="text" value={tbEl.data.planverfasser} onChange={e => updateElement({...tbEl, data: {...tbEl.data, planverfasser: e.target.value}} as TitleBlockMarkup)} className="w-full bg-background border border-border rounded-lg px-2 py-1 text-[11px] placeholder:text-text-muted outline-none focus:border-blue-500" placeholder={t('planner')} title={t('planner')}/>
+                        <input type="text" value={tbEl.data.planinhalt} onChange={e => updateElement({...tbEl, data: {...tbEl.data, planinhalt: e.target.value}} as TitleBlockMarkup)} className="w-full bg-background border border-border rounded-lg px-2 py-1 text-[11px] placeholder:text-text-muted outline-none focus:border-blue-500" placeholder={t('content')} title={t('content')}/>
+                        <input type="text" value={tbEl.data.phase} onChange={e => updateElement({...tbEl, data: {...tbEl.data, phase: e.target.value}} as TitleBlockMarkup)} className="w-full bg-background border border-border rounded-lg px-2 py-1 text-[11px] placeholder:text-text-muted outline-none focus:border-blue-500" placeholder={t('phase')} title={t('phase')}/>
+                        <input type="text" value={tbEl.data.planNummer} onChange={e => updateElement({...tbEl, data: {...tbEl.data, planNummer: e.target.value}} as TitleBlockMarkup)} className="w-full bg-background border border-border rounded-lg px-2 py-1 text-[11px] placeholder:text-text-muted outline-none focus:border-blue-500" placeholder={t('plan_no')} title={t('plan_no')}/>
+                        <div className="grid grid-cols-2 gap-1">
+                          <input type="text" value={tbEl.data.datum} onChange={e => updateElement({...tbEl, data: {...tbEl.data, datum: e.target.value}} as TitleBlockMarkup)} className="w-full bg-background border border-border rounded-lg px-1.5 py-1 text-[11px] placeholder:text-text-muted outline-none focus:border-blue-500" placeholder={t('date')} title={t('date')}/>
+                          <input type="text" value={tbEl.data.gez} onChange={e => updateElement({...tbEl, data: {...tbEl.data, gez: e.target.value}} as TitleBlockMarkup)} className="w-full bg-background border border-border rounded-lg px-1.5 py-1 text-[11px] placeholder:text-text-muted outline-none focus:border-blue-500" placeholder={t('drawn_by')} title={t('drawn_by')}/>
+                        </div>
+                      </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <input type="text" value={(selectedElement as TitleBlockMarkup).data.projekt} onChange={e => updateElement({...selectedElement, data: {...(selectedElement as TitleBlockMarkup).data, projekt: e.target.value}} as TitleBlockMarkup)} className="w-full bg-background border border-border rounded-lg px-2 py-1 text-[11px] placeholder:text-text-muted outline-none" placeholder={t('project')}/>
-                      <input type="text" value={(selectedElement as TitleBlockMarkup).data.bauherrschaft} onChange={e => updateElement({...selectedElement, data: {...(selectedElement as TitleBlockMarkup).data, bauherrschaft: e.target.value}} as TitleBlockMarkup)} className="w-full bg-background border border-border rounded-lg px-2 py-1 text-[11px] placeholder:text-text-muted outline-none" placeholder={t('client')}/>
-                      <input type="text" value={(selectedElement as TitleBlockMarkup).data.planverfasser} onChange={e => updateElement({...selectedElement, data: {...(selectedElement as TitleBlockMarkup).data, planverfasser: e.target.value}} as TitleBlockMarkup)} className="w-full bg-background border border-border rounded-lg px-2 py-1 text-[11px] placeholder:text-text-muted outline-none" placeholder={t('planner')}/>
-                      <input type="text" value={(selectedElement as TitleBlockMarkup).data.planinhalt} onChange={e => updateElement({...selectedElement, data: {...(selectedElement as TitleBlockMarkup).data, planinhalt: e.target.value}} as TitleBlockMarkup)} className="w-full bg-background border border-border rounded-lg px-2 py-1 text-[11px] placeholder:text-text-muted outline-none" placeholder={t('content')}/>
-                      <input type="text" value={(selectedElement as TitleBlockMarkup).data.phase} onChange={e => updateElement({...selectedElement, data: {...(selectedElement as TitleBlockMarkup).data, phase: e.target.value}} as TitleBlockMarkup)} className="w-full bg-background border border-border rounded-lg px-2 py-1 text-[11px] placeholder:text-text-muted outline-none" placeholder={t('phase')}/>
-                      <input type="text" value={(selectedElement as TitleBlockMarkup).data.planNummer} onChange={e => updateElement({...selectedElement, data: {...(selectedElement as TitleBlockMarkup).data, planNummer: e.target.value}} as TitleBlockMarkup)} className="w-full bg-background border border-border rounded-lg px-2 py-1 text-[11px] placeholder:text-text-muted outline-none" placeholder={t('plan_no')}/>
-                      <input type="text" value={(selectedElement as TitleBlockMarkup).data.datum} onChange={e => updateElement({...selectedElement, data: {...(selectedElement as TitleBlockMarkup).data, datum: e.target.value}} as TitleBlockMarkup)} className="w-full bg-background border border-border rounded-lg px-2 py-1 text-[11px] placeholder:text-text-muted outline-none" placeholder={t('date')}/>
-                      <input type="text" value={(selectedElement as TitleBlockMarkup).data.gez} onChange={e => updateElement({...selectedElement, data: {...(selectedElement as TitleBlockMarkup).data, gez: e.target.value}} as TitleBlockMarkup)} className="w-full bg-background border border-border rounded-lg px-2 py-1 text-[11px] placeholder:text-text-muted outline-none" placeholder={t('drawn_by')}/>
-                    </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* KOMPAKTE WERKZEUG-FUSSZEILE: REIHENFOLGE, SPERREN, DUPLIZIEREN, LÖSCHEN */}
                 <div className="pt-1.5 border-t border-border flex items-center gap-1.5">
@@ -4464,17 +4706,17 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                     const ex = m.end.x * internalW; const ey = m.end.y * internalH;
                     const mx = (sx + ex) / 2; const my = (sy + ey) / 2;
                     const dist = calculateDistance(m.start, m.end);
-                    const invScale = Math.min(10, Math.max(0.1, 1 / scale));
-                    const strokeW = 1.5 * invScale;
-                    const rCircle = 3.5 * invScale;
-                    const fontSize = 11 * invScale;
+                    const tScale = m.textScale || 1;
+                    const strokeW = 1.5 * tScale;
+                    const rCircle = 3.5 * tScale;
+                    const fontSize = 11 * tScale;
                     const textStr = `${dist} m`;
-                    const badgeW = Math.max(30 * invScale, (textStr.length * 6.5 + 14) * invScale);
-                    const badgeH = 18 * invScale;
-                    const badgeRx = 3.5 * invScale;
+                    const badgeW = Math.max(32, textStr.length * 6.5 + 14) * tScale;
+                    const badgeH = 18 * tScale;
+                    const badgeRx = 3.5 * tScale;
                     return (
                       <g>
-                        <line x1={sx} y1={sy} x2={ex} y2={ey} stroke="#3b82f6" strokeWidth={strokeW} strokeDasharray={`${4 * invScale},${4 * invScale}`} />
+                        <line x1={sx} y1={sy} x2={ex} y2={ey} stroke="#3b82f6" strokeWidth={strokeW} strokeDasharray="4,4" />
                         <circle cx={sx} cy={sy} r={rCircle} fill="#000000" stroke="#000000" strokeWidth={strokeW} />
                         <circle cx={ex} cy={ey} r={rCircle} fill="#000000" stroke="#000000" strokeWidth={strokeW} />
                         <rect x={mx - badgeW / 2} y={my - badgeH / 2} width={badgeW} height={badgeH} rx={badgeRx} fill="#ffffff" stroke="#3b82f6" strokeWidth={strokeW} />
@@ -4591,6 +4833,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
             planScale={planScale}
             originalFormat={paperFormat}
             originalOrientation={paperOrientation}
+            companyProfile={companyProfile}
             t={t} 
           />
         )}

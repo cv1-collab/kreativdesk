@@ -394,7 +394,7 @@ export default function ProductTour() {
       } else if (activeModuleTour === 'pitch') {
         candidateDefs = [
           {
-            target: '.tour-deck-template, .tour-pitch-templates, .tour-pitch-toolbar, body',
+            target: '.tour-studio-pitch-templates, .tour-studio-pitch-mobile-tabs, .tour-deck-template, .tour-pitch-templates, .tour-pitch-toolbar, body',
             title: isGerman ? 'Deck Studio & Master-Vorlagen' : 'Deck Studio & Master Templates',
             content: isGerman
               ? 'Wähle aus kuratierten Schweizer SIA- und Keynote-Vorlagen oder binde BKP-Finanzen, 3D-BIM-Schnitte und Baufortschrittsberichte direkt in deine Folien ein.'
@@ -405,7 +405,18 @@ export default function ProductTour() {
             placement: 'right'
           },
           {
-            target: '.tour-pitch-present, .tour-deck-present, .tour-pitch-stage, body',
+            target: '.tour-studio-pitch-toolbar, .tour-studio-pitch-slides, .tour-pitch-toolbar, .tour-pitch-stage, body',
+            title: isGerman ? 'Canvas-Werkzeuge & Live-Projektdaten' : 'Canvas Tools & Live Project Data',
+            content: isGerman
+              ? 'Füge Texte, Formen, Grundrisse, Renderings oder KI-Layouts auf der Folie ein und ordne deine Folien-Reihenfolge per Drag & Drop.'
+              : 'Insert text, shapes, floor plans, renderings, or AI layouts onto the canvas and reorder slides via drag and drop.',
+            IconComponent: Layers,
+            submodules: isGerman ? ['Freies Canvas-Layout', 'SIA-Plankopf & Pläne', 'Folien-Manager'] : ['Freeform Canvas', 'SIA Title Block & Plans', 'Slide Manager'],
+            proTip: isGerman ? 'Halte Shift gedrückt, um mehrere Elemente gleichzeitig auszuwählen und exakt auszurichten.' : 'Hold Shift to multi-select elements and align them with precision.',
+            placement: 'bottom'
+          },
+          {
+            target: '.tour-studio-pitch-present, .tour-pitch-present, .tour-deck-present, .tour-pitch-stage, body',
             title: isGerman ? '16:9 Cinema-Präsentation für Bauherren' : '16:9 Cinema Presentation for Clients',
             content: isGerman
               ? 'Präsentiere dein Architekturprojekt im modernen 16:9 Kino-Vollbildmodus. Zeige fotorealistische Renderings, 3D-BIM-Schnitte, Grundrisse und das interdisziplinäre Planungsteam.'
@@ -416,7 +427,7 @@ export default function ProductTour() {
             placement: 'bottom'
           },
           {
-            target: '.tour-deck-export, .tour-pitch-export, body',
+            target: '.tour-studio-pitch-export, .tour-deck-export, .tour-pitch-export, body',
             title: isGerman ? 'Kunden-Landingpage & Dual-Export (PDF & PPTX)' : 'Client Landing Page & Dual Export (PDF & PPTX)',
             content: isGerman
               ? 'Veröffentliche per Klick eine interaktive, passwortgeschützte Kunden-Landingpage mit digitaler Signatur oder exportiere das Deck als druckreifes PDF oder editierbare PowerPoint/Keynote.'

@@ -125,7 +125,7 @@ export const ModuleHandbookDrawer: React.FC<ModuleHandbookDrawerProps> = ({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[9998] flex justify-end bg-black/60 backdrop-blur-xs overflow-hidden overscroll-contain animate-in fade-in duration-200"
+      className="fixed inset-0 z-[250000] flex justify-end bg-black/60 backdrop-blur-xs overflow-hidden overscroll-contain animate-in fade-in duration-200"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -189,8 +189,11 @@ export const ModuleHandbookDrawer: React.FC<ModuleHandbookDrawerProps> = ({
             <button
               type="button"
               onClick={() => {
+                const targetModule = selectedModuleId;
                 onClose();
-                startTour(selectedModuleId);
+                setTimeout(() => {
+                  startTour(targetModule);
+                }, 120);
               }}
               className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-md shadow-blue-600/25 transition-all cursor-pointer active:scale-95"
             >
